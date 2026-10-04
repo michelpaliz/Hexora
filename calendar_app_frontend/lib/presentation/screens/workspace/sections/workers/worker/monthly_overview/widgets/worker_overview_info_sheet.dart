@@ -26,7 +26,7 @@ class WorkerOverviewInfoSheet extends StatelessWidget {
           Text(
             l.overviewInfoBody,
             style: t.bodyMedium.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.75),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
             ),
           ),
           const SizedBox(height: 12),
@@ -35,7 +35,7 @@ class WorkerOverviewInfoSheet extends StatelessWidget {
           Text(
             '• ${l.tipTapMonthToOpen}\n• ${l.tipPullToRefresh}',
             style: t.bodySmall.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.75),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
             ),
           ),
           const SizedBox(height: 8),

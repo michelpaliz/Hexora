@@ -28,7 +28,7 @@ Future<bool> showConfirmationDialog(BuildContext context, String message) {
         content: Text(
           message,
           style: t.bodyLarge.copyWith(
-            color: onDialog.withOpacity(0.9),
+            color: onDialog.withValues(alpha: 0.9),
             height: 1.35,
           ),
         ),

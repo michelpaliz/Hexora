@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:hexora/models/notifications/notification_localization.dart';
 import 'package:hexora/models/jobs/background_job.dart';
 import 'package:hexora/models/jobs/job_notification.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/presentation/enums/category/broad_category.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
 import 'package:hexora/presentation/viewmodels/notifications/notification_view_model.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -25,18 +26,25 @@ class NotificationsTabView extends StatelessWidget {
     required this.onOpenDocument,
     required this.onOpenActiveJob,
     required this.onOpenJobNotification,
+    this.onRefresh,
+    this.initialNotifications,
   });
 
   final Stream<List<NotificationUser>> notificationsStream;
+  final List<NotificationUser>? initialNotifications;
   final NotificationViewModel notificationViewModel;
   final List<BackgroundJob> activeJobs;
   final List<JobNotification> jobNotifications;
   final bool loadingJobNotifications;
   final bool Function(JobNotification notification) isAttentionJobNotification;
-  final ValueChanged<NotificationUser> onConfirm;
+  final FutureOr<void> Function(NotificationUser) onConfirm;
   final ValueChanged<NotificationUser> onOpenDocument;
   final ValueChanged<BackgroundJob> onOpenActiveJob;
   final ValueChanged<JobNotification> onOpenJobNotification;
+
+  /// When set, each category tab gets pull-to-refresh (e.g. for screens
+  /// backed by a one-shot fetch instead of a live stream).
+  final Future<void> Function()? onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -45,18 +53,56 @@ class NotificationsTabView extends StatelessWidget {
 
     return StreamBuilder<List<NotificationUser>>(
       stream: notificationsStream,
+      initialData: initialNotifications,
       builder: (context, snapshot) {
+        if (!snapshot.hasData &&
+            snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
         final notifications = snapshot.data ?? [];
         final hasActivity = notifications.isNotEmpty ||
             activeJobs.isNotEmpty ||
             jobNotifications.isNotEmpty;
         if (!hasActivity && !loadingJobNotifications) {
-          return Center(
-            child: Text(
-              loc.zeroNotifications,
-              style: t.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
-            ),
-          );
+          final empty = LayoutBuilder(
+              builder: (context, constraints) => ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(
+                          height: constraints.maxHeight,
+                          child: Center(
+                            child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.notifications_none,
+                                        size: 40,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant),
+                                    const SizedBox(height: 12),
+                                    Text(loc.zeroNotifications,
+                                        textAlign: TextAlign.center,
+                                        style: t.bodyLarge?.copyWith(
+                                            fontWeight: FontWeight.w500)),
+                                    if (onRefresh != null) ...[
+                                      const SizedBox(height: 16),
+                                      TextButton.icon(
+                                          onPressed: onRefresh,
+                                          icon: const Icon(Icons.refresh),
+                                          label: Text(_isSpanish(context)
+                                              ? 'Actualizar'
+                                              : 'Refresh')),
+                                    ],
+                                  ],
+                                )),
+                          ))
+                    ],
+                  ));
+          return onRefresh == null
+              ? empty
+              : RefreshIndicator(onRefresh: onRefresh!, child: empty);
         }
 
         final tabs = _buildTabs(context, notifications);
@@ -150,33 +196,36 @@ class NotificationsTabView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TabBar(
+              tabAlignment: TabAlignment.start,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              labelPadding: const EdgeInsets.symmetric(horizontal: 12),
               isScrollable: true,
               labelStyle: t.titleSmall?.copyWith(fontWeight: FontWeight.w700),
               tabs: tabs.map((tab) => Tab(text: tab.label)).toList(),
             ),
             Expanded(
               child: TabBarView(
-                children: tabs
-                    .map(
-                      (tab) => _NotificationsList(
-                        notifications: tab.notifications,
-                        onDelete: (n) =>
-                            notificationViewModel.deleteNotification(n),
-                        onConfirm: onConfirm,
-                        onNegate: (n) =>
-                            notificationViewModel.handleNegation(n),
-                        onMarkRead: (n) =>
-                            notificationViewModel.markNotificationAsRead(n),
-                        onOpenEvent: (_, groupId) {
-                          Navigator.of(context).pushNamed(
-                            AppRoutes.groupCalendar,
-                            arguments: groupId,
+                children: tabs.map(
+                  (tab) {
+                    final list = _NotificationsList(
+                      notifications: tab.notifications,
+                      onDelete: (n) =>
+                          notificationViewModel.deleteNotification(n),
+                      onConfirm: onConfirm,
+                      onNegate: (n) => notificationViewModel.handleNegation(n),
+                      onMarkRead: (n) =>
+                          notificationViewModel.markNotificationAsRead(n),
+                      onOpenDocument: onOpenDocument,
+                    );
+                    final refresh = onRefresh;
+                    return refresh == null
+                        ? list
+                        : RefreshIndicator(
+                            onRefresh: refresh,
+                            child: list,
                           );
-                        },
-                        onOpenDocument: onOpenDocument,
-                      ),
-                    )
-                    .toList(),
+                  },
+                ).toList(),
               ),
             ),
           ],
@@ -274,16 +323,14 @@ class _NotificationsList extends StatefulWidget {
     required this.onConfirm,
     required this.onNegate,
     required this.onMarkRead,
-    required this.onOpenEvent,
     required this.onOpenDocument,
   });
 
   final List<NotificationUser> notifications;
-  final ValueChanged<NotificationUser> onDelete;
-  final ValueChanged<NotificationUser> onConfirm;
-  final ValueChanged<NotificationUser> onNegate;
-  final ValueChanged<NotificationUser> onMarkRead;
-  final void Function(String eventId, String groupId) onOpenEvent;
+  final Future<void> Function(NotificationUser) onDelete;
+  final FutureOr<void> Function(NotificationUser) onConfirm;
+  final Future<void> Function(NotificationUser) onNegate;
+  final Future<void> Function(NotificationUser) onMarkRead;
   final ValueChanged<NotificationUser> onOpenDocument;
 
   @override
@@ -292,6 +339,26 @@ class _NotificationsList extends StatefulWidget {
 
 class _NotificationsListState extends State<_NotificationsList> {
   final _expandedGroups = <String>{};
+  final _busy = <String>{};
+
+  Future<void> _runAction(NotificationUser n,
+      FutureOr<void> Function(NotificationUser) action) async {
+    if (_busy.contains(n.id)) return;
+    setState(() => _busy.add(n.id));
+    try {
+      await action(n);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(
+                AppLocalizations.of(context)!.localeName.startsWith('es')
+                    ? 'No se pudo completar la acción. Inténtalo de nuevo.'
+                    : 'Could not complete this action. Please try again.')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy.remove(n.id));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -299,17 +366,28 @@ class _NotificationsListState extends State<_NotificationsList> {
     final t = Theme.of(context).textTheme;
 
     if (widget.notifications.isEmpty) {
-      return Center(
-        child: Text(
-          loc.zeroNotifications,
-          style: t.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
-        ),
+      // Stays scrollable (rather than a bare Center) so pull-to-refresh
+      // still works on an empty tab when this list is wrapped in one.
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: MediaQuery.sizeOf(context).height * 0.5,
+            child: Center(
+              child: Text(
+                loc.zeroNotifications,
+                style: t.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+              ),
+            ),
+          ),
+        ],
       );
     }
 
     final timeGrouped = groupNotificationsByTime(widget.notifications, loc);
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(bottom: 88),
       children:
           timeGrouped.entries.where((e) => e.value.isNotEmpty).expand((entry) {
@@ -351,16 +429,21 @@ class _NotificationsListState extends State<_NotificationsList> {
     }).toList();
   }
 
-  Widget _buildCard(NotificationUser n) => NotificationCard(
-        notification: n,
-        onDelete: () => widget.onDelete(n),
-        onConfirm: () => widget.onConfirm(n),
-        onNegate: () => widget.onNegate(n),
-        onMarkRead: () => widget.onMarkRead(n),
-        onOpenEvent: widget.onOpenEvent,
-        onTap: () => widget.onOpenDocument(n),
-        onOpenDocument: () => widget.onOpenDocument(n),
-      );
+  Widget _buildCard(NotificationUser n) => AbsorbPointer(
+      absorbing: _busy.contains(n.id),
+      child: Opacity(
+          opacity: _busy.contains(n.id) ? .6 : 1,
+          child: NotificationCard(
+            notification: n,
+            onDelete: () {},
+            onDeleteAsync: () => widget.onDelete(n),
+            onConfirm: () => _runAction(n, widget.onConfirm),
+            onNegate: () => _runAction(n, widget.onNegate),
+            onMarkRead: () => _runAction(n, widget.onMarkRead),
+            onOpenEvent: (_, __) => widget.onOpenDocument(n),
+            onTap: () => widget.onOpenDocument(n),
+            onOpenDocument: () => widget.onOpenDocument(n),
+          )));
 
   List<_NotifGroup> _collapseConsecutive(
     List<NotificationUser> list,
@@ -396,7 +479,8 @@ class _NotificationsListState extends State<_NotificationsList> {
 
   String _titleFor(NotificationUser n) {
     final args = EventArgsHelper(n.args);
-    return args.eventTitle ?? n.titleKey;
+    return args.eventTitle ??
+        n.getLocalizedTitle(AppLocalizations.of(context)!);
   }
 }
 

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 
 OutlineInputBorder buildInputBorder(
   BuildContext context, {
@@ -8,7 +7,7 @@ OutlineInputBorder buildInputBorder(
 }) {
   final cs = Theme.of(context).colorScheme;
   return OutlineInputBorder(
-    borderRadius: BorderRadius.circular(8),
+    borderRadius: BorderRadius.circular(12),
     borderSide: BorderSide(
         color: color ?? cs.outlineVariant.withValues(alpha: 0.5), width: width),
   );
@@ -25,44 +24,24 @@ InputDecoration buildInputDecoration(
   bool isRequired = false,
 }) {
   final cs = Theme.of(context).colorScheme;
-  final isLight = Theme.of(context).brightness == Brightness.light;
-  final typo = AppTypography.of(context);
 
   return InputDecoration(
-    isDense: true,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+    isDense: false,
+    contentPadding: const EdgeInsets.all(16),
     labelText: isRequired ? '$label *' : label,
-    floatingLabelBehavior: FloatingLabelBehavior.always,
-    labelStyle: typo.bodySmall.copyWith(
-      color: cs.onSurfaceVariant,
-      fontWeight: FontWeight.w600,
-      fontSize: 11,
-    ),
-    floatingLabelStyle: typo.bodySmall.copyWith(
-      color: cs.primary,
-      fontWeight: FontWeight.w700,
-      fontSize: 11,
-    ),
+    floatingLabelBehavior: FloatingLabelBehavior.auto,
     hintText: hintText,
-    hintStyle: typo.bodySmall.copyWith(
-      color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-      fontWeight: FontWeight.w500,
-      fontSize: 12,
-    ),
     helperText: helperText,
-    helperStyle: typo.bodySmall.copyWith(
-      color: cs.onSurfaceVariant.withValues(alpha: 0.85),
-      fontWeight: FontWeight.w500,
-      fontSize: 10,
-    ),
+    helperMaxLines: 3,
+    errorMaxLines: 3,
     prefixIcon: prefixIcon,
-    prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+    prefixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
     suffixIcon: showCheck
         ? Icon(Icons.check_circle_rounded, size: 18, color: cs.secondary)
         : null,
-    suffixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+    suffixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
     filled: true,
-    fillColor: isLight ? Colors.white : cs.surfaceContainerHighest,
+    fillColor: cs.surfaceContainerLow,
     enabledBorder: buildInputBorder(context),
     focusedBorder: buildInputBorder(
       context,

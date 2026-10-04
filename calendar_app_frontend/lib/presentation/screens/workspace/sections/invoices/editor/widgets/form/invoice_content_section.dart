@@ -63,6 +63,7 @@ class InvoiceContentSection extends StatefulWidget {
   final Future<void> Function()? onCopyJsonPrompt;
   final String? Function(String rawText)? jsonTextValidator;
   final dynamic ocrState;
+  final Widget? photoExtractionPanel;
   final Future<void> Function()? onPickImageForLineExtraction;
   final VoidCallback? onApplyExtractedLines;
   final VoidCallback? onClearExtractedLines;
@@ -95,6 +96,7 @@ class InvoiceContentSection extends StatefulWidget {
     ValueChanged<bool>? onModeChanged,
     List<dynamic>? lines,
     this.ocrState,
+    this.photoExtractionPanel,
     this.onPickImageForLineExtraction,
     this.onApplyExtractedLines,
     this.onClearExtractedLines,
@@ -1010,15 +1012,17 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
 
     Widget buildContentBody() {
       if (_contentMode == 'photo') {
-        return InvoicePhotoExtractPanel(
-          state: widget.ocrState,
-          controller: widget.controller,
-          hasImagePreview: widget.controller?.hasLastOcrImagePreview ?? false,
-          onPreviewImage: null,
-          onPickImage: widget.onPickImageForLineExtraction,
-          onApply: widget.onApplyExtractedLines,
-          onClear: widget.onClearExtractedLines,
-        );
+        return widget.photoExtractionPanel ??
+            InvoicePhotoExtractPanel(
+              state: widget.ocrState,
+              controller: widget.controller,
+              hasImagePreview:
+                  widget.controller?.hasLastOcrImagePreview ?? false,
+              onPreviewImage: null,
+              onPickImage: widget.onPickImageForLineExtraction,
+              onApply: widget.onApplyExtractedLines,
+              onClear: widget.onClearExtractedLines,
+            );
       }
       if (_contentMode == 'json') {
         return buildJsonPanel();

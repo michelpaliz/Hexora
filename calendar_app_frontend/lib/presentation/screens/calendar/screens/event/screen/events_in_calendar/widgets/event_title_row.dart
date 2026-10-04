@@ -45,15 +45,14 @@ class EventTitleRow extends StatelessWidget {
   final ColorManager colorManager;
 
   const EventTitleRow({
-    Key? key,
+    super.key,
     required this.event,
     required this.textColor,
     required this.colorManager,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    final accent = colorManager.getColor(event.eventColorIndex);
     final clientName = extractClientName(event.title);
 
     return Padding(

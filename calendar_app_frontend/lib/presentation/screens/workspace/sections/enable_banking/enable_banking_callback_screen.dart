@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 
 import 'enable_banking_link_store.dart';
 

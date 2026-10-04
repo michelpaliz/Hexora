@@ -26,7 +26,7 @@ class Pill extends StatelessWidget {
         gradient: background,
         shadows: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

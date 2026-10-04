@@ -21,7 +21,7 @@ class GroupDangerZoneCard extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
 
     return Card(
-      color: theme.colorScheme.errorContainer.withOpacity(0.2),
+      color: theme.colorScheme.errorContainer.withValues(alpha: 0.2),
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -88,7 +88,7 @@ class GroupDangerZoneCard extends StatelessWidget {
                               const Icon(Icons.delete_forever_rounded,
                                   size: 20),
                               const SizedBox(width: 8),
-                              Text(l.remove),
+                              Flexible(child: Text(l.groupSettingsDeleteGroup)),
                             ],
                           ),
                   ),

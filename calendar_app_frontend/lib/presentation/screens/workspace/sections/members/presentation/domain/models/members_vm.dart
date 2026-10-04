@@ -96,7 +96,7 @@ class MembersVM extends ChangeNotifier {
   int get totalNotAccepted => notAccepted.length;
 
 // simplest & future-proof
-  String Function(Invitation) _roleOf = (inv) => inv.role.wire;
+  String _roleOf(Invitation inv) => inv.role.wire;
 
   MemberRef Function(Invitation) _invToRef(String status) => (inv) {
         final display = inv.email ?? inv.userId ?? 'unknown';

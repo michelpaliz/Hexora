@@ -40,7 +40,7 @@ class ClientServicePickers extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth >= 380) {
+        if (constraints.maxWidth >= 560) {
           return Row(
             children: [
               Expanded(child: clientField),
@@ -53,7 +53,7 @@ class ClientServicePickers extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             clientField,
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             serviceField,
           ],
         );
@@ -111,7 +111,6 @@ class _SearchablePickerField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final typo = AppTypography.of(context);
     final hasValue = _selectedName != null;
 
     return GestureDetector(
@@ -119,10 +118,9 @@ class _SearchablePickerField extends StatelessWidget {
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: labelText,
-          labelStyle: typo.bodySmall.copyWith(
-            color: cs.onSurfaceVariant,
-            fontWeight: FontWeight.w600,
-          ),
+          labelStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
           filled: true,
           fillColor: Colors.transparent,
           border: OutlineInputBorder(
@@ -141,15 +139,17 @@ class _SearchablePickerField extends StatelessWidget {
               const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           suffixIcon: items.isEmpty
               ? Icon(Icons.lock_outline,
-                  size: 18,
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.4))
+                  size: 18, color: cs.onSurfaceVariant.withValues(alpha: 0.4))
               : Icon(Icons.arrow_drop_down_rounded,
                   size: 24, color: cs.onSurfaceVariant),
         ),
         isEmpty: !hasValue,
         child: Text(
           _selectedName ?? '',
-          style: typo.bodyMedium.copyWith(color: cs.onSurface),
+          style: Theme.of(context)
+              .textTheme
+              .bodyLarge
+              ?.copyWith(color: cs.onSurface),
           overflow: TextOverflow.ellipsis,
           maxLines: 1,
         ),
@@ -202,8 +202,7 @@ class _SearchDialogState extends State<_SearchDialog> {
       _filtered = q.isEmpty
           ? widget.items
           : widget.items
-              .where((item) =>
-                  widget.nameOf(item).toLowerCase().contains(q))
+              .where((item) => widget.nameOf(item).toLowerCase().contains(q))
               .toList();
     });
   }
@@ -215,8 +214,7 @@ class _SearchDialogState extends State<_SearchDialog> {
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
 
     return Dialog(
-      insetPadding:
-          const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       backgroundColor: cs.surfaceContainerHigh,
       child: Column(
@@ -265,14 +263,13 @@ class _SearchDialogState extends State<_SearchDialog> {
                 hintText: isSpanish ? 'Buscar...' : 'Search...',
                 isDense: true,
                 filled: true,
-                fillColor:
-                    cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 12),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               ),
             ),
           ),
@@ -289,13 +286,10 @@ class _SearchDialogState extends State<_SearchDialog> {
                       children: [
                         Icon(Icons.search_off_rounded,
                             size: 32,
-                            color:
-                                cs.onSurfaceVariant.withValues(alpha: 0.5)),
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
                         const SizedBox(height: 8),
                         Text(
-                          isSpanish
-                              ? 'Sin resultados'
-                              : 'No results',
+                          isSpanish ? 'Sin resultados' : 'No results',
                           style: typo.bodyMedium.copyWith(
                             color: cs.onSurfaceVariant,
                             fontWeight: FontWeight.w600,

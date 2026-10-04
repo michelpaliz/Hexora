@@ -19,7 +19,7 @@ class InfoRow extends StatefulWidget {
 
 class _InfoRowState extends State<InfoRow> {
   bool _expanded = false;
-  bool _dismissed = false;
+  final bool _dismissed = false;
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +51,7 @@ class _InfoRowState extends State<InfoRow> {
               child: Icon(
                 Icons.info_outline_rounded,
                 size: 20,
-                color: onBg.withOpacity(0.85),
+                color: onBg.withValues(alpha: 0.85),
               ),
             ),
           ),
@@ -66,7 +66,7 @@ class _InfoRowState extends State<InfoRow> {
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: cs.outlineVariant.withOpacity(0.25)),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
           boxShadow: [
             BoxShadow(
                 color: shadow, blurRadius: 10, offset: const Offset(0, 4)),
@@ -76,13 +76,13 @@ class _InfoRowState extends State<InfoRow> {
         child: Row(
           children: [
             Icon(Icons.info_outline_rounded,
-                color: onBg.withOpacity(0.9), size: 20),
+                color: onBg.withValues(alpha: 0.9), size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
                 style: t.bodySmall
-                    .copyWith(color: onBg.withOpacity(0.95), height: 1.3),
+                    .copyWith(color: onBg.withValues(alpha: 0.95), height: 1.3),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -92,7 +92,7 @@ class _InfoRowState extends State<InfoRow> {
               tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
               onPressed: () => setState(() => _expanded = false),
               icon: Icon(Icons.close_rounded,
-                  color: onBg.withOpacity(0.85), size: 18),
+                  color: onBg.withValues(alpha: 0.85), size: 18),
               splashRadius: 18,
             ),
           ],

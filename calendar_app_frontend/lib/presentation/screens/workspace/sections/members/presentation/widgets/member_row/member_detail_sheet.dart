@@ -44,6 +44,48 @@ Future<void> showMemberDetailSheet({
       user: user,
       role: targetRole,
       onClose: () => Navigator.of(sheetContext).pop(),
+      onChangeRole: currentUserId != group.ownerId || isOwnerRowUser
+          ? null
+          : () async {
+              final l = AppLocalizations.of(sheetContext)!;
+              final selected = await showDialog<GroupRole>(
+                context: sheetContext,
+                builder: (dialogContext) => SimpleDialog(
+                  title: Text(l.changeRole),
+                  children: [
+                    for (final role in GroupRole.defaults
+                        .where((r) => r != GroupRole.owner))
+                      SimpleDialogOption(
+                        onPressed: () => Navigator.pop(dialogContext, role),
+                        child: Text(roleLabelOf(dialogContext, role)),
+                      ),
+                  ],
+                ),
+              );
+              if (selected == null ||
+                  selected.wire == targetRole.wire ||
+                  !sheetContext.mounted) {
+                return;
+              }
+              try {
+                await gd.groupRepository.setUserRoleInGroup(
+                    groupId: group.id,
+                    userId: user.id,
+                    roleWire: selected.wire);
+                gd.userRoles.value = {
+                  ...group.userRoles,
+                  ...gd.userRoles.value,
+                  user.id: selected.wire
+                };
+                gd.currentGroup = group.copyWith(userRoles: gd.userRoles.value);
+                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+              } catch (_) {
+                if (sheetContext.mounted) {
+                  ScaffoldMessenger.of(sheetContext).showSnackBar(
+                      SnackBar(content: Text(l.failedToEditGroup)));
+                }
+              }
+            },
       onRemove: !canRemove
           ? null
           : () async {
@@ -102,11 +144,13 @@ class MemberDetailContent extends StatefulWidget {
       required this.user,
       required this.role,
       required this.onClose,
-      this.onRemove});
+      this.onRemove,
+      this.onChangeRole});
   final User user;
   final GroupRole role;
   final VoidCallback onClose;
   final Future<void> Function()? onRemove;
+  final Future<void> Function()? onChangeRole;
 
   @override
   State<MemberDetailContent> createState() => _MemberDetailContentState();
@@ -176,6 +220,23 @@ class _MemberDetailContentState extends State<MemberDetailContent> {
                 _contact(Icons.alternate_email, user.email, cs, text),
               if (user.phoneNumber?.trim().isNotEmpty == true)
                 _contact(Icons.phone_outlined, user.phoneNumber!, cs, text),
+            ],
+            if (widget.onChangeRole != null) ...[
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: _removing
+                    ? null
+                    : () async {
+                        setState(() => _removing = true);
+                        try {
+                          await widget.onChangeRole!();
+                        } finally {
+                          if (mounted) setState(() => _removing = false);
+                        }
+                      },
+                icon: const Icon(Icons.manage_accounts_outlined),
+                label: Text(l.changeRole),
+              ),
             ],
             if (widget.onRemove != null) ...[
               const SizedBox(height: 24),

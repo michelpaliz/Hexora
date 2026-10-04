@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:provider/provider.dart';
 
@@ -35,6 +35,7 @@ Future<void> pickGroupAndAddEvent(BuildContext context) async {
     return;
   }
 
+  if (!context.mounted) return;
   final selected = await showModalBottomSheet<Group>(
     context: context,
     showDragHandle: true,

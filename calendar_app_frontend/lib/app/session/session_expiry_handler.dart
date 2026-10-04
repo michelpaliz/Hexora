@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/services/auth/token/token_service.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 
 /// Centralized session-expiry reaction used by low-level HTTP/auth code.
 class SessionExpiryHandler {

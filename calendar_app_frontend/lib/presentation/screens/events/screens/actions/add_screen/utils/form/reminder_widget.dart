@@ -21,6 +21,7 @@
 /// ---------------------------------------------------------------------------
 /// Author: PROJECT_AI_YOLO ✨
 /// ---------------------------------------------------------------------------
+library;
 
 import 'package:flutter/material.dart';
 
@@ -61,20 +62,18 @@ String formatReminder(int minutes) {
 /// minutes with validation against [kMaxReminderMinutes].
 class ReminderTimeField extends FormField<int> {
   ReminderTimeField({
-    Key? key,
+    super.key,
     int? initialValue,
-    FormFieldSetter<int>? onSaved,
+    super.onSaved,
     FormFieldValidator<int>? validator,
-    AutovalidateMode autovalidateMode = AutovalidateMode.disabled,
-    bool enabled = true,
+    AutovalidateMode super.autovalidateMode = AutovalidateMode.disabled,
+    super.enabled,
     InputDecoration decoration = const InputDecoration(
       labelText: 'Reminder',
       prefixIcon: Icon(Icons.alarm),
     ),
   }) : super(
-          key: key,
           initialValue: clampReminder(initialValue),
-          onSaved: onSaved,
           validator: (val) {
             final v = val ?? kDefaultReminderMinutes;
             if (v < 0) return 'Cannot be negative';
@@ -83,8 +82,6 @@ class ReminderTimeField extends FormField<int> {
             }
             return validator?.call(v);
           },
-          autovalidateMode: autovalidateMode,
-          enabled: enabled,
           builder: (state) {
             return TextField(
               keyboardType: TextInputType.number,

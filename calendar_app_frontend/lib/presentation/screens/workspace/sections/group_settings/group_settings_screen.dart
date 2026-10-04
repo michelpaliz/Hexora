@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/header/group_header_view.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/widgets/folder_section_card.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/widgets/notification_card.dart';

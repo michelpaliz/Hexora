@@ -1,6 +1,5 @@
 import '../client_form_fields.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import '../../add_client_controller.dart';
@@ -25,8 +24,7 @@ class BillingAddressForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final typo = AppTypography.of(context);
-    final fieldFontSize = MediaQuery.sizeOf(context).width < 600 ? 16.0 : 13.0;
+    final text = Theme.of(context).textTheme;
 
     return Column(
       children: [
@@ -36,7 +34,7 @@ class BillingAddressForm extends StatelessWidget {
           },
           child: TextFormField(
             controller: c.billingStreet,
-            style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
+            style: text.bodyLarge,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: buildInputDecoration(
               context,
@@ -64,7 +62,7 @@ class BillingAddressForm extends StatelessWidget {
           },
           child: TextFormField(
             controller: c.billingExtra,
-            style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
+            style: text.bodyLarge,
             decoration: buildInputDecoration(
               context,
               label: l.addressExtra,
@@ -82,7 +80,7 @@ class BillingAddressForm extends StatelessWidget {
               },
               child: TextFormField(
                 controller: c.billingCity,
-                style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
+                style: text.bodyLarge,
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 decoration: buildInputDecoration(
                   context,
@@ -113,7 +111,7 @@ class BillingAddressForm extends StatelessWidget {
               },
               child: TextFormField(
                 controller: c.billingProvince,
-                style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
+                style: text.bodyLarge,
                 decoration: buildInputDecoration(
                   context,
                   label: l.addressProvince,
@@ -131,7 +129,7 @@ class BillingAddressForm extends StatelessWidget {
               },
               child: TextFormField(
                 controller: c.billingPostal,
-                style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
+                style: text.bodyLarge,
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 decoration: buildInputDecoration(
                   context,
@@ -166,7 +164,7 @@ class BillingAddressForm extends StatelessWidget {
               },
               child: TextFormField(
                 controller: c.billingCountry,
-                style: typo.bodySmall.copyWith(fontSize: fieldFontSize),
+                style: text.bodyLarge,
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 decoration: buildInputDecoration(
                   context,

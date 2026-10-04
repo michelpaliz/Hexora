@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class SaveButton extends StatelessWidget {
@@ -17,8 +16,6 @@ class SaveButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final typo = AppTypography.of(context);
 
     return SizedBox(
       width: double.infinity,
@@ -32,11 +29,6 @@ class SaveButton extends StatelessWidget {
             : const Icon(Icons.save_outlined, size: 16),
         label: Text(
           saving ? l.saving : (isEdit ? l.saveChanges : l.saveClient),
-          style: typo.bodySmall.copyWith(
-            color: cs.onPrimary,
-            fontWeight: FontWeight.w700,
-            fontSize: MediaQuery.sizeOf(context).width < 600 ? 16 : 12,
-          ),
         ),
         onPressed: onPressed,
         style: FilledButton.styleFrom(

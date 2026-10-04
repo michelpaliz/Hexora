@@ -56,7 +56,7 @@ String formatRecurrenceRule(
   final interval = rule.repeatInterval ?? 1;
 
   switch (rule.recurrenceType) {
-    case RecurrenceType.Daily:
+    case RecurrenceType.daily:
       return (lang == 'es')
           ? (interval == 1
                   ? 'Se repite a diario'
@@ -65,18 +65,14 @@ String formatRecurrenceRule(
           : (interval == 1 ? 'Repeats daily' : 'Repeats every $interval days') +
               untilText(rule.untilDate);
 
-    case RecurrenceType.Weekly:
+    case RecurrenceType.weekly:
       final days =
           (rule.daysOfWeek ?? <CustomDayOfWeek>[]).map(dayShort).join(', ');
       return (lang == 'es')
-          ? ('Se repite semanalmente' +
-              (days.isNotEmpty ? ' los $days' : '') +
-              untilText(rule.untilDate))
-          : ('Repeats weekly' +
-              (days.isNotEmpty ? ' on $days' : '') +
-              untilText(rule.untilDate));
+          ? ('Se repite semanalmente${days.isNotEmpty ? ' los $days' : ''}${untilText(rule.untilDate)}')
+          : ('Repeats weekly${days.isNotEmpty ? ' on $days' : ''}${untilText(rule.untilDate)}');
 
-    case RecurrenceType.Monthly:
+    case RecurrenceType.monthly:
       if (rule.dayOfMonth != null) {
         return (lang == 'es')
             ? 'Se repite mensualmente el día ${rule.dayOfMonth}${untilText(rule.untilDate)}'
@@ -86,7 +82,7 @@ String formatRecurrenceRule(
           ? 'Se repite mensualmente${untilText(rule.untilDate)}'
           : 'Repeats monthly${untilText(rule.untilDate)}';
 
-    case RecurrenceType.Yearly:
+    case RecurrenceType.yearly:
       final mo = rule.month?.toString().padLeft(2, '0');
       final da = rule.dayOfMonth?.toString().padLeft(2, '0');
       if (mo != null && da != null) {

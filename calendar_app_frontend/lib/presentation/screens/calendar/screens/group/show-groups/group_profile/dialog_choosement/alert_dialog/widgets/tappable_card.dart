@@ -25,8 +25,8 @@ class TappableCard extends StatelessWidget {
 
     final Color bg = isPrimary ? cs.primary : cs.surface;
     final Color border = isPrimary
-        ? cs.primary.withOpacity(0.25)
-        : cs.outlineVariant.withOpacity(0.35);
+        ? cs.primary.withValues(alpha: 0.25)
+        : cs.outlineVariant.withValues(alpha: 0.35);
 
     final shape =
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius));

@@ -22,7 +22,7 @@ void showProfileAlertDialog(
 ]) {
   final user = currentUser ?? userDomain.user!;
   final role = group.getRoleForUser(user);
-  final hasPermission = overridePermission ?? role != 'Member';
+
   updateRole(role);
 
   final cs = Theme.of(context).colorScheme;
@@ -31,7 +31,7 @@ void showProfileAlertDialog(
     context: context,
     barrierDismissible: true,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-    barrierColor: Colors.black.withOpacity(0.45),
+    barrierColor: Colors.black.withValues(alpha: 0.45),
     transitionDuration: const Duration(milliseconds: 320),
     pageBuilder: (context, animation, secondaryAnimation) {
       final t = AppTypography.of(context);
@@ -47,7 +47,8 @@ void showProfileAlertDialog(
                 const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
-              side: BorderSide(color: cs.outlineVariant.withOpacity(0.35)),
+              side:
+                  BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
             ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 500),

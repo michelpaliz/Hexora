@@ -90,9 +90,7 @@ class _GroupCalendarLoaderState extends State<GroupCalendarLoader> {
 
           // If the "first to finish" was the stream and returned null,
           // fall back to repo result explicitly.
-          if (g == null) {
-            g = await repoFuture;
-          }
+          g ??= await repoFuture;
         } catch (_) {
           // As a last resort, try repo once more to surface a clear error
           try {

@@ -68,12 +68,16 @@ class _ClientClassificationManagerDialogState
       await _reload();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.clientClassificationSavedSnack)),
+        SnackBar(
+            content: Text(
+                AppLocalizations.of(context)!.clientClassificationSavedSnack)),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.failedWithReason(e.toString()))),
+        SnackBar(
+            content: Text(
+                AppLocalizations.of(context)!.failedWithReason(e.toString()))),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -108,7 +112,8 @@ class _ClientClassificationManagerDialogState
                   Expanded(
                     child: TextField(
                       controller: _entityCtrl,
-                      decoration: InputDecoration(hintText: l.clientAddOptionHint),
+                      decoration:
+                          InputDecoration(hintText: l.clientAddOptionHint),
                       onChanged: (_) => setState(() {}),
                     ),
                   ),
@@ -143,7 +148,8 @@ class _ClientClassificationManagerDialogState
                   Expanded(
                     child: TextField(
                       controller: _propertyCtrl,
-                      decoration: InputDecoration(hintText: l.clientAddOptionHint),
+                      decoration:
+                          InputDecoration(hintText: l.clientAddOptionHint),
                       onChanged: (_) => setState(() {}),
                     ),
                   ),
@@ -183,11 +189,13 @@ class _ClientClassificationManagerDialogState
               await ClientClassificationStore.rebuild(widget.groupId);
               if (!mounted) return;
               await _reload();
+              if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(l.clientClassificationRebuiltSnack)),
               );
             } catch (e) {
               if (!mounted) return;
+              if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(l.failedWithReason(e.toString()))),
               );

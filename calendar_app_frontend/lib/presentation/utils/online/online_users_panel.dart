@@ -19,9 +19,9 @@ class OnlineUsersPanel extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withOpacity(0.35),
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withOpacity(0.4)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -36,7 +36,7 @@ class OnlineUsersPanel extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   // add a key like `onlineNow` to l10n if you want
-                  '${l.online ?? "Online now"} (${onlineUsers.length})',
+                  '${l.online} (${onlineUsers.length})',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                         color: cs.onSurface,

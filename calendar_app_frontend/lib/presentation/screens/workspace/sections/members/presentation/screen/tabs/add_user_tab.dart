@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/add_user_controller.dart';
-import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/interface/IGroup_editor_port.dart';
+import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/interface/i_group_editor_port.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/add_users_flow/widgets/selected_users_list.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/shared/header_info.dart';
 import 'package:hexora/presentation/utils/roles/group_role.dart';
@@ -71,7 +71,7 @@ class AddUsersTab extends StatelessWidget {
           ),
 
           const SizedBox(height: 12),
-          Divider(color: cs.outlineVariant.withOpacity(0.5), height: 1),
+          Divider(color: cs.outlineVariant.withValues(alpha: 0.5), height: 1),
           const SizedBox(height: 16),
 
           // Selected chips/list

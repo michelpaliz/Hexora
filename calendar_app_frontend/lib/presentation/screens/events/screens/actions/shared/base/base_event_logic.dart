@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
+import 'package:hexora/models/calendar/events/event.dart'
+    show CompletionRequirements;
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/screens/events/utils/color_manager.dart';
 
@@ -73,6 +75,8 @@ abstract class BaseEventLogic<T extends StatefulWidget> extends State<T> {
   /// Work-visit selections
   String? _clientId;
   String? _primaryServiceId;
+  CompletionRequirements _completionRequirements =
+      const CompletionRequirements.disabled();
 
   /// Data sources for pickers (optional; provide from your screen/controller)
   @protected
@@ -198,6 +202,7 @@ abstract class BaseEventLogic<T extends StatefulWidget> extends State<T> {
     _eventType = 'work_visit';
     _clientId = null;
     _primaryServiceId = null;
+    _completionRequirements = const CompletionRequirements.disabled();
 
     recomputeValidity();
   }
@@ -224,9 +229,9 @@ abstract class BaseEventLogic<T extends StatefulWidget> extends State<T> {
 
   // ---------------- State access ----------------
   /// Returns ARGB int color for widgets that expect an int
-  int? get selectedEventColor => _selectedEventColor.value;
+  int? get selectedEventColor => _selectedEventColor.toARGB32();
   List<int> get colorList =>
-      ColorManager.eventColors.map((c) => c.value).toList();
+      ColorManager.eventColors.map((c) => c.toARGB32()).toList();
 
   DateTime get selectedStartDate => _selectedStartDate;
   DateTime get selectedEndDate => _selectedEndDate;
@@ -249,8 +254,21 @@ abstract class BaseEventLogic<T extends StatefulWidget> extends State<T> {
   String get eventType => _eventType;
   String? get clientId => _clientId;
   String? get primaryServiceId => _primaryServiceId;
+  bool get requiresCompletionPhotos => _completionRequirements.requirePhotos;
+  CompletionRequirements get completionRequirements => _completionRequirements;
   List<ClientLite> get clients => availableClients ?? const [];
   List<ServiceLite> get services => availableServices ?? const [];
+
+  void setRequiresCompletionPhotos(bool value) {
+    _completionRequirements =
+        _completionRequirements.copyWith(requirePhotos: value);
+    _safeRebuild();
+  }
+
+  void setCompletionRequirements(CompletionRequirements value) {
+    _completionRequirements = value;
+    _safeRebuild();
+  }
 
   // ---------------- Mutators ----------------
   void setSelectedColor(int colorValue) {
@@ -313,6 +331,7 @@ abstract class BaseEventLogic<T extends StatefulWidget> extends State<T> {
     );
 
     if (pickedDate != null) {
+      if (!context.mounted) return;
       final pickedTime = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.fromDateTime(

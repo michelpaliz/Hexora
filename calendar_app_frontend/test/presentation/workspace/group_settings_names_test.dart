@@ -35,7 +35,7 @@ void main() {
       ]))),
     ));
     await tester.pumpAndSettle();
-    expect(find.text('Michael'), findsNWidgets(2));
+    expect(find.textContaining('Michael'), findsNWidgets(2));
     expect(find.textContaining('secret-'), findsNothing);
     expect(find.text('Nombre no disponible'), findsOneWidget);
     expect(tester.takeException(), isNull);

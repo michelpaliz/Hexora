@@ -50,7 +50,7 @@ class RefreshCta extends StatelessWidget {
                   : cs.primary,
             ),
             overlayColor:
-                WidgetStatePropertyAll(cs.primary.withOpacity(0.08)),
+                WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.08)),
             backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
             elevation: const WidgetStatePropertyAll(0),
           ),

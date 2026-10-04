@@ -54,23 +54,19 @@ class MonthTileContent extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: t.bodyMedium.copyWith(
-                        color: textColor,
-                        fontWeight:
-                            isSelected ? FontWeight.w800 : FontWeight.w700,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                  ],
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodyMedium.copyWith(
+                    color: textColor,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
+                    letterSpacing: 0,
+                  ),
                 ),
                 const SizedBox(height: 5),
                 Wrap(

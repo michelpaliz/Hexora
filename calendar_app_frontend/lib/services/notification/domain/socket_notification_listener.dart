@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:hexora/models/downloads/download_job.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/services/config/api_constants.dart';
@@ -43,11 +44,11 @@ void initializeNotificationSocket(
   notificationSocket.connect();
 
   notificationSocket.onConnect((_) {
-    print('Connected to notification socket');
+    debugPrint('Connected to notification socket');
   });
 
   notificationSocket.on('notification:created', (data) async {
-    print('Notification received: $data');
+    debugPrint('Notification received: $data');
     final payload = _asMap(data);
     if (payload == null) return;
     final notification = _extractNotification(payload);
@@ -57,7 +58,7 @@ void initializeNotificationSocket(
   });
 
   notificationSocket.on('event:reminder', (data) {
-    print('Reminder received: $data');
+    debugPrint('Reminder received: $data');
 
     final payload = _asMap(data);
     if (payload == null) return;
@@ -79,7 +80,7 @@ void initializeNotificationSocket(
   });
 
   notificationSocket.on('event:started', (data) {
-    print('Event started: $data');
+    debugPrint('Event started: $data');
 
     final payload = _asMap(data);
     if (payload == null) return;
@@ -101,7 +102,7 @@ void initializeNotificationSocket(
   notificationSocket.on('download:failed', _handleDownloadEvent);
 
   notificationSocket.onDisconnect((_) {
-    print('Notification socket disconnected');
+    debugPrint('Notification socket disconnected');
   });
 }
 
@@ -113,7 +114,8 @@ Map<String, dynamic>? _asMap(dynamic value) {
 }
 
 NotificationUser? _extractNotification(Map<String, dynamic> payload) {
-  final raw = payload['notification'] is Map ? payload['notification'] : payload;
+  final raw =
+      payload['notification'] is Map ? payload['notification'] : payload;
   if (raw is! Map) return null;
   try {
     return NotificationUser.fromJson(Map<String, dynamic>.from(raw));

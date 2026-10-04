@@ -39,9 +39,12 @@ class AddUsersFab extends StatelessWidget {
 
         // Persist roles via dedicated endpoint; persist new userIds via updateGroup if needed
         if (users != null || roles != null) {
+          if (!context.mounted) return;
           final gd = context.read<GroupDomain>();
           final repo = gd.groupRepository;
+          if (!context.mounted) return;
           final groupRepo = context.read<IGroupRepository>();
+          if (!context.mounted) return;
           final userDomain = context.read<UserDomain>();
 
           // Build an updated snapshot for immediate UI (even before refresh)
@@ -149,8 +152,10 @@ class AddUsersFab extends StatelessWidget {
         }
 
         // 🔹 Refresh members VM so UI reflects latest state
+        if (!context.mounted) return;
         await context.read<MembersVM>().refreshAll();
 
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Members updated')),
         );

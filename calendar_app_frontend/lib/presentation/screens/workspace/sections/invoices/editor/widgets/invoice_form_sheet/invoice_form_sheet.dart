@@ -64,6 +64,7 @@ class _InvoiceFormSheetState extends State<InvoiceFormSheet> {
       lastDate: DateTime(now.year + 2),
     );
     if (date == null) return;
+    if (!mounted) return;
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(_registeredAt ?? now),

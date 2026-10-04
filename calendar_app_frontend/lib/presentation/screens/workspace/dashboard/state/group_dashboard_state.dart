@@ -85,6 +85,12 @@ class GroupDashboardState extends ChangeNotifier {
 
   // UI
   String activeSection = Sections.calendar;
+
+  void selectSection(String section) {
+    if (activeSection == section) return;
+    activeSection = section;
+    notifyListeners();
+  }
   CalendarDashboardActions? calendarActions;
 
   void setCalendarActions(CalendarDashboardActions? actions) {
@@ -339,7 +345,7 @@ class GroupDashboardState extends ChangeNotifier {
         if (!isWide && canSeeAdmin)
           IconButton(
             tooltip: l.groupSettingsTitle,
-            icon: const Icon(Icons.tune_rounded),
+            icon: const Icon(Icons.settings_outlined),
             onPressed: () => openSection(Sections.settings),
           ),
       ],

@@ -1,5 +1,5 @@
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'dart:js_interop';
+import 'package:web/web.dart' as html;
 import 'dart:typed_data';
 
 Future<void> launchFileDownloadImpl(
@@ -7,13 +7,15 @@ Future<void> launchFileDownloadImpl(
   required String fileName,
   String mimeType = 'application/octet-stream',
 }) async {
-  final blob = html.Blob([bytes], mimeType);
-  final url = html.Url.createObjectUrlFromBlob(blob);
-  final anchor = html.AnchorElement(href: url)
+  final blob =
+      html.Blob([bytes.toJS].toJS, html.BlobPropertyBag(type: mimeType));
+  final url = html.URL.createObjectURL(blob);
+  final anchor = html.HTMLAnchorElement()
+    ..href = url
     ..download = fileName
     ..style.display = 'none';
-  html.document.body?.append(anchor);
+  html.document.body?.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  html.Url.revokeObjectUrl(url);
+  html.URL.revokeObjectURL(url);
 }

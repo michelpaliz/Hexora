@@ -4,9 +4,9 @@ class TitleInputWidget extends StatelessWidget {
   final TextEditingController titleController;
 
   const TitleInputWidget({
-    Key? key,
+    super.key,
     required this.titleController,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

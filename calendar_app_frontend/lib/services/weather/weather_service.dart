@@ -6,12 +6,18 @@ class WeatherSnapshot {
   final double tempMax;
   final double tempMin;
   final String? cityName;
+  final bool isDay;
+  final DateTime? sunrise;
+  final DateTime? sunset;
 
   const WeatherSnapshot({
     required this.summary,
     required this.tempMax,
     required this.tempMin,
     this.cityName,
+    this.isDay = true,
+    this.sunrise,
+    this.sunset,
   });
 
   @override
@@ -62,7 +68,8 @@ class _CachedForecast {
 }
 
 class WeatherService {
-  static const Duration _cacheTtl = Duration(hours: 1);
+  // Keep day/night changes reasonably close to the location's sunrise/sunset.
+  static const Duration _cacheTtl = Duration(minutes: 10);
   static final Map<String, _CachedForecast> _cache = {};
   final WeatherApiClient _apiClient;
 
@@ -168,7 +175,10 @@ class WeatherService {
     required int days,
   }) async {
     try {
-      final dto = await _apiClient.fetchDeniaForecast(days: days);
+      final dto = await _apiClient.fetchForecast(
+        location: cleaned,
+        days: days,
+      );
       final cityName = dto.location.isNotEmpty ? dto.location : cleaned;
 
       final snapshots = <DateTime, WeatherSnapshot>{};
@@ -200,6 +210,9 @@ class WeatherService {
           tempMax: day.maxTemp,
           tempMin: day.minTemp,
           cityName: cityName,
+          isDay: identical(day, dto.forecast.first) ? dto.isDay : true,
+          sunrise: day.sunrise,
+          sunset: day.sunset,
         );
 
         forecastDays.add(

@@ -25,6 +25,7 @@ class _TelegramSectionScreenState extends State<TelegramSectionScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<TelegramDomain>().loadAccount();
     });
   }
@@ -33,16 +34,28 @@ class _TelegramSectionScreenState extends State<TelegramSectionScreen> {
   Widget build(BuildContext context) {
     return Consumer<TelegramDomain>(
       builder: (context, telegramDomain, _) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-          child: Column(
-            children: [
-              if (!telegramDomain.isConnected)
-                _ConnectingFlow(domain: telegramDomain)
-              else
-                _ConnectedFlow(domain: telegramDomain),
-            ],
-          ),
+        return Material(
+          type: MaterialType.transparency,
+          child: LayoutBuilder(builder: (context, constraints) {
+            final mobile = constraints.maxWidth < 700;
+            if (mobile && telegramDomain.isConnected) {
+              return SizedBox(
+                height: constraints.hasBoundedHeight
+                    ? constraints.maxHeight
+                    : MediaQuery.sizeOf(context).height,
+                child: SafeArea(
+                  top: false,
+                  child: _ConnectedFlow(domain: telegramDomain),
+                ),
+              );
+            }
+            return SingleChildScrollView(
+              padding: EdgeInsets.all(mobile ? 12 : 24),
+              child: telegramDomain.isConnected
+                  ? _ConnectedFlow(domain: telegramDomain)
+                  : _ConnectingFlow(domain: telegramDomain),
+            );
+          }),
         );
       },
     );
@@ -70,6 +83,7 @@ class _ConnectingFlowState extends State<_ConnectingFlow> {
     // Generate QR on entry
     if (widget.domain.qrResponse == null && !widget.domain.generatingQr) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         widget.domain.generateQr();
       });
     }
@@ -504,6 +518,7 @@ class _ConnectedFlowState extends State<_ConnectedFlow> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _ensureDataForSection(_selectedSection);
     });
     _maybeStartPolling();
@@ -536,6 +551,10 @@ class _ConnectedFlowState extends State<_ConnectedFlow> {
 
   void _selectSection(_TelegramConnectedSection section) {
     if (_selectedSection == section) return;
+    if (section != _TelegramConnectedSection.chats &&
+        widget.domain.selectedChat != null) {
+      widget.domain.selectChat(null);
+    }
     setState(() => _selectedSection = section);
     _ensureDataForSection(section);
   }
@@ -561,7 +580,74 @@ class _ConnectedFlowState extends State<_ConnectedFlow> {
       builder: (context, constraints) {
         final stacked = constraints.maxWidth < 1080;
         final inlineMenu = constraints.maxWidth >= 400;
-        final touchTargets = constraints.maxWidth < 600;
+        final touchTargets = constraints.maxWidth < 676;
+        if (constraints.maxWidth < 676) {
+          final l = AppLocalizations.of(context)!;
+          final cs = Theme.of(context).colorScheme;
+          final showTitle =
+              _selectedSection != _TelegramConnectedSection.chats ||
+                  domain.selectedChat == null;
+          final inChat = !showTitle;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showTitle)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: Text(_sectionTitle(_selectedSection),
+                      style: Theme.of(context).textTheme.titleLarge),
+                ),
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: inChat ? 0 : 12),
+                  child: _buildSectionContent(
+                    domain,
+                    showMobileAccountActions: true,
+                  ),
+                ),
+              ),
+              if (!inChat)
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: cs.outlineVariant),
+                    ),
+                  ),
+                  child: NavigationBar(
+                    height: 72,
+                    elevation: 0,
+                    backgroundColor: cs.surface,
+                    indicatorColor: cs.primaryContainer,
+                    selectedIndex: _selectedSection.index,
+                    labelBehavior:
+                        NavigationDestinationLabelBehavior.alwaysShow,
+                    onDestinationSelected: (index) =>
+                        _selectSection(_TelegramConnectedSection.values[index]),
+                    destinations: [
+                      NavigationDestination(
+                        icon: const Icon(Icons.chat_bubble_outline_rounded),
+                        selectedIcon: const Icon(Icons.chat_bubble_rounded),
+                        label: l.telegramMenuChats,
+                      ),
+                      NavigationDestination(
+                        icon: Badge(
+                          isLabelVisible:
+                              domain.currentExport?.isRunning ?? false,
+                          child: const Icon(Icons.file_download_outlined),
+                        ),
+                        label: l.telegramMenuExports,
+                      ),
+                      NavigationDestination(
+                        icon: const Icon(Icons.person_outline_rounded),
+                        selectedIcon: const Icon(Icons.person_rounded),
+                        label: l.telegramMenuAccount,
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          );
+        }
         final menu = _TelegramTopMenu(
           touchTargets: touchTargets,
           account: domain.account!,
@@ -638,6 +724,7 @@ class _ConnectedFlowState extends State<_ConnectedFlow> {
   Widget _buildSectionContent(
     TelegramDomain domain, {
     Widget? chatHeaderMenu,
+    bool showMobileAccountActions = false,
   }) {
     switch (_selectedSection) {
       case _TelegramConnectedSection.chats:
@@ -653,12 +740,18 @@ class _ConnectedFlowState extends State<_ConnectedFlow> {
           initialChatId: domain.preferredExportChatId,
         );
       case _TelegramConnectedSection.account:
-        return _AccountTab(domain: domain);
+        return _AccountTab(
+          domain: domain,
+          onDisconnect: showMobileAccountActions
+              ? () => _showDisconnectConfirm(context, domain)
+              : null,
+        );
     }
   }
 
   void _openExportsForChat(String chatId) {
     widget.domain.prefillExportForChat(chatId);
+    widget.domain.selectChat(null);
     setState(() => _selectedSection = _TelegramConnectedSection.exports);
     _ensureDataForSection(_TelegramConnectedSection.exports);
   }
@@ -727,7 +820,7 @@ class _TelegramTopMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
-    final size = touchTargets ? 44.0 : 36.0;
+    final size = touchTargets ? 48.0 : 36.0;
     final identity = [
       account.fullName,
       if (account.username != null) '@${account.username}',
@@ -1015,80 +1108,85 @@ class _TelegramMenuItem extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final fg = selected ? cs.primary : cs.onSurface.withValues(alpha: 0.65);
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        height: 38,
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: selected
-              ? cs.primary.withValues(alpha: 0.12)
-              : Colors.transparent,
+    return Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected
-                ? cs.primary.withValues(alpha: 0.28)
-                : cs.onSurface.withValues(alpha: 0.08),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: fg),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: fg,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  ),
-            ),
-            if (badgeText != null) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: badgeLive
-                    ? const EdgeInsets.all(4)
-                    : const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: badgeLive
-                      ? Colors.green.withValues(alpha: 0.15)
-                      : cs.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: badgeLive
-                    ? Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: Colors.green,
-                          shape: BoxShape.circle,
-                        ),
-                      )
-                    : Text(
-                        badgeText!,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            constraints: const BoxConstraints(minHeight: 48),
+            margin: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: selected
+                  ? cs.primary.withValues(alpha: 0.12)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: selected
+                    ? cs.primary.withValues(alpha: 0.28)
+                    : cs.onSurface.withValues(alpha: 0.08),
               ),
-            ],
-          ],
-        ),
-      ),
-    );
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 16, color: fg),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: fg,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                ),
+                if (badgeText != null) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: badgeLive
+                        ? const EdgeInsets.all(4)
+                        : const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: badgeLive
+                          ? Colors.green.withValues(alpha: 0.15)
+                          : cs.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: badgeLive
+                        ? Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: Colors.green,
+                              shape: BoxShape.circle,
+                            ),
+                          )
+                        : Text(
+                            badgeText!,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ));
   }
 }
 
 /// Account details tab
 class _AccountTab extends StatelessWidget {
-  const _AccountTab({required this.domain});
+  const _AccountTab({required this.domain, this.onDisconnect});
 
   final TelegramDomain domain;
+  final VoidCallback? onDisconnect;
 
   static const _kTelegramBlue = Color(0xFF2AABEE);
 
@@ -1192,6 +1290,25 @@ class _AccountTab extends StatelessWidget {
             value: account.status,
             valueWidget: _AccountStatusBadge(status: account.status),
           ),
+          if (onDisconnect != null) ...[
+            const SizedBox(height: 24),
+            Divider(color: cs.outlineVariant),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: domain.loadingAccount ? null : onDisconnect,
+                icon: const Icon(Icons.link_off_rounded),
+                label:
+                    Text(AppLocalizations.of(context)!.telegramMenuDisconnect),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: cs.error,
+                  side: BorderSide(color: cs.error.withValues(alpha: 0.45)),
+                  minimumSize: const Size.fromHeight(48),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1568,6 +1685,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final chat = widget.selectedChat;
+    final phone = MediaQuery.sizeOf(context).width < 700;
     if (chat == null) {
       return Container(
         decoration: BoxDecoration(
@@ -1590,10 +1708,12 @@ class _WorkspaceShellState extends State<WorkspaceShell>
     return Container(
       decoration: BoxDecoration(
         color: cs.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+        borderRadius: phone ? null : BorderRadius.circular(18),
+        border: phone
+            ? null
+            : Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
       ),
-      clipBehavior: Clip.antiAlias,
+      clipBehavior: phone ? Clip.none : Clip.antiAlias,
       child: Column(
         children: [
           WorkspaceHeader(
@@ -1607,11 +1727,19 @@ class _WorkspaceShellState extends State<WorkspaceShell>
             onMobileBack: widget.onMobileBack,
             onOpenChats: widget.onOpenChats,
             menu: widget.headerMenu,
-            onRefresh: () {
+            onRefresh: () async {
               if (chat.isForumChat) {
-                widget.domain.loadTopics(chat.id, force: true);
+                await widget.domain.loadTopics(chat.id, force: true);
+                final topicId = widget.domain.selectedTopicIdForChat(chat.id);
+                if (topicId != null) {
+                  await widget.domain.loadMessages(
+                    chat.id,
+                    force: true,
+                    forumTopicId: topicId,
+                  );
+                }
               } else {
-                widget.domain.openChat(chat.id, forceMessages: true);
+                await widget.domain.openChat(chat.id, forceMessages: true);
               }
             },
             onExportChat: () => widget.onExportChat(chat.id),
@@ -1677,14 +1805,17 @@ class WorkspaceHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isCompact = MediaQuery.sizeOf(context).width < 860;
-    final breadcrumbTopic = selectedTopic?.displayName ??
-        (chat.isForumChat ? 'General' : 'Mensajes');
+    final phone = MediaQuery.sizeOf(context).width < 700;
+    final breadcrumbTopic =
+        selectedTopic?.displayName ?? (chat.isForumChat ? 'General' : null);
 
     return Material(
       color: cs.surface,
       elevation: 0,
       child: Container(
-        padding: EdgeInsets.fromLTRB(16, 14, 16, chat.isForumChat ? 8 : 14),
+        padding: phone
+            ? EdgeInsets.fromLTRB(8, 10, 12, chat.isForumChat ? 2 : 10)
+            : EdgeInsets.fromLTRB(16, 14, 16, chat.isForumChat ? 8 : 14),
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
@@ -1720,48 +1851,77 @@ class WorkspaceHeader extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.4,
+                              fontWeight: FontWeight.w700,
                             ),
                       ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${chat.title} / $breadcrumbTopic',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: cs.onSurface.withValues(alpha: 0.52),
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
+                      if (breadcrumbTopic != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          breadcrumbTopic,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                if (!phone) const SizedBox(width: 12),
                 if (menu != null) ...[
                   menu!,
                   const SizedBox(width: 8),
                 ],
-                IconButton.outlined(
-                  tooltip: AppLocalizations.of(context)!.telegramRefresh,
-                  onPressed: isLoadingTopics ? null : onRefresh,
-                  icon: isLoadingTopics
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.refresh_rounded, size: 18),
-                ),
-                IconButton.outlined(
-                  tooltip: AppLocalizations.of(context)!.telegramExport,
-                  onPressed: onExportChat,
-                  icon: const Icon(Icons.ios_share_rounded, size: 18),
-                ),
+                if (phone)
+                  PopupMenuButton<_TelegramHeaderAction>(
+                    tooltip: MaterialLocalizations.of(context).showMenuTooltip,
+                    icon: const Icon(Icons.more_vert_rounded),
+                    onSelected: (action) {
+                      switch (action) {
+                        case _TelegramHeaderAction.refresh:
+                          onRefresh();
+                        case _TelegramHeaderAction.export:
+                          onExportChat();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: _TelegramHeaderAction.refresh,
+                        enabled: !isLoadingTopics,
+                        child:
+                            Text(AppLocalizations.of(context)!.telegramRefresh),
+                      ),
+                      PopupMenuItem(
+                        value: _TelegramHeaderAction.export,
+                        child:
+                            Text(AppLocalizations.of(context)!.telegramExport),
+                      ),
+                    ],
+                  )
+                else ...[
+                  IconButton.outlined(
+                    tooltip: AppLocalizations.of(context)!.telegramRefresh,
+                    onPressed: isLoadingTopics ? null : onRefresh,
+                    icon: isLoadingTopics
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh_rounded, size: 18),
+                  ),
+                  IconButton.outlined(
+                    tooltip: AppLocalizations.of(context)!.telegramExport,
+                    onPressed: onExportChat,
+                    icon: const Icon(Icons.ios_share_rounded, size: 18),
+                  ),
+                ],
               ],
             ),
             if (chat.isForumChat) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: phone ? 8 : 12),
               if (topicError != null && topicError!.trim().isNotEmpty)
                 _TopicTabsError(message: topicError!, onRetry: onRefresh)
               else
@@ -1778,6 +1938,8 @@ class WorkspaceHeader extends StatelessWidget {
   }
 }
 
+enum _TelegramHeaderAction { refresh, export }
+
 class TopicTabs extends StatelessWidget {
   const TopicTabs({
     super.key,
@@ -1793,6 +1955,7 @@ class TopicTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final phone = MediaQuery.sizeOf(context).width < 700;
     if (isLoading && topics.isEmpty) {
       return SizedBox(
         height: 42,
@@ -1819,33 +1982,50 @@ class TopicTabs extends StatelessWidget {
     }
 
     return Container(
-      height: 44,
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.28)),
-      ),
+      height: phone ? 48 : 44,
+      decoration: phone
+          ? null
+          : BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.28),
+              ),
+            ),
       child: TabBar(
         controller: controller,
         isScrollable: true,
         tabAlignment: TabAlignment.start,
-        indicatorSize: TabBarIndicatorSize.tab,
-        dividerColor: Colors.transparent,
-        labelColor: cs.onPrimaryContainer,
-        unselectedLabelColor: cs.onSurface.withValues(alpha: 0.64),
-        indicator: BoxDecoration(
-          color: cs.primaryContainer,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        labelStyle: const TextStyle(
-          fontWeight: FontWeight.w800,
-          fontSize: 13,
-        ),
-        unselectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.w600,
-          fontSize: 13,
-        ),
-        padding: const EdgeInsets.all(4),
+        indicatorSize:
+            phone ? TabBarIndicatorSize.label : TabBarIndicatorSize.tab,
+        indicatorColor: phone ? cs.primary : null,
+        indicatorWeight: phone ? 3 : 2,
+        indicator: phone
+            ? null
+            : BoxDecoration(
+                color: cs.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+        dividerColor: phone
+            ? cs.outlineVariant.withValues(alpha: 0.7)
+            : Colors.transparent,
+        labelColor: phone ? cs.primary : cs.onPrimaryContainer,
+        unselectedLabelColor:
+            phone ? cs.onSurfaceVariant : cs.onSurface.withValues(alpha: 0.64),
+        labelStyle: phone
+            ? Theme.of(context)
+                .textTheme
+                .labelLarge
+                ?.copyWith(fontWeight: FontWeight.w700)
+            : const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+        unselectedLabelStyle: phone
+            ? Theme.of(context)
+                .textTheme
+                .labelLarge
+                ?.copyWith(fontWeight: FontWeight.w500)
+            : const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        labelPadding: phone ? const EdgeInsets.symmetric(horizontal: 14) : null,
+        padding: phone ? EdgeInsets.zero : const EdgeInsets.all(4),
         tabs: [
           for (final topic in topics)
             Tab(

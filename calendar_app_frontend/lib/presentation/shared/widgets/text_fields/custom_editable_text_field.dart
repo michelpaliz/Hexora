@@ -15,7 +15,7 @@ class CustomEditableTextField extends StatelessWidget {
   final TextStyle? counterStyle; // External counter style override
 
   const CustomEditableTextField({
-    Key? key,
+    super.key,
     required this.controller,
     required this.labelText,
     this.maxLength,
@@ -26,7 +26,7 @@ class CustomEditableTextField extends StatelessWidget {
     this.iconColor,
     this.backgroundColor,
     this.counterStyle,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +38,7 @@ class CustomEditableTextField extends StatelessWidget {
     final textColor = ThemeColors.textPrimary(context);
 
     final radius = BorderRadius.circular(12.0);
-    OutlineInputBorder _baseBorder(Color c, [double w = 1]) =>
+    OutlineInputBorder baseBorder(Color c, [double w = 1]) =>
         OutlineInputBorder(
             borderRadius: radius, borderSide: BorderSide(color: c, width: w));
 
@@ -57,7 +57,7 @@ class CustomEditableTextField extends StatelessWidget {
         labelText: labelText,
         labelStyle: labelStyle ??
             t.bodyMedium.copyWith(
-              color: onFill.withOpacity(0.85),
+              color: onFill.withValues(alpha: 0.85),
               fontWeight: FontWeight.w600,
               letterSpacing: 0.2,
             ),
@@ -77,15 +77,15 @@ class CustomEditableTextField extends StatelessWidget {
             : Icon(prefixIcon, color: iconColor ?? onFill, size: 20),
 
         counterStyle:
-            counterStyle ?? t.caption.copyWith(color: onFill.withOpacity(0.85)),
+            counterStyle ?? t.caption.copyWith(color: onFill.withValues(alpha: 0.85)),
 
         // Borders
-        border: _baseBorder(cs.outlineVariant.withOpacity(0.4)),
-        enabledBorder: _baseBorder(cs.outlineVariant.withOpacity(0.4)),
-        focusedBorder: _baseBorder(cs.primary, 1.6),
-        disabledBorder: _baseBorder(cs.outlineVariant.withOpacity(0.25)),
-        errorBorder: _baseBorder(cs.error),
-        focusedErrorBorder: _baseBorder(cs.error, 1.6),
+        border: baseBorder(cs.outlineVariant.withValues(alpha: 0.4)),
+        enabledBorder: baseBorder(cs.outlineVariant.withValues(alpha: 0.4)),
+        focusedBorder: baseBorder(cs.primary, 1.6),
+        disabledBorder: baseBorder(cs.outlineVariant.withValues(alpha: 0.25)),
+        errorBorder: baseBorder(cs.error),
+        focusedErrorBorder: baseBorder(cs.error, 1.6),
       ),
     );
   }

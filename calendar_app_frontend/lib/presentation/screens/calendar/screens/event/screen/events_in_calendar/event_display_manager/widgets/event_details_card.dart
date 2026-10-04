@@ -6,7 +6,6 @@ import 'package:hexora/presentation/screens/calendar/screens/event/screen/events
 import 'package:hexora/presentation/screens/calendar/screens/event/screen/events_in_calendar/widgets/event_date_time.dart';
 import 'package:hexora/presentation/screens/calendar/screens/event/screen/events_in_calendar/widgets/event_title_row.dart';
 import 'package:hexora/presentation/screens/events/utils/color_manager.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 
 class EventDetailsCard extends StatelessWidget {
   final Event event;
@@ -31,7 +30,7 @@ class EventDetailsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final typo = AppTypography.of(context);
+
     final cardAccent = colorManager.getColor(event.eventColorIndex);
     final canAdmin = canEdit(userRole);
 
@@ -85,7 +84,7 @@ class EventDetailsCard extends StatelessWidget {
                       //       maxLines: 2,
                       //       overflow: TextOverflow.ellipsis,
                       //       style: typo.bodySmall.copyWith(
-                      //         color: textColor.withOpacity(0.75),
+                      //         color: textColor.withValues(alpha: 0.75),
                       //         letterSpacing: .1,
                       //       ),
                       //     ),

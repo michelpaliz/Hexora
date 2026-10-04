@@ -5,7 +5,7 @@ import 'package:hexora/l10n/app_localizations.dart';
 
 class AnimatedUsersList extends StatelessWidget {
   final List<User> users;
-  const AnimatedUsersList({Key? key, required this.users}) : super(key: key);
+  const AnimatedUsersList({super.key, required this.users});
 
   @override
   Widget build(BuildContext context) {

@@ -29,7 +29,7 @@ String _quillToHtml(quill.Document doc) {
     final link = attrs['link'];
 
     if (link is String && link.isNotEmpty) {
-      text = '<a href=\"$link\" target=\"_blank\" rel=\"noopener\">$text</a>';
+      text = '<a href="$link" target="_blank" rel="noopener">$text</a>';
     }
     if (isItalic) {
       text = '<em>$text</em>';
@@ -39,5 +39,5 @@ String _quillToHtml(quill.Document doc) {
     }
     buffer.write(text);
   }
-  return '<div style=\"white-space:pre-line;\">${buffer.toString()}</div>';
+  return '<div style="white-space:pre-line;">${buffer.toString()}</div>';
 }

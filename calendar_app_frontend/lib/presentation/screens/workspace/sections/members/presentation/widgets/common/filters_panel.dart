@@ -71,7 +71,7 @@ class FiltersPanel extends StatelessWidget {
         Text(
           l.membersInfoAccepted,
           style: typo.bodySmall.copyWith(
-            color: colors.onSurfaceVariant.withOpacity(0.7),
+            color: colors.onSurfaceVariant.withValues(alpha: 0.7),
             fontStyle: FontStyle.italic,
           ),
         ),

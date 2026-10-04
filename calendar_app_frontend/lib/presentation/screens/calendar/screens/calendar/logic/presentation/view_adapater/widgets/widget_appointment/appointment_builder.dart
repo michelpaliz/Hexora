@@ -5,10 +5,9 @@ import 'package:hexora/presentation/screens/calendar/screens/event/screen/events
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 class CalendarAppointmentBuild {
-  final EventDomain _eventManager;
   final EventDisplayManager _eventDisplayManager;
 
-  CalendarAppointmentBuild(this._eventManager, this._eventDisplayManager);
+  CalendarAppointmentBuild(EventDomain eventManager, this._eventDisplayManager);
 
   // Week view
   Widget buildWeekAppointment(

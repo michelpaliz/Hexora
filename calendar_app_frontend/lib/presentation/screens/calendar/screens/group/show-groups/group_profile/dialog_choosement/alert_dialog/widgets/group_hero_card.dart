@@ -35,13 +35,13 @@ class GroupHeroCard extends StatelessWidget {
     // Neutral surface background always; primary only affects border emphasis.
     final Color background = cs.surface;
     final Color borderColor = isPrimary
-        ? cs.primary.withOpacity(0.35)
-        : cs.outlineVariant.withOpacity(0.35);
+        ? cs.primary.withValues(alpha: 0.35)
+        : cs.outlineVariant.withValues(alpha: 0.35);
     final double borderWidth = isPrimary ? 1.5 : 1.0;
 
     // Size tokens
     final bool wide = size == GroupHeroSize.wide;
-    final double radius = 14;
+    const double radius = 14;
     final EdgeInsets pad = EdgeInsets.all(wide ? 16 : 12);
     final double avatar = wide ? 28 : 24;
     final int descMaxLines = wide ? 3 : 2;
@@ -55,8 +55,8 @@ class GroupHeroCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(radius),
-          splashColor: cs.primary.withOpacity(0.08),
-          highlightColor: cs.primary.withOpacity(0.04),
+          splashColor: cs.primary.withValues(alpha: 0.08),
+          highlightColor: cs.primary.withValues(alpha: 0.04),
           child: Container(
             padding: pad,
             decoration: BoxDecoration(
@@ -74,7 +74,7 @@ class GroupHeroCard extends StatelessWidget {
                   metaTexts: const [], // not used since metaEntries provided
                   metaEntries: [
                     MetaEntry.text(l.createdOnDay(createdAt)),
-                    MetaEntry.icon(
+                    const MetaEntry.icon(
                         Icons.group_outlined), // 👈 icon instead of "X members"
                   ],
                   titleStyle: Theme.of(context).textTheme.titleMedium?.copyWith(

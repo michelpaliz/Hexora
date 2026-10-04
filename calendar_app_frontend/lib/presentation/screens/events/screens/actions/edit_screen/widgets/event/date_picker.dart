@@ -8,12 +8,12 @@ class DatePickerRow extends StatelessWidget {
   final Future<DateTime?> Function(BuildContext, bool) selectDateFn;
 
   const DatePickerRow({
-    Key? key,
+    super.key,
     required this.selectedStartDate,
     required this.selectedEndDate,
     required this.onDateSelected,
     required this.selectDateFn,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

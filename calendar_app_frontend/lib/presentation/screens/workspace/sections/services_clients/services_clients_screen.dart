@@ -306,7 +306,8 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
             const Icon(Icons.person_outline, size: 15),
             const SizedBox(width: 5),
             Flexible(
-                child: Text(l.tabClients, overflow: TextOverflow.ellipsis)),
+                child: Text('${l.tabClients} (${_clients.length})',
+                    overflow: TextOverflow.ellipsis)),
           ]),
         ),
         Tab(
@@ -315,7 +316,8 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
             const Icon(Icons.design_services_outlined, size: 15),
             const SizedBox(width: 5),
             Flexible(
-                child: Text(l.tabServices, overflow: TextOverflow.ellipsis)),
+                child: Text('${l.tabServices} (${_services.length})',
+                    overflow: TextOverflow.ellipsis)),
           ]),
         ),
       ],
@@ -330,7 +332,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
           Material(
             color: cs.surface,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
               child: tabBar,
             ),
           ),

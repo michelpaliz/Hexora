@@ -78,7 +78,7 @@ class _MailConsoleView extends StatelessWidget {
 
   Widget _buildMobile(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
+
     final domain = context.watch<MailDomain>();
     final threadsState = domain.threadsState;
     final threadState = state._selectedThreadKey == null
@@ -116,7 +116,10 @@ class _MailConsoleView extends StatelessWidget {
             (selectedThread?.messages.firstOrNull?.subject ?? '').trim();
         return msgSubject.isEmpty ? l.mailDetailNoSubject : msgSubject;
       }
-      return l.mailConsoleTitle;
+      // At the folder/list level, show which folder you're looking at
+      // (e.g. "Bandeja de entrada") instead of the generic "Correo" —
+      // avoids a redundant second heading duplicating this in the body.
+      return _folderLabel(state._folder, l);
     }
 
     void openFolderSheet() {
@@ -268,7 +271,7 @@ class _MailConsoleView extends StatelessWidget {
           actions: [
             if (!isDetailView) ...[
               IconButton(
-                icon: const Icon(Icons.folder_outlined),
+                icon: Icon(_folderIcon(state._folder)),
                 tooltip: l.mailConsoleFoldersTitle,
                 onPressed: openFolderSheet,
               ),
@@ -690,16 +693,10 @@ class _MobileThreadList extends StatelessWidget {
         top: false,
         child: Column(
           children: [
+            // The folder name (e.g. "Bandeja de entrada") is already shown
+            // as the app bar title above, so it isn't repeated here.
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(_folderLabel(state._folder, l),
-                      style: t.titleLarge?.copyWith(
-                          color: cs.onSurface, fontWeight: FontWeight.w700))),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               child: TextField(
                 controller: state._threadSearchController,
                 style: t.bodyLarge?.copyWith(color: cs.onSurface),

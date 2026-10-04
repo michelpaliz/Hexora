@@ -43,7 +43,8 @@ class AppUtils {
   static Future<Locale> getUserLocale() async {
     try {
       final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.low,
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.low),
       );
       if (pos.latitude >= -56.0 &&
           pos.latitude <= 11.0 &&

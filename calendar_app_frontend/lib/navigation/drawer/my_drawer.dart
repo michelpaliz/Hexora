@@ -26,7 +26,7 @@ class MyDrawer extends StatelessWidget {
             color: bg,
             border: Border(
               right: BorderSide(
-                  color: cs.outlineVariant.withOpacity(0.35), width: 1),
+                  color: cs.outlineVariant.withValues(alpha: 0.35), width: 1),
             ),
           ),
           child: const Column(

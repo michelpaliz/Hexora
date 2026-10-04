@@ -95,15 +95,15 @@ class _EventFormSimpleState extends State<EventFormSimple> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
+
     final typo = AppTypography.of(context);
 
     // 🔹 Match WorkVisit rhythm
-    final outer = WorkVisitStyle.outerPadding;
+    const outer = WorkVisitStyle.outerPadding;
     final runGap = WorkVisitStyle.sectionGap.height ?? 0.0;
 
     // 🔹 Use the same SectionCard builder used elsewhere
-    final SectionCardBuilder cardBuilder = SectionCard.new;
+    const SectionCardBuilder cardBuilder = SectionCard.new;
 
     return SingleChildScrollView(
       padding: outer,
@@ -137,7 +137,9 @@ class _EventFormSimpleState extends State<EventFormSimple> {
                     ? null
                     : Color(widget.logic.selectedEventColor!),
                 onColorChanged: (color) {
-                  if (color != null) widget.logic.setSelectedColor(color.value);
+                  if (color != null) {
+                    widget.logic.setSelectedColor(color.toARGB32());
+                  }
                 },
                 colorList: widget.logic.colorList.map((c) => Color(c)).toList(),
               ),
@@ -313,7 +315,7 @@ class _EventFormSimpleState extends State<EventFormSimple> {
 /// Forces children inside a Wrap to take full width (so Wrap is only used for runSpacing)
 class _FullWidth extends StatelessWidget {
   final Widget child;
-  const _FullWidth({required this.child, Key? key}) : super(key: key);
+  const _FullWidth({required this.child});
 
   @override
   Widget build(BuildContext context) {

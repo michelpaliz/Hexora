@@ -30,7 +30,7 @@ class TimeSummarySection extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withOpacity(0.55),
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: cs.outlineVariant),
       ),
@@ -43,7 +43,7 @@ class TimeSummarySection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${dateFormat.format(start)} · ${timeFormat.format(start)} → ${timeFormat.format(end)}',
+                  '${dateFormat.format(start)} · ${timeFormat.format(start)} → ${DateUtils.isSameDay(start, end) ? '' : '${dateFormat.format(end)} · '}${timeFormat.format(end)}',
                   style: t.bodySmall.copyWith(
                     fontWeight: FontWeight.w800,
                     color: ThemeColors.textPrimary(context),
@@ -53,7 +53,7 @@ class TimeSummarySection extends StatelessWidget {
                 Text(
                   selectedCount == 0
                       ? l.workerRequiredError
-                      : l.selectedCommitted(selectedCount),
+                      : '${l.workersLabel}: $selectedCount',
                   style: t.caption.copyWith(
                     color: ThemeColors.textSecondary(context),
                   ),

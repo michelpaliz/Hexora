@@ -110,10 +110,10 @@ class StatChip extends StatelessWidget {
           ? Icon(icon, size: 16, color: cs.onSurfaceVariant)
           : null,
       label: Text('$label · $count', style: t.bodySmall),
-      side: BorderSide(color: cs.outlineVariant.withOpacity(.6)),
+      side: BorderSide(color: cs.outlineVariant.withValues(alpha: .6)),
       backgroundColor: isDark
-          ? cs.surfaceContainerHighest.withOpacity(.22)
-          : cs.surfaceContainerHighest.withOpacity(.28),
+          ? cs.surfaceContainerHighest.withValues(alpha: .22)
+          : cs.surfaceContainerHighest.withValues(alpha: .28),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
     );

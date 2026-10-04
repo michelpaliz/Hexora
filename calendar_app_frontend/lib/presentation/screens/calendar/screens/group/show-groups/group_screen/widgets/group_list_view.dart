@@ -113,7 +113,7 @@ class GroupListView extends StatelessWidget {
               child: Icon(
                 Icons.groups_rounded,
                 size: 64,
-                color: cs.onSurfaceVariant.withOpacity(0.5),
+                color: cs.onSurfaceVariant.withValues(alpha: 0.5),
               ),
             ),
             const SizedBox(height: 24),

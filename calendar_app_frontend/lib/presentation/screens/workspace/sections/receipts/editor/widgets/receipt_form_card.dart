@@ -40,7 +40,7 @@ class ReceiptFormCard extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
 
-    InputDecoration _dec({
+    InputDecoration dec({
       required String label,
       IconData? icon,
       Widget? suffix,
@@ -88,7 +88,7 @@ class ReceiptFormCard extends StatelessWidget {
                         )
                         .toList(),
                     onChanged: canEdit ? onClientChanged : null,
-                    decoration: _dec(
+                    decoration: dec(
                       label: l.invoiceBillToLabel,
                       icon: Icons.person_outline,
                     ),
@@ -101,7 +101,7 @@ class ReceiptFormCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(14),
                     onTap: canEdit ? onPickDate : null,
                     child: InputDecorator(
-                      decoration: _dec(
+                      decoration: dec(
                         label: l.receiptIssueDateLabel,
                         icon: Icons.event_outlined,
                         suffix: canEdit
@@ -153,7 +153,7 @@ class ReceiptFormCard extends StatelessWidget {
                   enabled: canEdit,
                   minLines: 2,
                   maxLines: 6,
-                  decoration: _dec(
+                  decoration: dec(
                     label: l.invoiceNotesLabel,
                     icon: Icons.notes_outlined,
                   ).copyWith(hintText: l.receiptNotesHint),

@@ -27,16 +27,18 @@ Future<T?> withLoadingDialog<T>(
 
   final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
 
-  // Show the loading dialog (don't await it).
-  showDialog<void>(
+  // Retain the route so completion only closes this dialog, even if the user
+  // dismisses it or opens another screen while the task is running.
+  final dialogRoute = DialogRoute<void>(
     context: context,
     barrierDismissible: barrierDismissible,
-    useRootNavigator: useRootNavigator,
+    themes: InheritedTheme.capture(from: context, to: navigator.context),
     builder: (ctx) => _LoadingDialog(
       message: message,
       blockBackButton: !barrierDismissible,
     ),
   );
+  navigator.push(dialogRoute);
 
   try {
     final result = await task();
@@ -45,10 +47,12 @@ Future<T?> withLoadingDialog<T>(
     debugPrint('withLoadingDialog error: $e');
     return null;
   } finally {
-    if (context.mounted) {
-      // Close the dialog if it's still open.
-      // maybePop avoids exceptions if the dialog was already dismissed.
-      await navigator.maybePop();
+    if (navigator.mounted && dialogRoute.isActive) {
+      if (dialogRoute.isCurrent) {
+        navigator.pop();
+      } else {
+        navigator.removeRoute(dialogRoute);
+      }
     }
   }
 }
@@ -58,10 +62,9 @@ class _LoadingDialog extends StatelessWidget {
   final bool blockBackButton;
 
   const _LoadingDialog({
-    Key? key,
     this.message,
     this.blockBackButton = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -90,8 +93,8 @@ class _LoadingDialog extends StatelessWidget {
     // Optionally block the system back button.
     if (!blockBackButton) return dialog;
 
-    return WillPopScope(
-      onWillPop: () async => false,
+    return PopScope(
+      canPop: false,
       child: dialog,
     );
   }

@@ -68,7 +68,7 @@ class _BlueHeaderPainter extends CustomPainter {
       ..lineTo(size.width, 0)
       ..lineTo(0, 0)
       ..close();
-    canvas.drawPath(band, Paint()..color = Colors.white.withOpacity(0.10));
+    canvas.drawPath(band, Paint()..color = Colors.white.withValues(alpha: 0.10));
 
     // ---- Right-side swoosh accent ----
     final swoosh = Path()
@@ -78,14 +78,14 @@ class _BlueHeaderPainter extends CustomPainter {
       ..quadraticBezierTo(size.width * 0.70, size.height * 0.26,
           size.width * 0.52, size.height * 0.18)
       ..close();
-    canvas.drawPath(swoosh, Paint()..color = Colors.black.withOpacity(0.06));
+    canvas.drawPath(swoosh, Paint()..color = Colors.black.withValues(alpha: 0.06));
 
     // ---- Top-right translucent oval ----
     final oval = Rect.fromCircle(
       center: Offset(size.width * 0.94, size.height * 0.10),
       radius: size.width * 0.22,
     );
-    canvas.drawOval(oval, Paint()..color = Colors.white.withOpacity(0.08));
+    canvas.drawOval(oval, Paint()..color = Colors.white.withValues(alpha: 0.08));
 
     canvas.restore();
   }

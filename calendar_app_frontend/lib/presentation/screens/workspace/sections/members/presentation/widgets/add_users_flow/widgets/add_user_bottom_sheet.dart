@@ -69,14 +69,10 @@ class AddUsersBottomSheet extends StatelessWidget {
 
                     // ✅ compute flags
                     final isMember = ctrl.port.membersById.values.any(
-                      (u) =>
-                          (u.userName ?? '').toLowerCase() ==
-                          username.toLowerCase(),
+                      (u) => u.userName.toLowerCase() == username.toLowerCase(),
                     );
                     final isPending = ctrl.selectedUsers.any(
-                      (u) =>
-                          (u.userName ?? '').toLowerCase() ==
-                          username.toLowerCase(),
+                      (u) => u.userName.toLowerCase() == username.toLowerCase(),
                     );
 
                     return UserSearchResultItem(
@@ -87,6 +83,7 @@ class AddUsersBottomSheet extends StatelessWidget {
                           ? null
                           : () async {
                               await ctrl.addUser(username, context);
+                              if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('Added @$username')),
                               );

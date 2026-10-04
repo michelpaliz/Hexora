@@ -30,68 +30,77 @@ class MobileDocumentCard extends StatelessWidget {
     return Material(
       color: cs.surface,
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(13),
           side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5))),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 16, 8, 16),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            padding: const EdgeInsets.fromLTRB(11, 9, 4, 9),
+            child:
+                Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
               Tooltip(
                   message: statusLabel,
                   child: Container(
-                      padding: const EdgeInsets.all(9),
+                      padding: const EdgeInsets.all(7),
                       decoration: BoxDecoration(
                           color: isDraft
                               ? cs.tertiaryContainer
                               : cs.primaryContainer,
-                          borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(9)),
                       child: Icon(
                           isDraft
                               ? Icons.description_outlined
                               : Icons.task_alt_outlined,
-                          size: 22,
+                          size: 18,
                           color: isDraft
                               ? cs.onTertiaryContainer
                               : cs.onPrimaryContainer))),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                     Text(title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: t.bodyMedium?.copyWith(
                             color: cs.onSurface, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(amount,
-                        style: t.bodyLarge?.copyWith(
+                        style: t.bodyMedium?.copyWith(
                             color: cs.primary, fontWeight: FontWeight.w800)),
                     if (metadata.isNotEmpty) ...[
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(metadata,
-                          style:
-                              t.bodySmall?.copyWith(color: cs.onSurfaceVariant))
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.bodySmall
+                              ?.copyWith(color: cs.onSurfaceVariant)),
                     ],
                     if (isDraft || badges.isNotEmpty) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            if (isDraft)
-                              Text(statusLabel,
-                                  style: t.bodySmall
-                                      ?.copyWith(color: cs.onSurfaceVariant)),
-                            ...badges
-                          ])
+                        spacing: 6,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (isDraft)
+                            Text(statusLabel,
+                                style: t.bodySmall
+                                    ?.copyWith(color: cs.onSurfaceVariant)),
+                          ...badges,
+                        ],
+                      ),
                     ],
                   ])),
               trailing ??
                   IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                      iconSize: 20,
                       onPressed: onTap,
                       icon: const Icon(Icons.chevron_right_rounded)),
             ]),
@@ -141,7 +150,7 @@ class MobileDocumentList<T> extends StatelessWidget {
             children: [
               if (header)
                 Padding(
-                    padding: const EdgeInsets.only(top: 16, bottom: 10),
+                    padding: const EdgeInsets.only(top: 12, bottom: 6),
                     child: Text(
                         date == null
                             ? (locale.languageCode == 'es'
@@ -150,12 +159,17 @@ class MobileDocumentList<T> extends StatelessWidget {
                             : DateFormat.yMMMM(locale.toString())
                                 .format(date)
                                 .toUpperCase(),
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant))),
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelMedium
+                            ?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.6))),
               Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: 6),
                   child: itemBuilder(context, item)),
             ]);
       },

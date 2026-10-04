@@ -9,7 +9,7 @@ import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/groups/group_business_hours.dart';
 import 'package:hexora/models/groups/role_meta.dart';
 import 'package:hexora/models/user/user.dart';
-import 'package:hexora/services/blob_storage/blobServer.dart';
+import 'package:hexora/services/blob_storage/blob_server.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/groups/api/i_group_api_client.dart';
 import 'package:hexora/services/groups/repository/i_group_repository.dart';
@@ -110,7 +110,7 @@ class GroupRepository implements IGroupRepository {
       try {
         final groups = await _api
             .getGroupsByUser(normalizedUserName, token)
-            .timeout(const Duration(seconds: 5));
+            .timeout(const Duration(seconds: 10));
         if (groups.isEmpty && groupIds.isNotEmpty) {
           throw StateError(
             'Groups-by-user returned empty for non-empty group IDs.',
@@ -133,7 +133,7 @@ class GroupRepository implements IGroupRepository {
       try {
         final g = await _api
             .getGroupById(id, token)
-            .timeout(const Duration(seconds: 8));
+            .timeout(const Duration(seconds: 15));
         return g;
       } catch (_) {
         // If an id is 404 or fails, skip silently.

@@ -4,9 +4,9 @@ class NoteInputWidget extends StatelessWidget {
   final TextEditingController noteController;
 
   const NoteInputWidget({
-    Key? key,
+    super.key,
     required this.noteController,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

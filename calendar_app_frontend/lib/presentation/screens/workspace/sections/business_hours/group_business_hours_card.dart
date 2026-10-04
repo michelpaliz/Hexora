@@ -45,7 +45,7 @@ class GroupBusinessHoursCard extends StatelessWidget {
     final rangeStyle = t.bodyMedium;
     final descriptionStyle = t.bodySmall;
     final tzStyle =
-        t.bodySmall.copyWith(color: cs.onSurfaceVariant.withOpacity(0.8));
+        t.bodySmall.copyWith(color: cs.onSurfaceVariant.withValues(alpha: 0.8));
 
     return Card(
       clipBehavior: Clip.antiAlias,

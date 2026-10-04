@@ -20,6 +20,7 @@ class MainScaffold extends StatelessWidget {
   final IconThemeData? iconTheme;
   final bool? centerTitle;
   final bool showBottomNavAndFab;
+  final bool showFab;
 
   const MainScaffold({
     super.key,
@@ -34,6 +35,7 @@ class MainScaffold extends StatelessWidget {
     this.iconTheme,
     this.centerTitle,
     this.showBottomNavAndFab = true,
+    this.showFab = true,
   });
 
   @override
@@ -77,7 +79,8 @@ class MainScaffold extends StatelessWidget {
           : null,
       floatingActionButtonLocation:
           showBottomNavAndFab ? FloatingActionButtonLocation.endFloat : null,
-      floatingActionButton: showBottomNavAndFab ? const ContextualFab() : null,
+      floatingActionButton:
+          showBottomNavAndFab && showFab ? const ContextualFab() : null,
     );
   }
 }

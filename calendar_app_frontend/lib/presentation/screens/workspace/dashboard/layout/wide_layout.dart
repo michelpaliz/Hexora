@@ -322,7 +322,7 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
         adminOnly: false,
       ),
       (
-        icon: Icons.tune_rounded,
+        icon: Icons.settings_outlined,
         label: l.localeName.startsWith('es') ? 'Ajustes' : 'Settings',
         section: Sections.settings,
         adminOnly: true,

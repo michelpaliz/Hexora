@@ -26,7 +26,8 @@ import 'package:provider/provider.dart';
 
 class CalendarScreenCoordinator {
   static const String _defaultWeatherLocation = 'Denia';
-  static const int _calendarWeatherForecastDays = 31;
+  // Open-Meteo supports forecasts up to 16 days.
+  static const int _calendarWeatherForecastDays = 16;
   final BuildContext context;
 
   // Public loading state for the widget to listen to
@@ -195,6 +196,7 @@ class CalendarScreenCoordinator {
       }
 
       // 7) Single, idempotent refresh (silent to avoid UX flicker)
+      if (!context.mounted) return;
       await eventDomain.manualRefresh(context, silent: true);
       if (_isDisposed) return;
       await _syncWeather(me?.location);
@@ -245,6 +247,7 @@ class CalendarScreenCoordinator {
       // No full rebuild — just ask domain to refresh silently
       _setLoading(true);
       try {
+        if (!context.mounted) return;
         await context.read<EventDomain>().manualRefresh(context, silent: true);
       } finally {
         _setLoading(false);

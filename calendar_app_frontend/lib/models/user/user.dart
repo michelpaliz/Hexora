@@ -5,94 +5,50 @@ import 'package:hexora/models/user/user_json_mapper.dart';
 
 class User {
   String _id;
-  String _name; // legal / full name
-  String? _displayName; // preferred display name
+  String name; // legal / full name
+  String? displayName; // preferred display name
   final String _email;
-  String _userName; // unique handle/login
-  bool _emailVerified;
+  String userName; // unique handle/login
+  bool emailVerified;
 
-  String? _photoUrl;
-  String? _photoBlobName;
+  String? photoUrl;
+  String? photoBlobName;
 
-  String? _bio;
-  String? _phoneNumber;
-  String? _location;
+  String? bio;
+  String? phoneNumber;
+  String? location;
 
-  bool _autoStatementImportEnabled;
+  bool autoStatementImportEnabled;
 
-  List<String> _groupIds;
+  List<String> groupIds;
   List<String> _calendarsIds;
   List<String> _notificationsIds;
 
   User({
     required String id,
-    required String name,
+    required this.name,
     required String email,
-    required String userName,
-    required List<String> groupIds,
-    required bool emailVerified,
-    String? displayName,
-    String? bio,
-    String? phoneNumber,
-    String? location,
-    String? photoUrl,
-    String? photoBlobName,
+    required this.userName,
+    required this.groupIds,
+    required this.emailVerified,
+    this.displayName,
+    this.bio,
+    this.phoneNumber,
+    this.location,
+    this.photoUrl,
+    this.photoBlobName,
     List<String>? sharedCalendars,
     List<String>? notifications,
-    bool autoStatementImportEnabled = false,
+    this.autoStatementImportEnabled = false,
   })  : _id = id,
-        _name = name,
-        _displayName = displayName,
         _email = email,
-        _userName = userName,
-        _emailVerified = emailVerified,
-        _bio = bio,
-        _phoneNumber = phoneNumber,
-        _location = location,
-        _autoStatementImportEnabled = autoStatementImportEnabled,
-        _groupIds = groupIds,
-        _photoUrl = photoUrl,
-        _photoBlobName = photoBlobName,
         _calendarsIds = sharedCalendars ?? [],
         _notificationsIds = notifications ?? [];
 
   // Getters & setters
   String get id => _id;
 
-  String get name => _name;
-  set name(String v) => _name = v;
-
-  String? get displayName => _displayName;
-  set displayName(String? v) => _displayName = v;
-
   String get email => _email;
-
-  String get userName => _userName;
-  set userName(String v) => _userName = v;
-
-  bool get emailVerified => _emailVerified;
-  set emailVerified(bool v) => _emailVerified = v;
-
-  String? get photoUrl => _photoUrl;
-  set photoUrl(String? v) => _photoUrl = v;
-
-  String? get photoBlobName => _photoBlobName;
-  set photoBlobName(String? v) => _photoBlobName = v;
-
-  String? get bio => _bio;
-  set bio(String? v) => _bio = v;
-
-  String? get phoneNumber => _phoneNumber;
-  set phoneNumber(String? v) => _phoneNumber = v;
-
-  String? get location => _location;
-  set location(String? v) => _location = v;
-
-  bool get autoStatementImportEnabled => _autoStatementImportEnabled;
-  set autoStatementImportEnabled(bool v) => _autoStatementImportEnabled = v;
-
-  List<String> get groupIds => _groupIds;
-  set groupIds(List<String> v) => _groupIds = v;
 
   List<String> get sharedCalendars => _calendarsIds;
   set sharedCalendars(List<String>? v) => _calendarsIds = v ?? [];
@@ -126,19 +82,19 @@ class User {
   }) {
     return User(
       id: id ?? _id,
-      name: name ?? _name,
-      displayName: displayName ?? _displayName,
+      name: name ?? this.name,
+      displayName: displayName ?? this.displayName,
       email: email ?? _email,
-      userName: userName ?? _userName,
-      emailVerified: emailVerified ?? _emailVerified,
-      bio: bio ?? _bio,
-      phoneNumber: phoneNumber ?? _phoneNumber,
-      location: location ?? _location,
+      userName: userName ?? this.userName,
+      emailVerified: emailVerified ?? this.emailVerified,
+      bio: bio ?? this.bio,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      location: location ?? this.location,
       autoStatementImportEnabled:
-          autoStatementImportEnabled ?? _autoStatementImportEnabled,
-      photoUrl: photoUrl ?? _photoUrl,
-      photoBlobName: photoBlobName ?? _photoBlobName,
-      groupIds: groupIds ?? _groupIds,
+          autoStatementImportEnabled ?? this.autoStatementImportEnabled,
+      photoUrl: photoUrl ?? this.photoUrl,
+      photoBlobName: photoBlobName ?? this.photoBlobName,
+      groupIds: groupIds ?? this.groupIds,
       sharedCalendars: sharedCalendars ?? _calendarsIds,
       notifications: notifications ?? _notificationsIds,
     );
@@ -170,5 +126,4 @@ class User {
 
   @override
   int get hashCode => userHashCode(this);
-
 }

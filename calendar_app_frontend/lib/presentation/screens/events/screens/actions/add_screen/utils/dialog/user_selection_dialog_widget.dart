@@ -7,13 +7,13 @@ class UserSelectionDialog extends StatefulWidget {
   final List<User> usersAvailable;
 
   const UserSelectionDialog({
-    Key? key,
+    super.key,
     required this.selectedUsers,
     required this.usersAvailable,
-  }) : super(key: key);
+  });
 
   @override
-  _UserSelectionDialogState createState() => _UserSelectionDialogState();
+  State<UserSelectionDialog> createState() => _UserSelectionDialogState();
 }
 
 class _UserSelectionDialogState extends State<UserSelectionDialog> {

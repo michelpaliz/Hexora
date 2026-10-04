@@ -5,7 +5,7 @@ import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
-import '../../../presentation/routes/appRoutes.dart';
+import '../../../presentation/routes/app_routes.dart';
 
 //* GLOBAL VARIABLES */
 
@@ -28,7 +28,7 @@ final List<Map<String, dynamic>> menuItems = [
 
 //* UI FOR THE DRAWER LIST */
 
-Widget MyDrawerList(BuildContext context) {
+Widget myDrawerList(BuildContext context) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -56,8 +56,9 @@ Widget menuItem(
   final title = _getTranslatedTitle(context, section);
 
   // Colors: selected gets container colors; otherwise subtle surface/outline mix.
-  final bg =
-      selected ? cs.secondaryContainer.withOpacity(0.85) : Colors.transparent;
+  final bg = selected
+      ? cs.secondaryContainer.withValues(alpha: 0.85)
+      : Colors.transparent;
   final onBg =
       selected ? cs.onSecondaryContainer : ThemeColors.textPrimary(context);
   final iconColor = selected ? cs.onSecondaryContainer : cs.secondary;
@@ -86,7 +87,7 @@ Widget menuItem(
           border: Border.all(
             color: selected
                 ? Colors.transparent
-                : cs.outlineVariant.withOpacity(0.35),
+                : cs.outlineVariant.withValues(alpha: 0.35),
             width: 1,
           ),
         ),
@@ -109,7 +110,7 @@ Widget menuItem(
             ),
             if (section != DrawerSections.logOut)
               Icon(Icons.chevron_right_rounded,
-                  size: 18, color: onBg.withOpacity(0.6)),
+                  size: 18, color: onBg.withValues(alpha: 0.6)),
           ],
         ),
       ),
@@ -138,8 +139,10 @@ Future<void> _handleLogout(BuildContext context) async {
   try {
     final shouldLogout = await showLogOutDialog(context);
     if (shouldLogout) {
+      if (!context.mounted) return;
       final authService = Provider.of<AuthService>(context, listen: false);
       await authService.logOut();
+      if (!context.mounted) return;
       Navigator.of(context)
           .pushNamedAndRemoveUntil(AppRoutes.loginRoute, (_) => false);
     }
@@ -170,7 +173,7 @@ Future<bool> showLogOutDialog(BuildContext context) {
         content: Text(
           loc.logoutMessage,
           style: t.bodyLarge
-              .copyWith(color: onDialog.withOpacity(0.9), height: 1.35),
+              .copyWith(color: onDialog.withValues(alpha: 0.9), height: 1.35),
         ),
         actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
         actions: [

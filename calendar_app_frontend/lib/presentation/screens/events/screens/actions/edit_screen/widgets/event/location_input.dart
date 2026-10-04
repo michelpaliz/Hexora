@@ -6,7 +6,7 @@ import 'package:flutter_typeahead/flutter_typeahead.dart';
 class LocationInput extends StatelessWidget {
   final TextEditingController controller;
 
-  const LocationInput({Key? key, required this.controller}) : super(key: key);
+  const LocationInput({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -18,8 +18,8 @@ class LocationInput extends StatelessWidget {
           focusNode: focusNode,
           decoration: InputDecoration(
             labelText: AppLocalizations.of(context)!.location,
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.location_on),
+            border: const OutlineInputBorder(),
+            prefixIcon: const Icon(Icons.location_on),
           ),
         );
       },
@@ -34,7 +34,7 @@ class LocationInput extends StatelessWidget {
       itemBuilder: (context, suggestion) => ListTile(title: Text(suggestion)),
       onSelected: (suggestion) => controller.text = suggestion,
       debounceDuration: const Duration(milliseconds: 300),
-      loadingBuilder: (context) => Center(child: CircularProgressIndicator()),
+      loadingBuilder: (context) => const Center(child: CircularProgressIndicator()),
       // noItemsFoundBuilder: (context) => Padding(
       //   padding: EdgeInsets.all(8.0),
       //   child: Text('No results found'), // Fallback text

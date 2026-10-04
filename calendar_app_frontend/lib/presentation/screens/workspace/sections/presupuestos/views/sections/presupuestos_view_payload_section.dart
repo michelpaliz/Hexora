@@ -459,11 +459,6 @@ extension _GroupInvoicesBudgetsViewPayloadSection
     _previewForId = null;
   }
 
-  bool _isDraftPresupuesto(Map<String, dynamic> payload) {
-    final status = (payload['status'] ?? '').toString().toLowerCase();
-    return status.isEmpty || status.contains('draft');
-  }
-
   InvoiceBlockDraft? _checklistDraftFromSanitizedItem(
     Map<String, dynamic> map,
   ) {

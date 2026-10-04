@@ -40,7 +40,7 @@ void main() {
         theme: ThemeData(brightness: brightness),
         builder: (context, child) => MediaQuery(
           data:
-              MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(2)),
+              MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(2)),
           child: child!,
         ),
         home: DefaultTabController(

@@ -22,7 +22,7 @@ class GroupListSearchScaffoldBody extends StatelessWidget {
     final card = ThemeColors.cardBg(context);
     final shadow = ThemeColors.cardShadow(context);
     final onCard = ThemeColors.contrastOn(card);
-    final hintColor = onCard.withOpacity(0.6);
+    final hintColor = onCard.withValues(alpha: 0.6);
     final iconColor = cs.secondary; // subtle brand accent
 
     return CustomScrollView(
@@ -43,7 +43,7 @@ class GroupListSearchScaffoldBody extends StatelessWidget {
                   ),
                 ],
                 border: Border.all(
-                  color: cs.outlineVariant.withOpacity(0.35),
+                  color: cs.outlineVariant.withValues(alpha: 0.35),
                   width: 1,
                 ),
               ),
@@ -82,7 +82,7 @@ class GroupListSearchScaffoldBody extends StatelessWidget {
                             visualDensity: VisualDensity.compact,
                             onPressed: () => controller.clear(),
                             icon: const Icon(Icons.close_rounded, size: 18),
-                            color: onCard.withOpacity(0.8),
+                            color: onCard.withValues(alpha: 0.8),
                             tooltip: MaterialLocalizations.of(context)
                                 .deleteButtonTooltip,
                           ),

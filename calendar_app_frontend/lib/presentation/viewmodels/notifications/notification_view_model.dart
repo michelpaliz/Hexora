@@ -25,15 +25,21 @@ class NotificationViewModel {
   });
 
   /// ✅ Fetch notifications for a user and update stream
-  Future<void> fetchAndUpdateNotifications(User user) async {
+  Future<void> fetchAndUpdateNotifications(User user,
+      {bool reportErrors = false}) async {
+    final readStateAtStart = {
+      for (final n in notificationDomain.notifications) n.id: n.isRead,
+    };
     try {
       final fetched = await notificationService.getNotificationsForUser(
         user.userName,
       );
       fetched.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-      notificationDomain.updateNotificationStream(fetched);
+      await notificationDomain.applyFetchedNotifications(fetched,
+          readStateAtStart: readStateAtStart);
     } catch (e) {
       devtools.log('❌ Error fetching notifications: $e');
+      if (reportErrors) rethrow;
     }
   }
 
@@ -82,6 +88,7 @@ class NotificationViewModel {
       );
     } catch (e) {
       devtools.log('❌ Error declining invitation: $e');
+      rethrow;
     }
   }
 
@@ -125,8 +132,10 @@ class NotificationViewModel {
 
   Future<void> markNotificationAsRead(NotificationUser notification) async {
     if (notification.isRead) return;
+    final request = NotificationUser.fromJson(notification.toJson())
+      ..isRead = true;
+    await notificationService.updateNotification(request);
     notification.isRead = true;
-    await notificationService.updateNotification(notification);
 
     final updated = notificationDomain.notifications.map((n) {
       if (n.id == notification.id) {

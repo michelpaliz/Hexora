@@ -54,6 +54,21 @@ GroupUndoneEventsViewModel model(Repo repo) => GroupUndoneEventsViewModel(
     userResolver: (_) async => null);
 
 void main() {
+  test('required photos block completion until evidence is present', () async {
+    final visit = event('photo-visit').copyWith(
+      completionRequirements: const CompletionRequirements(requirePhotos: true),
+    );
+    final repo = Repo([visit]);
+    final vm = model(repo);
+    addTearDown(vm.dispose);
+    await vm.refresh();
+    expect(vm.completablePendingEvents, isEmpty);
+
+    await vm.markEventAsDone(visit.id);
+    expect(repo.calls, isEmpty);
+    expect(vm.pendingEvents.single.id, visit.id);
+  });
+
   test(
       'bulk respects permissions, deduplicates, keeps failures pending and retries',
       () async {

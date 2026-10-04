@@ -50,22 +50,22 @@ Widget buildMonthCell({
       .toList();
 
   // --- palette (Material 3 flavored) ---
-  final baseBg = Colors.transparent;
+  const baseBg = Colors.transparent;
   final baseFg = (isPast ? typo.bodyMedium : typo.bodyLarge).color ??
-      scheme.onSurface.withOpacity(isPast ? 0.55 : 0.87);
+      scheme.onSurface.withValues(alpha: isPast ? 0.55 : 0.87);
 
   final selectedBg = scheme.primaryContainer; // strong but soft
   final selectedFg = scheme.onPrimaryContainer;
 
   final weekendBg = scheme.secondaryContainer
-      .withOpacity(isDark ? 0.18 : 0.26); // gentle weekend tint
+      .withValues(alpha: isDark ? 0.18 : 0.26); // gentle weekend tint
 
-  final todayRing = scheme.primary.withOpacity(0.90); // ring around “today”
-  final todayFill = scheme.primary.withOpacity(isDark ? 0.08 : 0.10);
+  final todayRing = scheme.primary.withValues(alpha: 0.90); // ring around “today”
+  final todayFill = scheme.primary.withValues(alpha: isDark ? 0.08 : 0.10);
 
   // Busy overlay (very subtle tint if many events)
   final isBusy = eventsForDay.length >= 4;
-  final busyTint = scheme.tertiary.withOpacity(isDark ? 0.10 : 0.08);
+  final busyTint = scheme.tertiary.withValues(alpha: isDark ? 0.10 : 0.08);
 
   // --- decide background ---
   Color bg = baseBg;
@@ -109,7 +109,7 @@ Widget buildMonthCell({
   // --- text styles from AppTypography ---
   final countStyle = (isSelected
           ? typo.caption.copyWith(color: selectedFg)
-          : typo.caption.copyWith(color: baseFg.withOpacity(0.70)))
+          : typo.caption.copyWith(color: baseFg.withValues(alpha: 0.70)))
       .copyWith(fontSize: 10, fontWeight: FontWeight.w400);
 
   final dayNumberStyle = (isSelected
@@ -193,11 +193,11 @@ Widget buildMonthCell({
           border: isSelected
               ? Border.all(color: scheme.primary, width: 1)
               : Border.all(
-                  color: scheme.outlineVariant.withOpacity(0.35), width: 0.6),
+                  color: scheme.outlineVariant.withValues(alpha: 0.35), width: 0.6),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: scheme.primary.withOpacity(0.22),
+                    color: scheme.primary.withValues(alpha: 0.22),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),

@@ -5,7 +5,9 @@ import 'package:hexora/l10n/app_localizations.dart';
 
 class AgendaListSection extends StatelessWidget {
   final List<AgendaItem> filteredItems;
-  const AgendaListSection({super.key, required this.filteredItems});
+  final bool selectedDayOnly;
+  const AgendaListSection(
+      {super.key, required this.filteredItems, this.selectedDayOnly = false});
 
   @override
   Widget build(BuildContext context) {
@@ -25,9 +27,11 @@ class AgendaListSection extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 6),
               Text(
-                Localizations.localeOf(context).languageCode == 'es'
-                    ? 'No hay trabajo programado en este período. Prueba a ampliar el rango.'
-                    : 'No work scheduled for this period. Try extending the range.',
+                selectedDayOnly
+                    ? loc!.agendaEmptyDay
+                    : Localizations.localeOf(context).languageCode == 'es'
+                        ? 'No hay trabajo programado en este período. Prueba a ampliar el rango.'
+                        : 'No work scheduled for this period. Try extending the range.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurfaceVariant),

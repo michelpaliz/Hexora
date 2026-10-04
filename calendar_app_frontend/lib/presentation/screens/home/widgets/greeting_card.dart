@@ -104,7 +104,8 @@ class _GreetingCardState extends State<GreetingCard> {
 
       if (!mounted) return;
 
-      debugPrint('[GreetingCard] Weather fetch success. Snapshot: ${bundle.today}');
+      debugPrint(
+          '[GreetingCard] Weather fetch success. Snapshot: ${bundle.today}');
       setState(() {
         _snapshot = bundle.today;
         _forecastDays = bundle.forecast;
@@ -156,6 +157,9 @@ class _GreetingCardState extends State<GreetingCard> {
       tempMax: tempMax,
       tempMin: tempMin,
       location: (location == null || location.isEmpty) ? null : location,
+      isDay: snapshot?.isDay ?? true,
+      sunrise: snapshot?.sunrise,
+      sunset: snapshot?.sunset,
       forecastDays: _forecastDays,
       isForecastLoading: _forecastLoading,
       forecastError: _forecastError,

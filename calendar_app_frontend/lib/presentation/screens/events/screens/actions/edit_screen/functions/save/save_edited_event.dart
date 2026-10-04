@@ -43,9 +43,11 @@ Future<void> saveEditedEvent({
     try {
       await eventDomain.updateEvent(context, updatedData);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.eventEdited)),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.eventEdited)),
+        );
+      }
 
       // ✅ Use repository (handles token) instead of service
       final updatedGroup =
@@ -53,8 +55,10 @@ Future<void> saveEditedEvent({
       groupDomain.currentGroup = updatedGroup;
 
       // Optional: refresh calendar data
+      if (!context.mounted) return;
       await eventDomain.manualRefresh(context);
     } catch (error) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context)!.eventEditFailed)),
       );

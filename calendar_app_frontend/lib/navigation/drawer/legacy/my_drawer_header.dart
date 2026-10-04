@@ -7,7 +7,7 @@ import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/services/blob_storage/blobServer.dart';
+import 'package:hexora/services/blob_storage/blob_server.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/user_avatar.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';

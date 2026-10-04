@@ -43,7 +43,7 @@ class CountsPills extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: colors.shadow.withOpacity(0.06),
+              color: colors.shadow.withValues(alpha: 0.06),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -52,14 +52,14 @@ class CountsPills extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18, color: colors.onSurface.withOpacity(0.8)),
+            Icon(icon, size: 18, color: colors.onSurface.withValues(alpha: 0.8)),
             const SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
                     style: text.labelSmall?.copyWith(
-                      color: colors.onSurface.withOpacity(0.7),
+                      color: colors.onSurface.withValues(alpha: 0.7),
                       fontWeight: FontWeight.w500,
                     )),
                 const SizedBox(height: 2),

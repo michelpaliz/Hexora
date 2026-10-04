@@ -4,7 +4,7 @@ import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/user/repository/i_user_repository.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/add_user_controller.dart';
-import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/interface/IGroup_editor_port.dart';
+import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/interface/i_group_editor_port.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/controller/contract_for_controller/service/vm_group_editor_port.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/screen/tabs/add_user_tab.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/screen/tabs/update_role_tab.dart';
@@ -101,7 +101,7 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
             final Color primary = cs.primary;
             final Color selectedText = ThemeColors.contrastOn(primary);
             final Color unselectedText =
-                ThemeColors.textPrimary(context).withOpacity(0.7);
+                ThemeColors.textPrimary(context).withValues(alpha: 0.7);
             final Color trackBg = ThemeColors.cardBg(context);
 
             return Scaffold(
@@ -125,7 +125,7 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
                         color: trackBg,
                         borderRadius: BorderRadius.circular(12),
                         border:
-                            Border.all(color: cs.onSurface.withOpacity(0.06)),
+                            Border.all(color: cs.onSurface.withValues(alpha: 0.06)),
                       ),
                       child: TabBar(
                         isScrollable: true,

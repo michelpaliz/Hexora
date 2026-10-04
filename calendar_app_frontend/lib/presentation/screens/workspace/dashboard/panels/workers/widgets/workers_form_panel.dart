@@ -53,7 +53,7 @@ class WorkersFormPanel extends StatelessWidget {
                 color: (isDark
                         ? cs.surfaceContainerHigh
                         : cs.surfaceContainerHighest)
-                    .withOpacity(0.6),
+                    .withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: TabBar(
@@ -88,7 +88,7 @@ class WorkersFormPanel extends StatelessWidget {
                           child: Text(
                             l.workerRequired,
                             style: t.bodySmall.copyWith(
-                              color: cs.onSurface.withOpacity(0.7),
+                              color: cs.onSurface.withValues(alpha: 0.7),
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -117,7 +117,7 @@ class WorkersFormPanel extends StatelessWidget {
                             child: Text(
                               l.workerRequired,
                               style: t.bodySmall.copyWith(
-                                color: cs.onSurface.withOpacity(0.7),
+                                color: cs.onSurface.withValues(alpha: 0.7),
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -218,7 +218,6 @@ class _WorkerEditorFormState extends State<_WorkerEditorForm> {
   }
 
   Future<void> _save() async {
-    final l = AppLocalizations.of(context)!;
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
@@ -260,7 +259,7 @@ class _WorkerEditorFormState extends State<_WorkerEditorForm> {
     final cs = Theme.of(context).colorScheme;
     final inputTextStyle = t.bodyMedium;
     final labelTextStyle =
-        t.bodySmall.copyWith(color: cs.onSurface.withOpacity(0.7));
+        t.bodySmall.copyWith(color: cs.onSurface.withValues(alpha: 0.7));
 
     return Column(
       children: [
@@ -422,8 +421,8 @@ class _SectionCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark
-        ? cs.surfaceContainerHigh.withOpacity(0.75)
-        : cs.surfaceContainerHighest.withOpacity(0.45);
+        ? cs.surfaceContainerHigh.withValues(alpha: 0.75)
+        : cs.surfaceContainerHighest.withValues(alpha: 0.45);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
@@ -438,7 +437,7 @@ class _SectionCard extends StatelessWidget {
             title,
             style: t.bodySmall.copyWith(
               fontWeight: FontWeight.w800,
-              color: cs.onSurface.withOpacity(0.7),
+              color: cs.onSurface.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 8),

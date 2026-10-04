@@ -123,8 +123,10 @@ class PendingEventTile extends StatelessWidget {
       final timeLabel = event.allDay
           ? (es ? 'Todo el día' : 'All day')
           : '${ml.formatTimeOfDay(TimeOfDay.fromDateTime(start))} – ${ml.formatTimeOfDay(TimeOfDay.fromDateTime(end))}';
-      final canComplete =
-          !isDone && enableAction && viewModel.canManageEvent(event);
+      final canComplete = !isDone &&
+          enableAction &&
+          viewModel.canManageEvent(event) &&
+          !event.needsMorePhotosToComplete;
       return InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
@@ -176,6 +178,17 @@ class PendingEventTile extends StatelessWidget {
                       style: theme.textTheme.bodySmall
                           ?.copyWith(color: cs.onSurfaceVariant))),
             ]),
+            if (event.needsMorePhotosToComplete &&
+                !isDone &&
+                enableAction &&
+                viewModel.canManageEvent(event)) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: onTap,
+                icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                label: Text(loc.addCompletionPhotos),
+              ),
+            ],
             if (canComplete) ...[
               const SizedBox(height: 8),
               FilledButton.tonalIcon(
@@ -236,21 +249,31 @@ class PendingEventTile extends StatelessWidget {
         ],
       ),
       onTap: onTap,
-      trailing: enableAction && !isDone && viewModel.canManageEvent(event)
-          ? (isBusy
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : IconButton(
-                  icon: const Icon(Icons.check_circle_outline),
-                  tooltip: loc.pendingEventsMarkDone,
-                  onPressed:
-                      onMarkDone ?? () => viewModel.markEventAsDone(event.id),
-                ))
-          : Icon(isDone ? Icons.task_alt_rounded : Icons.chevron_right_rounded,
-              color: iconColor),
+      trailing: enableAction &&
+              !isDone &&
+              viewModel.canManageEvent(event) &&
+              event.needsMorePhotosToComplete
+          ? IconButton(
+              icon: const Icon(Icons.add_a_photo_outlined),
+              tooltip: loc.addCompletionPhotos,
+              onPressed: onTap,
+            )
+          : enableAction && !isDone && viewModel.canManageEvent(event)
+              ? (isBusy
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.check_circle_outline),
+                      tooltip: loc.pendingEventsMarkDone,
+                      onPressed: onMarkDone ??
+                          () => viewModel.markEventAsDone(event.id),
+                    ))
+              : Icon(
+                  isDone ? Icons.task_alt_rounded : Icons.chevron_right_rounded,
+                  color: iconColor),
     );
   }
 }

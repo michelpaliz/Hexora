@@ -7,7 +7,7 @@ import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/events/utils/show_error_dialog.dart';
 import 'package:hexora/presentation/screens/auth/login/logic/login_init.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/theme/colors/color_properties.dart';
 import 'package:hexora/presentation/shared/widgets/text_fields/text_field_widget.dart';
 import 'package:hexora/presentation/shared/widgets/text_fields/textfield_styles.dart'
@@ -81,7 +81,7 @@ Widget buildRegisterButton(
   GlobalKey<FormState> formKey,
   AuthService authService, // ✅ Updated
 ) {
-  return Container(
+  return SizedBox(
     width: double.infinity,
     height: 50,
     child: ElevatedButton(
@@ -111,6 +111,7 @@ Widget buildRegisterButton(
             password: password,
           );
 
+          if (!context.mounted) return;
           final loginInit = LoginInitializer(
             authService: authService, // ✅ Changed
             userDomain: Provider.of<UserDomain>(context, listen: false),
@@ -126,14 +127,17 @@ Widget buildRegisterButton(
 
           try {
             await loginInit.initializeUserAndServices(email, password);
+            if (!context.mounted) return;
             Navigator.of(
               context,
             ).pushNamedAndRemoveUntil(AppRoutes.homePage, (route) => false);
           } on EmailNotVerifiedAuthException catch (e) {
+            if (!context.mounted) return;
             await showErrorDialog(
               context,
               e.message,
             );
+            if (!context.mounted) return;
             Navigator.of(context).pushNamed(
               AppRoutes.verifyEmailRoute,
               arguments: {'email': email},
@@ -157,26 +161,31 @@ Widget buildRegisterButton(
             },
           );
         } on WeakPasswordException {
+          if (!context.mounted) return;
           await showErrorDialog(
             context,
             AppLocalizations.of(context)!.weakPassword,
           );
         } on EmailAlreadyUseAuthException {
+          if (!context.mounted) return;
           await showErrorDialog(
             context,
             AppLocalizations.of(context)!.emailTaken,
           );
         } on UsernameAlreadyUseAuthException {
+          if (!context.mounted) return;
           await showErrorDialog(
             context,
             AppLocalizations.of(context)!.userNameTaken,
           );
         } on InvalidEmailAuthException {
+          if (!context.mounted) return;
           await showErrorDialog(
             context,
             AppLocalizations.of(context)!.invalidEmail,
           );
         } on GenericAuthException {
+          if (!context.mounted) return;
           await showErrorDialog(
             context,
             AppLocalizations.of(context)!.registrationError,

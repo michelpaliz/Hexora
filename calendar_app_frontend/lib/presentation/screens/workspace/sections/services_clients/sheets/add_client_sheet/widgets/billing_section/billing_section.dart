@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_address_form.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_contact_form.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_legal_and_tax.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import '../../add_client_controller.dart';
@@ -32,7 +31,7 @@ class _BillingSectionState extends State<BillingSection> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final typo = AppTypography.of(context);
+    final text = Theme.of(context).textTheme;
 
     // mirrors: initiallyExpanded: _billingExpanded || _hasBillingData
     final initiallyExpanded = c.billingExpanded || c.hasBillingData;
@@ -68,9 +67,8 @@ class _BillingSectionState extends State<BillingSection> {
           children: [
             Text(
               l.billingDetails,
-              style: typo.bodySmall.copyWith(
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
+              style: text.bodyLarge!.copyWith(
+                fontWeight: FontWeight.w600,
               ),
             ),
             _BillingStatusChip(
@@ -81,9 +79,8 @@ class _BillingSectionState extends State<BillingSection> {
         ),
         subtitle: Text(
           l.billingDetailsSubtitle,
-          style: typo.bodySmall.copyWith(
+          style: text.bodyMedium!.copyWith(
             color: cs.onSurfaceVariant,
-            fontSize: 11,
           ),
         ),
         childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
@@ -131,7 +128,7 @@ class _BillingStatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final typo = AppTypography.of(context);
+    final text = Theme.of(context).textTheme;
 
     final complete = completed >= total && total > 0;
 
@@ -144,9 +141,8 @@ class _BillingStatusChip extends StatelessWidget {
       ),
       child: Text(
         l.billingProgressLabel(completed, total),
-        style: typo.bodySmall.copyWith(
-          fontWeight: FontWeight.w700,
-          fontSize: 10,
+        style: text.labelMedium!.copyWith(
+          fontWeight: FontWeight.w600,
           color: complete ? cs.onSecondaryContainer : cs.onErrorContainer,
         ),
       ),

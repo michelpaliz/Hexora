@@ -1,6 +1,8 @@
 // lib/utils/json_helpers.dart
 
 /// JSON helper functions shared across models.
+library;
+
 
 String requireString(Map<String, dynamic> j, String key) {
   final v = j[key];

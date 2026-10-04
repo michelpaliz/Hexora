@@ -14,7 +14,7 @@ class GroupUserCard extends StatelessWidget {
   final DateTime? sendingDate;
 
   const GroupUserCard({
-    Key? key,
+    super.key,
     required this.userName,
     required this.role,
     this.photoUrl,
@@ -22,7 +22,7 @@ class GroupUserCard extends StatelessWidget {
     this.isAdmin = false,
     this.status,
     this.sendingDate,
-  }) : super(key: key);
+  });
 
   IconData _getStatusIcon() {
     switch (status) {
@@ -64,7 +64,7 @@ class GroupUserCard extends StatelessWidget {
 
     final bg = ThemeColors.listTileBg(context);
     final onBg = ThemeColors.textPrimary(context);
-    final border = cs.outlineVariant.withOpacity(0.25);
+    final border = cs.outlineVariant.withValues(alpha: 0.25);
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
@@ -106,7 +106,7 @@ class GroupUserCard extends StatelessWidget {
               child: Text(
                 role,
                 style: t.bodySmall.copyWith(
-                  color: onBg.withOpacity(0.75),
+                  color: onBg.withValues(alpha: 0.75),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -117,7 +117,7 @@ class GroupUserCard extends StatelessWidget {
               Text(
                 '• ${AppUtils.formatDate(sendingDate!)}',
                 style: t.caption.copyWith(
-                  color: onBg.withOpacity(0.6),
+                  color: onBg.withValues(alpha: 0.6),
                 ),
               ),
             ],

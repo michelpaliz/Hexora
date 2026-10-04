@@ -17,7 +17,7 @@ class AddEventCta extends StatelessWidget {
     final enabledBg = cs.primary;
     final enabledFg = cs.onPrimary; // high contrast on primary
     final disabledBg = cs.surfaceContainerHighest;
-    final disabledFg = cs.onSurface.withOpacity(.60);
+    final disabledFg = cs.onSurface.withValues(alpha: .60);
 
     return SizedBox(
       width: double.infinity,
@@ -40,7 +40,7 @@ class AddEventCta extends StatelessWidget {
           foregroundColor: WidgetStateProperty.resolveWith<Color>(
             (s) => s.contains(WidgetState.disabled) ? disabledFg : enabledFg,
           ),
-          overlayColor: WidgetStatePropertyAll(enabledFg.withOpacity(0.10)),
+          overlayColor: WidgetStatePropertyAll(enabledFg.withValues(alpha: 0.10)),
         ),
         // Ensure the icon inherits the same foreground color
         child: IconTheme(

@@ -75,7 +75,7 @@ class ExpenseProvidersSummaryTab extends StatelessWidget {
           return ListItemCard(
             leading: CircleAvatar(
               radius: 16,
-              backgroundColor: scheme.primary.withOpacity(0.08),
+              backgroundColor: scheme.primary.withValues(alpha: 0.08),
               child: Text(
                 name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase(),
                 style: t.bodySmall.copyWith(
@@ -152,7 +152,7 @@ class ExpenseProvidersSummaryTab extends StatelessWidget {
           return ListItemCard(
             leading: CircleAvatar(
               radius: 16,
-              backgroundColor: scheme.primary.withOpacity(0.08),
+              backgroundColor: scheme.primary.withValues(alpha: 0.08),
               child: Icon(
                 Icons.receipt_long_outlined,
                 size: 16,

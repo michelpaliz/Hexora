@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
@@ -34,7 +34,7 @@ class HeaderSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: cs.outlineVariant.withOpacity(.25)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .25)),
         boxShadow: [
           BoxShadow(color: shadow, blurRadius: 12, offset: const Offset(0, 6)),
         ],
@@ -52,7 +52,7 @@ class HeaderSection extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
-                  colors: [cs.primary, cs.primary.withOpacity(.5)],
+                  colors: [cs.primary, cs.primary.withValues(alpha: .5)],
                 ),
               ),
             ),
@@ -94,7 +94,7 @@ class HeaderSection extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                            color: cs.outlineVariant.withOpacity(.35)),
+                            color: cs.outlineVariant.withValues(alpha: .35)),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(2),
@@ -127,7 +127,7 @@ class HeaderSection extends StatelessWidget {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: t.bodySmall.copyWith(
-                                color: onCard.withOpacity(.7),
+                                color: onCard.withValues(alpha: .7),
                                 height: 1.25,
                               ),
                             ),

@@ -34,7 +34,7 @@ class HeaderCard extends StatelessWidget {
         border: Border.all(color: scheme.outlineVariant, width: 0.8),
         boxShadow: [
           BoxShadow(
-              color: scheme.shadow.withOpacity(0.06),
+              color: scheme.shadow.withValues(alpha: 0.06),
               blurRadius: 12,
               offset: const Offset(0, 4))
         ],
@@ -102,15 +102,14 @@ class _Badge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.14),
+        color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: color.withOpacity(0.35), width: 0.8),
+        border: Border.all(color: color.withValues(alpha: 0.35), width: 0.8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

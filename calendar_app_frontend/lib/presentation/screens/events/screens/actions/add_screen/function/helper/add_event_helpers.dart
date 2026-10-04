@@ -67,6 +67,7 @@ Event buildNewEvent({
   required int eventColorIndex,
   required List<String> recipients,
   required String ownerId,
+  int? reminderTime,
 
   // NEW (all optional)
   String? type, // 'simple' | 'work_visit'
@@ -75,6 +76,8 @@ Event buildNewEvent({
   String? categoryId,
   String? subcategoryId,
   List<VisitService>? visitServices,
+  CompletionRequirements completionRequirements =
+      const CompletionRequirements.disabled(),
 }) {
   return Event(
     id: id,
@@ -90,6 +93,7 @@ Event buildNewEvent({
     eventColorIndex: eventColorIndex,
     recipients: recipients,
     ownerId: ownerId,
+    reminderTime: reminderTime,
     isDone: false,
     completedAt: null,
 
@@ -100,6 +104,7 @@ Event buildNewEvent({
     categoryId: categoryId,
     subcategoryId: subcategoryId,
     visitServices: visitServices ?? const [],
+    completionRequirements: completionRequirements,
   );
 }
 

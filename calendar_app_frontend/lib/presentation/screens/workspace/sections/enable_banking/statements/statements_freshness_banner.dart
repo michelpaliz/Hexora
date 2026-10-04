@@ -29,7 +29,7 @@ class StatementsFreshnessBanner extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final thresholdOptions = const [3, 5, 7];
+    const thresholdOptions = [3, 5, 7];
 
     final status = controller.batchStatus[id];
     final statusLoading = controller.loadingStatus[id] == true;
@@ -119,7 +119,7 @@ class StatementsFreshnessBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withOpacity(0.35),
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Wrap(

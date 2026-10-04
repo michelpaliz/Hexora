@@ -8,6 +8,8 @@ class Service {
   String? color; // e.g., "#3b82f6"
   bool isActive;
   Map<String, dynamic>? meta;
+  String workEnvironment; // indoor | outdoor | mixed
+  bool weatherSensitive;
 
   // Optional timestamps (Mongoose timestamps: true)
   DateTime? createdAt;
@@ -21,6 +23,8 @@ class Service {
     this.color,
     this.isActive = true,
     this.meta,
+    this.workEnvironment = 'indoor',
+    this.weatherSensitive = false,
     this.createdAt,
     this.updatedAt,
   });
@@ -33,6 +37,8 @@ class Service {
     String? color,
     bool? isActive,
     Map<String, dynamic>? meta,
+    String? workEnvironment,
+    bool? weatherSensitive,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -44,6 +50,8 @@ class Service {
       color: color ?? this.color,
       isActive: isActive ?? this.isActive,
       meta: meta ?? this.meta,
+      workEnvironment: workEnvironment ?? this.workEnvironment,
+      weatherSensitive: weatherSensitive ?? this.weatherSensitive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -57,6 +65,8 @@ class Service {
         if (color != null) 'color': color,
         'isActive': isActive,
         if (meta != null) 'meta': meta,
+        if (workEnvironment != 'unspecified') 'workEnvironment': workEnvironment,
+        'weatherSensitive': weatherSensitive,
         if (createdAt != null)
           'createdAt': createdAt!.toUtc().toIso8601String(),
         if (updatedAt != null)
@@ -75,6 +85,8 @@ class Service {
       color: json['color']?.toString(),
       isActive: json['isActive'] is bool ? json['isActive'] as bool : true,
       meta: (json['meta'] as Map?)?.cast<String, dynamic>(),
+      workEnvironment: json['workEnvironment']?.toString() ?? 'unspecified',
+      weatherSensitive: json['weatherSensitive'] == true,
       createdAt:
           json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
       updatedAt:

@@ -927,222 +927,239 @@ class _TimeTrackingExcelImportDialogState
           padding: widget.embedded
               ? const EdgeInsets.fromLTRB(10, 10, 10, 10)
               : const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _isSpanish
-                              ? 'Importar horas'
-                              : 'Import working hours',
-                          style: t.titleLarge.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: cs.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _isSpanish
-                              ? 'Usa Excel por trabajador o el nuevo JSON estructurado. Revisa la vista previa antes de confirmar.'
-                              : 'Use worker-by-worker Excel or the new structured JSON flow. Review the preview before confirming.',
-                          style: t.bodySmall.copyWith(
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: _isSpanish
-                        ? 'Actualizar trabajadores'
-                        : 'Refresh workers',
-                    onPressed: _workersLoading ? null : _loadWorkers,
-                    icon: const Icon(Icons.refresh_rounded),
-                  ),
-                  FilledButton.tonalIcon(
-                    onPressed: _instructionsLoading ? null : _openInstructions,
-                    icon: _instructionsLoading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.menu_book_rounded),
-                    label: Text(
-                      _isSpanish
-                          ? 'Ver instrucciones de importacion'
-                          : 'View import instructions',
-                    ),
-                  ),
-                  if (!widget.embedded) ...[
-                    const SizedBox(width: 8),
-                    IconButton(
-                      tooltip:
-                          MaterialLocalizations.of(context).closeButtonTooltip,
-                      onPressed: _confirming
-                          ? null
-                          : () => Navigator.of(context).pop(false),
-                      icon: const Icon(Icons.close_rounded),
-                    ),
-                  ],
-                ],
-              ),
-              SizedBox(height: widget.embedded ? 8 : 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _ModePill(
-                    label: _isSpanish ? 'Excel' : 'Excel',
-                    selected: _mode == _ImportMode.excel,
-                    onTap: () => setState(() => _mode = _ImportMode.excel),
-                  ),
-                  _ModePill(
-                    label: _isSpanish ? 'JSON' : 'JSON',
-                    selected: _mode == _ImportMode.json,
-                    onTap: () => setState(() => _mode = _ImportMode.json),
-                  ),
-                ],
-              ),
-              SizedBox(height: widget.embedded ? 8 : 12),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: LayoutBuilder(builder: (context, constraints) {
+            final narrow = constraints.maxWidth < 700;
+            final content = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Flex(
+                  direction: narrow ? Axis.vertical : Axis.horizontal,
+                  crossAxisAlignment: narrow
+                      ? CrossAxisAlignment.stretch
+                      : CrossAxisAlignment.center,
                   children: [
-                    SizedBox(
-                      width: 360,
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (_mode == _ImportMode.excel)
-                              _buildExcelControls(context)
-                            else
-                              _buildJsonControls(context),
-                            if (_workersError != null) ...[
-                              const SizedBox(height: 10),
-                              _InlineNotice(
-                                color: cs.errorContainer,
-                                borderColor: cs.error.withValues(alpha: 0.35),
-                                icon: Icons.error_outline_rounded,
-                                text: _workersError!,
-                              ),
-                            ],
-                            if (_activeFlowError != null) ...[
-                              const SizedBox(height: 10),
-                              _InlineNotice(
-                                color: cs.errorContainer,
-                                borderColor: cs.error.withValues(alpha: 0.35),
-                                icon: Icons.error_outline_rounded,
-                                text: _activeFlowError!,
-                              ),
-                            ],
-                            if (_mode == _ImportMode.excel &&
-                                _isOverlapMessage(_excelFlowError) &&
-                                !_replaceExistingEntries) ...[
-                              const SizedBox(height: 8),
-                              _InlineNotice(
-                                color: Colors.orange.withValues(alpha: 0.10),
-                                borderColor:
-                                    Colors.orange.withValues(alpha: 0.28),
-                                icon: Icons.swap_horiz_rounded,
-                                text: _isSpanish
-                                    ? 'Activa "Reemplazar" antes de confirmar.'
-                                    : 'Turn on "Replace" before confirming.',
-                              ),
-                            ],
-                            if (_mode == _ImportMode.json &&
-                                _isOverlapMessage(_jsonFlowError) &&
-                                !_replaceExistingEntries) ...[
-                              const SizedBox(height: 8),
-                              _InlineNotice(
-                                color: Colors.orange.withValues(alpha: 0.10),
-                                borderColor:
-                                    Colors.orange.withValues(alpha: 0.28),
-                                icon: Icons.swap_horiz_rounded,
-                                text: _canReplaceJsonEntries
-                                    ? (_isSpanish
-                                        ? 'Activa "Reemplazar horas existentes" antes de confirmar.'
-                                        : 'Turn on "Replace existing entries" before confirming.')
-                                    : (_isSpanish
-                                        ? 'No se puede reemplazar hasta fijar un trabajador global o un workerId en el payload.'
-                                        : 'Replacement stays unavailable until you set a global worker or a payload workerId.'),
-                              ),
-                            ],
-                            const SizedBox(height: 16),
-                            Divider(
-                              height: 1,
-                              color: cs.outlineVariant.withValues(alpha: 0.3),
+                    Flexible(
+                      flex: narrow ? 0 : 1,
+                      fit: narrow ? FlexFit.loose : FlexFit.tight,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _isSpanish
+                                ? 'Importar horas'
+                                : 'Import working hours',
+                            style: t.titleLarge.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: cs.onSurface,
                             ),
-                            const SizedBox(height: 10),
-                            Text(
-                              _mode == _ImportMode.excel
-                                  ? (_isSpanish
-                                      ? 'Excel: una persona por archivo. Elige trabajador, mes y revisa la vista previa.'
-                                      : 'Excel: one worker per file. Choose a worker, month, and review the preview.')
-                                  : (_isSpanish
-                                      ? 'JSON: puedes importar varias filas y varios trabajadores en una sola peticion.'
-                                      : 'JSON: you can import multiple rows and workers in a single request.'),
-                              style: t.bodySmall.copyWith(
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _isSpanish
+                                ? 'Usa Excel por trabajador o el nuevo JSON estructurado. Revisa la vista previa antes de confirmar.'
+                                : 'Use worker-by-worker Excel or the new structured JSON flow. Review the preview before confirming.',
+                            style: t.bodySmall.copyWith(
+                              color: cs.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
                             ),
-                            const SizedBox(height: 10),
-                            if (!widget.embedded) ...[
-                              OutlinedButton(
-                                onPressed: _confirming
-                                    ? null
-                                    : () => Navigator.of(context).pop(false),
-                                child: Text(
-                                  MaterialLocalizations.of(context)
-                                      .cancelButtonLabel,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                            ],
-                            FilledButton.icon(
-                              onPressed: _mode == _ImportMode.excel
-                                  ? (_canConfirmExcel
-                                      ? _confirmExcelImport
-                                      : null)
-                                  : (_canConfirmJson
-                                      ? _confirmJsonImport
-                                      : null),
-                              icon: _confirming
-                                  ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Icon(
-                                      Icons.check_circle_outline_rounded),
-                              label: Text(
-                                _isSpanish
-                                    ? 'Confirmar importacion'
-                                    : 'Confirm import',
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(child: _buildPreviewArea(context)),
+                    IconButton(
+                      tooltip: _isSpanish
+                          ? 'Actualizar trabajadores'
+                          : 'Refresh workers',
+                      onPressed: _workersLoading ? null : _loadWorkers,
+                      icon: const Icon(Icons.refresh_rounded),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed:
+                          _instructionsLoading ? null : _openInstructions,
+                      icon: _instructionsLoading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.menu_book_rounded),
+                      label: Text(
+                        _isSpanish
+                            ? 'Ver instrucciones de importacion'
+                            : 'View import instructions',
+                      ),
+                    ),
+                    if (!widget.embedded) ...[
+                      const SizedBox(width: 8),
+                      IconButton(
+                        tooltip: MaterialLocalizations.of(context)
+                            .closeButtonTooltip,
+                        onPressed: _confirming
+                            ? null
+                            : () => Navigator.of(context).pop(false),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
                   ],
                 ),
-              ),
-            ],
-          ),
+                SizedBox(height: widget.embedded ? 8 : 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _ModePill(
+                      label: _isSpanish ? 'Excel' : 'Excel',
+                      selected: _mode == _ImportMode.excel,
+                      onTap: () => setState(() => _mode = _ImportMode.excel),
+                    ),
+                    _ModePill(
+                      label: _isSpanish ? 'JSON' : 'JSON',
+                      selected: _mode == _ImportMode.json,
+                      onTap: () => setState(() => _mode = _ImportMode.json),
+                    ),
+                  ],
+                ),
+                SizedBox(height: widget.embedded ? 8 : 12),
+                Flexible(
+                  flex: narrow ? 0 : 1,
+                  fit: narrow ? FlexFit.loose : FlexFit.tight,
+                  child: Flex(
+                    direction: narrow ? Axis.vertical : Axis.horizontal,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        width: narrow ? double.infinity : 360,
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (_mode == _ImportMode.excel)
+                                _buildExcelControls(context)
+                              else
+                                _buildJsonControls(context),
+                              if (_workersError != null) ...[
+                                const SizedBox(height: 10),
+                                _InlineNotice(
+                                  color: cs.errorContainer,
+                                  borderColor: cs.error.withValues(alpha: 0.35),
+                                  icon: Icons.error_outline_rounded,
+                                  text: _workersError!,
+                                ),
+                              ],
+                              if (_activeFlowError != null) ...[
+                                const SizedBox(height: 10),
+                                _InlineNotice(
+                                  color: cs.errorContainer,
+                                  borderColor: cs.error.withValues(alpha: 0.35),
+                                  icon: Icons.error_outline_rounded,
+                                  text: _activeFlowError!,
+                                ),
+                              ],
+                              if (_mode == _ImportMode.excel &&
+                                  _isOverlapMessage(_excelFlowError) &&
+                                  !_replaceExistingEntries) ...[
+                                const SizedBox(height: 8),
+                                _InlineNotice(
+                                  color: Colors.orange.withValues(alpha: 0.10),
+                                  borderColor:
+                                      Colors.orange.withValues(alpha: 0.28),
+                                  icon: Icons.swap_horiz_rounded,
+                                  text: _isSpanish
+                                      ? 'Activa "Reemplazar" antes de confirmar.'
+                                      : 'Turn on "Replace" before confirming.',
+                                ),
+                              ],
+                              if (_mode == _ImportMode.json &&
+                                  _isOverlapMessage(_jsonFlowError) &&
+                                  !_replaceExistingEntries) ...[
+                                const SizedBox(height: 8),
+                                _InlineNotice(
+                                  color: Colors.orange.withValues(alpha: 0.10),
+                                  borderColor:
+                                      Colors.orange.withValues(alpha: 0.28),
+                                  icon: Icons.swap_horiz_rounded,
+                                  text: _canReplaceJsonEntries
+                                      ? (_isSpanish
+                                          ? 'Activa "Reemplazar horas existentes" antes de confirmar.'
+                                          : 'Turn on "Replace existing entries" before confirming.')
+                                      : (_isSpanish
+                                          ? 'No se puede reemplazar hasta fijar un trabajador global o un workerId en el payload.'
+                                          : 'Replacement stays unavailable until you set a global worker or a payload workerId.'),
+                                ),
+                              ],
+                              const SizedBox(height: 16),
+                              Divider(
+                                height: 1,
+                                color: cs.outlineVariant.withValues(alpha: 0.3),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                _mode == _ImportMode.excel
+                                    ? (_isSpanish
+                                        ? 'Excel: una persona por archivo. Elige trabajador, mes y revisa la vista previa.'
+                                        : 'Excel: one worker per file. Choose a worker, month, and review the preview.')
+                                    : (_isSpanish
+                                        ? 'JSON: puedes importar varias filas y varios trabajadores en una sola peticion.'
+                                        : 'JSON: you can import multiple rows and workers in a single request.'),
+                                style: t.bodySmall.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              if (!widget.embedded) ...[
+                                OutlinedButton(
+                                  onPressed: _confirming
+                                      ? null
+                                      : () => Navigator.of(context).pop(false),
+                                  child: Text(
+                                    MaterialLocalizations.of(context)
+                                        .cancelButtonLabel,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                              ],
+                              FilledButton.icon(
+                                onPressed: _mode == _ImportMode.excel
+                                    ? (_canConfirmExcel
+                                        ? _confirmExcelImport
+                                        : null)
+                                    : (_canConfirmJson
+                                        ? _confirmJsonImport
+                                        : null),
+                                icon: _confirming
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.check_circle_outline_rounded),
+                                label: Text(
+                                  _isSpanish
+                                      ? 'Confirmar importacion'
+                                      : 'Confirm import',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: narrow ? 0 : 16, height: narrow ? 16 : 0),
+                      if (narrow)
+                        SizedBox(height: 520, child: _buildPreviewArea(context))
+                      else
+                        Expanded(child: _buildPreviewArea(context)),
+                    ],
+                  ),
+                ),
+              ],
+            );
+            return narrow ? SingleChildScrollView(child: content) : content;
+          }),
         ),
       ),
     );

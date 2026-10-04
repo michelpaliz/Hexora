@@ -14,8 +14,8 @@ class LoadingList extends StatelessWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (_, __) => _LoadingTile(
         bg: ThemeColors.listTileBg(context),
-        barColor: cs.surfaceContainerHighest.withOpacity(0.6),
-        secondaryBarColor: cs.surfaceContainerHighest.withOpacity(0.35),
+        barColor: cs.surfaceContainerHighest.withValues(alpha: 0.6),
+        secondaryBarColor: cs.surfaceContainerHighest.withValues(alpha: 0.35),
       ),
     );
   }
@@ -40,7 +40,7 @@ class _LoadingTile extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.25),
+          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.25),
           width: 1,
         ),
       ),

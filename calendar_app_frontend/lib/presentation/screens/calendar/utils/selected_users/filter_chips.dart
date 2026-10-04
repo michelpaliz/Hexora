@@ -86,16 +86,16 @@ class FilterChips extends StatelessWidget {
 
     final bgSelected = baseColor;
     final fgSelected = _onColor(bgSelected);
-    final bgUnselected = cs.surfaceContainerHighest.withOpacity(0.5);
-    final borderUnselected = cs.outlineVariant.withOpacity(0.5);
+    final bgUnselected = cs.surfaceContainerHighest.withValues(alpha: 0.5);
+    final borderUnselected = cs.outlineVariant.withValues(alpha: 0.5);
     final fgUnselected = baseColor;
 
-    final pillBgSelected = _onColor(bgSelected).withOpacity(0.12);
-    final pillBorderSelected = _onColor(bgSelected).withOpacity(0.18);
+    final pillBgSelected = _onColor(bgSelected).withValues(alpha: 0.12);
+    final pillBorderSelected = _onColor(bgSelected).withValues(alpha: 0.18);
     final pillTextSelected = _onColor(bgSelected);
 
-    final pillBgUnselected = baseColor.withOpacity(0.10);
-    final pillBorderUnselected = baseColor.withOpacity(0.20);
+    final pillBgUnselected = baseColor.withValues(alpha: 0.10);
+    final pillBorderUnselected = baseColor.withValues(alpha: 0.20);
     final pillTextUnselected = baseColor;
 
     return AnimatedContainer(
@@ -111,7 +111,7 @@ class FilterChips extends StatelessWidget {
         boxShadow: selected
             ? [
                 BoxShadow(
-                  color: baseColor.withOpacity(0.25),
+                  color: baseColor.withValues(alpha: 0.25),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 )

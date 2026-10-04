@@ -9,7 +9,7 @@ class RoleChangeDialogContent extends StatelessWidget {
   final UserInviteStatus? userInviteStatus;
   final Function(String?) onRoleSelected;
 
-  RoleChangeDialogContent({
+  const RoleChangeDialogContent({super.key,
     required this.userName,
     required this.selectedRole,
     required this.userInviteStatus,
@@ -39,7 +39,7 @@ class RoleChangeDialogContent extends StatelessWidget {
                 subtitle: Text(informativeMessage),
               ),
             if (additionalMessage.isNotEmpty) Text(additionalMessage),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             if (showRoleDropdown)
               DropdownButtonFormField<String>(
                 initialValue: selectedRole,
@@ -54,7 +54,7 @@ class RoleChangeDialogContent extends StatelessWidget {
                     onRoleSelected(newRole);
                   });
                 },
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Select Role',
                   contentPadding: EdgeInsets.symmetric(horizontal: 10.0),
                   border: OutlineInputBorder(),

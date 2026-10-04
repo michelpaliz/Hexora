@@ -1,7 +1,7 @@
 // lib/presentation/home/widgets/app_bar_user_title.dart
 import 'package:flutter/material.dart';
 import 'package:hexora/models/user/user.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/user_avatar.dart';
 
 class AppBarUserTitle extends StatelessWidget {

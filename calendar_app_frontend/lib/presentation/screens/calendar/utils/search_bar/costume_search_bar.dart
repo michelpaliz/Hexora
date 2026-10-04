@@ -26,7 +26,7 @@ class CustomSearchBar extends StatelessWidget {
     final onFill = ThemeColors.contrastOn(fill);
 
     final radius = BorderRadius.circular(12.0);
-    OutlineInputBorder _b(Color c, [double w = 1]) => OutlineInputBorder(
+    OutlineInputBorder b(Color c, [double w = 1]) => OutlineInputBorder(
         borderRadius: radius, borderSide: BorderSide(color: c, width: w));
 
     return AnimatedBuilder(
@@ -42,7 +42,7 @@ class CustomSearchBar extends StatelessWidget {
           decoration: InputDecoration(
             labelText: AppLocalizations.of(context)!.searchPerson,
             labelStyle: t.bodyMedium.copyWith(
-              color: onFill.withOpacity(0.85),
+              color: onFill.withValues(alpha: 0.85),
               fontWeight: FontWeight.w600,
               letterSpacing: 0.2,
             ),
@@ -58,10 +58,10 @@ class CustomSearchBar extends StatelessWidget {
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
 
             // Borders
-            border: _b(cs.outlineVariant.withOpacity(0.4)),
-            enabledBorder: _b(cs.outlineVariant.withOpacity(0.4)),
-            focusedBorder: _b(cs.primary, 1.6),
-            disabledBorder: _b(cs.outlineVariant.withOpacity(0.25)),
+            border: b(cs.outlineVariant.withValues(alpha: 0.4)),
+            enabledBorder: b(cs.outlineVariant.withValues(alpha: 0.4)),
+            focusedBorder: b(cs.primary, 1.6),
+            disabledBorder: b(cs.outlineVariant.withValues(alpha: 0.25)),
 
             // Prefix search icon (tap to search)
             prefixIcon: IconButton(
@@ -76,7 +76,7 @@ class CustomSearchBar extends StatelessWidget {
                 ? IconButton(
                     onPressed: onClear,
                     icon: const Icon(Icons.clear),
-                    color: onFill.withOpacity(0.9),
+                    color: onFill.withValues(alpha: 0.9),
                     tooltip:
                         MaterialLocalizations.of(context).deleteButtonTooltip,
                   )

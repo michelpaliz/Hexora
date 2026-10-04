@@ -10,10 +10,9 @@ class ClientPickerField extends FormField<String> {
     required String labelText,
     required List<GroupClient> clients,
     required ValueChanged<String?> onChanged,
-    FormFieldValidator<String>? validator,
+    super.validator,
   }) : super(
           initialValue: value,
-          validator: validator,
           builder: (state) {
             final cs = Theme.of(state.context).colorScheme;
             final t = AppTypography.of(state.context);

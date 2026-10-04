@@ -45,7 +45,7 @@ class _GroupInvoicesContent extends StatelessWidget {
         invoices: state._invoices,
         selectedClient: state._selectedClient,
         onSelectClient: (client) =>
-            state.setState(() => state._selectedClient = client),
+            state._updateView(() => state._selectedClient = client),
       );
     }
 
@@ -57,7 +57,8 @@ class _GroupInvoicesContent extends StatelessWidget {
         selectedClient: state._selectedClient,
         issuedInvoices: visibleInvoices,
         draftInvoices: draftInvoices,
-        onSelectClient: (c) => state.setState(() => state._selectedClient = c),
+        onSelectClient: (c) =>
+            state._updateView(() => state._selectedClient = c),
         onCreateInvoice: state._openCreateInvoice,
         onCreateReceipt: state._openCreateReceipt,
         onEditSelectedClient: () {
@@ -79,7 +80,7 @@ class _GroupInvoicesContent extends StatelessWidget {
         api: state._billingApi,
         onSaved: (updated) {
           if (!state.mounted) return;
-          state.setState(() => state._billingProfile = updated);
+          state._updateView(() => state._billingProfile = updated);
           final l = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text(l.billingProfileSaved)));
@@ -96,7 +97,7 @@ class _GroupInvoicesContent extends StatelessWidget {
         billingProfile: state._billingProfile,
         selectedReceipt: state._selectedReceipt,
         onSelectReceipt: (r) =>
-            state.setState(() => state._selectedReceipt = r),
+            state._updateView(() => state._selectedReceipt = r),
         onCreateReceipt: state._openCreateReceipt,
         onEditReceipt: state._openEditReceipt,
         onIssueReceipt: state._issueReceipt,
@@ -268,10 +269,10 @@ class _GroupInvoicesContent extends StatelessWidget {
                   actions != null &&
                   prev.canManage == actions.canManage);
           if (same || !state.mounted) return;
-          state.setState(() => state._recurringActions = actions);
+          state._updateView(() => state._recurringActions = actions);
         },
         onSeriesOpened: () =>
-            state.setState(() => state._recurringSeriesToOpen = null),
+            state._updateView(() => state._recurringSeriesToOpen = null),
       );
     }
 
@@ -287,10 +288,10 @@ class _GroupInvoicesContent extends StatelessWidget {
                   actions != null &&
                   prev.canManage == actions.canManage);
           if (same || !state.mounted) return;
-          state.setState(() => state._recurringReceiptsActions = actions);
+          state._updateView(() => state._recurringReceiptsActions = actions);
         },
         onSeriesOpened: () =>
-            state.setState(() => state._recurringSeriesToOpen = null),
+            state._updateView(() => state._recurringSeriesToOpen = null),
       );
     }
 
@@ -318,7 +319,7 @@ class _GroupInvoicesContent extends StatelessWidget {
         group: state.widget.group,
         selectedInvoice: state._selectedInvoice,
         onSelectInvoice: (inv) =>
-            state.setState(() => state._selectedInvoice = inv),
+            state._updateView(() => state._selectedInvoice = inv),
         onDeleteInvoice: state._deleteInvoice,
         onEditDraft: state._openEditDraft,
         onIssueDraft: state._issueInvoice,
@@ -332,7 +333,7 @@ class _GroupInvoicesContent extends StatelessWidget {
         sortLoading: state._effectiveSortingInvoices,
         issueAllDraftsLoading: state._issuingAllDrafts == true,
         initialTabIndex: 0,
-        onOpenRecurringSeries: (seriesId) => state.setState(() {
+        onOpenRecurringSeries: (seriesId) => state._updateView(() {
           state._recurringSeriesToOpen = seriesId;
           state._selectedMenu = 'recurring';
         }),
@@ -357,7 +358,7 @@ class _GroupInvoicesContent extends StatelessWidget {
         group: state.widget.group,
         selectedInvoice: state._selectedInvoice,
         onSelectInvoice: (inv) =>
-            state.setState(() => state._selectedInvoice = inv),
+            state._updateView(() => state._selectedInvoice = inv),
         onDeleteInvoice: state._deleteInvoice,
         onEditDraft: state._openEditDraft,
         onIssueDraft: state._issueInvoice,
@@ -371,7 +372,7 @@ class _GroupInvoicesContent extends StatelessWidget {
         sortLoading: state._effectiveSortingInvoices,
         issueAllDraftsLoading: state._issuingAllDrafts == true,
         initialTabIndex: 1,
-        onOpenRecurringSeries: (seriesId) => state.setState(() {
+        onOpenRecurringSeries: (seriesId) => state._updateView(() {
           state._recurringSeriesToOpen = seriesId;
           state._selectedMenu = 'recurring';
         }),
@@ -387,7 +388,7 @@ class _GroupInvoicesContent extends StatelessWidget {
       group: state.widget.group,
       selectedInvoice: state._selectedInvoice,
       onSelectInvoice: (inv) =>
-          state.setState(() => state._selectedInvoice = inv),
+          state._updateView(() => state._selectedInvoice = inv),
       onDeleteInvoice: state._deleteInvoice,
       onEditDraft: state._openEditDraft,
       onIssueDraft: state._issueInvoice,
@@ -400,7 +401,7 @@ class _GroupInvoicesContent extends StatelessWidget {
       onSortBySelected: state._handleInvoiceSortBySelected,
       sortLoading: state._effectiveSortingInvoices,
       issueAllDraftsLoading: state._issuingAllDrafts == true,
-      onOpenRecurringSeries: (seriesId) => state.setState(() {
+      onOpenRecurringSeries: (seriesId) => state._updateView(() {
         state._recurringSeriesToOpen = seriesId;
         state._selectedMenu = 'recurring';
       }),

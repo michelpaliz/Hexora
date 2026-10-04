@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class DescriptionInputWidget extends StatelessWidget {
@@ -16,29 +15,27 @@ class DescriptionInputWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final typo = AppTypography.of(context);
+    final text = Theme.of(context).textTheme;
 
     return TextFormField(
       controller: descriptionController,
       minLines: 2,
       maxLines: 4,
       textInputAction: TextInputAction.newline,
-      style: typo.bodyMedium.copyWith(
+      style: text.bodyLarge!.copyWith(
         color: cs.onSurface,
-        fontWeight: FontWeight.w600,
       ),
       decoration: InputDecoration(
         labelText: l.descriptionLabel,
-        labelStyle: typo.bodySmall.copyWith(
+        labelStyle: text.bodyMedium!.copyWith(
           color: cs.onSurfaceVariant,
-          fontWeight: FontWeight.w600,
         ),
         hintText: l.descriptionLabel,
-        hintStyle: typo.bodyMedium.copyWith(
-          color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+        hintStyle: text.bodyLarge!.copyWith(
+          color: cs.onSurfaceVariant,
           fontWeight: FontWeight.w500,
         ),
-        counterStyle: typo.bodySmall.copyWith(
+        counterStyle: text.bodyMedium!.copyWith(
           color: cs.onSurfaceVariant,
           fontWeight: FontWeight.w500,
         ),

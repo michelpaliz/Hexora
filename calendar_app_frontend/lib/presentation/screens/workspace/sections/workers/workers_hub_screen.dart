@@ -184,8 +184,8 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
       ),
       (
         icon: Icons.bar_chart_rounded,
-        label: isEs ? 'Graficas' : 'Charts',
-        mobileLabel: isEs ? 'Graficas' : 'Charts',
+        label: isEs ? 'Gráficas' : 'Charts',
+        mobileLabel: isEs ? 'Gráficas' : 'Charts',
         section: _WorkersSection.graphs,
       ),
       (
@@ -208,8 +208,8 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
       ),
       (
         icon: Icons.schedule_outlined,
-        label: isEs ? 'Registrar horas' : 'Register hours',
-        mobileLabel: isEs ? 'Horas' : 'Hours',
+        label: isEs ? 'Importar horas' : 'Import hours',
+        mobileLabel: isEs ? 'Importar' : 'Import',
         section: _WorkersSection.registerHours,
       ),
     ];

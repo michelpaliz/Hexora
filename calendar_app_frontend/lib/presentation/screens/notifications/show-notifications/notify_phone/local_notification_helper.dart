@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -14,7 +15,7 @@ Future<void> setupLocalNotifications() async {
   const settings = InitializationSettings(
     android: android,
     iOS: darwin,
-    macOS: darwin, 
+    macOS: darwin,
   );
 
   await flutterLocalNotificationsPlugin.initialize(settings);
@@ -54,7 +55,7 @@ Future<void> requestIOSNotificationPermissionsManually() async {
     sound: true,
   );
 
-  print('📱 iOS notification permission granted: $granted');
+  debugPrint('📱 iOS notification permission granted: $granted');
 }
 
 Future<void> scheduleLocalNotification({
@@ -81,7 +82,8 @@ Future<void> scheduleLocalNotification({
         presentBadge: true,
         presentSound: true,
       ),
-      macOS: DarwinNotificationDetails( // 👈 Add macOS details
+      macOS: DarwinNotificationDetails(
+        // 👈 Add macOS details
         presentAlert: true,
         presentBadge: true,
         presentSound: true,

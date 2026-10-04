@@ -2,9 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/group_profile/dialog_choosement/alert_dialog/widgets/group_hero_card.dart';
-import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 class QuickActionsGrid extends StatelessWidget {
@@ -14,8 +13,6 @@ class QuickActionsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: isWide ? 20 : 16),
       child: Column(

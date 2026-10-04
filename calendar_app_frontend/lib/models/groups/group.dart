@@ -241,7 +241,7 @@ class Group {
         // default mirrors backend defaults
         timeTracking: TimeTrackingSettings(
           enabled: false,
-          roundingPreset: TimeRoundingPreset.nearest5_tie05_down,
+          roundingPreset: TimeRoundingPreset.nearest5Tie05Down,
           currency: 'EUR',
         ),
       ),

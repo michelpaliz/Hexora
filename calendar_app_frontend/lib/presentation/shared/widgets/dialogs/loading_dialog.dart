@@ -11,16 +11,18 @@ class LoadingDialog {
     final theme = Theme.of(context);
     final textColor = theme.textTheme.bodyLarge?.color ?? Colors.black87;
 
-    return Future.microtask(() {
-      return showDialog<void>(
+    return Future<void>.microtask(() async {
+      if (!context.mounted) return;
+      await showDialog<void>(
         context: context,
         barrierDismissible: barrierDismissible,
         barrierColor: barrierColor ?? Colors.black54,
         builder: (BuildContext context) {
-          return WillPopScope(
-            onWillPop: () async => barrierDismissible,
+          return PopScope(
+            canPop: barrierDismissible,
             child: AlertDialog(
-              backgroundColor: theme.dialogBackgroundColor,
+              backgroundColor: theme.dialogTheme.backgroundColor ??
+                  theme.colorScheme.surface,
               elevation: 8,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),

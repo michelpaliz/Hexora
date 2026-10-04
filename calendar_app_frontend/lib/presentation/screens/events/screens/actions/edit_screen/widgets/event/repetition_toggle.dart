@@ -12,14 +12,14 @@ class RepetitionToggle extends StatelessWidget {
   final Function(bool, LegacyRecurrenceRule?) onToggleChanged;
 
   const RepetitionToggle({
-    Key? key,
+    super.key,
     required this.isRepetitive,
     required this.toggleWidth,
     required this.startDate,
     required this.endDate,
     required this.initialRule,
     required this.onToggleChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

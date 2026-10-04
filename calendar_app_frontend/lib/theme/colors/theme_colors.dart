@@ -47,7 +47,7 @@ class ThemeColors {
     final base = containerBg(context);
     final isDark =
         ThemeData.estimateBrightnessForColor(base) == Brightness.dark;
-    return isDark ? base.withOpacity(0.6) : base.withOpacity(0.95);
+    return isDark ? base.withValues(alpha: 0.6) : base.withValues(alpha: 0.95);
   }
 
   /// Shadows
@@ -71,7 +71,7 @@ class ThemeColors {
     final theme = Theme.of(context);
     return theme.brightness == Brightness.dark
         ? theme.colorScheme.surface
-        : theme.colorScheme.surface.withOpacity(0.9);
+        : theme.colorScheme.surface.withValues(alpha: 0.9);
   }
 
   static Color searchIcon(BuildContext context) => MobileTheme.isActive(context)
@@ -90,8 +90,8 @@ class ThemeColors {
   static Color chipGlow(BuildContext context, Color base) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark
-        ? base.withOpacity(0.25)
-        : _darken(base, 0.3).withOpacity(0.25);
+        ? base.withValues(alpha: 0.25)
+        : _darken(base, 0.3).withValues(alpha: 0.25);
   }
 
   static Color _darken(Color color, double amount) {
@@ -110,8 +110,8 @@ class ThemeColors {
 
     // If onSurfaceVariant looks identical to onBackground (some themes),
     // derive a softer secondary from onBackground.
-    final derived = cs.onSurface.withOpacity(
-      theme.brightness == Brightness.dark ? 0.85 : 0.72,
+    final derived = cs.onSurface.withValues(
+      alpha: theme.brightness == Brightness.dark ? 0.85 : 0.72,
     );
 
     // Palette fallback (keeps your brand colors)
@@ -121,9 +121,9 @@ class ThemeColors {
 
     // Choose the best option in order: material → derived → palette
     // (If your cs.onSurfaceVariant is well tuned, it'll be used.)
-    if (materialSecondary.value != cs.onSurface.value) {
+    if (materialSecondary.toARGB32() != cs.onSurface.toARGB32()) {
       return materialSecondary;
     }
-    return derived.opacity == 0 ? paletteFallback : derived;
+    return derived.a == 0 ? paletteFallback : derived;
   }
 }

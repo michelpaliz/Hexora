@@ -41,7 +41,6 @@ class _TelegramWorkerHoursImportViewState
 
   String? _dateFrom;
   String? _dateTo;
-  Map<String, dynamic>? _previewFilters;
   Set<String>? _collapsedGroupsNullable;
   Set<String> get _collapsedGroups => _collapsedGroupsNullable ??= <String>{};
 
@@ -49,7 +48,7 @@ class _TelegramWorkerHoursImportViewState
   bool _loadingSource = false;
   bool _confirming = false;
   bool _skipExistingEntries = false;
-  bool _importSettingsExpanded = true;
+  bool _importSettingsExpanded = false;
   String? _error;
   String? _telegramDefaultsMessage;
   List<Map<String, dynamic>> _candidates = const <Map<String, dynamic>>[];
@@ -399,9 +398,6 @@ class _TelegramWorkerHoursImportViewState
               .toList(growable: false)
           : const <_TelegramIgnoredRow>[];
       final warnings = _stringList(preview['warnings']);
-      final filtersRaw = preview['filters'];
-      final previewFilters =
-          filtersRaw is Map ? Map<String, dynamic>.from(filtersRaw) : null;
       if (!mounted) return;
       setState(() {
         for (final row in _rows) {
@@ -411,7 +407,6 @@ class _TelegramWorkerHoursImportViewState
         _rows = rows;
         _ignoredRows = ignored;
         _warnings = warnings;
-        _previewFilters = previewFilters;
         _collapsedGroups.clear();
         _importSettingsExpanded = false;
         _lastConfirmResult = null;

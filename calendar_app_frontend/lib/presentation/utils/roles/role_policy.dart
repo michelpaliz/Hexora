@@ -30,7 +30,6 @@ class RolePolicy {
     bool includeOwner = false,
   }) {
     final actor = roleOf(actorId);
-    final target = roleOf(targetId);
 
     return availableRoles.where((r) {
       final key = _sanitize(r.wire);

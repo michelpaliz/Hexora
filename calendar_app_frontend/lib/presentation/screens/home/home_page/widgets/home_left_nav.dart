@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:hexora/models/user/user.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 import 'package:hexora/presentation/shared/widgets/user_profile_popup.dart';
 import 'package:hexora/theme/colors/app_colors.dart';

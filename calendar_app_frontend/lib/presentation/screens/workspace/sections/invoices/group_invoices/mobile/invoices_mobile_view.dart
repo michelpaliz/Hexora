@@ -19,12 +19,13 @@ class _InvoicesMobileView extends StatefulWidget {
 class _InvoicesMobileViewState extends State<_InvoicesMobileView>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  bool _initialDocumentOpened = false;
 
   static const _tabs = [
     _InvoicesMobileTab.facturas,
     _InvoicesMobileTab.recibos,
-    _InvoicesMobileTab.clientes,
     _InvoicesMobileTab.presupuestos,
+    _InvoicesMobileTab.clientes,
   ];
 
   // ── budget state ─────────────────────────────────────────────────────────
@@ -36,7 +37,18 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabs.length, vsync: this);
+    final route = widget.state.widget;
+    final menu = route.initialMenu ?? '';
+    final initialTab =
+        route.initialBudgetId != null || menu.startsWith('budgets')
+            ? 2
+            : route.initialReceiptId != null || menu.startsWith('receipts')
+                ? 1
+                : menu == 'clients'
+                    ? 3
+                    : 0;
+    _tabController = TabController(
+        length: _tabs.length, initialIndex: initialTab, vsync: this);
     _loadBudgets();
   }
 
@@ -44,6 +56,43 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _openInitialDocument() {
+    final s = widget.state;
+    if (_initialDocumentOpened || s._loading) return;
+    _initialDocumentOpened = true;
+    final route = s.widget;
+    final budgetId = route.initialBudgetId?.trim() ?? '';
+    final receiptId = route.initialReceiptId?.trim() ?? '';
+    final invoiceId = route.initialInvoiceId?.trim() ?? '';
+    if (budgetId.isEmpty && receiptId.isEmpty && invoiceId.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (budgetId.isNotEmpty) {
+        _openBudgetDetail({'_id': budgetId});
+        return;
+      }
+      if (receiptId.isNotEmpty) {
+        for (final receipt in [...s._receipts, ...s._receiptDrafts]) {
+          if (receipt.id == receiptId) {
+            _openReceiptDetail(receipt);
+            return;
+          }
+        }
+      } else {
+        for (final invoice in [...s._invoices, ...s._drafts]) {
+          if (invoice.id == invoiceId) {
+            _openInvoiceDetail(invoice);
+            return;
+          }
+        }
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(Localizations.localeOf(context).languageCode == 'es'
+              ? 'No se encontró el documento. Actualiza la lista o comprueba tu acceso.'
+              : 'Document not found. Refresh the list or check your access.')));
+    });
   }
 
   // ── helpers ─────────────────────────────────────────────────────────────────
@@ -156,8 +205,16 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
         status.contains('borrador');
   }
 
-  String _budgetClientName(Map<String, dynamic> b) =>
-      (b['clientName'] ?? (b['client'] as Map?)?['name'] ?? '').toString();
+  String _budgetClientName(Map<String, dynamic> b) {
+    final direct = presupuestoDocumentClientName(b);
+    if (direct.isNotEmpty) return direct;
+    final clientId = (b['clientId'] ?? '').toString().trim();
+    if (clientId.isEmpty) return '';
+    for (final client in widget.state._clients) {
+      if (client.id == clientId) return client.name;
+    }
+    return '';
+  }
 
   String _budgetDate(Map<String, dynamic> b) {
     final raw = b['issueDate'] ??
@@ -175,13 +232,7 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
     }
   }
 
-  num? _budgetTotal(Map<String, dynamic> b) {
-    final v =
-        b['total'] ?? b['grandTotal'] ?? b['amountTotal'] ?? b['subtotal'];
-    if (v == null) return null;
-    if (v is num) return v;
-    return num.tryParse(v.toString());
-  }
+  num? _budgetTotal(Map<String, dynamic> b) => presupuestoDocumentAmount(b);
 
   // ── budget actions ───────────────────────────────────────────────────────
 
@@ -295,6 +346,22 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
                           subtitle: Text(
                               '${line['quantity'] ?? ''} × ${line['unitPrice'] ?? ''}')),
                     const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: busy
+                          ? null
+                          : () => run(() async {
+                                final response = await _presupuestosApi
+                                    .previewPdf(_budgetId(document));
+                                final bytes =
+                                    InvoiceEditorPdf.validatePdf(response);
+                                await pdf_launcher.launchPdfPreview(bytes,
+                                    fileName:
+                                        'presupuesto-${_budgetNumber(document)}.pdf');
+                              }, close: false),
+                      icon: const Icon(Icons.picture_as_pdf_outlined),
+                      label:
+                          Text(AppLocalizations.of(context)!.invoicePreviewCta),
+                    ),
                     OutlinedButton.icon(
                       onPressed: busy
                           ? null
@@ -658,6 +725,7 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
 
   @override
   Widget build(BuildContext context) {
+    _openInitialDocument();
     final l = AppLocalizations.of(context)!;
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
     final s = widget.state;
@@ -668,8 +736,8 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
       labels: [
         isSpanish ? 'Facturas' : 'Invoices',
         isSpanish ? 'Recibos' : l.receiptsTitle,
-        isSpanish ? 'Clientes' : 'Clients',
         isSpanish ? 'Presupuestos' : 'Quotes',
+        isSpanish ? 'Clientes' : 'Clients',
       ],
     );
 
@@ -687,8 +755,8 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
                   children: [
                     _buildFacturasTab(l),
                     _buildRecibosTab(l),
-                    _buildClientesTab(l),
                     _buildPresupuestosTab(l),
+                    _buildClientesTab(l),
                   ],
                 ),
         ),
@@ -730,11 +798,13 @@ class _ClientMobileInvoicesScreenState
     extends State<_ClientMobileInvoicesScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  late GroupClient _client;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _client = widget.client;
   }
 
   @override
@@ -803,17 +873,37 @@ class _ClientMobileInvoicesScreenState
   GroupClient _clientFor(String? clientId) {
     return widget.state._clients.firstWhere(
       (c) => c.id == clientId,
-      orElse: () => widget.client,
+      orElse: () => _client,
     );
+  }
+
+  Future<void> _editClient() async {
+    final s = widget.state;
+    final updated = await showClientEditor(
+      context: context,
+      groupId: s.widget.group.id,
+      api: s._clientsApi,
+      client: _client,
+      existingClients: s._clients,
+    );
+    if (updated == null || !mounted) return;
+    setState(() => _client = updated);
+    s.setState(() {
+      final idx = s._clients.indexWhere((x) => x.id == updated.id);
+      if (idx != -1) s._clients[idx] = updated;
+      if (s._selectedClient?.id == updated.id) s._selectedClient = updated;
+    });
+    final l = AppLocalizations.of(context)!;
+    showSuccessSnack(context, l.clientUpdatedWithName(updated.name));
+    await _refresh();
   }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
     final s = widget.state;
-    final c = widget.client;
+    final c = _client;
 
     final issuedInvoices =
         s._invoices.where((inv) => inv.clientId == c.id).toList();
@@ -880,70 +970,36 @@ class _ClientMobileInvoicesScreenState
       );
     }
 
-    final tabBar = TabBar(
-      controller: _tabController,
-      isScrollable: true,
-      dividerColor: Colors.transparent,
-      splashFactory: NoSplash.splashFactory,
-      overlayColor: WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.08)),
-      indicatorSize: TabBarIndicatorSize.tab,
-      indicator: BoxDecoration(
-        color: cs.primaryContainer,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      indicatorPadding: const EdgeInsets.symmetric(vertical: 4),
-      labelColor: cs.onPrimaryContainer,
-      unselectedLabelColor: cs.onSurfaceVariant,
-      labelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
-      unselectedLabelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-      tabs: [
-        Tab(
-          height: 36,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.receipt_long_outlined, size: 15),
-            const SizedBox(width: 5),
-            Text(l.groupInvoicesTabInvoices(issuedInvoices.length)),
-          ]),
-        ),
-        Tab(
-          height: 36,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.drafts_outlined, size: 15),
-            const SizedBox(width: 5),
-            Text(l.groupInvoicesTabDrafts(draftInvoices.length)),
-          ]),
-        ),
-        Tab(
-          height: 36,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.description_outlined, size: 15),
-            const SizedBox(width: 5),
-            Text(l.contractsTitle),
-          ]),
-        ),
-      ],
-    );
-
     return Scaffold(
       appBar: SectionAppBar(
         title: c.name,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: l.edit,
-            onPressed: () async {
-              await s._openEditClient(c);
-              await _refresh();
-            },
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: IconButton.filledTonal(
+              icon: const Icon(Icons.edit_outlined, size: 19),
+              tooltip: l.edit,
+              onPressed: _editClient,
+              style: IconButton.styleFrom(
+                backgroundColor: cs.primaryContainer,
+                foregroundColor: cs.onPrimaryContainer,
+                minimumSize: const Size(38, 38),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
+          preferredSize: const Size.fromHeight(52),
           child: Material(
             color: Colors.transparent,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: tabBar,
+              child: ClientInvoicesMobileTabBar(
+                controller: _tabController,
+                issuedCount: issuedInvoices.length,
+                draftCount: draftInvoices.length,
+              ),
             ),
           ),
         ),
@@ -964,6 +1020,56 @@ class _ClientMobileInvoicesScreenState
   }
 }
 
+class ClientInvoicesMobileTabBar extends StatelessWidget {
+  const ClientInvoicesMobileTabBar({
+    super.key,
+    required this.controller,
+    required this.issuedCount,
+    required this.draftCount,
+  });
+
+  final TabController controller;
+  final int issuedCount;
+  final int draftCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    return TabBar(
+      controller: controller,
+      isScrollable: true,
+      tabAlignment: TabAlignment.start,
+      labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+      dividerColor: Colors.transparent,
+      splashFactory: NoSplash.splashFactory,
+      overlayColor: WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.08)),
+      indicatorSize: TabBarIndicatorSize.tab,
+      indicator: BoxDecoration(
+        color: cs.primaryContainer,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      indicatorPadding: const EdgeInsets.symmetric(vertical: 4),
+      labelColor: cs.onPrimaryContainer,
+      unselectedLabelColor: cs.onSurfaceVariant,
+      labelStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+      unselectedLabelStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+      tabs: [
+        Tab(
+          height: 44,
+          text: l.groupInvoicesTabInvoices(issuedCount),
+        ),
+        Tab(
+          height: 44,
+          text: l.groupInvoicesTabDrafts(draftCount),
+        ),
+        Tab(height: 44, text: l.contractsTitle),
+      ],
+    );
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -978,7 +1084,7 @@ class _MonthSectionHeader extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     return Padding(
-      padding: EdgeInsets.only(top: first ? 4 : 16, bottom: 6),
+      padding: EdgeInsets.only(top: first ? 4 : 12, bottom: 5),
       child: Row(
         children: [
           Text(

@@ -4,9 +4,9 @@ class DescriptionInputWidget extends StatelessWidget {
   final TextEditingController descriptionController;
 
   const DescriptionInputWidget({
-    Key? key,
+    super.key,
     required this.descriptionController,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

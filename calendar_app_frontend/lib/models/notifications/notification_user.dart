@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show debugPrint;
+
 enum NotificationType { alert, reminder, message, update }
 
 enum PriorityLevel { low, medium, high }
@@ -37,7 +39,7 @@ class NotificationUser {
   final DateTime _timestamp;
   final Map<String, String> questionsAndAnswers;
   final String groupId;
-  bool _isRead;
+  bool isRead;
 
   final NotificationType type;
   final PriorityLevel priority;
@@ -55,18 +57,13 @@ class NotificationUser {
     required DateTime timestamp,
     this.questionsAndAnswers = const {},
     required this.groupId,
-    bool isRead = false,
+    this.isRead = false,
     this.type = NotificationType.message,
     this.priority = PriorityLevel.medium,
     required this.category,
-  })  : _timestamp = timestamp,
-        _isRead = isRead;
+  }) : _timestamp = timestamp;
 
   DateTime get timestamp => _timestamp;
-  bool get isRead => _isRead;
-  set isRead(bool value) {
-    _isRead = value;
-  }
 
   factory NotificationUser.fromJson(Map<String, dynamic> json) {
     try {
@@ -111,7 +108,7 @@ class NotificationUser {
         ),
       );
     } catch (e) {
-      print('❌ Error parsing NotificationUser from JSON: $e');
+      debugPrint('❌ Error parsing NotificationUser from JSON: $e');
       return NotificationUser(
         id: '',
         senderId: '',
@@ -144,7 +141,7 @@ class NotificationUser {
       'timestamp': _timestamp.toIso8601String(),
       'questionsAndAnswers': questionsAndAnswers,
       'groupId': groupId,
-      'isRead': _isRead,
+      'isRead': isRead,
       'type': type.index,
       'priority': priority.index,
       'category': category.index,

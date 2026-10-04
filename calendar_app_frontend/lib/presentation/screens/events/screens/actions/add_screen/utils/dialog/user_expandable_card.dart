@@ -12,15 +12,15 @@ class UserExpandableCard extends StatefulWidget {
   final String? excludeUserId;
 
   const UserExpandableCard({
-    Key? key,
+    super.key,
     required this.usersAvailable,
     required this.onSelectedUsersChanged,
     this.initiallySelected,
     this.excludeUserId,
-  }) : super(key: key);
+  });
 
   @override
-  _UserExpandableCardState createState() => _UserExpandableCardState();
+  State<UserExpandableCard> createState() => _UserExpandableCardState();
 }
 
 class _UserExpandableCardState extends State<UserExpandableCard> {
@@ -84,8 +84,7 @@ class _UserExpandableCardState extends State<UserExpandableCard> {
             onTap: canInvite ? _toggleExpansion : null,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
                 children: [
                   Container(
@@ -170,9 +169,7 @@ class _UserExpandableCardState extends State<UserExpandableCard> {
           ),
 
           // ── Divider ───────────────────────────────────────────────────
-          Divider(
-              height: 1,
-              color: cs.outlineVariant.withValues(alpha: 0.15)),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.15)),
 
           // ── Selected users / empty state ──────────────────────────────
           Padding(
@@ -243,8 +240,7 @@ class _UserChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.secondaryContainer.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(99),
-        border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.3)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

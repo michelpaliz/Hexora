@@ -23,11 +23,11 @@ class EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.search_off, size: 40, color: onBg.withOpacity(0.7)),
+          Icon(Icons.search_off, size: 40, color: onBg.withValues(alpha: 0.7)),
           const SizedBox(height: 8),
           Text(
             l.noMatchesForX(query),
-            style: t.bodyMedium.copyWith(color: onBg.withOpacity(0.9)),
+            style: t.bodyMedium.copyWith(color: onBg.withValues(alpha: 0.9)),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),

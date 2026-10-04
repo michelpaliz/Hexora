@@ -11,6 +11,7 @@ class EventFormRouter extends StatefulWidget {
   final String ownerUserId;
   final CategoryApi categoryApi;
   final bool isEditing;
+  final bool showSubmitButton;
 
   /// Parent’s dialog impl (e.g., `this`)
   final EventDialogs dialogs;
@@ -26,6 +27,7 @@ class EventFormRouter extends StatefulWidget {
     required this.categoryApi,
     required this.dialogs,
     this.isEditing = false,
+    this.showSubmitButton = true,
     this.enableClientServicePickers = false,
   });
 
@@ -56,6 +58,7 @@ class _EventFormRouterState extends State<EventFormRouter> {
       onSubmit: widget.onSubmit,
       ownerUserId: widget.ownerUserId,
       isEditing: widget.isEditing,
+      showSubmitButton: widget.showSubmitButton,
       dialogs: widget.dialogs,
       enableClientServicePickers: true,
     );

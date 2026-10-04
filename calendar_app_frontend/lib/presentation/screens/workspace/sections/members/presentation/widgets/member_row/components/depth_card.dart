@@ -35,7 +35,6 @@ class DepthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final bg = CardSurface.bg(context);
     final border = CardSurface.border(context);
     final onBg = CardSurface.onBg(context);
@@ -48,14 +47,14 @@ class DepthCard extends StatelessWidget {
         boxShadow: [
           // Ambient (broad/soft)
           BoxShadow(
-            color: Colors.black.withOpacity(ambientOpacity),
+            color: Colors.black.withValues(alpha: ambientOpacity),
             blurRadius: ambientBlur,
             spreadRadius: 0,
             offset: const Offset(0, 2),
           ),
           // Key light (crisper/downward)
           BoxShadow(
-            color: Colors.black.withOpacity(keyOpacity),
+            color: Colors.black.withValues(alpha: keyOpacity),
             blurRadius: keyBlur,
             spreadRadius: 0,
             offset: Offset(0, keyYOffset),
@@ -75,7 +74,7 @@ class DepthCard extends StatelessWidget {
             child: Padding(
               padding: padding ?? EdgeInsets.zero,
               child: IconTheme(
-                data: IconThemeData(color: onBg.withOpacity(.7)),
+                data: IconThemeData(color: onBg.withValues(alpha: .7)),
                 child: DefaultTextStyle(
                   style:
                       DefaultTextStyle.of(context).style.copyWith(color: onBg),

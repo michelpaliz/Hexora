@@ -7,10 +7,10 @@ class AddEventButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   const AddEventButton({
-    Key? key,
+    super.key,
     required this.isVisible,
     required this.onPressed,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

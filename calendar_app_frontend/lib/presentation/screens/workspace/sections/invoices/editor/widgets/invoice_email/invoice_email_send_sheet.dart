@@ -335,11 +335,11 @@ $html
             constraints: const BoxConstraints(minHeight: 36, minWidth: 120),
             children: [
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(l.invoiceEmailAttachPdfLabel),
               ),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(l.invoiceEmailSendLinkLabel),
               ),
             ],

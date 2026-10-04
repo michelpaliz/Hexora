@@ -121,6 +121,11 @@ class UserViewModel extends ChangeNotifier {
         if (ctx != null &&
             err != null &&
             GroupMembershipErrorMapper.isPremiumMultiGroupError(err)) {
+          if (!ctx.mounted) {
+            saving = false;
+            notifyListeners();
+            return false;
+          }
           await showPremiumUpgradeDialog(
             ctx,
             message: GroupMembershipErrorMapper.messageFor(

@@ -23,9 +23,7 @@ class MailAddress {
         final rawName = match.group(1)?.trim();
         final email = match.group(2)?.trim();
         if (email == null || email.isEmpty) return null;
-        final cleanedName = rawName == null
-            ? null
-            : rawName.replaceAll(RegExp("^[\"']|[\"']\$"), '').trim();
+        final cleanedName = rawName?.replaceAll(RegExp("^[\"']|[\"']\$"), '').trim();
         return MailAddress(
           address: email,
           name: (cleanedName == null || cleanedName.isEmpty)

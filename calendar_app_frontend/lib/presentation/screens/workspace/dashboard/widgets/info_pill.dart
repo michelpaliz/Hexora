@@ -34,8 +34,8 @@ class InfoPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final bg = (backgroundColor ?? cs.surfaceContainerHighest.withOpacity(0.6));
-    final fg = (foregroundColor ?? cs.onSurface.withOpacity(0.8));
+    final bg = (backgroundColor ?? cs.surfaceContainerHighest.withValues(alpha: 0.6));
+    final fg = (foregroundColor ?? cs.onSurface.withValues(alpha: 0.8));
     final t = AppTypography.of(context);
 
     final pill = Container(

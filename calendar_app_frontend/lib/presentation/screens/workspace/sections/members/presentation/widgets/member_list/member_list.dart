@@ -152,9 +152,9 @@ class MembersList extends StatelessWidget {
     if (useGradientBackground) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
       final panelColor = isDark
-          ? cs.surfaceContainerHighest.withOpacity(0.20)
-          : cs.surfaceContainerHighest.withOpacity(0.60);
-      final panelBorder = cs.outlineVariant.withOpacity(0.12);
+          ? cs.surfaceContainerHighest.withValues(alpha: 0.20)
+          : cs.surfaceContainerHighest.withValues(alpha: 0.60);
+      final panelBorder = cs.outlineVariant.withValues(alpha: 0.12);
 
       return Container(
         margin: const EdgeInsets.all(16),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:iconsax/iconsax.dart';
 
 import 'actions/group_event_actions.dart';

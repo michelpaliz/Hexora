@@ -58,7 +58,7 @@ class SectionHeader extends StatelessWidget {
     );
     final effectiveSubtitle = subtitleStyle ?? defaultSubtitle;
 
-    final lineColor = dividerColor ?? cs.onSurface.withOpacity(0.08);
+    final lineColor = dividerColor ?? cs.onSurface.withValues(alpha: 0.08);
     final titleText = uppercase ? title.toUpperCase() : title;
 
     return Padding(

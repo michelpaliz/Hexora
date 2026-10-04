@@ -25,7 +25,7 @@ void main() {
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
           data:
-              MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(2)),
+              MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(2)),
           child: child!),
       home: DocumentDetailPage(
           title: 'Factura 324-26',
@@ -85,7 +85,7 @@ void main() {
                               title: 'Recibo 324-26',
                               child: ReceiptDetailCard(
                                 fullPage: true,
-                                receipt: Receipt(
+                                receipt: const Receipt(
                                     id: 'r',
                                     groupId: 'g',
                                     clientId: 'c',

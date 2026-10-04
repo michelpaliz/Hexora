@@ -23,7 +23,7 @@ class SearchField extends StatelessWidget {
     final onFill = ThemeColors.contrastOn(fill);
 
     final radius = BorderRadius.circular(12);
-    OutlineInputBorder _b(Color c, [double w = 1]) => OutlineInputBorder(
+    OutlineInputBorder b(Color c, [double w = 1]) => OutlineInputBorder(
         borderRadius: radius, borderSide: BorderSide(color: c, width: w));
 
     return TextField(
@@ -34,16 +34,16 @@ class SearchField extends StatelessWidget {
       style: t.bodyLarge.copyWith(color: ThemeColors.textPrimary(context)),
       decoration: InputDecoration(
         hintText: AppLocalizations.of(context)!.typeNameOrEmail,
-        hintStyle: t.bodyMedium.copyWith(color: onFill.withOpacity(0.75)),
+        hintStyle: t.bodyMedium.copyWith(color: onFill.withValues(alpha: 0.75)),
         isDense: true,
         prefixIcon: Icon(Icons.search, color: cs.secondary),
         filled: true,
         fillColor: fill,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        border: _b(cs.outlineVariant.withOpacity(0.4)),
-        enabledBorder: _b(cs.outlineVariant.withOpacity(0.4)),
-        focusedBorder: _b(cs.primary, 1.6),
+        border: b(cs.outlineVariant.withValues(alpha: 0.4)),
+        enabledBorder: b(cs.outlineVariant.withValues(alpha: 0.4)),
+        focusedBorder: b(cs.primary, 1.6),
       ),
       onSubmitted: onSubmitted,
     );

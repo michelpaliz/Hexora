@@ -106,12 +106,14 @@ class DeliveryStatusBadge extends StatelessWidget {
               children: [
                 Icon(icon, size: 13, color: color),
                 const SizedBox(width: 5),
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.w700,
-                      ),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
                 ),
               ],
             ),

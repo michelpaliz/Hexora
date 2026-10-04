@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'package:hexora/services/config/api_constants.dart';
+import 'package:hexora/services/emails/email_api.dart';
+import '../invoice_email_widgets.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,8 +11,6 @@ import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/models/invoice/client_billing.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/models/invoice/invoice_line.dart';
-import 'package:hexora/services/config/api_constants.dart';
-import 'package:hexora/services/emails/email_api.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/invoicing/invoice_lines_api.dart';
 import 'package:hexora/services/shared/content_disposition.dart';
@@ -20,7 +21,6 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_history_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_lines.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_party.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_email_widgets.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_payment_editor.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/invoice_delivery_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
@@ -67,6 +67,44 @@ class InvoiceDetailSheet extends StatefulWidget {
 class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     with InvoiceDetailSheetLogic {
   bool _previewMenuOpen = false;
+
+  String get _pdfLink {
+    final url = _invoice.pdfUrl?.trim();
+    return url != null && url.isNotEmpty
+        ? url
+        : '${ApiConstants.baseUrl}/invoices/${_invoice.id}/pdf';
+  }
+
+  Future<void> _copyPdfLink() async {
+    await Clipboard.setData(ClipboardData(text: _pdfLink));
+    if (!mounted) return;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(isEs ? 'Enlace PDF copiado' : 'PDF link copied'),
+    ));
+  }
+
+  Future<void> _openSendInvoice({required bool canSend}) async {
+    if (!canSend) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => SendInvoiceSheet(
+        invoice: _invoice,
+        client: widget.client,
+        emailApi: EmailApi(),
+        pdfLink: _pdfLink,
+        onSent: () async {
+          if (!mounted) return;
+          await _loadInvoiceDetail();
+          if (!mounted) return;
+          await _loadInvoiceHistory();
+          if (mounted) await _notifyInvoiceChanged();
+        },
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -182,6 +220,14 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
       controller: scrollCtrl,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
       children: [
+        if (widget.fullPage) ...[
+          OutlinedButton.icon(
+            onPressed: _previewing ? null : _previewPdf,
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            label: Text(l.invoicePreviewCta),
+          ),
+          const SizedBox(height: 12),
+        ],
         // Sheet title
         Padding(
           padding: const EdgeInsets.only(bottom: 20),

@@ -9,10 +9,10 @@ class WeeklyDaySelector extends StatelessWidget {
   final Function(CustomDayOfWeek, bool isSelected) onDayToggle;
 
   const WeeklyDaySelector({
-    Key? key,
+    super.key,
     required this.selectedDays,
     required this.onDayToggle,
-  }) : super(key: key);
+  });
 
   String _translateDayAbbreviation(BuildContext context, String dayAbbr) {
     switch (dayAbbr.toLowerCase()) {
@@ -48,11 +48,13 @@ class WeeklyDaySelector extends StatelessWidget {
           children: [
             Icon(Icons.calendar_today_outlined, size: 18, color: cs.primary),
             const SizedBox(width: 8),
-            Text(
-              AppLocalizations.of(context)!.selectDay,
-              style: t.bodyLarge.copyWith(
-                fontWeight: FontWeight.w700,
-                color: onText,
+            Expanded(
+              child: Text(
+                AppLocalizations.of(context)!.selectDay,
+                style: t.bodyLarge.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: onText,
+                ),
               ),
             ),
           ],
@@ -79,13 +81,14 @@ class WeeklyDaySelector extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               visualDensity: VisualDensity.compact,
               selectedColor: cs.primaryContainer,
-              backgroundColor: cs.surfaceContainerHighest.withOpacity(0.65),
+              backgroundColor:
+                  cs.surfaceContainerHighest.withValues(alpha: 0.65),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
                 side: BorderSide(
                   color: isSelected
                       ? cs.primary
-                      : cs.outlineVariant.withOpacity(0.55),
+                      : cs.outlineVariant.withValues(alpha: 0.55),
                 ),
               ),
             );

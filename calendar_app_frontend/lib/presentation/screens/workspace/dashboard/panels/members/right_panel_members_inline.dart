@@ -54,7 +54,7 @@ class MembersInlinePanel extends StatelessWidget {
             final Color primary = cs.primary;
             final Color selectedText = ThemeColors.contrastOn(primary);
             final Color unselectedText =
-                ThemeColors.textPrimary(context).withOpacity(0.7);
+                ThemeColors.textPrimary(context).withValues(alpha: 0.7);
             final Color trackBg = ThemeColors.cardBg(context);
 
             return Padding(
@@ -98,7 +98,7 @@ class MembersInlinePanel extends StatelessWidget {
                               color: trackBg,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: cs.onSurface.withOpacity(0.06),
+                                color: cs.onSurface.withValues(alpha: 0.06),
                               ),
                             ),
                             child: TabBar(
@@ -194,11 +194,11 @@ class MembersInlinePanel extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       builder: (sheetCtx) {
-        return FractionallySizedBox(
+        return const FractionallySizedBox(
           heightFactor: 0.9,
           child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: const ReviewAndAddUsersScreen(),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            child: ReviewAndAddUsersScreen(),
           ),
         );
       },
@@ -210,9 +210,12 @@ class MembersInlinePanel extends StatelessWidget {
     final roles = result['roles'] as Map<String, String>?;
 
     if (users != null || roles != null) {
+      if (!context.mounted) return;
       final gd = context.read<GroupDomain>();
       final repo = gd.groupRepository;
+      if (!context.mounted) return;
       final groupRepo = context.read<IGroupRepository>();
+      if (!context.mounted) return;
       final userDomain = context.read<UserDomain>();
 
       final mergedRoles = {...group.userRoles, ...?roles};
@@ -308,6 +311,7 @@ class MembersInlinePanel extends StatelessWidget {
 
     await vm.refreshAll();
 
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Members updated')),
     );

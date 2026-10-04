@@ -1,4 +1,3 @@
-import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/services/clients/client_api.dart';
@@ -10,14 +9,12 @@ class _FakeStatementsApi extends StatementsApi {
   _FakeStatementsApi({
     required this.batchIds,
     this.delayPerCall = const Duration(milliseconds: 20),
-    this.pageSize = 100,
-    this.totalPerBatch = 150,
   });
 
   final List<String> batchIds;
   final Duration delayPerCall;
-  final int pageSize;
-  final int totalPerBatch;
+  final int pageSize = 100;
+  final int totalPerBatch = 150;
 
   int callCount = 0;
   int inFlight = 0;

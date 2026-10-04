@@ -8,7 +8,7 @@ Map<String, dynamic> legacyRuleToMap(LegacyRecurrenceRule rule) {
   final map = <String, dynamic>{
     'id': rule.id,
     'name': rule.name,
-    'recurrenceType': rule.recurrenceType.name,
+    'recurrenceType': rule.recurrenceType.wireValue,
   };
   if (rule.daysOfWeek != null) {
     map['daysOfWeek'] = rule.daysOfWeek!.map((d) => d.name).toList();
@@ -93,17 +93,17 @@ LegacyRecurrenceRule legacyRuleFromMap(Map<String, dynamic> map) {
 /// Maps a string into the RecurrenceType enum.
 RecurrenceType mapStringToRecurrenceType(String? value) {
   if (value == null) {
-    throw FormatException('Missing recurrenceType or name in recurrenceRule');
+    throw const FormatException('Missing recurrenceType or name in recurrenceRule');
   }
   switch (value.toLowerCase()) {
     case 'daily':
-      return RecurrenceType.Daily;
+      return RecurrenceType.daily;
     case 'weekly':
-      return RecurrenceType.Weekly;
+      return RecurrenceType.weekly;
     case 'monthly':
-      return RecurrenceType.Monthly;
+      return RecurrenceType.monthly;
     case 'yearly':
-      return RecurrenceType.Yearly;
+      return RecurrenceType.yearly;
     default:
       throw FormatException('Unknown recurrenceType: $value');
   }
@@ -130,7 +130,7 @@ String toRRuleStringUtils(
     buffer.writeln('DTSTART:${dt}Z');
   }
 
-  buffer.write('RRULE:FREQ=${rule.recurrenceType.name.toUpperCase()}');
+  buffer.write('RRULE:FREQ=${rule.recurrenceType.wireValue.toUpperCase()}');
   buffer.write(';INTERVAL=${rule.repeatInterval ?? 1}');
 
   // Only include UNTIL if it’s after the start date
@@ -145,21 +145,21 @@ String toRRuleStringUtils(
     buffer.write(';UNTIL=${until}Z');
   }
 
-  if (rule.recurrenceType == RecurrenceType.Weekly) {
+  if (rule.recurrenceType == RecurrenceType.weekly) {
     if (rule.daysOfWeek == null || rule.daysOfWeek!.isEmpty) {
-      throw FormatException('Weekly recurrence must have daysOfWeek defined.');
+      throw const FormatException('Weekly recurrence must have daysOfWeek defined.');
     }
     final days = rule.daysOfWeek!.map((d) => d.toRRuleDay()).join(',');
     buffer.write(';BYDAY=$days');
   }
 
-  if ((rule.recurrenceType == RecurrenceType.Monthly ||
-          rule.recurrenceType == RecurrenceType.Yearly) &&
+  if ((rule.recurrenceType == RecurrenceType.monthly ||
+          rule.recurrenceType == RecurrenceType.yearly) &&
       rule.dayOfMonth != null) {
     buffer.write(';BYMONTHDAY=${rule.dayOfMonth}');
   }
 
-  if (rule.recurrenceType == RecurrenceType.Yearly && rule.month != null) {
+  if (rule.recurrenceType == RecurrenceType.yearly && rule.month != null) {
     buffer.write(';BYMONTH=${rule.month}');
   }
 

@@ -46,14 +46,16 @@ class LabeledField extends StatelessWidget {
     );
     final disabledBorder = OutlineInputBorder(
       borderRadius: borderRadius,
-      borderSide:
-          BorderSide(color: cs.outlineVariant.withValues(alpha: 0.25), width: 1),
+      borderSide: BorderSide(
+          color: cs.outlineVariant.withValues(alpha: 0.25), width: 1),
     );
 
     return TextField(
       controller: controller,
       enabled: enabled,
       keyboardType: keyboardType,
+      textInputAction:
+          maxLines == 1 ? TextInputAction.next : TextInputAction.newline,
       maxLength: maxLength,
       maxLines: maxLines,
       inputFormatters: inputFormatters,
@@ -96,7 +98,7 @@ class LabeledField extends StatelessWidget {
         errorText: errorText,
 
         // Helpers
-        counterText: maxLength != null ? null : '', // hide counter unless used
+        counterText: maxLines == 1 ? '' : null,
       ),
     );
   }

@@ -4,7 +4,7 @@ import 'package:hexora/l10n/app_localizations.dart';
 class NoteInput extends StatelessWidget {
   final TextEditingController controller;
 
-  const NoteInput({Key? key, required this.controller}) : super(key: key);
+  const NoteInput({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {

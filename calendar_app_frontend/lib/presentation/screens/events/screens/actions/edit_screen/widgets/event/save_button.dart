@@ -4,7 +4,7 @@ import 'package:hexora/l10n/app_localizations.dart';
 class SaveButton extends StatelessWidget {
   final VoidCallback onPressed;
 
-  const SaveButton({Key? key, required this.onPressed}) : super(key: key);
+  const SaveButton({super.key, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {

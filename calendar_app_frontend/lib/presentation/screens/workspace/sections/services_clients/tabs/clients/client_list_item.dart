@@ -78,24 +78,26 @@ class _ClientListItemState extends State<ClientListItem> {
           borderRadius: BorderRadius.circular(16),
           onTap: widget.onTap,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   CircleAvatar(
-                    radius: 20,
+                    radius: 16,
                     backgroundColor: cs.primaryContainer,
                     foregroundColor: cs.onPrimaryContainer,
                     child:
                         Text(_initials, style: const TextStyle(fontSize: 13)),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                       child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(widget.client.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: widget.nameStyle.copyWith(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -103,7 +105,7 @@ class _ClientListItemState extends State<ClientListItem> {
                       if (contact != null && contact.trim().isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(contact,
-                            maxLines: 2,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: widget.metaStyle.copyWith(
                                 fontSize: 13, color: cs.onSurfaceVariant)),
@@ -114,8 +116,8 @@ class _ClientListItemState extends State<ClientListItem> {
                   Icon(Icons.chevron_right,
                       size: 20, color: cs.onSurfaceVariant),
                 ]),
-                const SizedBox(height: 12),
-                Wrap(spacing: 8, runSpacing: 8, children: [
+                const SizedBox(height: 6),
+                Wrap(spacing: 8, runSpacing: 4, children: [
                   _StatusChip(active: isActive),
                   if (monthChip != null) monthChip,
                 ]),

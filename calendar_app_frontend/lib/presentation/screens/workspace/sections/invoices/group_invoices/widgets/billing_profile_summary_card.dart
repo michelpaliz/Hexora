@@ -164,7 +164,7 @@ class _InfoRow extends StatelessWidget {
   final IconData icon;
   final bool monospace;
   final bool inline;
-  final VoidCallback? onTap;
+  final VoidCallback? onTap = null;
   final VoidCallback? onCopy;
 
   const _InfoRow({
@@ -173,7 +173,6 @@ class _InfoRow extends StatelessWidget {
     required this.icon,
     this.monospace = false,
     this.inline = false,
-    this.onTap,
     this.onCopy,
   });
 
@@ -241,8 +240,9 @@ class _InfoRow extends StatelessWidget {
       ],
     );
 
-    if (onTap == null)
+    if (onTap == null) {
       return Padding(padding: const EdgeInsets.only(bottom: 8), child: row);
+    }
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(

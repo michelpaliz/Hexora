@@ -14,7 +14,7 @@ class AvatarUtils {
   }
 
   static Color _iconColor(BuildContext context) =>
-      Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.9);
+      Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.9);
 
   static Widget _circleAvatar({
     required BuildContext context,

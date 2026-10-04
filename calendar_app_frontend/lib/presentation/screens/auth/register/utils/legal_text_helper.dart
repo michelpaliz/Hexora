@@ -11,7 +11,7 @@ Widget buildLegalText(BuildContext context) {
     textAlign: TextAlign.center,
     text: TextSpan(
       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: cs.onSurface.withOpacity(0.7),
+            color: cs.onSurface.withValues(alpha: 0.7),
           ),
       children: [
         TextSpan(text: l10n.termsAndPrivacyPrefix), // optional prefix

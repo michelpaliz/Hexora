@@ -18,16 +18,16 @@ class ColorManager {
   /// Canonical (language-agnostic) base names for each color.
   /// Keys are the ARGB int values for stability.
   static final Map<int, String> _baseNameByColorValue = <int, String>{
-    Colors.red.value: 'Red',
-    Colors.blue.value: 'Blue',
-    Colors.green.value: 'Green',
-    Colors.yellow.value: 'Yellow',
-    Colors.orange.value: 'Orange',
-    Colors.purple.value: 'Purple',
-    Colors.pink.value: 'Pink',
-    Colors.teal.value: 'Teal',
-    Colors.indigo.value: 'Indigo',
-    Colors.deepOrange.value: 'Deep Orange',
+    Colors.red.toARGB32(): 'Red',
+    Colors.blue.toARGB32(): 'Blue',
+    Colors.green.toARGB32(): 'Green',
+    Colors.yellow.toARGB32(): 'Yellow',
+    Colors.orange.toARGB32(): 'Orange',
+    Colors.purple.toARGB32(): 'Purple',
+    Colors.pink.toARGB32(): 'Pink',
+    Colors.teal.toARGB32(): 'Teal',
+    Colors.indigo.toARGB32(): 'Indigo',
+    Colors.deepOrange.toARGB32(): 'Deep Orange',
   };
 
   /// Localized labels for base names.
@@ -65,9 +65,9 @@ class ColorManager {
     Color color, {
     String localeCode = 'en',
   }) {
-    final base = _baseNameByColorValue[color.value];
+    final base = _baseNameByColorValue[color.toARGB32()];
     if (base == null) {
-      debugPrint('⚠️ Unknown color: ${color.value.toRadixString(16)}');
+      debugPrint('⚠️ Unknown color: ${color.toARGB32().toRadixString(16)}');
       return localeCode == 'es' ? 'Desconocido' : 'Unknown';
     }
     final localeMap = _labels[localeCode] ?? _labels['en']!;
@@ -111,7 +111,8 @@ class ColorManager {
 
   /// Palette helpers
   int getColorIndex(Color color) {
-    final index = eventColors.indexWhere((c) => c.value == color.value);
+    final index =
+        eventColors.indexWhere((c) => c.toARGB32() == color.toARGB32());
     return index != -1 ? index : 0;
   }
 

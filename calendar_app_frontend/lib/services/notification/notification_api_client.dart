@@ -192,9 +192,6 @@ class NotificationApiClient {
 
   Future<GetNotifResult> getNotificationById(String id) async {
     final res = await AuthenticatedHttpClient.get(Uri.parse('$baseUrl/$id'));
-    print('ðŸ› status=${res.statusCode}');
-    print('ðŸ“¦ body=${res.body}');
-
     if (res.statusCode == 200) {
       final decoded = jsonDecode(res.body);
       if (decoded is! Map<String, dynamic>) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/notification_destination.dart';
 import 'package:hexora/models/notifications/notification_localization.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/event_args_helper.dart';
@@ -14,6 +15,7 @@ import 'package:intl/intl.dart';
 class NotificationCard extends StatelessWidget {
   final NotificationUser notification;
   final VoidCallback onDelete;
+  final Future<void> Function()? onDeleteAsync;
   final VoidCallback? onConfirm;
   final VoidCallback? onNegate;
   final VoidCallback? onTap;
@@ -30,6 +32,7 @@ class NotificationCard extends StatelessWidget {
     super.key,
     required this.notification,
     required this.onDelete,
+    this.onDeleteAsync,
     this.onConfirm,
     this.onNegate,
     this.onTap,
@@ -41,10 +44,8 @@ class NotificationCard extends StatelessWidget {
 
   // ── helpers ────────────────────────────────────────────────────────────────
 
-  bool get _isConcurrentEvent =>
-      isConcurrentEventNotification(notification);
-  bool get _isIssuedDocument =>
-      isIssuedDocumentNotification(notification);
+  bool get _isConcurrentEvent => isConcurrentEventNotification(notification);
+  bool get _isIssuedDocument => isIssuedDocumentNotification(notification);
   bool get _isEvent => isEventNotification(notification);
 
   @override
@@ -55,8 +56,25 @@ class NotificationCard extends StatelessWidget {
       key: Key(notification.id),
       background: _swipeLeft(),
       secondaryBackground: _swipeRight(),
-      confirmDismiss: (_) => _confirmDismiss(context, loc),
-      onDismissed: (_) => onDelete(),
+      confirmDismiss: (_) async {
+        if (!await _confirmDismiss(context, loc)) return false;
+        if (onDeleteAsync == null) return true;
+        try {
+          await onDeleteAsync!();
+          return true;
+        } catch (_) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(loc.localeName.startsWith('es')
+                    ? 'No se pudo borrar. Inténtalo de nuevo.'
+                    : 'Could not delete. Please try again.')));
+          }
+          return false;
+        }
+      },
+      onDismissed: (_) {
+        if (onDeleteAsync == null) onDelete();
+      },
       child: _isConcurrentEvent
           ? _ConcurrentEventCard(
               notification: notification,
@@ -74,21 +92,22 @@ class NotificationCard extends StatelessWidget {
                   isSelected: isSelected,
                 )
               : _isEvent
-          ? _EventCard(
-              notification: notification,
-              onDelete: onDelete,
-              onMarkRead: onMarkRead,
-              onOpenEvent: onOpenEvent,
-              onTap: onTap,
-              isSelected: isSelected,
-            )
-          : _DefaultCard(
-              notification: notification,
-              onConfirm: onConfirm,
-              onNegate: onNegate,
-              onTap: onTap,
-              isSelected: isSelected,
-            ),
+                  ? _EventCard(
+                      notification: notification,
+                      onDelete: onDelete,
+                      onMarkRead: onMarkRead,
+                      onOpenEvent: onOpenEvent,
+                      onTap: onTap,
+                      isSelected: isSelected,
+                    )
+                  : _DefaultCard(
+                      notification: notification,
+                      onConfirm: onConfirm,
+                      onNegate: onNegate,
+                      onMarkRead: onMarkRead,
+                      onTap: onTap,
+                      isSelected: isSelected,
+                    ),
     );
   }
 
@@ -112,10 +131,10 @@ class NotificationCard extends StatelessWidget {
       ).then((v) => v ?? false);
 
   Widget _swipeLeft() => Container(
-        color: Colors.blue,
+        color: Colors.red,
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.only(left: 16),
-        child: const Icon(Icons.info, color: Colors.white),
+        child: const Icon(Icons.delete, color: Colors.white),
       );
 
   Widget _swipeRight() => Container(
@@ -134,6 +153,7 @@ class _DefaultCard extends StatelessWidget {
     required this.isSelected,
     this.onConfirm,
     this.onNegate,
+    this.onMarkRead,
     this.onTap,
   });
 
@@ -141,6 +161,7 @@ class _DefaultCard extends StatelessWidget {
   final bool isSelected;
   final VoidCallback? onConfirm;
   final VoidCallback? onNegate;
+  final VoidCallback? onMarkRead;
   final VoidCallback? onTap;
 
   @override
@@ -151,8 +172,9 @@ class _DefaultCard extends StatelessWidget {
     final title = notification.getLocalizedTitle(loc);
     final isUnread = !notification.isRead;
 
-    final actionable = notification.category == Category.groupInvitation ||
-        notification.questionsAndAnswers.isNotEmpty;
+    final actionable = resolveNotificationDestination(notification) ==
+            NotificationDestination.invitation &&
+        (onConfirm != null || onNegate != null);
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 10),
@@ -163,7 +185,8 @@ class _DefaultCard extends StatelessWidget {
         side: isSelected
             ? BorderSide(color: cs.primary.withValues(alpha: 0.45), width: 1.2)
             : isUnread
-                ? BorderSide(color: cs.primary.withValues(alpha: 0.20), width: 1)
+                ? BorderSide(
+                    color: cs.primary.withValues(alpha: 0.20), width: 1)
                 : BorderSide.none,
       ),
       child: InkWell(
@@ -203,11 +226,13 @@ class _DefaultCard extends StatelessWidget {
                           alignment: PlaceholderAlignment.middle,
                           child: Padding(
                             padding: const EdgeInsets.only(right: 6),
-                            child: Icon(Icons.circle, size: 7, color: cs.primary),
+                            child:
+                                Icon(Icons.circle, size: 7, color: cs.primary),
                           ),
                         ),
                       TextSpan(
-                        text: formatTimeDifference(notification.timestamp, context),
+                        text: formatTimeDifference(
+                            notification.timestamp, context),
                       ),
                     ]),
                     style: typo.caption.copyWith(
@@ -224,24 +249,41 @@ class _DefaultCard extends StatelessWidget {
                   fontWeight: isUnread ? FontWeight.w500 : FontWeight.normal,
                 ),
               ),
+              if (isUnread && onMarkRead != null)
+                Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton(
+                        tooltip: loc.localeName.startsWith('es')
+                            ? 'Marcar como leída'
+                            : 'Mark as read',
+                        onPressed: onMarkRead,
+                        icon: const Icon(Icons.done))),
               if (actionable) ...[
                 const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    RoundedActionButton(
-                      text: loc.confirm,
-                      onPressed: onConfirm ?? () {},
-                      backgroundColor: cs.primary,
-                      textColor: cs.onPrimary,
-                    ),
+                    if (onConfirm != null)
+                      RoundedActionButton(
+                        text: loc.localeName.startsWith('es')
+                            ? 'Aceptar invitación'
+                            : 'Accept invitation',
+                        onPressed: onConfirm!,
+                        backgroundColor: cs.primary,
+                        textColor: cs.onPrimary,
+                      ),
                     const SizedBox(width: 8),
-                    RoundedActionButton(
-                      text: loc.cancel,
-                      onPressed: onNegate ?? () {},
-                      backgroundColor: cs.error.withValues(alpha: 0.12),
-                      textColor: cs.error,
-                    ),
+                    if (onNegate != null)
+                      RoundedActionButton(
+                        text: loc.localeName.startsWith('es')
+                            ? 'Rechazar'
+                            : 'Decline',
+                        onPressed: onNegate!,
+                        backgroundColor: cs.error.withValues(alpha: 0.12),
+                        textColor: cs.error,
+                      ),
                   ],
                 ),
               ],
@@ -285,8 +327,7 @@ class _ConcurrentEventCard extends StatelessWidget {
     final senderName = data.senderName;
     final isUnread = !notification.isRead;
     final effectiveGroupId = data.groupId ?? notification.groupId;
-    final canOpen =
-        data.eventId != null && effectiveGroupId.trim().isNotEmpty;
+    final canOpen = data.eventId != null && effectiveGroupId.trim().isNotEmpty;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 10),
@@ -418,7 +459,7 @@ class _ConcurrentEventCard extends StatelessWidget {
                   if (onMarkRead != null && isUnread)
                     _ActionButton(
                       icon: Icons.done_rounded,
-                      label: isEs ? 'Marcar leida' : 'Mark as read',
+                      label: isEs ? 'Marcar como leída' : 'Mark as read',
                       color: cs.onSurface.withValues(alpha: 0.6),
                       enabled: true,
                       onPressed: onMarkRead,
@@ -607,7 +648,7 @@ class _IssuedDocumentCard extends StatelessWidget {
                   if (onMarkRead != null && isUnread)
                     _ActionButton(
                       icon: Icons.done_rounded,
-                      label: isEs ? 'Marcar leida' : 'Mark as read',
+                      label: isEs ? 'Marcar como leída' : 'Mark as read',
                       color: cs.onSurface.withValues(alpha: 0.6),
                       enabled: true,
                       onPressed: onMarkRead,
@@ -677,6 +718,96 @@ class _EventCard extends StatelessWidget {
                 args.action != 'started'
             ? (isEs ? 'Desconocido' : 'Unknown')
             : null);
+
+    if (MediaQuery.sizeOf(context).width < 700) {
+      final action = args.action;
+      return Card(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        elevation: 0,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+                color: isUnread
+                    ? meta.color.withValues(alpha: .3)
+                    : cs.outlineVariant.withValues(alpha: .35))),
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          ExpansionTile(
+            tilePadding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+            childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            shape: const Border(),
+            collapsedShape: const Border(),
+            title: InkWell(
+              onTap: onTap,
+              child:
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Icon(meta.icon, size: 20, color: meta.color),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Text(eventTitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: typo.bodyMedium.copyWith(
+                            fontWeight:
+                                isUnread ? FontWeight.w700 : FontWeight.w500))),
+              ]),
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Wrap(spacing: 8, runSpacing: 4, children: [
+                if (isUnread)
+                  Text(isEs ? 'Sin leer' : 'Unread',
+                      style: typo.caption.copyWith(
+                          color: cs.primary, fontWeight: FontWeight.w700)),
+                if (action != null)
+                  Text(actionLabel(action, isEs: isEs),
+                      style: typo.caption.copyWith(color: meta.color)),
+                Text(formatTimeDifference(notification.timestamp, context),
+                    style: typo.caption.copyWith(color: cs.onSurfaceVariant)),
+              ]),
+            ),
+            children: [
+              Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(subtitle, style: typo.bodySmall)),
+              if (actorName != null || args.groupName != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                          [args.groupName, actorName]
+                              .whereType<String>()
+                              .join(' · '),
+                          style: typo.caption)),
+                ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 4, 2),
+            child: Row(children: [
+              Expanded(
+                  child: Text(dateStr ?? '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          typo.caption.copyWith(color: cs.onSurfaceVariant))),
+              if (eventId != null && onOpenEvent != null)
+                IconButton(
+                    tooltip: isEs ? 'Abrir evento' : 'Open event',
+                    onPressed: () => onOpenEvent!(eventId, groupId),
+                    icon: Icon(Icons.open_in_new, size: 20, color: cs.primary)),
+              if (isUnread && onMarkRead != null)
+                IconButton(
+                    tooltip: isEs ? 'Marcar como leída' : 'Mark as read',
+                    onPressed: onMarkRead,
+                    icon: const Icon(Icons.done, size: 20)),
+            ]),
+          ),
+        ]),
+      );
+    }
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 10),
@@ -1148,10 +1279,19 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width < 700) {
+      return IconButton(
+        tooltip: label,
+        onPressed: enabled ? onPressed : null,
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+        icon: Icon(icon, size: 20),
+        color: color,
+      );
+    }
     final typo = AppTypography.of(context);
     final effectiveColor = enabled ? color : color.withValues(alpha: 0.35);
     return InkWell(
-      onTap: onPressed,
+      onTap: enabled ? onPressed : null,
       borderRadius: BorderRadius.circular(6),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),

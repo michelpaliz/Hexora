@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -33,7 +33,7 @@ class VerifyEmailSuccessView extends StatelessWidget {
                       width: 82,
                       height: 82,
                       decoration: BoxDecoration(
-                        color: cs.primary.withOpacity(0.12),
+                        color: cs.primary.withValues(alpha: 0.12),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -52,7 +52,7 @@ class VerifyEmailSuccessView extends StatelessWidget {
                     Text(
                       l10n.verifySuccessMessage,
                       style: t.bodyLarge.copyWith(
-                        color: cs.onSurface.withOpacity(0.8),
+                        color: cs.onSurface.withValues(alpha: 0.8),
                       ),
                       textAlign: TextAlign.center,
                     ),

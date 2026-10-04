@@ -98,7 +98,7 @@ class _GroupImageState extends State<GroupImage> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: cs.primary.withOpacity(.25),
+                      color: cs.primary.withValues(alpha: .25),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -124,7 +124,7 @@ class _GroupImageState extends State<GroupImage> {
                     ? Icon(
                         Icons.groups_rounded,
                         size: widget.size * 0.45,
-                        color: cs.onSurfaceVariant.withOpacity(.6),
+                        color: cs.onSurfaceVariant.withValues(alpha: .6),
                       )
                     : null,
               ),
@@ -134,7 +134,7 @@ class _GroupImageState extends State<GroupImage> {
                 Positioned.fill(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.6),
+                      color: Colors.black.withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(widget.borderRadius),
                     ),
                     child: Center(
@@ -166,7 +166,7 @@ class _GroupImageState extends State<GroupImage> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: cs.primary.withOpacity(.3),
+                          color: cs.primary.withValues(alpha: .3),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -226,7 +226,7 @@ class _GroupImageState extends State<GroupImage> {
                 onPressed: widget.isUploading ? null : _remove,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: cs.error,
-                  side: BorderSide(color: cs.error.withOpacity(.4)),
+                  side: BorderSide(color: cs.error.withValues(alpha: .4)),
                   padding: const EdgeInsets.all(10),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),

@@ -5,7 +5,7 @@ class CustomMergedCell extends StatelessWidget {
   final List<DateTime> mergedDates;
   final List<Event> events;
 
-  CustomMergedCell({required this.mergedDates, required this.events});
+  const CustomMergedCell({super.key, required this.mergedDates, required this.events});
 
   @override
   Widget build(BuildContext context) {
@@ -19,12 +19,12 @@ class CustomMergedCell extends StatelessWidget {
           for (var date in mergedDates)
             Text(
               date.day.toString(),
-              style: TextStyle(fontSize: 16, color: Colors.white),
+              style: const TextStyle(fontSize: 16, color: Colors.white),
             ),
           for (var event in events)
             Text(
               event.title,
-              style: TextStyle(fontSize: 12, color: Colors.white),
+              style: const TextStyle(fontSize: 12, color: Colors.white),
             ),
         ],
       ),

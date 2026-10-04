@@ -12,6 +12,7 @@ import 'add_client_controller.dart';
 import 'widgets/billing_section/billing_section.dart';
 import 'widgets/client_contact_form.dart';
 import 'widgets/client_header.dart';
+import 'widgets/client_editor_theme.dart';
 import 'widgets/save_button.dart';
 import 'widgets/service_location_section.dart';
 
@@ -302,7 +303,12 @@ class _AddClientSheetState extends State<AddClientSheet> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Theme(
+        data: clientEditorThemeOf(context),
+        child: Builder(builder: _buildEditor),
+      );
+
+  Widget _buildEditor(BuildContext context) {
     final pad = MediaQuery.of(context).viewInsets.bottom + 16;
 
     final form = Padding(
@@ -310,6 +316,7 @@ class _AddClientSheetState extends State<AddClientSheet> {
       child: Form(
         key: c.formKey,
         child: SingleChildScrollView(
+          padding: const EdgeInsets.only(top: 8),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Column(
             mainAxisSize: MainAxisSize.min,

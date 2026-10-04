@@ -36,7 +36,7 @@ class HomeSectionNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bg = isDark ? AppDarkColors.background : AppColors.background;
-    final border = Colors.black.withOpacity(isDark ? 0.25 : 0.1);
+    final border = Colors.black.withValues(alpha: isDark ? 0.25 : 0.1);
     final pillColor = isDark ? AppDarkColors.surface : AppColors.surface;
     final activeColor = isDark ? AppDarkColors.primary : AppColors.primary;
     final onSurface =
@@ -53,11 +53,11 @@ class HomeSectionNav extends StatelessWidget {
             label: Text(item.label),
             selected: selectedId == item.id,
             onSelected: (_) => onSelect(item.id),
-            selectedColor: activeColor.withOpacity(0.14),
+            selectedColor: activeColor.withValues(alpha: 0.14),
             labelStyle: TextStyle(
               color: selectedId == item.id
                   ? activeColor
-                  : onSurface.withOpacity(0.85),
+                  : onSurface.withValues(alpha: 0.85),
               fontWeight:
                   selectedId == item.id ? FontWeight.w700 : FontWeight.w500,
             ),
@@ -65,7 +65,7 @@ class HomeSectionNav extends StatelessWidget {
             shape: StadiumBorder(
               side: BorderSide(
                 color: selectedId == item.id
-                    ? activeColor.withOpacity(0.45)
+                    ? activeColor.withValues(alpha: 0.45)
                     : border,
               ),
             ),
@@ -93,7 +93,7 @@ class HomeSectionNav extends StatelessWidget {
       padding: padding,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: pillColor.withOpacity(0.4),
+          color: pillColor.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: border, width: 0.8),
         ),

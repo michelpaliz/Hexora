@@ -494,10 +494,10 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
                                 child:
                                     CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : Icon(
+                            : const Icon(
                                 Icons.document_scanner_outlined,
                                 size: 13,
-                                color: const Color(0xFFD97706),
+                                color: Color(0xFFD97706),
                               ),
                       ),
                     ),
@@ -553,9 +553,16 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
                     alignment: Alignment.centerLeft,
                     child: OutlinedButton.icon(
                       onPressed: () async {
-                        final url = Uri.tryParse(fileUrl);
-                        if (url != null) {
-                          await launchUrl(url, webOnlyWindowName: '_blank');
+                        final bytes = await _loadPdfPreviewBytes(fileUrl);
+                        if (!mounted) return;
+                        final opened = bytes != null &&
+                            bytes.isNotEmpty &&
+                            await ExpenseFormHelpers.previewPdf(
+                                context, bytes, 'expense-document.pdf');
+                        if (!opened && mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(l.invoicePdfPreviewFailedSnack),
+                          ));
                         }
                       },
                       icon: const Icon(Icons.picture_as_pdf_outlined),

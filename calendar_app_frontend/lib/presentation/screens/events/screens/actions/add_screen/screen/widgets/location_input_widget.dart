@@ -4,9 +4,9 @@ class LocationInputWidget extends StatelessWidget {
   final TextEditingController locationController;
 
   const LocationInputWidget({
-    Key? key,
+    super.key,
     required this.locationController,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

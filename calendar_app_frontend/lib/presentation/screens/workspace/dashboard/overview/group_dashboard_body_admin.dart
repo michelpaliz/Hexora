@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/header/group_header_view.dart';
 import 'package:hexora/presentation/screens/workspace/sections/business_hours/edit_business_hours_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/business_hours/group_business_hours_card.dart';
@@ -12,6 +12,7 @@ import 'package:hexora/presentation/screens/workspace/sections/members/presentat
 import 'package:hexora/presentation/screens/workspace/sections/role_info/profile_role_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/undone_events/group_undone_events_section.dart';
 import 'package:hexora/presentation/screens/workspace/sections/upcoming_events/group_upcoming_events.dart';
+import 'package:hexora/presentation/screens/workspace/sections/weather/work_conditions_card.dart';
 import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -78,6 +79,7 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
     final domain = context.read<GroupDomain>();
     final rootNav = Navigator.of(context, rootNavigator: true);
 
+    if (!rootNav.mounted) return;
     showDialog<void>(
       context: rootNav.context,
       barrierDismissible: false,
@@ -117,7 +119,7 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
         context.read<GroupDashboardState>().openSection(section);
 
     Widget heading(String text) => Padding(
-          padding: const EdgeInsets.only(top: 24, bottom: 10),
+          padding: const EdgeInsets.only(top: 16, bottom: 8),
           child: Text(text,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
@@ -161,13 +163,6 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
           GroupHeaderView(group: _group),
-          heading(es ? 'Accesos rápidos' : 'Quick access'),
-          group([
-            destination(Icons.design_services_outlined, l.servicesClientsTitle,
-                Sections.services),
-            destination(Icons.map_outlined,
-                es ? 'Mapa y visitas' : 'Map and visits', Sections.maps),
-          ]),
           heading(l.sectionEvents),
           group([
             destination(Icons.view_agenda_outlined, l.agenda, Sections.agenda),
@@ -193,6 +188,15 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
             currentUserId: widget.user.id,
           ),
           const SizedBox(height: 12),
+          WorkConditionsCard(groupId: _group.id),
+          heading(es ? 'Accesos rápidos' : 'Quick access'),
+          group([
+            destination(Icons.design_services_outlined, l.servicesClientsTitle,
+                Sections.services),
+            destination(Icons.map_outlined,
+                es ? 'Mapa y visitas' : 'Map and visits', Sections.maps),
+          ]),
+          const SizedBox(height: 12),
           group([
             destination(
                 Icons.insights_outlined, l.insightsTitle, Sections.insights),
@@ -207,6 +211,7 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
                 Sections.expenses),
             destination(Icons.mail_outline_rounded, l.mailConsoleTitle,
                 Sections.emails),
+            destination(Icons.telegram, 'Telegram', Sections.telegram),
           ]),
           heading(es ? 'Equipo' : 'Team'),
           group([
@@ -284,6 +289,8 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
                 context.read<GroupDashboardState>().openSection('profile'),
           ),
 
+          const SizedBox(height: 20),
+          WorkConditionsCard(groupId: _group.id),
           const SizedBox(height: 20),
           SectionHeader(title: l.sectionBusinessHours, textStyle: sectionTitle),
           GroupBusinessHoursCard(

@@ -31,7 +31,8 @@ class GroupThumbnail extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           color: bgColor,
-          border: Border.all(color: scheme.outlineVariant.withOpacity(0.4)),
+          border:
+              Border.all(color: scheme.outlineVariant.withValues(alpha: 0.4)),
         ),
         child: _buildImageOrFallback(scheme),
       ),
@@ -52,7 +53,7 @@ class GroupThumbnail extends StatelessWidget {
           return const Center(child: CircularProgressIndicator(strokeWidth: 2));
         },
         errorBuilder: (ctx, error, stack) {
-          print('GroupThumbnail: failed to load "$url": $error');
+          debugPrint('GroupThumbnail: failed to load "$url": $error');
           return _fallbackWidget(scheme);
         },
       );

@@ -292,8 +292,7 @@ class _PresupuestoConversionDialogState
     if (presupuestoId.isEmpty) return;
 
     final percent = double.tryParse(_percentCtrl.text.trim()) ?? 70;
-    final base = double.tryParse(_baseAmountCtrl.text.trim());
-    final tax = double.tryParse(_taxRateCtrl.text.trim());
+
     final desc = _advDescCtrl.text.trim();
 
     final input = AdvanceInvoiceConfigInput(

@@ -9,7 +9,7 @@ class CardSurface {
       return Theme.of(context).colorScheme.surfaceContainerLow;
     }
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return isDark ? AppDarkColors.surface : AppColors.surface.withOpacity(0.98);
+    return isDark ? AppDarkColors.surface : AppColors.surface.withValues(alpha: 0.98);
   }
 
   static Color border(BuildContext context) {
@@ -18,16 +18,16 @@ class CardSurface {
     }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark
-        ? AppDarkColors.textSecondary.withOpacity(0.14)
-        : AppColors.primary.withOpacity(0.08);
+        ? AppDarkColors.textSecondary.withValues(alpha: 0.14)
+        : AppColors.primary.withValues(alpha: 0.08);
   }
 
   static Color shadow(BuildContext context) {
     if (MobileTheme.isActive(context)) return Colors.transparent;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark
-        ? Colors.black.withOpacity(0.35)
-        : Colors.black.withOpacity(0.12);
+        ? Colors.black.withValues(alpha: 0.35)
+        : Colors.black.withValues(alpha: 0.12);
   }
 
   static Color onBg(BuildContext context) {
@@ -52,8 +52,8 @@ class CardSurface {
     }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark
-        ? AppDarkColors.primary.withOpacity(0.10)
-        : AppColors.primary.withOpacity(0.08);
+        ? AppDarkColors.primary.withValues(alpha: 0.10)
+        : AppColors.primary.withValues(alpha: 0.08);
   }
 }
 

@@ -4,7 +4,7 @@ import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/group_profile/dialog_choosement/action/edit_group_arg.dart';
-import 'package:hexora/presentation/routes/appRoutes.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import '../confirmation_dialog.dart';
@@ -34,12 +34,13 @@ List<Widget> buildProfileDialogActions(
       // ✏️ Edit Button
       TextButton(
         onPressed: () async {
+          final rootNavigator = Navigator.of(context, rootNavigator: true);
           Navigator.of(context).pop();
-          await Future.delayed(const Duration(milliseconds: 100));
+          await Future<void>.delayed(const Duration(milliseconds: 100));
 
-          final overlayContext =
-              Navigator.of(context, rootNavigator: true).context;
-
+          if (!rootNavigator.mounted) return;
+          final overlayContext = rootNavigator.context;
+          if (!overlayContext.mounted) return;
           showDialog(
             context: overlayContext,
             barrierDismissible: false,
@@ -53,6 +54,7 @@ List<Widget> buildProfileDialogActions(
 
             if (overlayContext.mounted) Navigator.of(overlayContext).pop();
 
+            if (!overlayContext.mounted) return;
             Navigator.pushNamed(
               overlayContext,
               AppRoutes.editGroupData,
@@ -63,6 +65,7 @@ List<Widget> buildProfileDialogActions(
             );
           } catch (e) {
             if (overlayContext.mounted) Navigator.of(overlayContext).pop();
+            if (!overlayContext.mounted) return;
             ScaffoldMessenger.of(overlayContext).showSnackBar(
               SnackBar(content: Text('${loc.failedToEditGroup} $e')),
             );
@@ -130,6 +133,7 @@ List<Widget> buildProfileDialogActions(
               return;
             }
 
+            if (!context.mounted) return;
             final confirm =
                 await showConfirmationDialog(context, loc.questionDeleteGroup);
             if (!confirm) return;

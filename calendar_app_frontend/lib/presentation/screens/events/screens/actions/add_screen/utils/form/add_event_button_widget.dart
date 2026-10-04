@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class AddEventButtonWidget extends StatelessWidget {
   final VoidCallback onAddEvent;
 
-  const AddEventButtonWidget({
+  const AddEventButtonWidget({super.key,
     required this.onAddEvent,
   });
 

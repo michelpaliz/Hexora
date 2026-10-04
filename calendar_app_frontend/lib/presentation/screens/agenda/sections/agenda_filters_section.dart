@@ -21,8 +21,8 @@ class AgendaFiltersSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = Theme.of(context).colorScheme.surface.withOpacity(.9);
-    final border = BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(.4));
+    final bg = Theme.of(context).colorScheme.surface.withValues(alpha: .9);
+    final border = BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: .4));
 
     return SliverToBoxAdapter(
       child: Padding(

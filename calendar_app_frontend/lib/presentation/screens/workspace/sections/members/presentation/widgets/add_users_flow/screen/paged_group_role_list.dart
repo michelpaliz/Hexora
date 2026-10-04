@@ -226,13 +226,13 @@ class _UserRoleCard extends StatelessWidget {
     return Material(
       color: cs.surface,
       elevation: isDark ? 0 : 1.5,
-      shadowColor: cs.shadow.withOpacity(.15),
+      shadowColor: cs.shadow.withValues(alpha: .15),
       borderRadius: BorderRadius.circular(14),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
           border:
-              Border.all(color: cs.outlineVariant.withOpacity(.4), width: 1),
+              Border.all(color: cs.outlineVariant.withValues(alpha: .4), width: 1),
         ),
         child: child,
       ),

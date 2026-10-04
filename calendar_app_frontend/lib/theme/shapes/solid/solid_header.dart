@@ -7,10 +7,10 @@ class SolidHeader extends StatelessWidget {
   final Color? color;
 
   const SolidHeader({
-    Key? key,
+    super.key,
     this.height = 160,
     this.color,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

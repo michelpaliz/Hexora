@@ -15,11 +15,11 @@ class FabShell extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.bottomLeft,
           end: Alignment.topRight,
-          colors: [color.withOpacity(0.65), color],
+          colors: [color.withValues(alpha: 0.65), color],
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: Colors.black.withValues(alpha: 0.25),
             blurRadius: 18,
             offset: const Offset(0, -8),
           ),

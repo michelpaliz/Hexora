@@ -5,25 +5,25 @@ import 'package:hexora/l10n/app_localizations.dart';
 const int kDefaultReminderMinutes = 10;
 const int kMaxReminderMinutes = 3 * 24 * 60; // 4320 minutes
 
-class _ReminderOption {
+class ReminderOption {
   final String label;
   final int value;
-  const _ReminderOption(this.label, this.value);
+  const ReminderOption(this.label, this.value);
 }
 
-List<_ReminderOption> getLocalizedReminderOptions(BuildContext context) {
+List<ReminderOption> getLocalizedReminderOptions(BuildContext context) {
   final loc = AppLocalizations.of(context)!;
 
   return [
-    _ReminderOption(loc.reminderOptionAtTime, 0),
-    _ReminderOption(loc.reminderOption5min, 5),
-    _ReminderOption(loc.reminderOption10min, 10),
-    _ReminderOption(loc.reminderOption30min, 30),
-    _ReminderOption(loc.reminderOption1hour, 60),
-    _ReminderOption(loc.reminderOption2hours, 120),
-    _ReminderOption(loc.reminderOption1day, 1440),
-    _ReminderOption(loc.reminderOption2days, 2880),
-    _ReminderOption(loc.reminderOption3days, 4320),
+    ReminderOption(loc.reminderOptionAtTime, 0),
+    ReminderOption(loc.reminderOption5min, 5),
+    ReminderOption(loc.reminderOption10min, 10),
+    ReminderOption(loc.reminderOption30min, 30),
+    ReminderOption(loc.reminderOption1hour, 60),
+    ReminderOption(loc.reminderOption2hours, 120),
+    ReminderOption(loc.reminderOption1day, 1440),
+    ReminderOption(loc.reminderOption2days, 2880),
+    ReminderOption(loc.reminderOption3days, 4320),
   ];
 }
 
@@ -33,11 +33,11 @@ class ReminderTimeDropdownField extends StatelessWidget {
   final String? Function(int?)? validator;
 
   const ReminderTimeDropdownField({
-    Key? key,
+    super.key,
     required this.initialValue,
     required this.onChanged,
     this.validator,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +70,7 @@ class ReminderTimeDropdownField extends StatelessWidget {
         prefixIcon: Icon(Icons.alarm, color: cs.onSurfaceVariant),
         // Feel free to add filled/background if you want the M3 filled look:
         // filled: true,
-        // fillColor: cs.surfaceVariant.withOpacity(.25),
+        // fillColor: cs.surfaceVariant.withValues(alpha: .25),
       ),
       iconEnabledColor: cs.onSurfaceVariant,
       items: options

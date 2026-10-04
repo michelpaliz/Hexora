@@ -283,7 +283,7 @@ class _GroupInvoicesView extends StatelessWidget {
                   onCreateReceipt: state._openCreateReceipt,
                   onEditBillingProfile: state._openBillingProfile,
                   onToggleBusinessExpanded: state._toggleBusinessExpanded,
-                  onToggleFacturacionExpanded: () => state.setState(() {
+                  onToggleFacturacionExpanded: () => state._updateView(() {
                     final next = !state._facturacionExpanded;
                     if (!isWide && next) {
                       state._businessExpanded = false;
@@ -294,7 +294,7 @@ class _GroupInvoicesView extends StatelessWidget {
                     }
                     state._facturacionExpanded = next;
                   }),
-                  onToggleGastosExpanded: () => state.setState(() {
+                  onToggleGastosExpanded: () => state._updateView(() {
                     final next = !state._gastosExpanded;
                     if (!isWide && next) {
                       state._facturacionExpanded = false;
@@ -303,7 +303,7 @@ class _GroupInvoicesView extends StatelessWidget {
                     }
                     state._gastosExpanded = next;
                   }),
-                  onToggleImpuestosExpanded: () => state.setState(() {
+                  onToggleImpuestosExpanded: () => state._updateView(() {
                     final next = !state._impuestosExpanded;
                     if (!isWide && next) {
                       state._facturacionExpanded = false;
@@ -312,7 +312,7 @@ class _GroupInvoicesView extends StatelessWidget {
                     }
                     state._impuestosExpanded = next;
                   }),
-                  onToggleInformesExpanded: () => state.setState(() {
+                  onToggleInformesExpanded: () => state._updateView(() {
                     final next = !state._informesExpanded;
                     if (!isWide && next) {
                       state._facturacionExpanded = false;
@@ -323,7 +323,7 @@ class _GroupInvoicesView extends StatelessWidget {
                     }
                     state._informesExpanded = next;
                   }),
-                  onToggleClientsExpanded: () => state.setState(() {
+                  onToggleClientsExpanded: () => state._updateView(() {
                     final next = !state._clientsExpanded;
                     if (!isWide && next) {
                       state._facturacionExpanded = false;

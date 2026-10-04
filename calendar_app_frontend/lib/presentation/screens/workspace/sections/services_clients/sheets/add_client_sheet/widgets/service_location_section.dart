@@ -38,7 +38,7 @@ class ServiceLocationSection extends StatelessWidget {
         leading: Icon(Icons.location_on_outlined, color: cs.primary),
         title: Text(
           isSpanish ? 'Ubicación del servicio' : 'Service location',
-          style: const TextStyle(fontWeight: FontWeight.w700),
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Text(
           isSpanish

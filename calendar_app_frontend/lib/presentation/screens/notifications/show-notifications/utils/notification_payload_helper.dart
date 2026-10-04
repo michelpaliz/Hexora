@@ -1,7 +1,8 @@
 import 'package:hexora/models/notifications/notification_user.dart';
 
 bool isConcurrentEventNotification(NotificationUser notification) {
-  return notification.titleKey == 'notification.event.concurrentCreated.title' ||
+  return notification.titleKey ==
+          'notification.event.concurrentCreated.title' ||
       notification.messageKey == 'notification.event.concurrentCreated.message';
 }
 
@@ -82,10 +83,11 @@ ConcurrentEventNotificationData concurrentEventNotification(
 ) {
   final args = notification.args;
   final overlapIds = _stringList(args['overlappingEventIds']);
-  final overlapCount =
-      _readInt(args['overlapCount']) ?? (overlapIds.isNotEmpty ? overlapIds.length : null);
+  final overlapCount = _readInt(args['overlapCount']) ??
+      (overlapIds.isNotEmpty ? overlapIds.length : null);
   return ConcurrentEventNotificationData(
-    senderId: _readString(args['senderId']) ?? _readString(notification.senderId),
+    senderId:
+        _readString(args['senderId']) ?? _readString(notification.senderId),
     senderName: _readString(args['createdByName']) ??
         _readString(args['creatorName']) ??
         _readString(args['createdBy']) ??
@@ -108,7 +110,8 @@ IssuedDocumentNotificationData documentIssuedNotification(
 ) {
   final args = notification.args;
   return IssuedDocumentNotificationData(
-    senderId: _readString(args['senderId']) ?? _readString(notification.senderId),
+    senderId:
+        _readString(args['senderId']) ?? _readString(notification.senderId),
     senderName: _readString(args['senderName']),
     documentType: _readDocumentType(
       _readString(args['documentType']),
@@ -179,3 +182,15 @@ List<String> _stringList(dynamic value) {
   }
   return const <String>[];
 }
+
+/// Downloads may arrive using either status field and string/numeric categories.
+/// The explicit job type identifies the destination without enum-index coupling.
+bool isInvoiceZipNotification(NotificationUser notification) =>
+    notification.args['jobType']?.toString().trim().toLowerCase() ==
+    'invoice_zip';
+
+String notificationDownloadStatus(NotificationUser notification) =>
+    (notification.args['downloadStatus'] ?? notification.args['status'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();

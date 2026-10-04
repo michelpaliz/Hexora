@@ -26,11 +26,11 @@ class SectionSurface extends StatelessWidget {
 
     // visible tint over surface to avoid white-on-white
     final subtleTint = Color.alphaBlend(
-      cs.primary.withOpacity(isDark ? 0.08 : 0.06),
+      cs.primary.withValues(alpha: isDark ? 0.08 : 0.06),
       cs.surface,
     );
     final strongTint = Color.alphaBlend(
-      cs.primary.withOpacity(isDark ? 0.14 : 0.10),
+      cs.primary.withValues(alpha: isDark ? 0.14 : 0.10),
       cs.surface,
     );
 
@@ -39,7 +39,7 @@ class SectionSurface extends StatelessWidget {
         return Card(
           margin: margin,
           elevation: isDark ? 1.5 : 2.5,
-          shadowColor: Colors.black.withOpacity(isDark ? 0.5 : 0.12),
+          shadowColor: Colors.black.withValues(alpha: isDark ? 0.5 : 0.12),
           color: subtleTint,
           surfaceTintColor: cs.primary,
           shape: RoundedRectangleBorder(

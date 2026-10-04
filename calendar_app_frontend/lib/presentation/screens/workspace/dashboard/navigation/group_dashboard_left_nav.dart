@@ -99,7 +99,7 @@ class GroupDashboardLeftNav extends StatelessWidget {
                                       color: (isDark
                                               ? AppDarkColors.textSecondary
                                               : AppColors.textSecondary)
-                                          .withOpacity(0.25),
+                                          .withValues(alpha: 0.25),
                                     ),
                                 ],
                               ],
@@ -146,7 +146,7 @@ class _NavRow extends StatelessWidget {
     final fg = isSelected
         ? (isDark ? AppDarkColors.primary : AppColors.primary)
         : (isDark ? AppDarkColors.textPrimary : AppColors.textPrimary);
-    final bg = isSelected ? fg.withOpacity(0.10) : Colors.transparent;
+    final bg = isSelected ? fg.withValues(alpha: 0.10) : Colors.transparent;
     final row = InkWell(
       onTap: onTap,
       child: Container(
@@ -194,12 +194,12 @@ class _GroupCompactCard extends StatelessWidget {
       child: Card(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        color: bg.withOpacity(0.92),
+        color: bg.withValues(alpha: 0.92),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: CircleAvatar(
             radius: 22,
-            backgroundColor: onSurface.withOpacity(0.12),
+            backgroundColor: onSurface.withValues(alpha: 0.12),
             backgroundImage:
                 (group.photoUrl != null && group.photoUrl!.isNotEmpty)
                     ? NetworkImage(group.photoUrl!)
@@ -229,7 +229,7 @@ class _GroupCard extends StatelessWidget {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: bg.withOpacity(0.92),
+      color: bg.withValues(alpha: 0.92),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
         child: Column(
@@ -242,7 +242,7 @@ class _GroupCard extends StatelessWidget {
                 child: group.photoUrl != null && group.photoUrl!.isNotEmpty
                     ? Image.network(group.photoUrl!, fit: BoxFit.cover)
                     : Container(
-                        color: onSurface.withOpacity(0.08),
+                        color: onSurface.withValues(alpha: 0.08),
                         child: Icon(Icons.group, color: onSurface, size: 40),
                       ),
               ),
@@ -261,7 +261,7 @@ class _GroupCard extends StatelessWidget {
             Text(
               group.description,
               style: typo.bodySmall.copyWith(
-                color: onSurface.withOpacity(0.8),
+                color: onSurface.withValues(alpha: 0.8),
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -288,12 +288,12 @@ class _UserCompactCard extends StatelessWidget {
       child: Card(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        color: bg.withOpacity(0.92),
+        color: bg.withValues(alpha: 0.92),
         child: Padding(
           padding: const EdgeInsets.all(10),
           child: CircleAvatar(
             radius: 18,
-            backgroundColor: onSurface.withOpacity(0.12),
+            backgroundColor: onSurface.withValues(alpha: 0.12),
             backgroundImage:
                 (user.photoUrl != null && user.photoUrl!.isNotEmpty)
                     ? NetworkImage(user.photoUrl!)
@@ -328,14 +328,14 @@ class _UserCard extends StatelessWidget {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      color: bg.withOpacity(0.92),
+      color: bg.withValues(alpha: 0.92),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
         child: Row(
           children: [
             CircleAvatar(
               radius: 20,
-              backgroundColor: onSurface.withOpacity(0.12),
+              backgroundColor: onSurface.withValues(alpha: 0.12),
               backgroundImage:
                   (user.photoUrl != null && user.photoUrl!.isNotEmpty)
                       ? NetworkImage(user.photoUrl!)
@@ -367,7 +367,7 @@ class _UserCard extends StatelessWidget {
                   Text(
                     '@${user.userName}',
                     style: typo.caption.copyWith(
-                      color: onSurface.withOpacity(0.8),
+                      color: onSurface.withValues(alpha: 0.8),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
