@@ -27,6 +27,9 @@ class InvoiceIncomeAnalytics {
     required this.collectedTotal,
     required this.outstandingTotal,
     required this.invoiceCount,
+    this.clientTotals = const {},
+    this.averagePaymentDays,
+    this.paidForIssuedTotal = 0,
   });
 
   final List<InvoiceIncomeMonth> months;
@@ -34,6 +37,11 @@ class InvoiceIncomeAnalytics {
   final double collectedTotal;
   final double outstandingTotal;
   final int invoiceCount;
+  final Map<String, double> clientTotals;
+  final double? averagePaymentDays;
+  final double paidForIssuedTotal;
+  double? get collectionRatio =>
+      billedTotal > 0 ? paidForIssuedTotal / billedTotal : null;
 
   double get monthlyAverage => months.isEmpty ? 0 : billedTotal / months.length;
 
@@ -61,8 +69,16 @@ InvoiceIncomeAnalytics buildInvoiceIncomeAnalytics({
   var collectedTotal = 0.0;
   var outstandingTotal = 0.0;
   var invoiceCount = 0;
+  final clientTotals = <String, double>{};
+  var paidForIssuedTotal = 0.0;
+  var paymentDays = 0;
+  var settledCount = 0;
 
   for (final invoice in invoices) {
+    if (['draft', 'void', 'cancelled']
+        .contains(invoice.status?.toLowerCase())) {
+      continue;
+    }
     final total = (invoice.total ?? 0).toDouble().clamp(0, double.infinity);
     final paid = _resolvedPaidAmount(invoice).clamp(0, total);
     final issuedAt = invoice.issuedAtResolved?.toLocal();
@@ -78,6 +94,21 @@ InvoiceIncomeAnalytics buildInvoiceIncomeAnalytics({
       billedTotal += total;
       outstandingTotal += (total - paid).clamp(0, double.infinity);
       invoiceCount++;
+      paidForIssuedTotal += paid;
+      if (invoice.clientId.isNotEmpty) {
+        clientTotals.update(invoice.clientId, (value) => value + total,
+            ifAbsent: () => total.toDouble());
+      }
+      final settledAt = invoice.paidAt?.toLocal();
+      if (total > 0 &&
+          paid >= total &&
+          settledAt != null &&
+          !settledAt.isBefore(issuedAt)) {
+        paymentDays += DateTime(settledAt.year, settledAt.month, settledAt.day)
+            .difference(DateTime(issuedAt.year, issuedAt.month, issuedAt.day))
+            .inDays;
+        settledCount++;
+      }
     }
 
     final paidAt = invoice.paidAt?.toLocal();
@@ -100,6 +131,9 @@ InvoiceIncomeAnalytics buildInvoiceIncomeAnalytics({
     collectedTotal: collectedTotal,
     outstandingTotal: outstandingTotal,
     invoiceCount: invoiceCount,
+    clientTotals: clientTotals,
+    paidForIssuedTotal: paidForIssuedTotal,
+    averagePaymentDays: settledCount == 0 ? null : paymentDays / settledCount,
   );
 }
 

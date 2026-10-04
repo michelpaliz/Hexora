@@ -15,6 +15,8 @@ class WorkersMobileView extends StatefulWidget {
     required this.onAddHours,
     required this.onEdit,
     required this.onOverview,
+    this.directoryTabs,
+    this.showPartners = false,
   });
 
   final List<Worker> workers;
@@ -25,6 +27,8 @@ class WorkersMobileView extends StatefulWidget {
   final ValueChanged<Worker> onAddHours;
   final ValueChanged<Worker> onEdit;
   final ValueChanged<Worker> onOverview;
+  final Widget? directoryTabs;
+  final bool showPartners;
 
   @override
   State<WorkersMobileView> createState() => _WorkersMobileViewState();
@@ -59,12 +63,19 @@ class _WorkersMobileViewState extends State<WorkersMobileView> {
                       children: [
                         widget.summary,
                         const SizedBox(height: 16),
+                        if (widget.directoryTabs != null) ...[
+                          widget.directoryTabs!,
+                          const SizedBox(height: 12),
+                        ],
                         TextField(
                           onChanged: (value) => setState(
                               () => _query = value.trim().toLowerCase()),
                           decoration: InputDecoration(
-                            hintText:
-                                isEs ? 'Buscar trabajador' : 'Search workers',
+                            hintText: widget.showPartners
+                                ? (isEs ? 'Buscar socio' : 'Search partners')
+                                : (isEs
+                                    ? 'Buscar trabajador'
+                                    : 'Search workers'),
                             prefixIcon: const Icon(Icons.search_rounded),
                           ),
                         ),
@@ -72,7 +83,7 @@ class _WorkersMobileViewState extends State<WorkersMobileView> {
                         Row(children: [
                           Expanded(
                               child: Text(
-                                  '${l.employeesHeader} (${workers.length})',
+                                  '${widget.showPartners ? (isEs ? 'Socios' : 'Partners') : l.employeesHeader} (${workers.length})',
                                   style:
                                       Theme.of(context).textTheme.titleMedium)),
                           IconButton(
@@ -89,9 +100,13 @@ class _WorkersMobileViewState extends State<WorkersMobileView> {
                     child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: Text(
-                      isEs
-                          ? 'No hay trabajadores que coincidan.'
-                          : 'No matching workers.',
+                      widget.showPartners
+                          ? (isEs
+                              ? 'No hay socios que coincidan.'
+                              : 'No matching partners.')
+                          : (isEs
+                              ? 'No hay trabajadores que coincidan.'
+                              : 'No matching workers.'),
                       textAlign: TextAlign.center),
                 )),
               SliverPadding(

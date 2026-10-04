@@ -34,6 +34,21 @@ extension _InvoiceListLayout on _InvoicesTabListState {
     final summaryTotals =
         _unlinkedOnly ? _summaryFromInvoices(visible) : _summaryTotals;
 
+    Future<void> downloadFiltered({required bool excel}) async {
+      final action =
+          excel ? widget.onDownloadExcelFiltered : widget.onDownloadFiltered;
+      if (_downloadingFiltered || visible.isEmpty || action == null) return;
+      final selection = List<Invoice>.unmodifiable(visible);
+      _updateInvoiceListState(() => _downloadingFiltered = true);
+      try {
+        await action(selection);
+      } finally {
+        if (mounted) {
+          _updateInvoiceListState(() => _downloadingFiltered = false);
+        }
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.all(6),
       child: Column(
@@ -228,57 +243,6 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                     )
                   : null;
 
-              Widget compactSortButton({
-                required IconData icon,
-                required String label,
-                required bool active,
-                required bool ascending,
-                required VoidCallback onTap,
-              }) {
-                final foreground =
-                    active ? cs.onPrimaryContainer : cs.onSurfaceVariant;
-                return Tooltip(
-                  message:
-                      '$label · ${isSpanish ? (ascending ? 'ascendente' : 'descendente') : (ascending ? 'ascending' : 'descending')}',
-                  child: InkWell(
-                    onTap: widget.sortLoading ? null : onTap,
-                    borderRadius: BorderRadius.circular(999),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        color:
-                            active ? cs.primaryContainer : Colors.transparent,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: active
-                              ? cs.primaryContainer
-                              : cs.outlineVariant.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Icon(icon, size: 15, color: foreground),
-                          Positioned(
-                            right: 2,
-                            bottom: 2,
-                            child: Icon(
-                              ascending
-                                  ? Icons.arrow_upward_rounded
-                                  : Icons.arrow_downward_rounded,
-                              size: 9,
-                              color: foreground,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }
-
               final labelActions = <Widget>[
                 if (issueAllButton != null) issueAllButton,
                 sortButton(
@@ -295,57 +259,6 @@ extension _InvoiceListLayout on _InvoicesTabListState {
               ];
 
               if (widget.showSummaryTotals) {
-                final sortActions = <Widget>[
-                  compactSortButton(
-                    icon: Icons.calendar_month_outlined,
-                    label: l.date,
-                    active: !_clientNameSortEnabled &&
-                        currentSort.by == InvoiceSortBy.date,
-                    ascending: currentSort.dir == InvoiceSortDir.asc,
-                    onTap: () {
-                      if (_clientNameSortEnabled) {
-                        _updateInvoiceListState(
-                            () => _clientNameSortEnabled = false);
-                      }
-                      widget.onSortBySelected(InvoiceSortBy.date);
-                    },
-                  ),
-                  compactSortButton(
-                    icon: Icons.format_list_numbered_rounded,
-                    label: l.invoiceSortByNumberLabel,
-                    active: !_clientNameSortEnabled &&
-                        currentSort.by == InvoiceSortBy.number,
-                    ascending: currentSort.dir == InvoiceSortDir.asc,
-                    onTap: () {
-                      if (_clientNameSortEnabled) {
-                        _updateInvoiceListState(
-                            () => _clientNameSortEnabled = false);
-                      }
-                      widget.onSortBySelected(InvoiceSortBy.number);
-                    },
-                  ),
-                  if (widget.allowClientNameSort)
-                    compactSortButton(
-                      icon: Icons.sort_by_alpha_rounded,
-                      label: isSpanish ? 'Cliente' : 'Client',
-                      active: _clientNameSortEnabled,
-                      ascending: _clientNameSortDir == InvoiceSortDir.asc,
-                      onTap: () {
-                        _updateInvoiceListState(() {
-                          if (_clientNameSortEnabled) {
-                            _clientNameSortDir =
-                                _clientNameSortDir == InvoiceSortDir.asc
-                                    ? InvoiceSortDir.desc
-                                    : InvoiceSortDir.asc;
-                          } else {
-                            _clientNameSortEnabled = true;
-                            _clientNameSortDir = InvoiceSortDir.asc;
-                          }
-                        });
-                      },
-                    ),
-                ];
-
                 return _InvoiceSummaryTotalsBar(
                   count: visible.length,
                   summary: summaryTotals,
@@ -354,7 +267,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                   fromDate: _fromDate,
                   toDate: _toDate,
                   quickRange: _quickRange,
-                  sortActions: sortActions,
+                  sortActions: labelActions,
                   unlinkedOnly: _unlinkedOnly,
                   paymentSuggestionsLoading: _paymentSuggestionsLoading,
                   onDateRangeSelected: (value) {
@@ -385,54 +298,63 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                   downloadingFiltered: _downloadingFiltered,
                   onDownloadFiltered: widget.onDownloadFiltered == null
                       ? null
-                      : () async {
-                          if (_downloadingFiltered) return;
-                          _updateInvoiceListState(
-                              () => _downloadingFiltered = true);
-                          try {
-                            await widget.onDownloadFiltered!(visible);
-                          } finally {
-                            if (mounted) {
-                              _updateInvoiceListState(
-                                  () => _downloadingFiltered = false);
-                            }
-                          }
-                        },
+                      : () => downloadFiltered(excel: false),
+                  onDownloadExcelFiltered:
+                      widget.onDownloadExcelFiltered == null
+                          ? null
+                          : () => downloadFiltered(excel: true),
                 );
               }
 
-              return DateRangeFilterCard(
-                quickRange: _quickRange,
-                expanded: _filtersExpanded,
-                fromDate: _fromDate,
-                toDate: _toDate,
-                showLabel: true,
-                labelActions: labelActions,
-                onToggleExpanded: () => _updateInvoiceListState(
-                    () => _filtersExpanded = !_filtersExpanded),
-                onClear: () {
-                  _updateInvoiceListState(() {
-                    _fromDate = null;
-                    _toDate = null;
-                    _quickRange = DateQuickRange.none;
-                  });
-                  _notifyDateFilterChanged();
-                  _refreshFilteredData();
-                },
-                onPickFrom: _pickFromDate,
-                onPickTo: _pickToDate,
-                onSelectQuickRange: (value) {
-                  if (value == DateQuickRange.month) {
-                    _setRangeDays(30);
-                  } else if (value == DateQuickRange.quarter) {
-                    _setRangeMonths(3);
-                  } else {
-                    _updateInvoiceListState(() {
-                      _quickRange = DateQuickRange.custom;
-                      _filtersExpanded = true;
-                    });
-                  }
-                },
+              return Row(
+                children: [
+                  _InvoiceFiltersMenu(
+                    sortActions: [
+                      sortButton(
+                          value: InvoiceSortBy.date,
+                          label: l.date,
+                          tooltip: l.date),
+                      sortButton(
+                          value: InvoiceSortBy.number,
+                          label: l.invoiceSortByNumberLabel,
+                          tooltip: l.invoiceSortByNumberLabel),
+                      if (widget.allowClientNameSort) clientNameSortButton(),
+                    ],
+                    quickRange: _quickRange,
+                    fromDate: _fromDate,
+                    toDate: _toDate,
+                    onSelected: (value) {
+                      if (value == DateQuickRange.month) {
+                        _setRangeDays(30);
+                      } else if (value == DateQuickRange.quarter) {
+                        _setRangeMonths(3);
+                      } else if (value == DateQuickRange.custom) {
+                        _pickCustomDateRange();
+                      } else {
+                        _updateInvoiceListState(() {
+                          _fromDate = null;
+                          _toDate = null;
+                          _quickRange = DateQuickRange.none;
+                        });
+                        _notifyDateFilterChanged();
+                        _refreshFilteredData();
+                      }
+                    },
+                  ),
+                  const Spacer(),
+                  if (issueAllButton != null) Flexible(child: issueAllButton),
+                  const SizedBox(width: 8),
+                  _InvoiceDownloadMenu(
+                    count: visible.length,
+                    loading: _downloadingFiltered,
+                    onPdf: widget.onDownloadFiltered == null
+                        ? null
+                        : () => downloadFiltered(excel: false),
+                    onExcel: widget.onDownloadExcelFiltered == null
+                        ? null
+                        : () => downloadFiltered(excel: true),
+                  ),
+                ],
               );
             },
           ),

@@ -10,6 +10,8 @@ class FolderPanel extends StatelessWidget {
   final double contentTopPadding;
   final Widget? tabContent;
   final List<Widget>? actions;
+  final bool decorateActions;
+  final double actionsSpacing;
 
   const FolderPanel({
     super.key,
@@ -20,6 +22,8 @@ class FolderPanel extends StatelessWidget {
     this.contentTopPadding = 30,
     this.tabContent,
     this.actions,
+    this.decorateActions = true,
+    this.actionsSpacing = 6,
   });
 
   @override
@@ -108,17 +112,19 @@ class FolderPanel extends StatelessWidget {
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: bg,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(12),
-                      topRight: Radius.circular(12),
-                      bottomLeft: Radius.circular(10),
-                    ),
-                    border: Border.all(color: border),
-                  ),
+                  decoration: decorateActions
+                      ? BoxDecoration(
+                          color: bg,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(12),
+                            topRight: Radius.circular(12),
+                            bottomLeft: Radius.circular(10),
+                          ),
+                          border: Border.all(color: border),
+                        )
+                      : null,
                   child: Wrap(
-                    spacing: 6,
+                    spacing: actionsSpacing,
                     runSpacing: 6,
                     children: actions!,
                   ),

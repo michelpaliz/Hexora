@@ -21,6 +21,7 @@ class _InvoicesTabList extends StatefulWidget {
   final ValueChanged<String>? onOpenRecurringSeries;
   final ValueChanged<InvoiceDateFilterState>? onDateFilterChanged;
   final Future<void> Function(List<Invoice>)? onDownloadFiltered;
+  final Future<void> Function(List<Invoice>)? onDownloadExcelFiltered;
   final bool allowClientNameSort;
 
   const _InvoicesTabList({
@@ -44,6 +45,7 @@ class _InvoicesTabList extends StatefulWidget {
     this.onOpenRecurringSeries,
     this.onDateFilterChanged,
     this.onDownloadFiltered,
+    this.onDownloadExcelFiltered,
     this.allowClientNameSort = false,
   });
 
@@ -57,7 +59,6 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   DateQuickRange _quickRange = DateQuickRange.none;
   DateTime? _fromDate;
   DateTime? _toDate;
-  bool _filtersExpanded = false;
   bool _unlinkedOnly = false;
   bool _unlinkedLoading = false;
   String? _unlinkedError;
@@ -412,46 +413,6 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
       'December',
     ];
     return '${(isSpanish ? es : en)[dt.month - 1]} ${dt.year}';
-  }
-
-  Future<void> _pickFromDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _fromDate ?? _toDate ?? now,
-      firstDate: DateTime(now.year - 10),
-      lastDate: DateTime(now.year + 5),
-    );
-    if (picked == null) return;
-    setState(() {
-      _fromDate = picked;
-      if (_toDate != null && _toDate!.isBefore(_fromDate!)) {
-        _toDate = _fromDate;
-      }
-      _quickRange = DateQuickRange.none;
-    });
-    _notifyDateFilterChanged();
-    _refreshFilteredData();
-  }
-
-  Future<void> _pickToDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _toDate ?? _fromDate ?? now,
-      firstDate: DateTime(now.year - 10),
-      lastDate: DateTime(now.year + 5),
-    );
-    if (picked == null) return;
-    setState(() {
-      _toDate = picked;
-      if (_fromDate != null && _toDate!.isBefore(_fromDate!)) {
-        _fromDate = _toDate;
-      }
-      _quickRange = DateQuickRange.none;
-    });
-    _notifyDateFilterChanged();
-    _refreshFilteredData();
   }
 
   Future<void> _pickCustomDateRange() async {

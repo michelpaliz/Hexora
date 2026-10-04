@@ -1,4 +1,5 @@
 import 'mobile/workers_mobile_view.dart';
+import 'widgets/worker_directory_tabs.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -48,6 +49,23 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
   bool _pluginDisabled = false;
   String? _error;
   List<Worker> _workers = const [];
+  bool _showPartners = false;
+
+  List<Worker> get _visibleWorkers => _workers
+      .where((worker) => isPartnerWorker(worker, widget.group) == _showPartners)
+      .toList();
+
+  Widget _buildDirectoryTabs() {
+    final partnerCount = _workers
+        .where((worker) => isPartnerWorker(worker, widget.group))
+        .length;
+    return WorkerDirectoryTabs(
+      showPartners: _showPartners,
+      workerCount: _workers.length - partnerCount,
+      partnerCount: partnerCount,
+      onChanged: (value) => setState(() => _showPartners = value),
+    );
+  }
 
   bool _activeTotalsLoading = false;
   String? _activeTotalsError;
@@ -289,31 +307,6 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
           worker: worker,
           repo: _repo,
           getToken: _getToken,
-        ),
-      ),
-    );
-  }
-
-  Widget _countChip(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
-
-    final countLabel = '${_workers.length} ${l.membersTitle.toLowerCase()}';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: cs.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.primary.withValues(alpha: 0.18)),
-      ),
-      child: Text(
-        countLabel,
-        style: t.bodySmall.copyWith(
-          fontWeight: FontWeight.w600,
-          color: cs.primary,
-          fontSize: 12,
         ),
       ),
     );
@@ -624,7 +617,7 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
 
   Widget _buildBodyContent(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
+    final visibleWorkers = _visibleWorkers;
     return RefreshIndicator(
       onRefresh: _load,
       child: _loading
@@ -659,26 +652,25 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
                             const SizedBox(height: 16),
                             _buildActiveTotalsCard(context),
                             const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    l.employeesHeader,
-                                    style: t.bodyLarge.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 15,
-                                    ),
-                                  ),
+                            _buildDirectoryTabs(),
+                            const SizedBox(height: 12),
+                            if (visibleWorkers.isEmpty)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 24),
+                                child: Text(
+                                  context.isSpanishLocale
+                                      ? (_showPartners
+                                          ? 'No hay socios en este grupo.'
+                                          : 'No hay trabajadores en esta pestaña.')
+                                      : (_showPartners
+                                          ? 'No partners in this group.'
+                                          : 'No workers in this tab.'),
+                                  textAlign: TextAlign.center,
                                 ),
-                                if (!_loading &&
-                                    !_pluginDisabled &&
-                                    _error == null)
-                                  _countChip(context),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
+                              ),
                             WorkerListSection(
-                              workers: _workers,
+                              workers: visibleWorkers,
                               onEdit: (w) async {
                                 final updatedWorker =
                                     await _openEditWorkerDialog(
@@ -750,7 +742,9 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
           _workers.isNotEmpty;
       final body = ready
           ? WorkersMobileView(
-              workers: _workers,
+              workers: _visibleWorkers,
+              directoryTabs: _buildDirectoryTabs(),
+              showPartners: _showPartners,
               summary: _buildActiveTotalsCard(context),
               onRefresh: _load,
               onAddWorker: _toggling ? null : _addWorker,

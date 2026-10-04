@@ -27,11 +27,13 @@ class StatusFilterChips extends StatelessWidget {
         ),
         _FilterChip(
           label: l.statusActive,
+          dot: const Color(0xff08662f),
           selected: value == WorkerStatusFilter.active,
           onTap: () => onChanged(WorkerStatusFilter.active),
         ),
         _FilterChip(
           label: l.statusInactive,
+          dot: const Color(0xff9298ae),
           selected: value == WorkerStatusFilter.inactive,
           onTap: () => onChanged(WorkerStatusFilter.inactive),
         ),
@@ -44,39 +46,50 @@ class _FilterChip extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final Color? dot;
 
   const _FilterChip({
     required this.label,
     required this.selected,
     required this.onTap,
+    this.dot,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final bg = selected ? cs.primaryContainer : cs.surfaceContainerHighest;
-    final fg = selected ? cs.onPrimaryContainer : cs.onSurface;
+    final bg =
+        selected ? cs.primaryContainer.withValues(alpha: .5) : cs.surface;
+    final fg = selected ? cs.primary : cs.onSurfaceVariant;
 
     return InkWell(
       borderRadius: BorderRadius.circular(999),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? cs.primary : cs.outlineVariant,
+            color:
+                selected ? cs.primary : cs.outlineVariant.withValues(alpha: .4),
           ),
         ),
-        child: Text(
-          label,
-          style: t.bodySmall.copyWith(
-            fontWeight: FontWeight.w700,
-            color: fg,
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (dot != null) ...[
+            Icon(Icons.circle, size: 11, color: dot),
+            const SizedBox(width: 8)
+          ],
+          Text(
+            label,
+            style: t.bodySmall.copyWith(
+              fontSize: 13,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              color: fg,
+            ),
           ),
-        ),
+        ]),
       ),
     );
   }

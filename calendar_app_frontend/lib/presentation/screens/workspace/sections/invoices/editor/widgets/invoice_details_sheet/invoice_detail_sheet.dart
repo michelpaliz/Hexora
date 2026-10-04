@@ -13,6 +13,7 @@ import 'package:hexora/services/emails/email_api.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/invoicing/invoice_lines_api.dart';
 import 'package:hexora/services/shared/content_disposition.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_billing_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_dates.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_header.dart';
@@ -31,6 +32,7 @@ import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 part 'invoice_detail_sheet_logic_mixin.dart';
 
@@ -64,6 +66,8 @@ class InvoiceDetailSheet extends StatefulWidget {
 
 class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     with InvoiceDetailSheetLogic {
+  bool _previewMenuOpen = false;
+
   @override
   void initState() {
     super.initState();
@@ -429,75 +433,78 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
               ? constraints.maxHeight
               : MediaQuery.of(context).size.height * 0.85;
 
-          // Reserve: top padding(6) + header(~72) + gap(8) + footer(56) + bottom(8) = ~150
-          final pdfHeight = (availableH - 150).clamp(240.0, double.infinity);
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Header ──────────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-                child: InvoiceDetailHeader(
-                  clientName: widget.client.name,
-                  invoiceNumber:
-                      invoice.displayNumber(draftLabel: l.statusDraft),
-                  hasRecurrence: hasRecurrence,
-                  recurrenceLabel: recurrenceLabel,
-                  occurrenceLabel: occurrenceLabel,
-                  recurrenceButtonLabel: l.invoiceRecurringLabel,
-                  onOpenRecurringSeries: widget.onOpenRecurringSeries,
-                  recurringSeriesId: invoice.recurringSeriesId,
-                  statusLabel: _resolveStatus(status),
-                  statusColor: _statusColor(cs, status),
-                  statusIcon: _statusIcon(status),
-                  total: _total.toDouble(),
-                  invoiceType: invoice.invoiceType,
-                  issuedByLabel:
-                      status.contains('issue') ? issuedByLabel : null,
-                  issuedAtLabel:
-                      status.contains('issue') ? issuedAtLabel : null,
-                ),
-              ),
-
-              // ── PDF Preview ──────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    height: pdfHeight,
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: cs.outlineVariant.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: _buildPdfArea(cs, l),
-                  ),
-                ),
-              ),
-
-              // ── Footer bar ───────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                child: SafeArea(
-                  top: false,
-                  child: _buildFooterBar(
-                    context,
-                    cs,
-                    l,
-                    isEs: isEs,
-                    isLinked: isLinked,
-                    linkedEntriesCount: linkedEntriesCount,
+          return SizedBox(
+            height: availableH,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ── Header ──────────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                  child: InvoiceDetailHeader(
+                    clientName: widget.client.name,
+                    invoiceNumber:
+                        invoice.displayNumber(draftLabel: l.statusDraft),
                     hasRecurrence: hasRecurrence,
                     recurrenceLabel: recurrenceLabel,
                     occurrenceLabel: occurrenceLabel,
+                    recurrenceButtonLabel: l.invoiceRecurringLabel,
+                    onOpenRecurringSeries: widget.onOpenRecurringSeries,
+                    recurringSeriesId: invoice.recurringSeriesId,
+                    statusLabel: _resolveStatus(status),
+                    statusColor: _statusColor(cs, status),
+                    statusIcon: _statusIcon(status),
+                    total: (invoice.total ?? _total).toDouble(),
+                    currency: invoice.currency ?? 'EUR',
+                    invoiceType: invoice.invoiceType,
+                    issuedByLabel:
+                        status.contains('issue') ? issuedByLabel : null,
+                    issuedAtLabel:
+                        status.contains('issue') ? issuedAtLabel : null,
                   ),
                 ),
-              ),
-            ],
+
+                // ── PDF Preview ──────────────────────────────────────────────
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color:
+                              cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: cs.outlineVariant.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: _buildPdfArea(cs, l),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // ── Footer bar ───────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                  child: SafeArea(
+                    top: false,
+                    child: _buildFooterBar(
+                      context,
+                      cs,
+                      l,
+                      isEs: isEs,
+                      isLinked: isLinked,
+                      linkedEntriesCount: linkedEntriesCount,
+                      hasRecurrence: hasRecurrence,
+                      recurrenceLabel: recurrenceLabel,
+                      occurrenceLabel: occurrenceLabel,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -540,7 +547,12 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         builder: (context, constraints) {
           final h =
               constraints.maxHeight.isFinite ? constraints.maxHeight : 400.0;
-          return PdfInlinePreview(bytes: _inlinePdfBytes!, height: h);
+          return PdfInlinePreview(
+            bytes: _inlinePdfBytes!,
+            height: h,
+            showToolbar: false,
+            interactive: !_previewMenuOpen,
+          );
         },
       );
     }
@@ -638,104 +650,166 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     required String recurrenceLabel,
     required String? occurrenceLabel,
   }) {
-    return SizedBox(
-      height: 48,
-      child: Row(
-        children: [
-          // Details – primary CTA (expands)
-          Expanded(
-            child: FilledButton.icon(
-              onPressed: () => _openDetailsDialog(context),
-              icon: const Icon(Icons.receipt_long_outlined, size: 16),
-              label: Text(isEs ? 'Ver detalles' : 'Details'),
-              style: FilledButton.styleFrom(
-                backgroundColor: cs.primaryContainer,
-                foregroundColor: cs.onPrimaryContainer,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+    final currentUserId = context.watch<UserDomain?>()?.user?.id;
+    final role =
+        currentUserId == null ? null : widget.group.userRoles[currentUserId];
+    final canSend = role == 'owner' || role == 'co-admin';
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 440 ||
+            MediaQuery.textScalerOf(context).scale(14) > 20;
+        final buttonStyle = OutlinedButton.styleFrom(
+          minimumSize: const Size(0, 40),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        );
+        Widget actionLabel(IconData icon, String label) {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 14),
+              const SizedBox(width: 4),
+              Flexible(child: Text(label))
+            ],
+          );
+        }
+
+        final details = FilledButton.icon(
+          onPressed: () => _openDetailsDialog(context),
+          icon: const Icon(Icons.receipt_long_outlined, size: 15),
+          label: Text(isEs ? 'Ver detalles' : 'Details'),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, 40),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle:
+                const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+        final secondary = Row(
+          children: [
+            Expanded(
+              child: Tooltip(
+                message: canSend
+                    ? l.invoiceSendCta
+                    : (isEs
+                        ? 'Solo propietarios y coadministradores pueden enviar facturas'
+                        : 'Only owners and co-admins can send invoices'),
+                child: OutlinedButton(
+                  onPressed:
+                      canSend ? () => _openSendInvoice(canSend: canSend) : null,
+                  style: buttonStyle,
+                  child: actionLabel(
+                      Icons.mail_outline_rounded, isEs ? 'Enviar' : 'Send'),
                 ),
-                elevation: 0,
               ),
             ),
-          ),
-          const SizedBox(width: 6),
-
-          // Recurrence badge
-          if (hasRecurrence) ...[
-            _FooterIconBtn(
-              icon: Icons.repeat_rounded,
-              color: cs.primary,
-              tooltip: occurrenceLabel == null
-                  ? recurrenceLabel
-                  : '$recurrenceLabel · $occurrenceLabel',
-              onTap: () {},
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _downloadingPdf ? null : _downloadPdf,
+                style: buttonStyle,
+                child: actionLabel(
+                  _downloadingPdf
+                      ? Icons.hourglass_empty_rounded
+                      : Icons.download_outlined,
+                  l.download,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            PopupMenuButton<String>(
+              tooltip: isEs ? 'Más acciones' : 'More actions',
+              onOpened: () => setState(() => _previewMenuOpen = true),
+              onCanceled: () => setState(() => _previewMenuOpen = false),
+              icon: const Icon(Icons.more_horiz_rounded),
+              style: IconButton.styleFrom(
+                minimumSize: const Size(40, 40),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                side: BorderSide(color: cs.outlineVariant),
+              ),
+              onSelected: (value) {
+                setState(() => _previewMenuOpen = false);
+                switch (value) {
+                  case 'preview':
+                    _previewPdf();
+                  case 'copy':
+                    _copyPdfLink();
+                  case 'recurrence':
+                    widget.onOpenRecurringSeries
+                        ?.call(_invoice.recurringSeriesId!);
+                }
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'preview',
+                  enabled: !_previewing,
+                  child: ListTile(
+                    leading: const Icon(Icons.open_in_full_rounded),
+                    title: Text(l.invoicePreviewCta),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'copy',
+                  child: ListTile(
+                    leading: const Icon(Icons.copy_outlined),
+                    title: Text(isEs ? 'Copiar enlace PDF' : 'Copy PDF link'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                if (hasRecurrence)
+                  PopupMenuItem(
+                    value: 'recurrence',
+                    enabled: widget.onOpenRecurringSeries != null,
+                    child: ListTile(
+                      leading: const Icon(Icons.repeat_rounded),
+                      title: Text(recurrenceLabel),
+                      subtitle: occurrenceLabel == null
+                          ? null
+                          : Text(occurrenceLabel),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                PopupMenuItem<String>(
+                  enabled: false,
+                  child: ListTile(
+                    leading: Icon(
+                        isLinked ? Icons.link_rounded : Icons.link_off_rounded),
+                    title: Text(isLinked
+                        ? '${l.statementsInvoiceAlreadyLinkedBadge} ($linkedEntriesCount)'
+                        : l.statementsUnlinked),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
             ),
           ],
-
-          // Link status
-          _FooterIconBtn(
-            icon: isLinked ? Icons.link_rounded : Icons.link_off_rounded,
-            color: isLinked ? cs.primary : cs.onSurfaceVariant,
-            tooltip: isLinked
-                ? '${l.statementsInvoiceAlreadyLinkedBadge} ($linkedEntriesCount)'
-                : l.statementsUnlinked,
-            onTap: () {},
-          ),
-
-          // Download
-          _FooterIconBtn(
-            icon: _downloadingPdf
-                ? Icons.hourglass_empty_rounded
-                : Icons.download_outlined,
-            color: cs.onSurfaceVariant,
-            tooltip: '${l.download} PDF',
-            onTap: _downloadingPdf ? null : _downloadPdf,
-          ),
-
-          // Preview PDF
-          _FooterIconBtn(
-            icon: Icons.open_in_full_rounded,
-            color: cs.onSurfaceVariant,
-            tooltip: l.invoicePreviewCta,
-            onTap: _previewing ? null : _previewPdf,
-          ),
-        ],
-      ),
+        );
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [details, const SizedBox(height: 8), secondary],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(flex: 9, child: details),
+            const SizedBox(width: 8),
+            Expanded(flex: 11, child: secondary),
+          ],
+        );
+      },
     );
   }
 }
-
-// ── Footer icon button ─────────────────────────────────────────────────────────
-
-class _FooterIconBtn extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String tooltip;
-  final VoidCallback? onTap;
-
-  const _FooterIconBtn({
-    required this.icon,
-    required this.color,
-    required this.tooltip,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: IconButton(
-        onPressed: onTap,
-        icon: Icon(icon, size: 18),
-        color: onTap == null ? color.withValues(alpha: 0.4) : color,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints.tightFor(width: 40, height: 40),
-      ),
-    );
-  }
-}
-
-// ── Detail section wrapper ─────────────────────────────────────────────────────
 
 class _DetailSection extends StatelessWidget {
   final IconData icon;

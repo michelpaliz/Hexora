@@ -11,11 +11,13 @@ class PdfInlinePreview extends StatefulWidget {
     required this.bytes,
     this.height = 420,
     this.interactive = true,
+    this.showToolbar = true,
   });
 
   final Uint8List bytes;
   final double height;
   final bool interactive;
+  final bool showToolbar;
 
   @override
   State<PdfInlinePreview> createState() => _PdfInlinePreviewState();
@@ -46,7 +48,8 @@ class _PdfInlinePreviewState extends State<PdfInlinePreview> {
   @override
   void didUpdateWidget(covariant PdfInlinePreview oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.bytes != widget.bytes) {
+    if (oldWidget.bytes != widget.bytes ||
+        oldWidget.showToolbar != widget.showToolbar) {
       _setUrl(widget.bytes);
     }
     if (oldWidget.interactive != widget.interactive) {
@@ -60,7 +63,9 @@ class _PdfInlinePreviewState extends State<PdfInlinePreview> {
     }
     final blob = html.Blob([bytes], 'application/pdf');
     _url = html.Url.createObjectUrlFromBlob(blob);
-    _element.src = '${_url!}#toolbar=1&navpanes=0&pagemode=none&view=FitH';
+    // Native viewers may ignore PDF open parameters depending on the browser.
+    _element.src =
+        '${_url!}#toolbar=${widget.showToolbar ? 1 : 0}&navpanes=0&pagemode=none&view=FitH';
   }
 
   @override

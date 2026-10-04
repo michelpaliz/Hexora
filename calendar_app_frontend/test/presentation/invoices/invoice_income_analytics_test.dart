@@ -43,6 +43,9 @@ void main() {
     expect(analytics.invoiceCount, 2);
     expect(analytics.monthlyAverage, 100);
     expect(analytics.hasActivity, isTrue);
+    expect(analytics.clientTotals, {'client': 300});
+    expect(analytics.averagePaymentDays, 9);
+    expect(analytics.collectionRatio, closeTo(260 / 300, .00001));
   });
 
   test('returns a stable empty range when no invoices match', () {
@@ -58,6 +61,43 @@ void main() {
     expect(analytics.outstandingTotal, 0);
     expect(analytics.monthlyAverage, 0);
     expect(analytics.hasActivity, isFalse);
+    expect(analytics.averagePaymentDays, isNull);
+    expect(analytics.collectionRatio, isNull);
+  });
+
+  test('older invoice collections do not inflate the issued cohort ratio', () {
+    final analytics = buildInvoiceIncomeAnalytics(
+      now: DateTime(2026, 8),
+      months: 1,
+      invoices: [
+        _invoice(
+            id: 'old',
+            total: 500,
+            issuedAt: DateTime(2026, 7),
+            paidAmount: 500,
+            paidAt: DateTime(2026, 8, 2)),
+        _invoice(
+            id: 'new',
+            total: 100,
+            issuedAt: DateTime(2026, 8, 1),
+            paidAmount: 20,
+            paidAt: DateTime(2026, 8, 3)),
+        Invoice(
+            id: 'draft',
+            invoiceNumber: '',
+            groupId: 'group',
+            clientId: 'client',
+            status: 'draft',
+            total: 900,
+            issuedAt: DateTime(2026, 8, 1)),
+      ],
+    );
+    expect(analytics.billedTotal, 100);
+    expect(analytics.collectedTotal, 520);
+    expect(analytics.outstandingTotal, 80);
+    expect(analytics.collectionRatio, .2);
+    expect(analytics.averagePaymentDays, isNull);
+    expect(analytics.invoiceCount, 1);
   });
 }
 

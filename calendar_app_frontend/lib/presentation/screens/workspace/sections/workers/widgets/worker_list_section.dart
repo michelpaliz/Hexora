@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
+import 'worker_directory_card.dart';
+import 'worker_directory_tabs.dart';
 
 // Future-ready per-worker metrics slot.  Pass null for any unknown metric.
 // When the API gains per-worker stats, populate this from the parent and
@@ -31,9 +34,15 @@ class WorkerListSection extends StatelessWidget {
     this.selectedWorkerId,
     this.tapSelects = false,
     this.workerMetrics,
+    this.spacious = false,
+    this.grid = false,
+    this.partnerRoles = const {},
   });
 
   final List<Worker> workers;
+  final bool spacious;
+  final bool grid;
+  final Map<String, WorkerPartnerRole> partnerRoles;
   final void Function(Worker worker) onEdit;
   final void Function(Worker worker) onAddHours;
   final void Function(Worker worker)? onOpenOverview;
@@ -46,14 +55,36 @@ class WorkerListSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (spacious) {
+      return LayoutBuilder(builder: (context, constraints) {
+        final columns = grid && constraints.maxWidth >= 740 ? 2 : 1;
+        return Wrap(spacing: 12, runSpacing: 8, children: [
+          for (final worker in workers)
+            SizedBox(
+                width: (constraints.maxWidth - (columns - 1) * 12) / columns,
+                child: WorkerDirectoryCard(
+                  key: ValueKey(worker.id),
+                  worker: worker,
+                  partnerRole: partnerRoles[worker.id],
+                  selected: selectedWorkerId == worker.id,
+                  grid: grid,
+                  onEdit: () => onEdit(worker),
+                  onAddHours: () => onAddHours(worker),
+                  onOverview: () =>
+                      (onOpenOverviewIcon ?? onOpenOverview)?.call(worker),
+                )),
+        ]);
+      });
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: workers
           .map(
             (w) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.only(bottom: spacious ? 12 : 8),
               child: _WorkerRow(
                 worker: w,
+                spacious: spacious,
                 isSelected:
                     selectedWorkerId != null && selectedWorkerId == w.id,
                 metrics: workerMetrics?[w.id],
@@ -77,6 +108,7 @@ class WorkerListSection extends StatelessWidget {
 }
 
 class _WorkerRow extends StatefulWidget {
+  final bool spacious;
   final Worker worker;
   final bool isSelected;
   final WorkerRowMetrics? metrics;
@@ -93,6 +125,7 @@ class _WorkerRow extends StatefulWidget {
     required this.onAddHours,
     required this.onOpenOverview,
     this.metrics,
+    this.spacious = false,
   });
 
   @override
@@ -117,18 +150,15 @@ class _WorkerRowState extends State<_WorkerRow> {
     final initials = name.isNotEmpty ? name[0].toUpperCase() : '?';
     final role = (w.roleTag ?? '').trim();
     final isInactive = w.status == WorkerStatus.archived;
-    final hasRate =
-        w.defaultHourlyRate != null && w.defaultHourlyRate! > 0;
+    final hasRate = w.defaultHourlyRate != null && w.defaultHourlyRate! > 0;
     final hasAdvance = w.advanceAmount != null && w.advanceAmount! > 0;
-    final hasExternalId =
-        (w.externalId ?? '').trim().isNotEmpty && !isLinked;
+    final hasExternalId = (w.externalId ?? '').trim().isNotEmpty && !isLinked;
     final currency = (w.currency ?? 'EUR').trim();
     final hasNotes = (w.notes ?? '').trim().isNotEmpty;
 
     // Format helpers
     final locale = Localizations.localeOf(context).toString();
-    String fmtNum(double v) =>
-        NumberFormat('#,##0.##', locale).format(v);
+    String fmtNum(double v) => NumberFormat('#,##0.##', locale).format(v);
 
     // Background
     Color rowBg;
@@ -191,8 +221,9 @@ class _WorkerRowState extends State<_WorkerRow> {
                     borderRadius: BorderRadius.circular(13),
                     onTap: widget.onTap,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: widget.spacious ? 18 : 12,
+                          vertical: widget.spacious ? 18 : 10),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -227,8 +258,7 @@ class _WorkerRowState extends State<_WorkerRow> {
                                 // Status + role + type
                                 Row(
                                   children: [
-                                    _WorkerStatusChip(
-                                        status: w.status, l: l),
+                                    _WorkerStatusChip(status: w.status, l: l),
                                     const SizedBox(width: 5),
                                     Expanded(
                                       child: Text(
@@ -325,6 +355,63 @@ class _WorkerRowState extends State<_WorkerRow> {
                                 icon: Icons.edit_outlined,
                                 onTap: widget.onEdit,
                               ),
+                              if (widget.spacious) ...[
+                                const SizedBox(width: 6),
+                                PopupMenuButton<String>(
+                                  tooltip: l.localeName.startsWith('es')
+                                      ? 'Más opciones'
+                                      : 'More options',
+                                  icon: const Icon(Icons.more_vert_rounded,
+                                      size: 19),
+                                  onSelected: (value) async {
+                                    if (value == 'copy') {
+                                      await Clipboard.setData(
+                                          ClipboardData(text: name));
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(SnackBar(
+                                        content: Text(
+                                            l.localeName.startsWith('es')
+                                                ? 'Nombre copiado'
+                                                : 'Name copied'),
+                                      ));
+                                    } else if (value == 'notes') {
+                                      showDialog<void>(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                                title: Text(name),
+                                                content:
+                                                    SelectableText(w.notes!),
+                                                actions: [
+                                                  TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                              context),
+                                                      child: Text(
+                                                          MaterialLocalizations
+                                                                  .of(context)
+                                                              .closeButtonLabel))
+                                                ],
+                                              ));
+                                    }
+                                  },
+                                  itemBuilder: (_) => [
+                                    PopupMenuItem(
+                                        value: 'copy',
+                                        child: Text(
+                                            l.localeName.startsWith('es')
+                                                ? 'Copiar nombre'
+                                                : 'Copy name')),
+                                    if (hasNotes)
+                                      PopupMenuItem(
+                                          value: 'notes',
+                                          child: Text(
+                                              l.localeName.startsWith('es')
+                                                  ? 'Ver notas'
+                                                  : 'View notes')),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
                         ],
@@ -372,9 +459,8 @@ class _WorkerAvatar extends StatelessWidget {
             ? cs.primary.withValues(alpha: 0.22)
             : cs.primary.withValues(alpha: 0.12);
 
-    final textColor = isInactive
-        ? cs.onSurfaceVariant.withValues(alpha: 0.5)
-        : cs.primary;
+    final textColor =
+        isInactive ? cs.onSurfaceVariant.withValues(alpha: 0.5) : cs.primary;
 
     return Stack(
       children: [
@@ -571,7 +657,8 @@ class _NotePreview extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     final trimmed = notes.trim();
-    final preview = trimmed.length > 38 ? '${trimmed.substring(0, 38)}…' : trimmed;
+    final preview =
+        trimmed.length > 38 ? '${trimmed.substring(0, 38)}…' : trimmed;
 
     return Row(
       mainAxisSize: MainAxisSize.min,

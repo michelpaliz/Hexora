@@ -20,6 +20,7 @@ import 'package:hexora/models/presupuesto/presupuesto_kind.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/invoicing/billing_profile_api.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
+import 'package:hexora/services/invoicing/filtered_invoices_excel.dart';
 import 'package:hexora/services/presupuestos/presupuestos_api.dart';
 import 'package:hexora/services/invoicing/invoice_lines_api.dart';
 import 'package:hexora/services/receipts/receipts_api.dart';
@@ -64,7 +65,6 @@ import 'package:hexora/presentation/screens/workspace/sections/services_clients/
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/add_client_sheet.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/client_classification_manager_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/bulk_download_dialog.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -182,11 +182,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   int _invoiceEditorSession = 0;
   int _receiptEditorSession = 0;
   String? _budgetEditorBudgetId;
-  DateTime? _issuedInvoicesFromDate;
-  DateTime? _issuedInvoicesToDate;
   List<InvoiceZipDownload> _invoiceZipDownloads = const [];
-  String? _lastExportFileId;
-  String? _lastExportFileUrl;
   late String? _pendingInitialInvoiceId;
   late String? _pendingInitialReceiptId;
 
@@ -655,49 +651,6 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     if (mounted && changed == true) _loadAll();
   }
 
-  void _showBulkDownloadDialog() {
-    showDialog<void>(
-      context: context,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440, maxHeight: 720),
-          child: BulkDownloadDialog(
-            onDownload: _downloadAllInvoicesPdfs,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _downloadAllInvoicesPdfs(BulkDownloadFilter filter) async {
-    if (_downloadingAllPdfs) return;
-    if (_invoices.isEmpty && _drafts.isEmpty) {
-      final l = AppLocalizations.of(context)!;
-      showInfoSnack(context, l.noInvoicesYet);
-      return;
-    }
-    setState(() => _downloadingAllPdfs = true);
-    try {
-      final params = filter.toQueryParams(widget.group.id);
-      final job = await _invoicesApi.queueInvoiceZipExport(
-        groupId: widget.group.id,
-        params: params,
-      );
-      _rememberQueuedExport(job);
-      await _refreshInvoiceZipDownloads(showErrors: false);
-      if (!mounted) return;
-      showInfoSnack(context, _zipJobQueuedMessage());
-    } catch (e) {
-      if (!mounted) return;
-      showErrorSnack(context, _downloadZipErrorMessage(e));
-    } finally {
-      if (mounted) setState(() => _downloadingAllPdfs = false);
-    }
-  }
-
   Future<void> _downloadFilteredInvoices(List<Invoice> invoices) async {
     final ids = invoices
         .map((inv) => inv.id.trim())
@@ -759,9 +712,10 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
 
   void _rememberQueuedExport(InvoiceZipDownload job) {
     setState(() {
-      _lastExportFileId = job.id.trim().isEmpty ? null : job.id.trim();
-      _lastExportFileUrl =
-          job.fileUrl?.trim().isEmpty == true ? null : job.fileUrl?.trim();
+      _invoiceZipDownloads = [
+        job,
+        ..._invoiceZipDownloads.where((item) => item.id != job.id),
+      ];
     });
   }
 
@@ -831,47 +785,27 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   }
 
   Future<void> _showStoredInvoiceZipDownloads() async {
-    await _refreshInvoiceZipDownloads(showErrors: false);
     if (!mounted) return;
-    showDialog<void>(
+    await showDialog<void>(
       context: context,
       builder: (dialogContext) => _InvoiceZipDownloadsDialog(state: this),
     );
   }
 
-  Future<void> _exportInvoiceConceptsExcel() async {
-    if (_exportingInvoiceConcepts) return;
-    final groupId = widget.group.id.trim();
-    if (groupId.isEmpty) return;
-
-    String? formatDate(DateTime? value) {
-      if (value == null) return null;
-      final y = value.year.toString().padLeft(4, '0');
-      final m = value.month.toString().padLeft(2, '0');
-      final d = value.day.toString().padLeft(2, '0');
-      return '$y-$m-$d';
-    }
-
-    final from = formatDate(_issuedInvoicesFromDate);
-    final to = formatDate(_issuedInvoicesToDate);
-    final currency = (_billingProfile?.currency ?? 'EUR').trim();
-
+  Future<void> _downloadFilteredInvoicesExcel(List<Invoice> invoices) async {
+    if (_exportingInvoiceConcepts || invoices.isEmpty) return;
     setState(() => _exportingInvoiceConcepts = true);
     try {
-      final response = await _invoicesApi.exportConceptsExcel(
-        groupId: groupId,
-        from: from,
-        to: to,
-        status: 'issued',
-        currency: currency.isEmpty ? 'EUR' : currency,
-      );
-      final fileName = downloadFileNameFromHeaders(
-        response.headers,
-        fallback: 'invoice_concepts_${from ?? 'all'}_${to ?? 'all'}.xlsx',
+      final bytes = buildFilteredInvoicesExcel(
+        invoices: invoices,
+        clientNames: {for (final client in _clients) client.id: client.name},
+        defaultCurrency: _billingProfile?.currency ?? 'EUR',
+        spanish: Localizations.localeOf(context).languageCode == 'es',
       );
       await launchFileDownload(
-        response.bodyBytes,
-        fileName: fileName,
+        bytes,
+        fileName:
+            'facturas-filtradas-${DateTime.now().toIso8601String().split('T').first}.xlsx',
         mimeType:
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       );
@@ -890,13 +824,6 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       fallback:
           'invoices-${DateTime.now().year.toString().padLeft(4, '0')}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}.zip',
     );
-  }
-
-  void _updateIssuedInvoiceDateFilter(InvoiceDateFilterState filters) {
-    setState(() {
-      _issuedInvoicesFromDate = filters.fromDate;
-      _issuedInvoicesToDate = filters.toDate;
-    });
   }
 
   void _closeInlineInvoiceEditor({required bool changed}) {
@@ -1221,6 +1148,32 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       });
       showSuccessSnack(context,
           AppLocalizations.of(context)!.clientCreatedWithName(created.name));
+    }
+  }
+
+  Future<GroupClient> _patchClassificationClient(
+      GroupClient client, Map<String, dynamic> fields) async {
+    final updated = await _clientsApi.updateFields(client.id, fields);
+    if (mounted) {
+      setState(() {
+        _clients = [
+          for (final item in _clients)
+            if (item.id == updated.id) updated else item
+        ];
+        if (_selectedClient?.id == updated.id) _selectedClient = updated;
+      });
+    }
+    return updated;
+  }
+
+  Future<void> _deleteClassificationClient(GroupClient client) async {
+    final deleted = await _clientsApi.delete(client.id);
+    if (!deleted) throw StateError('Could not delete client');
+    if (mounted) {
+      setState(() {
+        _clients = _clients.where((c) => c.id != client.id).toList();
+        if (_selectedClient?.id == client.id) _selectedClient = null;
+      });
     }
   }
 

@@ -40,6 +40,7 @@ class _GroupInvoicesContent extends StatelessWidget {
     if (menu == 'client_invoice_stats') {
       return ClientInvoiceComparisonView(
         key: const ValueKey('group-invoices-client-invoice-stats'),
+        onRefresh: () => state._refreshInvoiceListsOnly(emitErrorSnack: true),
         clients: state._clients,
         invoices: state._invoices,
         selectedClient: state._selectedClient,
@@ -298,8 +299,13 @@ class _GroupInvoicesContent extends StatelessWidget {
         key: ValueKey(
           'client_classifications_${state._classificationViewRefreshTick}',
         ),
+        onManageClassifications: state._openClientClassificationManager,
         groupId: state.widget.group.id,
         clients: state._clients,
+        invoices: state._invoices,
+        onEditClient: state._openEditClient,
+        onUpdateClient: state._patchClassificationClient,
+        onDeleteClient: state._deleteClassificationClient,
       );
     }
 
@@ -319,6 +325,8 @@ class _GroupInvoicesContent extends StatelessWidget {
         onIssueAllDrafts: state._issueAllDraftInvoices,
         onCreateInvoice: state._openCreateInvoice,
         onRefresh: state._refreshInvoiceListsOnly,
+        onDownloadFiltered: state._downloadFilteredInvoices,
+        onDownloadExcelFiltered: state._downloadFilteredInvoicesExcel,
         sortState: state._effectiveInvoiceSortState,
         onSortBySelected: state._handleInvoiceSortBySelected,
         sortLoading: state._effectiveSortingInvoices,
@@ -328,7 +336,6 @@ class _GroupInvoicesContent extends StatelessWidget {
           state._recurringSeriesToOpen = seriesId;
           state._selectedMenu = 'recurring';
         }),
-        onIssuedDateFilterChanged: state._updateIssuedInvoiceDateFilter,
         canEditIssued: state.canEditIssuedInvoices(context),
       );
     }
@@ -357,6 +364,8 @@ class _GroupInvoicesContent extends StatelessWidget {
         onIssueAllDrafts: state._issueAllDraftInvoices,
         onCreateInvoice: state._openCreateInvoice,
         onRefresh: state._refreshInvoiceListsOnly,
+        onDownloadFiltered: state._downloadFilteredInvoices,
+        onDownloadExcelFiltered: state._downloadFilteredInvoicesExcel,
         sortState: state._effectiveInvoiceSortState,
         onSortBySelected: state._handleInvoiceSortBySelected,
         sortLoading: state._effectiveSortingInvoices,
@@ -366,8 +375,6 @@ class _GroupInvoicesContent extends StatelessWidget {
           state._recurringSeriesToOpen = seriesId;
           state._selectedMenu = 'recurring';
         }),
-        onIssuedDateFilterChanged: state._updateIssuedInvoiceDateFilter,
-        onDownloadFiltered: state._downloadFilteredInvoices,
         canEditIssued: state.canEditIssuedInvoices(context),
       );
     }
@@ -387,6 +394,8 @@ class _GroupInvoicesContent extends StatelessWidget {
       onIssueAllDrafts: state._issueAllDraftInvoices,
       onCreateInvoice: state._openCreateInvoice,
       onRefresh: state._refreshInvoiceListsOnly,
+      onDownloadFiltered: state._downloadFilteredInvoices,
+      onDownloadExcelFiltered: state._downloadFilteredInvoicesExcel,
       sortState: state._effectiveInvoiceSortState,
       onSortBySelected: state._handleInvoiceSortBySelected,
       sortLoading: state._effectiveSortingInvoices,
@@ -395,8 +404,6 @@ class _GroupInvoicesContent extends StatelessWidget {
         state._recurringSeriesToOpen = seriesId;
         state._selectedMenu = 'recurring';
       }),
-      onIssuedDateFilterChanged: state._updateIssuedInvoiceDateFilter,
-      onDownloadFiltered: state._downloadFilteredInvoices,
       canEditIssued: state.canEditIssuedInvoices(context),
     );
   }

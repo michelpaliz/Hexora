@@ -1,3 +1,5 @@
+param([switch]$SkipBuild)
+
 $ErrorActionPreference = "Stop"
 
 # ===== Configuration Variables (Adjust if paths change) =====
@@ -22,8 +24,15 @@ Write-Host "==================================================="
 Write-Host "Step 1/2: Building Hexora web for base path $BASE_HREF ..."
 
 Set-Location $LOCAL_PROJECT_PATH
-$BuildTag = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-flutter build web --release --base-href $BASE_HREF --no-tree-shake-icons --dart-define="APP_BUILD_TAG=$BuildTag"
+if (-Not $SkipBuild) {
+  $BuildTag = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+  flutter build web --release --base-href $BASE_HREF --no-tree-shake-icons --dart-define="APP_BUILD_TAG=$BuildTag"
+  if ($LASTEXITCODE -ne 0) {
+    throw "Flutter build failed (exit $LASTEXITCODE). Deployment stopped."
+  }
+} else {
+  Write-Host "Using the existing web build (-SkipBuild)."
+}
 
 if (-Not (Test-Path $LOCAL_BUILD_PATH)) {
   Write-Error "Error: Flutter build failed. The directory '$LOCAL_BUILD_PATH' was not found."
@@ -50,9 +59,11 @@ $RemoteTmpPath = "$RemoteDestTrimmed/.deploy_tmp_$([DateTimeOffset]::UtcNow.ToUn
 
 Write-Host "Creating remote temp directory: $RemoteTmpPath"
 ssh $REMOTE_USER_HOST "mkdir -p '$RemoteTmpPath'"
+if ($LASTEXITCODE -ne 0) { throw "Could not create remote deployment directory." }
 
 Write-Host "Uploading build to temp directory..."
 scp -r "$LOCAL_BUILD_PATH\*" "${REMOTE_USER_HOST}:${RemoteTmpPath}/"
+if ($LASTEXITCODE -ne 0) { throw "Upload failed. Live files were not replaced." }
 
 Write-Host "Verifying critical Flutter web assets in temp upload..."
 $RemoteVerifyCommand = @"
@@ -69,11 +80,13 @@ bash -lc '
   )
 '
 "@
-ssh $REMOTE_USER_HOST $RemoteVerifyCommand
+ssh $REMOTE_USER_HOST ($RemoteVerifyCommand -replace "`r", "")
+if ($LASTEXITCODE -ne 0) { throw "Remote asset verification failed. Live files were not replaced." }
 Write-Host "Remote asset verification passed."
 
 Write-Host "Swapping temp deploy into final destination..."
 ssh $REMOTE_USER_HOST "set -e; mkdir -p '$REMOTE_DEST_PATH'; find '$REMOTE_DEST_PATH' -mindepth 1 -maxdepth 1 ! -path '$RemoteTmpPath' -exec rm -rf {} +; cp -a '$RemoteTmpPath'/. '$REMOTE_DEST_PATH'; chmod -R a+rX '$REMOTE_DEST_PATH'; rm -rf '$RemoteTmpPath'"
+if ($LASTEXITCODE -ne 0) { throw "Failed to activate the uploaded web build." }
 
 Write-Host "==================================================="
 Write-Host "Deployment Complete!"

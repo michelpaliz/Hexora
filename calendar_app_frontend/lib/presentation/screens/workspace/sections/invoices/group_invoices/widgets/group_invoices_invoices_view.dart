@@ -20,6 +20,8 @@ part '../invoice_list/controller/invoice_list_controller.dart';
 part '../invoice_list/utils/invoice_client_helpers.dart';
 part '../invoice_list/widgets/month_divider.dart';
 part '../invoice_list/widgets/summary_totals_bar.dart';
+part '../invoice_list/widgets/invoice_filters_menu.dart';
+part '../invoice_list/widgets/invoice_download_menu.dart';
 part '../invoice_list/widgets/payment_notices.dart';
 
 class GroupInvoicesInvoicesView extends StatefulWidget {
@@ -44,6 +46,7 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
   final ValueChanged<String>? onOpenRecurringSeries;
   final ValueChanged<InvoiceDateFilterState>? onIssuedDateFilterChanged;
   final Future<void> Function(List<Invoice>)? onDownloadFiltered;
+  final Future<void> Function(List<Invoice>)? onDownloadExcelFiltered;
   final bool canEditIssued;
 
   const GroupInvoicesInvoicesView({
@@ -69,6 +72,7 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
     this.onOpenRecurringSeries,
     this.onIssuedDateFilterChanged,
     this.onDownloadFiltered,
+    this.onDownloadExcelFiltered,
     this.canEditIssued = false,
   });
 
@@ -173,6 +177,9 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                             selectedInvoiceId: widget.selectedInvoice?.id,
                             showSummaryTotals: false,
                             groupId: widget.group.id,
+                            onDownloadFiltered: widget.onDownloadFiltered,
+                            onDownloadExcelFiltered:
+                                widget.onDownloadExcelFiltered,
                             onOpenRecurringSeries: widget.onOpenRecurringSeries,
                             onDateFilterChanged: null,
                             allowClientNameSort: true,
@@ -197,10 +204,12 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                             selectedInvoiceId: widget.selectedInvoice?.id,
                             showSummaryTotals: true,
                             groupId: widget.group.id,
+                            onDownloadFiltered: widget.onDownloadFiltered,
+                            onDownloadExcelFiltered:
+                                widget.onDownloadExcelFiltered,
                             onOpenRecurringSeries: widget.onOpenRecurringSeries,
                             onDateFilterChanged:
                                 widget.onIssuedDateFilterChanged,
-                            onDownloadFiltered: widget.onDownloadFiltered,
                             allowClientNameSort: false,
                           ),
                         ],
