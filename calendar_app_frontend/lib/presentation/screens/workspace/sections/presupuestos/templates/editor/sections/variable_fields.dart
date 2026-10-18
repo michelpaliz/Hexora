@@ -8,6 +8,49 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
     if (field.readOnly) {
       return _readOnlySummaryField(field);
     }
+    if (field.key == 'SERVICIO_MANTENIMIENTO') {
+      final controller = _variables[field.key]!;
+      final selected = controller.text.trim().isEmpty
+          ? 'limpieza de la piscina'
+          : controller.text.trim();
+      const options = <String, String>{
+        'Jardín y piscina': 'mantenimiento del jardín y la piscina',
+        'Solo jardín': 'mantenimiento del jardín',
+        'Solo piscina': 'limpieza de la piscina',
+      };
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Tipo de servicio'),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final option in options.entries)
+                  ChoiceChip(
+                    key: ValueKey('service_${option.value}'),
+                    label: Text(option.key),
+                    selected: selected == option.value,
+                    onSelected: editable
+                        ? (chosen) {
+                            if (!chosen) return;
+                            _updateEditorState(() => controller.text = option.value);
+                          }
+                        : null,
+                  ),
+              ],
+            ),
+            if (!options.containsValue(selected)) ...[
+              const SizedBox(height: 8),
+              Text('Servicio personalizado: $selected'),
+            ],
+          ],
+        ),
+      );
+    }
     return _field(
       _variables[field.key]!,
       _variableDisplayLabel(field),
@@ -228,10 +271,10 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
         .where((field) => !field.isAutomatic && !field.readOnly)
         .toList(growable: false);
     final usedFields = editableFields
-        .where((field) => field.isUsedInTemplate)
+        .where((field) => field.isUsedInTemplate || field.key == 'SERVICIO_MANTENIMIENTO')
         .toList(growable: false);
     final optionalFields = editableFields
-        .where((field) => !field.isUsedInTemplate)
+        .where((field) => !field.isUsedInTemplate && field.key != 'SERVICIO_MANTENIMIENTO')
         .toList(growable: false);
 
     if (fields.isEmpty) return const SizedBox.shrink();

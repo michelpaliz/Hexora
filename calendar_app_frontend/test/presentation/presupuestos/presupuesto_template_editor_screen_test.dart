@@ -432,6 +432,46 @@ void main() {
     );
   });
 
+  for (final service in <String>[
+    'mantenimiento del jardín y la piscina',
+    'mantenimiento del jardín',
+    'limpieza de la piscina',
+  ]) {
+    testWidgets('service chip persists $service', (tester) async {
+      tester.view.physicalSize = const Size(1600, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final api = _FakePresupuestosApi();
+      await tester.pumpWidget(MaterialApp(
+        home: PresupuestoTemplateEditorScreen(
+          api: api,
+          groupId: 'group-1',
+          createDocumentDraft: true,
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Usar plantilla').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
+      await tester.pumpAndSettle();
+      final chip = find.byKey(ValueKey('service_$service'));
+      await tester.ensureVisible(chip);
+      // Select another option first to exercise an explicit pool selection too.
+      await tester.tap(find.byKey(const ValueKey('service_mantenimiento del jardín y la piscina')));
+      await tester.pumpAndSettle();
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+      expect(tester.widget<ChoiceChip>(chip).selected, isTrue);
+      await tester.tap(find.byKey(const ValueKey('editor_step_Imagenes')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Guardar borrador'));
+      await tester.tap(find.text('Guardar borrador'));
+      await tester.pumpAndSettle();
+      expect((api.lastDocumentContent!['variables'] as Map)['SERVICIO_MANTENIMIENTO'], service);
+    });
+  }
+
   testWidgets('garden type retains its six image slots', (tester) async {
     tester.view.physicalSize = const Size(1600, 1000);
     tester.view.devicePixelRatio = 1;
@@ -770,6 +810,7 @@ class _FakePresupuestosApi extends PresupuestosApi {
             'ZONAS_COMUNES',
             'PRODUCTOS_INCLUIDOS',
             'DIAS_TEMPORADA_ALTA',
+            'SERVICIO_MANTENIMIENTO',
             'FRECUENCIA_TEMPORADA_BAJA',
             'IMPORTE_MENSUAL',
             'DURACION_CONTRATO',
