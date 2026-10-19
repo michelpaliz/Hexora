@@ -87,6 +87,7 @@ class _TemplateSectionState {
     Map<String, dynamic> map, {
     int fallbackOrder = 1,
   }) {
+    map = SeasonalFrequency.normalize(map);
     final items = map['items'] is List
         ? (map['items'] as List)
             .map((e) => e.toString())
@@ -110,6 +111,7 @@ class _TemplateSectionState {
   }
 
   final Map<String, dynamic> original;
+  bool get generatedFrequency => key == 'work_frequency' && original['generatedFrequency'] == true;
   final String key;
   int order;
   bool enabled;

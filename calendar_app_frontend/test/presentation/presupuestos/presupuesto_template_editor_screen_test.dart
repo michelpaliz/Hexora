@@ -472,6 +472,56 @@ void main() {
     });
   }
 
+  testWidgets('generated frequency follows chips and preserves manual additions', (tester) async {
+    tester.view.physicalSize = const Size(1600, 4000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = _FakePresupuestosApi(generatedFrequency: true);
+    await tester.pumpWidget(MaterialApp(home: PresupuestoTemplateEditorScreen(
+      api: api, groupId: 'group-1', createDocumentDraft: true,
+    )));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Usar plantilla').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('service_mantenimiento del jardín y la piscina')));
+    for (final month in [5, 6, 7, 8]) {
+      final chip = find.byKey(ValueKey('season_month_$month'));
+      await tester.ensureVisible(chip);
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+    }
+    await tester.enterText(find.byKey(const ValueKey('variable_DIAS_TEMPORADA_ALTA')), '4 veces por mes');
+    await tester.enterText(find.byKey(const ValueKey('variable_FRECUENCIA_TEMPORADA_BAJA')), '2 veces por mes');
+    await tester.tap(find.byKey(const ValueKey('editor_step_Secciones')));
+    await tester.pumpAndSettle();
+    expect(find.text('Generado automáticamente'), findsOneWidget);
+    expect(find.textContaining('junio, julio, agosto y septiembre, el servicio de mantenimiento del jardín y la piscina'), findsWidgets);
+    expect(find.byKey(const ValueKey('work_frequency_item_field_0')), findsNothing);
+    await tester.tap(find.text('Añadir elemento'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('work_frequency_item_field_0')), 'Revisar el riego.');
+    await tester.tap(find.text('Editar servicio y frecuencias'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('service_mantenimiento del jardín')));
+    await tester.tap(find.byKey(const ValueKey('editor_step_Secciones')));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(find.byKey(const ValueKey('work_frequency_item_field_0'))).controller!.text, 'Revisar el riego.');
+    await tester.tap(find.byKey(const ValueKey('editor_step_Imagenes')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Guardar borrador'));
+    await tester.tap(find.text('Guardar borrador'));
+    await tester.pumpAndSettle();
+    final section = (api.lastDocumentContent!['sections'] as List).single as Map;
+    expect(section['generatedFrequency'], true);
+    expect(section['items'], ['Revisar el riego.']);
+    final variables = api.lastDocumentContent!['variables'] as Map;
+    expect(variables['SERVICIO_MANTENIMIENTO'], 'mantenimiento del jardín');
+    expect(variables['MESES_TEMPORADA_BAJA'], 'enero, febrero, marzo, abril, mayo, octubre, noviembre y diciembre');
+  });
+
   testWidgets('garden type retains its six image slots', (tester) async {
     tester.view.physicalSize = const Size(1600, 1000);
     tester.view.devicePixelRatio = 1;
@@ -776,7 +826,9 @@ void main() {
 }
 
 class _FakePresupuestosApi extends PresupuestosApi {
-  _FakePresupuestosApi({this.omitTableCalculations = false});
+  _FakePresupuestosApi({this.omitTableCalculations = false, this.generatedFrequency = false});
+
+  final bool generatedFrequency;
 
   final bool omitTableCalculations;
   int defaultDocumentCreates = 0;
@@ -816,7 +868,12 @@ class _FakePresupuestosApi extends PresupuestosApi {
             'DURACION_CONTRATO',
             'PREAVISO',
           ]),
-          'sections': <Map<String, dynamic>>[],
+          'sections': <Map<String, dynamic>>[
+            if (generatedFrequency) {
+              'key': 'work_frequency', 'order': 3, 'title': 'Frecuencia de trabajos.',
+              'generatedFrequency': true, 'items': <String>[],
+            },
+          ],
           'images': List.generate(
             6,
             (index) => <String, dynamic>{'slot': 'photo_${index + 1}'},

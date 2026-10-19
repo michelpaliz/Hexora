@@ -367,6 +367,18 @@ class _PresupuestoTemplateEditorScreenState
     _sections
       ..clear()
       ..addAll(_sectionStates(source['sections']));
+    if (_sections.any((section) => section.generatedFrequency)) {
+      for (final key in SeasonalFrequency.keys) {
+        _variableFieldDefinitions.putIfAbsent(key,
+            () => _readVariableFieldDefinitions([key])[key]!);
+        _variables.putIfAbsent(key, () => TextEditingController(text: _string(variables[key]) ?? ''));
+      }
+      final highMonths = SeasonalFrequency.monthIndexes(_variables['MESES_TEMPORADA_ALTA']!.text);
+      if (highMonths != null && highMonths.isNotEmpty && _variables['MESES_TEMPORADA_BAJA']!.text.trim().isEmpty) {
+        _variables['MESES_TEMPORADA_BAJA']!.text = SeasonalFrequency.monthList(
+          List.generate(12, (index) => index).where((index) => !highMonths.contains(index)));
+      }
+    }
 
     for (final image in _images) {
       image.dispose();
@@ -1239,6 +1251,15 @@ class _PresupuestoTemplateEditorScreenState
     return null;
   }
 
+  List<String> _generatedFrequencyItems() => SeasonalFrequency.render({
+    for (final entry in _variables.entries) entry.key: entry.value.text,
+  });
+
+  void _editFrequencyControls() {
+    final index = _editorSteps().indexWhere((step) => step.title == 'Datos');
+    if (index >= 0) setState(() => _activeStep = index);
+  }
+
   String _primaryPriceValue() {
     final key = _primaryPriceKey();
     return key == null ? '' : (_variables[key]?.text.trim() ?? '');
@@ -1274,6 +1295,7 @@ class _PresupuestoTemplateEditorScreenState
       if (target.text != next) target.text = next;
     }
     if (changedKey != null) _syncVariableToTables(changedKey);
+    if (changedKey != null && SeasonalFrequency.keys.contains(changedKey) && mounted) setState(() {});
   }
 
   void _syncVariableToTables(String key) {

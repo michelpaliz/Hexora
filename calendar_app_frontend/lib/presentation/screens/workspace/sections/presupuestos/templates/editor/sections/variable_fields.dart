@@ -8,6 +8,39 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
     if (field.readOnly) {
       return _readOnlySummaryField(field);
     }
+    if (_sections.any((section) => section.generatedFrequency) &&
+        (field.key == 'MESES_TEMPORADA_ALTA' || field.key == 'MESES_TEMPORADA_BAJA')) {
+      final high = field.key == 'MESES_TEMPORADA_ALTA';
+      final value = _variables[field.key]!.text;
+      final selected = SeasonalFrequency.monthIndexes(value);
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(high ? 'Meses de temporada alta' : 'Meses de temporada baja · Automático'),
+          const SizedBox(height: 8),
+          if (high)
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              for (var index = 0; index < 12; index++)
+                FilterChip(
+                  key: ValueKey('season_month_$index'),
+                  label: Text(SeasonalFrequency.months[index]),
+                  selected: selected?.contains(index) ?? false,
+                  onSelected: editable ? (chosen) => _updateEditorState(() {
+                    final next = {...?selected};
+                    if (chosen) { next.add(index); } else { next.remove(index); }
+                    final sorted = next.toList()..sort();
+                    _variables['MESES_TEMPORADA_ALTA']!.text = SeasonalFrequency.monthList(sorted);
+                    _variables['MESES_TEMPORADA_BAJA']!.text = SeasonalFrequency.monthList(
+                      List.generate(12, (i) => i).where((i) => !next.contains(i)));
+                  }) : null,
+                ),
+            ])
+          else
+            Text(value.isEmpty ? 'Selecciona los meses de temporada alta.' : value),
+          if (high && selected == null) Text('Periodo personalizado conservado: $value'),
+        ]),
+      );
+    }
     if (field.key == 'SERVICIO_MANTENIMIENTO') {
       final controller = _variables[field.key]!;
       final selected = controller.text.trim().isEmpty

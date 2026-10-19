@@ -59,7 +59,7 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
     final cs = theme.colorScheme;
     final itemsCount = section.itemControllers
         .where((controller) => controller.text.trim().isNotEmpty)
-        .length;
+        .length + (section.generatedFrequency ? 2 : 0);
     return Card(
       key: ValueKey('section_card_${section.key}'),
       margin: const EdgeInsets.only(bottom: 12),
@@ -230,13 +230,27 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (section.generatedFrequency) ...[
+            const Text('Generado automáticamente'),
+            for (final item in _generatedFrequencyItems())
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text('✓ $item'),
+              ),
+            TextButton.icon(
+              onPressed: _editFrequencyControls,
+              icon: const Icon(Icons.tune),
+              label: const Text('Editar servicio y frecuencias'),
+            ),
+            const Divider(),
+          ],
           Padding(
             padding: const EdgeInsets.only(left: 2, bottom: 8),
             child: Row(
               children: [
                 Expanded(
                   child: Text(
-                    'Elementos de la lista',
+                    section.generatedFrequency ? 'Elementos adicionales' : 'Elementos de la lista',
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: cs.onSurfaceVariant,
                       fontWeight: FontWeight.w700,
@@ -265,7 +279,7 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
                 border: Border.all(color: _editorBorder(theme, alpha: 0.7)),
               ),
               child: Text(
-                'Todavía no hay elementos en esta lista.',
+                section.generatedFrequency ? 'Puedes añadir condiciones adicionales sin modificar la frecuencia automática.' : 'Todavía no hay elementos en esta lista.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
                 ),
