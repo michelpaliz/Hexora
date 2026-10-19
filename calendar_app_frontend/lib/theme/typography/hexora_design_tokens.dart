@@ -39,7 +39,7 @@ abstract final class HexoraTableTokens {
 
 abstract final class HexoraDocumentTokens {
   static const double rowHeight = 60;
-  static const double statusColumn = 120;
+  static const double statusColumn = 132;
   static const double amountColumn = 144;
   static const double icon = 17;
   static const double statusIconSlot = 18;

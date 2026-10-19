@@ -61,7 +61,9 @@ void main() {
           expect(tester.getTopRight(columns.at(i)).dx, x);
         }
       }
-      final links = find.byIcon(Icons.link_off);
+      // Secondary states (payment, delivery, reconciliation) sit behind the
+      // info icon in the status column.
+      final links = find.byIcon(Icons.info_outline_rounded);
       expect(links, findsNWidgets(3));
       expect(
           tester.getCenter(links.at(0)).dx, tester.getCenter(links.at(2)).dx);

@@ -5,6 +5,8 @@ import 'dart:ui_web' as ui;
 
 import 'package:flutter/material.dart';
 
+import 'document_split_view.dart';
+
 class PdfInlinePreview extends StatefulWidget {
   const PdfInlinePreview({
     super.key,
@@ -36,8 +38,9 @@ class _PdfInlinePreviewState extends State<PdfInlinePreview> {
       ..style.border = '0'
       ..style.width = '100%'
       ..style.height = '100%'
-      ..style.pointerEvents = widget.interactive ? 'auto' : 'none';
+      ..style.pointerEvents = _pointerEvents;
     _setUrl(widget.bytes);
+    documentSplitDragging.addListener(_syncPointerEvents);
 
     ui.platformViewRegistry.registerViewFactory(
       _viewType,
@@ -52,10 +55,15 @@ class _PdfInlinePreviewState extends State<PdfInlinePreview> {
         oldWidget.showToolbar != widget.showToolbar) {
       _setUrl(widget.bytes);
     }
-    if (oldWidget.interactive != widget.interactive) {
-      _element.style.pointerEvents = widget.interactive ? 'auto' : 'none';
-    }
+    if (oldWidget.interactive != widget.interactive) _syncPointerEvents();
   }
+
+  // The iframe would capture the pointer while a split divider is dragged
+  // across it.
+  String get _pointerEvents =>
+      widget.interactive && !documentSplitDragging.value ? 'auto' : 'none';
+
+  void _syncPointerEvents() => _element.style.pointerEvents = _pointerEvents;
 
   void _setUrl(Uint8List bytes) {
     if (_url != null) {
@@ -71,6 +79,7 @@ class _PdfInlinePreviewState extends State<PdfInlinePreview> {
 
   @override
   void dispose() {
+    documentSplitDragging.removeListener(_syncPointerEvents);
     if (_url != null) {
       html.URL.revokeObjectURL(_url!);
     }

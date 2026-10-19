@@ -5,7 +5,10 @@ import 'package:hexora/presentation/shared/widgets/documents/mobile_document_car
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
+import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/invoicing/invoice_lines_api.dart';
+import 'package:hexora/services/shared/content_disposition.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -60,6 +63,32 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   final _linesApi = InvoiceLinesApi();
 
   bool _loadingMeta = false;
+  bool _downloadingPdf = false;
+
+  Future<void> _downloadPdf() async {
+    if (_downloadingPdf) return;
+    setState(() => _downloadingPdf = true);
+    try {
+      final r = await InvoicesApi().downloadPdf(widget.invoice.id);
+      final name = widget.invoice.invoiceNumber.trim().isNotEmpty
+          ? widget.invoice.invoiceNumber.trim()
+          : widget.invoice.id.trim();
+      await launchFileDownload(
+        r.bodyBytes,
+        fileName: downloadFileNameFromHeaders(
+          r.headers,
+          fallback: name.endsWith('.pdf') ? name : 'invoice-$name.pdf',
+        ),
+        mimeType: 'application/pdf',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _downloadingPdf = false);
+    }
+  }
 
   bool _detailsExpanded = false;
   int? _lineCount;
@@ -240,20 +269,13 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
             : isIssued
                 ? l.statusIssued
                 : l.statusDraft;
-    final documentStatusColor = isCancelled
-        ? cs.error
+    final documentStatus = isCancelled
+        ? HexoraDocumentStatus.cancelled
         : isRectified
-            ? cs.tertiary
+            ? HexoraDocumentStatus.rectified
             : isIssued
-                ? cs.primary
-                : cs.onSurfaceVariant;
-    final documentStatusIcon = isCancelled
-        ? Icons.cancel_outlined
-        : isRectified
-            ? Icons.replay_outlined
-            : isIssued
-                ? Icons.task_alt_outlined
-                : Icons.edit_note_outlined;
+                ? HexoraDocumentStatus.issued
+                : HexoraDocumentStatus.draft;
     final backendLinkStatusLabel =
         (widget.invoice.linkStatusLabel ?? '').trim();
     final linkTooltip = backendLinkStatusLabel.isNotEmpty
@@ -325,18 +347,33 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       amount: totalLabel,
       selected: widget.selected,
       onTap: widget.onTap,
-      onPreview: widget.onPreview ?? widget.onTap,
       previewLabel: isEs ? 'Vista previa' : 'Preview',
+      quickActionSlots: 2,
+      quickActions: [
+        if (widget.onEdit != null)
+          CompactDocumentQuickAction(
+            icon: Icons.edit_outlined,
+            tooltip: l.edit,
+            onPressed: widget.onEdit,
+          ),
+        CompactDocumentQuickAction(
+          icon: Icons.download_rounded,
+          tooltip: isEs ? 'Descargar PDF' : 'Download PDF',
+          busy: _downloadingPdf,
+          onPressed: _downloadPdf,
+        ),
+      ],
       status: Row(mainAxisSize: MainAxisSize.min, children: [
-        Tooltip(
-          message: isIssued
-              ? '$documentStatusLabel\n$issuedByTooltip'
-              : documentStatusLabel,
-          child: HexoraStatusBadge(
-            label: documentStatusLabel,
-            color: documentStatusColor,
-            leading:
-                Icon(documentStatusIcon, size: 14, color: documentStatusColor),
+        Flexible(
+          child: Tooltip(
+            message: isIssued
+                ? '$documentStatusLabel\n$issuedByTooltip'
+                : documentStatusLabel,
+            child: HexoraStatusBadge.document(
+              context,
+              status: documentStatus,
+              label: documentStatusLabel,
+            ),
           ),
         ),
         const SizedBox(width: 4),
@@ -352,7 +389,9 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                 ? (isEs ? 'Ocultar detalles' : 'Hide details')
                 : (isEs ? 'Ver detalles' : 'Show details'),
             () => setState(() => _detailsExpanded = !_detailsExpanded)),
-        if (widget.onEdit != null) CompactDocumentAction(l.edit, widget.onEdit),
+        if (widget.onPreview != null)
+          CompactDocumentAction(
+              isEs ? 'Vista previa' : 'Preview', widget.onPreview),
         if (widget.onIssue != null)
           CompactDocumentAction(l.invoiceIssueCta, widget.onIssue),
         if (widget.onInspectRecurrence != null)

@@ -1,0 +1,442 @@
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// How the workspace is shared between the document list and its preview.
+enum DocumentViewMode { list, split, document }
+
+/// True while the user drags the list/preview divider. Embedded web PDF
+/// viewers (iframes) would otherwise swallow the pointer mid-drag, so
+/// [PdfInlinePreview] stops taking pointer events while this is set.
+final ValueNotifier<bool> documentSplitDragging = ValueNotifier(false);
+
+/// One list + preview layout for every document module (invoices, receipts,
+/// quotes, contracts).
+///
+/// * Large desktop (≥ [splitBreakpoint]): split view with a draggable
+///   divider; the list or the document can be expanded without leaving the
+///   page.
+/// * Medium desktop (≥ [drawerBreakpoint]): list first; selecting a document
+///   opens the split view.
+/// * Tablet and mobile: list only; the selected document slides in over it
+///   (full width on phones).
+///
+/// The chosen mode and divider position are remembered per [storageKey].
+class DocumentSplitView extends StatefulWidget {
+  const DocumentSplitView({
+    super.key,
+    required this.storageKey,
+    required this.list,
+    required this.preview,
+    this.selectionKey,
+    this.initialListFraction = 0.56,
+    this.minListWidth = 380,
+    this.minPreviewWidth = 360,
+    this.splitBreakpoint = 1280,
+    this.drawerBreakpoint = 960,
+    this.gap = 8,
+  });
+
+  final String storageKey;
+  final Widget list;
+
+  /// Detail/PDF pane. Shown in split and document modes, and in the overlay
+  /// on narrow screens.
+  final Widget preview;
+
+  /// Identity of the selected document; null when nothing is selected. A
+  /// change reveals the preview where it is hidden by default.
+  final Object? selectionKey;
+
+  final double initialListFraction;
+  final double minListWidth;
+  final double minPreviewWidth;
+  final double splitBreakpoint;
+  final double drawerBreakpoint;
+  final double gap;
+
+  @override
+  State<DocumentSplitView> createState() => _DocumentSplitViewState();
+}
+
+class _DocumentSplitViewState extends State<DocumentSplitView> {
+  /// Survive rebuilds and module switches within the session; prefs make
+  /// the choice stick across sessions.
+  static final Map<String, double> _fractions = {};
+  static final Map<String, DocumentViewMode> _modes = {};
+
+  late double _fraction =
+      _fractions[widget.storageKey] ?? widget.initialListFraction;
+
+  /// Explicit user choice; null means "default for this width".
+  late DocumentViewMode? _userMode = _modes[widget.storageKey];
+  bool _overlayOpen = false;
+  bool _dragging = false;
+
+  String get _fractionPref => 'documentSplit.${widget.storageKey}.fraction';
+  String get _modePref => 'documentSplit.${widget.storageKey}.mode';
+
+  @override
+  void initState() {
+    super.initState();
+    _restore();
+  }
+
+  Future<void> _restore() async {
+    if (_fractions.containsKey(widget.storageKey)) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final fraction = prefs.getDouble(_fractionPref);
+      final modeName = prefs.getString(_modePref);
+      if (!mounted) return;
+      setState(() {
+        if (fraction != null) _fraction = fraction;
+        _userMode = DocumentViewMode.values
+            .where((m) => m.name == modeName)
+            .firstOrNull;
+      });
+    } catch (_) {
+      // Preferences are a convenience; defaults are fine without them.
+    }
+  }
+
+  Future<void> _persist() async {
+    _fractions[widget.storageKey] = _fraction;
+    if (_userMode == null) {
+      _modes.remove(widget.storageKey);
+    } else {
+      _modes[widget.storageKey] = _userMode!;
+    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_fractionPref, _fraction);
+      if (_userMode == null) {
+        await prefs.remove(_modePref);
+      } else {
+        await prefs.setString(_modePref, _userMode!.name);
+      }
+    } catch (_) {}
+  }
+
+  @override
+  void didUpdateWidget(covariant DocumentSplitView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectionKey != null &&
+        widget.selectionKey != oldWidget.selectionKey) {
+      _overlayOpen = true;
+      // Picking a document while the preview is collapsed means the user
+      // wants to see it.
+      if (_userMode == DocumentViewMode.list) _userMode = null;
+    }
+    if (widget.selectionKey == null) _overlayOpen = false;
+  }
+
+  @override
+  void dispose() {
+    if (_dragging) documentSplitDragging.value = false;
+    super.dispose();
+  }
+
+  void _setMode(DocumentViewMode? mode) {
+    setState(() => _userMode = mode);
+    _persist();
+  }
+
+  bool get _isEs =>
+      Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final width = constraints.maxWidth;
+      if (width < widget.drawerBreakpoint) return _buildOverlayLayout(width);
+
+      final hasSelection = widget.selectionKey != null;
+      final defaultMode = width >= widget.splitBreakpoint || hasSelection
+          ? DocumentViewMode.split
+          : DocumentViewMode.list;
+      var mode = _userMode ?? defaultMode;
+      // Not enough room for both panes at their minimum: fall back to one.
+      if (mode == DocumentViewMode.split &&
+          width <
+              widget.minListWidth + widget.minPreviewWidth + _dividerWidth) {
+        mode = hasSelection ? DocumentViewMode.document : DocumentViewMode.list;
+      }
+      return switch (mode) {
+        DocumentViewMode.list => Row(children: [
+            Expanded(child: widget.list),
+            SizedBox(width: widget.gap),
+            _ModeRail(
+              actions: [
+                _RailAction(
+                  icon: Icons.vertical_split_outlined,
+                  tooltip: _isEs ? 'Vista dividida' : 'Split view',
+                  onPressed: () => _setMode(DocumentViewMode.split),
+                ),
+                _RailAction(
+                  icon: Icons.open_in_full_rounded,
+                  tooltip: _isEs ? 'Ampliar documento' : 'Expand document',
+                  onPressed: hasSelection
+                      ? () => _setMode(DocumentViewMode.document)
+                      : null,
+                ),
+              ],
+            ),
+          ]),
+        DocumentViewMode.document => Row(children: [
+            _ModeRail(
+              actions: [
+                _RailAction(
+                  icon: Icons.view_list_outlined,
+                  tooltip: _isEs ? 'Mostrar solo la lista' : 'Show list only',
+                  onPressed: () => _setMode(DocumentViewMode.list),
+                ),
+                _RailAction(
+                  icon: Icons.vertical_split_outlined,
+                  tooltip: _isEs ? 'Vista dividida' : 'Split view',
+                  onPressed: () => _setMode(DocumentViewMode.split),
+                ),
+              ],
+            ),
+            SizedBox(width: widget.gap),
+            Expanded(child: widget.preview),
+          ]),
+        DocumentViewMode.split => _buildSplit(width),
+      };
+    });
+  }
+
+  static const double _dividerWidth = 24;
+
+  Widget _buildSplit(double width) {
+    final available = width - _dividerWidth;
+    final minFraction = widget.minListWidth / available;
+    final maxFraction = 1 - widget.minPreviewWidth / available;
+    final fraction = _fraction.clamp(minFraction, maxFraction);
+    final listWidth = available * fraction;
+    return Row(children: [
+      SizedBox(width: listWidth, child: widget.list),
+      _SplitDivider(
+        width: _dividerWidth,
+        onDragStart: () {
+          setState(() => _dragging = true);
+          documentSplitDragging.value = true;
+        },
+        onDragUpdate: (dx) => setState(() {
+          _fraction = ((listWidth + dx) / available)
+              .clamp(minFraction, maxFraction)
+              .toDouble();
+        }),
+        onDragEnd: () {
+          setState(() => _dragging = false);
+          documentSplitDragging.value = false;
+          _persist();
+        },
+        onReset: () {
+          setState(() => _fraction = widget.initialListFraction);
+          _persist();
+        },
+        collapsePreview: _RailAction(
+          icon: Icons.chevron_right_rounded,
+          tooltip: _isEs ? 'Ocultar vista previa' : 'Hide preview',
+          onPressed: () => _setMode(DocumentViewMode.list),
+        ),
+        expandPreview: _RailAction(
+          icon: Icons.chevron_left_rounded,
+          tooltip: _isEs ? 'Ampliar documento' : 'Expand document',
+          onPressed: widget.selectionKey == null
+              ? null
+              : () => _setMode(DocumentViewMode.document),
+        ),
+        dragTooltip: _isEs
+            ? 'Arrastra para redimensionar · doble clic para restablecer'
+            : 'Drag to resize · double-click to reset',
+      ),
+      Expanded(child: widget.preview),
+    ]);
+  }
+
+  Widget _buildOverlayLayout(double width) {
+    final cs = Theme.of(context).colorScheme;
+    final open = _overlayOpen && widget.selectionKey != null;
+    final phone = width < 650;
+    final panelWidth = phone ? width : (width * 0.85).clamp(0.0, 640.0);
+    return Stack(children: [
+      Positioned.fill(child: widget.list),
+      if (open) ...[
+        if (!phone)
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => setState(() => _overlayOpen = false),
+              child: ColoredBox(color: Colors.black.withValues(alpha: 0.32)),
+            ),
+          ),
+        Positioned(
+          top: 0,
+          bottom: 0,
+          right: 0,
+          width: panelWidth,
+          child: Material(
+            color: cs.surface,
+            elevation: 8,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+                    child: IconButton(
+                      tooltip: phone
+                          ? MaterialLocalizations.of(context).backButtonTooltip
+                          : MaterialLocalizations.of(context)
+                              .closeButtonTooltip,
+                      icon: Icon(phone
+                          ? Icons.arrow_back_rounded
+                          : Icons.close_rounded),
+                      onPressed: () => setState(() => _overlayOpen = false),
+                    ),
+                  ),
+                ),
+                Expanded(child: widget.preview),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ]);
+  }
+}
+
+class _RailAction {
+  const _RailAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+}
+
+Widget _railButton(BuildContext context, _RailAction action) => IconButton(
+      tooltip: action.tooltip,
+      onPressed: action.onPressed,
+      icon: Icon(action.icon),
+      iconSize: 18,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+      visualDensity: VisualDensity.compact,
+    );
+
+/// Collapsed pane: a slim strip with the buttons that bring it back.
+class _ModeRail extends StatelessWidget {
+  const _ModeRail({required this.actions});
+  final List<_RailAction> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: 36,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
+      ),
+      child: Column(children: [
+        for (final action in actions) ...[
+          _railButton(context, action),
+          const SizedBox(height: 4),
+        ],
+      ]),
+    );
+  }
+}
+
+class _SplitDivider extends StatefulWidget {
+  const _SplitDivider({
+    required this.width,
+    required this.onDragStart,
+    required this.onDragUpdate,
+    required this.onDragEnd,
+    required this.onReset,
+    required this.collapsePreview,
+    required this.expandPreview,
+    required this.dragTooltip,
+  });
+
+  final double width;
+  final VoidCallback onDragStart;
+  final ValueChanged<double> onDragUpdate;
+  final VoidCallback onDragEnd;
+  final VoidCallback onReset;
+  final _RailAction collapsePreview;
+  final _RailAction expandPreview;
+  final String dragTooltip;
+
+  @override
+  State<_SplitDivider> createState() => _SplitDividerState();
+}
+
+class _SplitDividerState extends State<_SplitDivider> {
+  bool _hover = false;
+  bool _active = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final highlight = _hover || _active;
+    return SizedBox(
+      width: widget.width,
+      child: Column(children: [
+        const SizedBox(height: 6),
+        _railButton(context, widget.expandPreview),
+        _railButton(context, widget.collapsePreview),
+        Expanded(
+          child: Tooltip(
+            message: widget.dragTooltip,
+            waitDuration: const Duration(milliseconds: 600),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.resizeColumn,
+              onEnter: (_) => setState(() => _hover = true),
+              onExit: (_) => setState(() => _hover = false),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                dragStartBehavior: DragStartBehavior.down,
+                onDoubleTap: widget.onReset,
+                onHorizontalDragStart: (_) {
+                  setState(() => _active = true);
+                  widget.onDragStart();
+                },
+                onHorizontalDragUpdate: (d) => widget.onDragUpdate(d.delta.dx),
+                onHorizontalDragEnd: (_) {
+                  setState(() => _active = false);
+                  widget.onDragEnd();
+                },
+                onHorizontalDragCancel: () {
+                  setState(() => _active = false);
+                  widget.onDragEnd();
+                },
+                child: Center(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    width: highlight ? 3 : 1,
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: highlight
+                          ? cs.primary.withValues(alpha: 0.7)
+                          : cs.outlineVariant.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+}

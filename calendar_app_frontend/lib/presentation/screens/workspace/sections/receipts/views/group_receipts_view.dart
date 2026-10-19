@@ -1,5 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -120,6 +121,7 @@ class _IssuedReceiptsTab extends StatefulWidget {
     required this.receipts,
     required this.clients,
     required this.unknownClientLabel,
+    required this.selectedId,
     required this.onSelect,
     required this.onPreview,
     required this.onDownload,
@@ -130,6 +132,7 @@ class _IssuedReceiptsTab extends StatefulWidget {
   final List<Receipt> receipts;
   final List<GroupClient> clients;
   final String unknownClientLabel;
+  final String? selectedId;
   final ValueChanged<Receipt> onSelect;
   final Future<void> Function(Receipt) onPreview;
   final ValueChanged<Receipt> onDownload;
@@ -149,56 +152,36 @@ class _IssuedReceiptsTabState extends State<_IssuedReceiptsTab> {
     final filtered = filterReceiptsByDelivery(widget.receipts, _filter);
     return Column(
       children: [
+        // Content-sized chips instead of a full-width dropdown, so the
+        // filter doesn't take space away from the list.
         Padding(
           padding: const EdgeInsets.fromLTRB(10, 8, 10, 2),
-          child: Row(
-            children: [
-              Icon(Icons.filter_alt_outlined,
-                  size: 16, color: cs.onSurfaceVariant),
-              const SizedBox(width: 7),
-              Expanded(
-                child: DropdownButtonFormField<ReceiptDeliveryFilter>(
-                  key: const ValueKey('receipt-delivery-filter'),
-                  initialValue: _filter,
-                  isDense: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Estado de envío',
-                    border: OutlineInputBorder(),
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: SingleChildScrollView(
+            key: const ValueKey('receipt-delivery-filter'),
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final (value, label) in const [
+                  (ReceiptDeliveryFilter.all, 'Todos'),
+                  (ReceiptDeliveryFilter.notSent, 'No enviados'),
+                  (ReceiptDeliveryFilter.sent, 'Enviados'),
+                  (ReceiptDeliveryFilter.failed, 'Error de envío'),
+                ])
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 6),
+                    child: ChoiceChip(
+                      label: Text(_filter == value
+                          ? '$label · ${filtered.length}'
+                          : label),
+                      selected: _filter == value,
+                      showCheckmark: false,
+                      visualDensity: VisualDensity.compact,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      onSelected: (_) => setState(() => _filter = value),
+                    ),
                   ),
-                  items: const [
-                    DropdownMenuItem(
-                      value: ReceiptDeliveryFilter.all,
-                      child: Text('Todos'),
-                    ),
-                    DropdownMenuItem(
-                      value: ReceiptDeliveryFilter.notSent,
-                      child: Text('No enviados'),
-                    ),
-                    DropdownMenuItem(
-                      value: ReceiptDeliveryFilter.sent,
-                      child: Text('Enviados'),
-                    ),
-                    DropdownMenuItem(
-                      value: ReceiptDeliveryFilter.failed,
-                      child: Text('Error de envío'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) setState(() => _filter = value);
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '${filtered.length}',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         Expanded(
@@ -217,6 +200,7 @@ class _IssuedReceiptsTabState extends State<_IssuedReceiptsTab> {
                   itemBuilder: (receipt, client) => ReceiptListItem(
                     receipt: receipt,
                     client: client,
+                    selected: receipt.id == widget.selectedId,
                     onTap: () => widget.onSelect(receipt),
                     onPreview: () => widget.onPreview(receipt),
                     onDownload: () => widget.onDownload(receipt),
@@ -285,291 +269,282 @@ class GroupReceiptsView extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          // ── Left panel: list ──────────────────────────────────────────────
-          Expanded(
-            flex: 3,
-            child: DefaultTabController(
-              length: 2,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? cs.surface.withValues(alpha: 0.20)
-                      : cs.surface.withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: cs.outlineVariant.withValues(
-                      alpha: isDark ? 0.20 : 0.25,
-                    ),
-                  ),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  children: [
-                    // Header row
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(14, 12, 10, 10),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? cs.surfaceContainerHighest.withValues(alpha: 0.30)
-                            : cs.surfaceContainerLow.withValues(alpha: 0.60),
-                        border: Border(
-                          bottom: BorderSide(
-                            color: cs.outlineVariant.withValues(
-                              alpha: isDark ? 0.20 : 0.25,
-                            ),
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 30,
-                            height: 30,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  cs.primary.withValues(alpha: 0.22),
-                                  cs.primary.withValues(alpha: 0.08),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(9),
-                            ),
-                            alignment: Alignment.center,
-                            child: Icon(
-                              Icons.receipt_long_rounded,
-                              size: 15,
-                              color: cs.primary,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              isEs ? 'Documentos' : 'Documents',
-                              style: t.bodySmall.copyWith(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13.5,
-                                color: cs.onSurface,
-                              ),
-                            ),
-                          ),
-                          if (totalCount > 0)
-                            Container(
-                              margin: const EdgeInsets.only(right: 6),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: cs.primary.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                '$totalCount',
-                                style: t.bodySmall.copyWith(
-                                  color: cs.primary,
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          Tooltip(
-                            message: isEs ? 'Nuevo documento' : 'New document',
-                            child: IconButton(
-                              onPressed: onCreateReceipt,
-                              icon: const Icon(Icons.add_rounded, size: 18),
-                              style: IconButton.styleFrom(
-                                foregroundColor: cs.primary,
-                                backgroundColor:
-                                    cs.primary.withValues(alpha: 0.10),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(9),
-                                ),
-                                padding: const EdgeInsets.all(6),
-                                minimumSize: const Size(32, 32),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Tab bar
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
-                      child: HexoraSectionTabs(
-                        tabs: [
-                          Tab(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.edit_note_rounded, size: 14),
-                                const SizedBox(width: 5),
-                                Text(l.groupReceiptsTabDrafts(drafts.length)),
-                              ],
-                            ),
-                          ),
-                          Tab(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.task_alt_rounded, size: 14),
-                                const SizedBox(width: 5),
-                                Text(l
-                                    .groupReceiptsTabReceipts(receipts.length)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Divider(
-                      height: 1,
-                      color: cs.outlineVariant.withValues(
-                        alpha: isDark ? 0.20 : 0.25,
-                      ),
-                    ),
-                    Expanded(
-                      child: TabBarView(
-                        children: [
-                          _GroupedReceiptList(
-                            receipts: drafts,
-                            clients: clients,
-                            unknownClientLabel: l.unknownClient,
-                            padding: const EdgeInsets.all(10),
-                            itemBuilder: (r, client) => ReceiptListItem(
-                              receipt: r,
-                              client: client,
-                              onTap: () => onSelectReceipt(r),
-                              onPreview: () => onPreviewPdf(r),
-                              onEdit: () => onEditReceipt(r),
-                              onDownload: () => onDownloadPdf(r),
-                              onIssue: () => onIssueReceipt(r),
-                              onDelete: () => onDeleteReceipt(r),
-                            ),
-                          ),
-                          _IssuedReceiptsTab(
-                            receipts: receipts,
-                            clients: clients,
-                            unknownClientLabel: l.unknownClient,
-                            onSelect: onSelectReceipt,
-                            onPreview: onPreviewPdf,
-                            onDownload: onDownloadPdf,
-                            onMarkSent: onMarkReceiptSent,
-                            onMarkUnsent: onMarkReceiptUnsent,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+      child: DocumentSplitView(
+        storageKey: 'receipts',
+        selectionKey: selectedReceipt?.id,
+        list: DefaultTabController(
+          length: 2,
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark
+                  ? cs.surface.withValues(alpha: 0.20)
+                  : cs.surface.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(
+                  alpha: isDark ? 0.20 : 0.25,
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          // ── Right panel: detail ───────────────────────────────────────────
-          Expanded(
-            flex: 4,
-            child: Container(
-              decoration: BoxDecoration(
-                color: isDark
-                    ? cs.surface.withValues(alpha: 0.20)
-                    : cs.surface.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                // Header row
+                Container(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 10, 10),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? cs.surfaceContainerHighest.withValues(alpha: 0.30)
+                        : cs.surfaceContainerLow.withValues(alpha: 0.60),
+                    border: Border(
+                      bottom: BorderSide(
+                        color: cs.outlineVariant.withValues(
+                          alpha: isDark ? 0.20 : 0.25,
+                        ),
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              cs.primary.withValues(alpha: 0.22),
+                              cs.primary.withValues(alpha: 0.08),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.receipt_long_rounded,
+                          size: 15,
+                          color: cs.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          isEs ? 'Documentos' : 'Documents',
+                          style: t.bodySmall.copyWith(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13.5,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                      ),
+                      if (totalCount > 0)
+                        Container(
+                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: cs.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            '$totalCount',
+                            style: t.bodySmall.copyWith(
+                              color: cs.primary,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      Tooltip(
+                        message: isEs ? 'Nuevo documento' : 'New document',
+                        child: IconButton(
+                          onPressed: onCreateReceipt,
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          style: IconButton.styleFrom(
+                            foregroundColor: cs.primary,
+                            backgroundColor: cs.primary.withValues(alpha: 0.10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(9),
+                            ),
+                            padding: const EdgeInsets.all(6),
+                            minimumSize: const Size(32, 32),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Tab bar
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+                  child: HexoraSectionTabs(
+                    tabs: [
+                      Tab(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.edit_note_rounded, size: 14),
+                            const SizedBox(width: 5),
+                            Text(l.groupReceiptsTabDrafts(drafts.length)),
+                          ],
+                        ),
+                      ),
+                      Tab(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.task_alt_rounded, size: 14),
+                            const SizedBox(width: 5),
+                            Text(l.groupReceiptsTabReceipts(receipts.length)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Divider(
+                  height: 1,
                   color: cs.outlineVariant.withValues(
                     alpha: isDark ? 0.20 : 0.25,
                   ),
                 ),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: selectedReceipt == null
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 56,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    cs.primary.withValues(alpha: 0.16),
-                                    cs.primary.withValues(alpha: 0.06),
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              alignment: Alignment.center,
-                              child: Icon(
-                                Icons.receipt_long_rounded,
-                                size: 26,
-                                color: cs.primary.withValues(alpha: 0.75),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              isEs
-                                  ? 'Sin documento seleccionado'
-                                  : 'No document selected',
-                              style: t.bodyLarge.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: cs.onSurface,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              l.groupReceiptsSelectReceiptHint,
-                              textAlign: TextAlign.center,
-                              style: t.bodySmall.copyWith(
-                                color: cs.onSurfaceVariant,
-                                height: 1.45,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            FilledButton.tonalIcon(
-                              onPressed: onCreateReceipt,
-                              icon: const Icon(Icons.add_rounded, size: 16),
-                              label: Text(
-                                isEs ? 'Nuevo documento' : 'New document',
-                              ),
-                              style: FilledButton.styleFrom(
-                                visualDensity: VisualDensity.comfortable,
-                              ),
-                            ),
-                          ],
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _GroupedReceiptList(
+                        receipts: drafts,
+                        clients: clients,
+                        unknownClientLabel: l.unknownClient,
+                        padding: const EdgeInsets.all(10),
+                        itemBuilder: (r, client) => ReceiptListItem(
+                          receipt: r,
+                          client: client,
+                          selected: r.id == selectedReceipt?.id,
+                          onTap: () => onSelectReceipt(r),
+                          onPreview: () => onPreviewPdf(r),
+                          onEdit: () => onEditReceipt(r),
+                          onDownload: () => onDownloadPdf(r),
+                          onIssue: () => onIssueReceipt(r),
+                          onDelete: () => onDeleteReceipt(r),
                         ),
                       ),
-                    )
-                  : ReceiptDetailCard(
-                      key: ValueKey(selectedReceipt!.id),
-                      receipt: selectedReceipt!,
-                      client: _receiptClientFor(
-                        selectedReceipt!,
-                        clients,
-                        l.unknownClient,
+                      _IssuedReceiptsTab(
+                        receipts: receipts,
+                        clients: clients,
+                        unknownClientLabel: l.unknownClient,
+                        selectedId: selectedReceipt?.id,
+                        onSelect: onSelectReceipt,
+                        onPreview: onPreviewPdf,
+                        onDownload: onDownloadPdf,
+                        onMarkSent: onMarkReceiptSent,
+                        onMarkUnsent: onMarkReceiptUnsent,
                       ),
-                      billingProfile: billingProfile,
-                      onEdit: () => onEditReceipt(selectedReceipt!),
-                      onPreviewPdf: () => onPreviewPdf(selectedReceipt!),
-                      onDownloadPdf: () => onDownloadPdf(selectedReceipt!),
-                      onIssue: () => onIssueReceipt(selectedReceipt!),
-                      onMarkSent: () => onMarkReceiptSent(selectedReceipt!),
-                      onMarkUnsent: () => onMarkReceiptUnsent(selectedReceipt!),
-                      onDeleteDraft: () => onDeleteReceipt(selectedReceipt!),
-                      onImportJson: () => onImportJson(selectedReceipt!),
-                      onLoadInlinePdf: () => onLoadInlinePdf(selectedReceipt!),
-                      previewInteractive: !disableDetailPreviewInteraction,
-                    ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
+        preview: Container(
+          decoration: BoxDecoration(
+            color: isDark
+                ? cs.surface.withValues(alpha: 0.20)
+                : cs.surface.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(
+                alpha: isDark ? 0.20 : 0.25,
+              ),
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: selectedReceipt == null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                cs.primary.withValues(alpha: 0.16),
+                                cs.primary.withValues(alpha: 0.06),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.receipt_long_rounded,
+                            size: 26,
+                            color: cs.primary.withValues(alpha: 0.75),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          isEs
+                              ? 'Sin documento seleccionado'
+                              : 'No document selected',
+                          style: t.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          l.groupReceiptsSelectReceiptHint,
+                          textAlign: TextAlign.center,
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant,
+                            height: 1.45,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        FilledButton.tonalIcon(
+                          onPressed: onCreateReceipt,
+                          icon: const Icon(Icons.add_rounded, size: 16),
+                          label: Text(
+                            isEs ? 'Nuevo documento' : 'New document',
+                          ),
+                          style: FilledButton.styleFrom(
+                            visualDensity: VisualDensity.comfortable,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : ReceiptDetailCard(
+                  key: ValueKey(selectedReceipt!.id),
+                  receipt: selectedReceipt!,
+                  client: _receiptClientFor(
+                    selectedReceipt!,
+                    clients,
+                    l.unknownClient,
+                  ),
+                  billingProfile: billingProfile,
+                  onEdit: () => onEditReceipt(selectedReceipt!),
+                  onPreviewPdf: () => onPreviewPdf(selectedReceipt!),
+                  onDownloadPdf: () => onDownloadPdf(selectedReceipt!),
+                  onIssue: () => onIssueReceipt(selectedReceipt!),
+                  onMarkSent: () => onMarkReceiptSent(selectedReceipt!),
+                  onMarkUnsent: () => onMarkReceiptUnsent(selectedReceipt!),
+                  onDeleteDraft: () => onDeleteReceipt(selectedReceipt!),
+                  onImportJson: () => onImportJson(selectedReceipt!),
+                  onLoadInlinePdf: () => onLoadInlinePdf(selectedReceipt!),
+                  previewInteractive: !disableDetailPreviewInteraction,
+                ),
+        ),
       ),
     );
   }

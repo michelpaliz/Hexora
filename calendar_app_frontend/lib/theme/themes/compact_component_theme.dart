@@ -99,6 +99,23 @@ ThemeData compactComponentTheme(ThemeData base) {
         dividerThickness: HexoraTableTokens.separatorWidth),
     dialogTheme: base.dialogTheme.copyWith(
         titleTextStyle: text.titleLarge, contentTextStyle: text.bodyMedium),
+    // One quiet scrollbar style for every list: thin and muted until hovered
+    // or dragged, so nested panes don't show competing heavy thumbs.
+    scrollbarTheme: ScrollbarThemeData(
+      thickness: WidgetStateProperty.resolveWith((states) =>
+          states.contains(WidgetState.hovered) ||
+                  states.contains(WidgetState.dragged)
+              ? 8
+              : 4),
+      radius: const Radius.circular(4),
+      crossAxisMargin: 2,
+      thumbColor: WidgetStateProperty.resolveWith((states) =>
+          base.colorScheme.onSurfaceVariant.withValues(
+              alpha: states.contains(WidgetState.hovered) ||
+                      states.contains(WidgetState.dragged)
+                  ? 0.45
+                  : 0.22)),
+    ),
     tabBarTheme: base.tabBarTheme.copyWith(
         labelStyle: text.labelLarge,
         unselectedLabelStyle: text.labelLarge,

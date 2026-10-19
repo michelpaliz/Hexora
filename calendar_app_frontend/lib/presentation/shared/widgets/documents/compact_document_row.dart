@@ -43,7 +43,8 @@ class CompactDocumentRow extends StatelessWidget {
       this.previewBusy = false,
       this.quickActions = const [],
       this.primaryAction,
-      this.primaryActionWidth = 0});
+      this.primaryActionWidth = 0,
+      this.quickActionSlots = 0});
   final String title, metadata, previewLabel;
   final String? amount;
   final IconData icon;
@@ -61,6 +62,11 @@ class CompactDocumentRow extends StatelessWidget {
   final Widget? primaryAction;
   final double primaryActionWidth;
 
+  /// Icon slots reserved for [quickActions]. Rows that omit an action (e.g.
+  /// Edit when editing isn't permitted) leave its slot empty, so Download
+  /// keeps the same position on every row. Standard order: Edit, Download.
+  final int quickActionSlots;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -69,7 +75,11 @@ class CompactDocumentRow extends StatelessWidget {
         Theme.of(context).platform == TargetPlatform.android ||
         Theme.of(context).platform == TargetPlatform.iOS;
     final target = touch ? 48.0 : 40.0;
-    final iconSlots = (quickActions.isEmpty ? 1 : quickActions.length) + 1;
+    final emptySlots = quickActionSlots > quickActions.length
+        ? quickActionSlots - quickActions.length
+        : 0;
+    final iconSlots =
+        (quickActions.isEmpty ? 1 : quickActions.length) + emptySlots + 1;
     final actionsColumnWidth = target * iconSlots + primaryActionWidth;
     return Column(mainAxisSize: MainAxisSize.min, children: [
       HexoraListRow(
@@ -140,6 +150,7 @@ class CompactDocumentRow extends StatelessWidget {
                         child: primaryAction))
               else if (primaryAction != null)
                 primaryAction!,
+              for (var i = 0; i < emptySlots; i++) SizedBox(width: target),
               if (quickActions.isNotEmpty)
                 for (final action in quickActions)
                   SizedBox(
@@ -197,7 +208,10 @@ class CompactDocumentRow extends StatelessWidget {
             ]);
             return Column(mainAxisSize: MainAxisSize.min, children: [
               Row(children: [
-                Icon(icon, size: HexoraDocumentTokens.icon, color: cs.primary),
+                // Blue is reserved for selection and primary actions.
+                Icon(icon,
+                    size: HexoraDocumentTokens.icon,
+                    color: selected ? cs.primary : cs.onSurfaceVariant),
                 const SizedBox(width: 8),
                 Expanded(child: summary),
                 if (!narrow) ...[

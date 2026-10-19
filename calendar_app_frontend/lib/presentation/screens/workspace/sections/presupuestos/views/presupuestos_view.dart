@@ -23,6 +23,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/p
 import 'package:hexora/presentation/shared/widgets/client_search_select.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
 import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/presentation/shared/widgets/wizard_steps_header.dart';
@@ -2193,7 +2194,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         );
 
     Widget budgetListCard(Map<String, dynamic> item) {
-      final isLight = Theme.of(context).brightness == Brightness.light;
       final id = _budgetId(item);
       final selectedRow = (_selectedBudgetId ?? '').trim() == id.trim();
       final date = _budgetDate(item);
@@ -2230,11 +2230,11 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
           : isIssued
               ? (_isSpanishLocale ? 'Emitido' : 'Issued')
               : (_isSpanishLocale ? 'Anulado' : 'Void');
-      final statusColor = isDraft
-          ? cs.tertiary
+      final documentStatus = isDraft
+          ? HexoraDocumentStatus.draft
           : isIssued
-              ? (isLight ? Colors.green.shade700 : Colors.green.shade300)
-              : cs.error;
+              ? HexoraDocumentStatus.issued
+              : HexoraDocumentStatus.cancelled;
       final number = _budgetNumber(item).trim();
       final hasNumber = number.isNotEmpty && number != '-';
 
@@ -2252,7 +2252,8 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
           _loadDetailPreviewPdf(id);
         },
         previewLabel: l.download,
-        status: HexoraStatusBadge(label: statusLabel, color: statusColor),
+        status: HexoraStatusBadge.document(context,
+            status: documentStatus, label: statusLabel),
         primaryActionWidth: primaryActionWidth,
         primaryAction: !isDraft
             ? null
@@ -2281,18 +2282,18 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                   label: Text(_isSpanishLocale ? 'Emitir' : 'Issue'),
                 ),
               ),
+        quickActionSlots: 2,
         quickActions: [
+          if (widget.onEditDraftBudget != null)
+            CompactDocumentQuickAction(
+              icon: Icons.edit_outlined,
+              tooltip: _isSpanishLocale ? 'Editar presupuesto' : 'Edit budget',
+              onPressed: () => widget.onEditDraftBudget!.call(id),
+            ),
           CompactDocumentQuickAction(
             icon: Icons.download_rounded,
             tooltip: l.download,
             onPressed: () => _downloadBudgetPdf(item),
-          ),
-          CompactDocumentQuickAction(
-            icon: Icons.edit_outlined,
-            tooltip: _isSpanishLocale ? 'Editar presupuesto' : 'Edit budget',
-            onPressed: widget.onEditDraftBudget == null
-                ? null
-                : () => widget.onEditDraftBudget!.call(id),
           ),
         ],
         actions: [
@@ -2447,158 +2448,152 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         final contentHeight = availableHeight.clamp(680.0, 920.0);
         return SizedBox(
           height: contentHeight,
-          child: Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  child: Column(
+          child: DocumentSplitView(
+            storageKey: 'quotes',
+            // The explicit choice, not the first-row fallback, so a tab switch
+            // doesn't pop the preview open on narrow screens.
+            selectionKey: _selectedBudgetId,
+            list: Container(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                children: [
+                  Row(
                     children: [
-                      Row(
-                        children: [
-                          // Content-sized segmented filters.
-                          Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              color: cs.surfaceContainerHighest
-                                  .withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color:
-                                    cs.outlineVariant.withValues(alpha: 0.35),
-                              ),
+                      // Content-sized segmented filters.
+                      Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color:
+                              cs.surfaceContainerHighest.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: cs.outlineVariant.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            statusTab(
+                              0,
+                              '${_isSpanishLocale ? 'Todos' : 'All'} (${_budgets.length})',
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                statusTab(
-                                  0,
-                                  '${_isSpanishLocale ? 'Todos' : 'All'} (${_budgets.length})',
-                                ),
-                                statusTab(
-                                  1,
-                                  '${_isSpanishLocale ? 'Borradores' : 'Drafts'} (${drafts.length})',
-                                ),
-                                statusTab(
-                                  2,
-                                  '${_isSpanishLocale ? 'Emitidos' : 'Issued'} (${issuedBudgets.length})',
-                                ),
-                              ],
+                            statusTab(
+                              1,
+                              '${_isSpanishLocale ? 'Borradores' : 'Drafts'} (${drafts.length})',
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _isSpanishLocale
-                                  ? '${activeList.length} ${activeList.length == 1 ? 'presupuesto' : 'presupuestos'}'
-                                  : '${activeList.length} ${activeList.length == 1 ? 'budget' : 'budgets'}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: t.labelSmall?.copyWith(
-                                fontSize: 11,
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w500,
-                              ),
+                            statusTab(
+                              2,
+                              '${_isSpanishLocale ? 'Emitidos' : 'Issued'} (${issuedBudgets.length})',
                             ),
-                          ),
-                          _BudgetSortMenuButton(
-                            state: sortState,
-                            enabled: !_loadingBudgets && activeList.isNotEmpty,
-                            isSpanishLocale: _isSpanishLocale,
-                            onChanged: (by) async {
-                              final next = nextBudgetSortState(
-                                _effectiveBudgetSortState,
-                                by,
-                              );
-                              if (next.by == _effectiveBudgetSortState.by &&
-                                  next.dir == _effectiveBudgetSortState.dir) {
-                                return;
-                              }
-                              setState(() => _budgetSortState = next);
-                              await _loadBudgets();
-                            },
-                          ),
-                          toolbarIconButton(
-                            tooltip: l.refreshAction,
-                            onPressed: _loadingBudgets ? null : _loadBudgets,
-                            busy: _loadingBudgets,
-                            icon: Icons.refresh_rounded,
-                          ),
-                          toolbarIconButton(
-                            tooltip: '${l.download} ZIP',
-                            onPressed: (_loadingBudgets ||
-                                    _downloadingBudgetsZip ||
-                                    _budgets.isEmpty)
-                                ? null
-                                : _downloadBudgetsZip,
-                            busy: _downloadingBudgetsZip,
-                            icon: Icons.folder_zip_outlined,
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: _loadingBudgets
-                            ? const Center(child: CircularProgressIndicator())
-                            : (_budgetsError ?? '').trim().isNotEmpty
-                                ? Center(
-                                    child: Text(
-                                      _budgetsError!,
-                                      style: TextStyle(color: cs.error),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  )
-                                : activeList.isEmpty
-                                    ? Center(
-                                        child: Text(
-                                          switch (_budgetsTabIndex) {
-                                            1 => _isSpanishLocale
-                                                ? 'No hay borradores.'
-                                                : 'There are no drafts.',
-                                            2 => _isSpanishLocale
-                                                ? 'No hay presupuestos emitidos.'
-                                                : 'There are no issued budgets.',
-                                            _ => _isSpanishLocale
-                                                ? 'No hay presupuestos por partidas.'
-                                                : 'There are no itemized budgets.',
-                                          },
-                                          style: t.bodyMedium?.copyWith(
-                                            color: cs.onSurfaceVariant,
-                                          ),
-                                        ),
-                                      )
-                                    : Builder(builder: (context) {
-                                        final locale =
-                                            Localizations.localeOf(context)
-                                                .toString();
-                                        final items = _groupBudgetsForList(
-                                            activeList, sortState, locale);
-                                        return ListView.builder(
-                                          padding: EdgeInsets.zero,
-                                          itemCount: items.length,
-                                          itemBuilder: (_, i) {
-                                            final item = items[i];
-                                            if (item is String) {
-                                              return CompactDocumentMonthHeading(
-                                                  label: item);
-                                            }
-                                            return budgetListCard(
-                                                item as Map<String, dynamic>);
-                                          },
-                                        );
-                                      }),
+                        child: Text(
+                          _isSpanishLocale
+                              ? '${activeList.length} ${activeList.length == 1 ? 'presupuesto' : 'presupuestos'}'
+                              : '${activeList.length} ${activeList.length == 1 ? 'budget' : 'budgets'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.labelSmall?.copyWith(
+                            fontSize: 11,
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      _BudgetSortMenuButton(
+                        state: sortState,
+                        enabled: !_loadingBudgets && activeList.isNotEmpty,
+                        isSpanishLocale: _isSpanishLocale,
+                        onChanged: (by) async {
+                          final next = nextBudgetSortState(
+                            _effectiveBudgetSortState,
+                            by,
+                          );
+                          if (next.by == _effectiveBudgetSortState.by &&
+                              next.dir == _effectiveBudgetSortState.dir) {
+                            return;
+                          }
+                          setState(() => _budgetSortState = next);
+                          await _loadBudgets();
+                        },
+                      ),
+                      toolbarIconButton(
+                        tooltip: l.refreshAction,
+                        onPressed: _loadingBudgets ? null : _loadBudgets,
+                        busy: _loadingBudgets,
+                        icon: Icons.refresh_rounded,
+                      ),
+                      toolbarIconButton(
+                        tooltip: '${l.download} ZIP',
+                        onPressed: (_loadingBudgets ||
+                                _downloadingBudgetsZip ||
+                                _budgets.isEmpty)
+                            ? null
+                            : _downloadBudgetsZip,
+                        busy: _downloadingBudgetsZip,
+                        icon: Icons.folder_zip_outlined,
                       ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  Expanded(
+                    child: _loadingBudgets
+                        ? const Center(child: CircularProgressIndicator())
+                        : (_budgetsError ?? '').trim().isNotEmpty
+                            ? Center(
+                                child: Text(
+                                  _budgetsError!,
+                                  style: TextStyle(color: cs.error),
+                                  textAlign: TextAlign.center,
+                                ),
+                              )
+                            : activeList.isEmpty
+                                ? Center(
+                                    child: Text(
+                                      switch (_budgetsTabIndex) {
+                                        1 => _isSpanishLocale
+                                            ? 'No hay borradores.'
+                                            : 'There are no drafts.',
+                                        2 => _isSpanishLocale
+                                            ? 'No hay presupuestos emitidos.'
+                                            : 'There are no issued budgets.',
+                                        _ => _isSpanishLocale
+                                            ? 'No hay presupuestos por partidas.'
+                                            : 'There are no itemized budgets.',
+                                      },
+                                      style: t.bodyMedium?.copyWith(
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  )
+                                : Builder(builder: (context) {
+                                    final locale =
+                                        Localizations.localeOf(context)
+                                            .toString();
+                                    final items = _groupBudgetsForList(
+                                        activeList, sortState, locale);
+                                    return ListView.builder(
+                                      padding: EdgeInsets.zero,
+                                      itemCount: items.length,
+                                      itemBuilder: (_, i) {
+                                        final item = items[i];
+                                        if (item is String) {
+                                          return CompactDocumentMonthHeading(
+                                              label: item);
+                                        }
+                                        return budgetListCard(
+                                            item as Map<String, dynamic>);
+                                      },
+                                    );
+                                  }),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 2,
-                child: detailPanel(),
-              ),
-            ],
+            ),
+            preview: detailPanel(),
           ),
         );
       },

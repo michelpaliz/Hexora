@@ -1,4 +1,5 @@
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
+import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
 import 'package:hexora/presentation/shared/widgets/documents/mobile_document_card.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
@@ -19,11 +20,13 @@ class ReceiptListItem extends StatefulWidget {
   final VoidCallback? onDownload;
   final VoidCallback? onMarkSent;
   final VoidCallback? onMarkUnsent;
+  final bool selected;
 
   const ReceiptListItem({
     super.key,
     required this.receipt,
     required this.client,
+    this.selected = false,
     this.onTap,
     this.onPreview,
     this.onEdit,
@@ -345,14 +348,35 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
       metadata: '$number · $shortDateLabel',
       amount: totalLabel,
       icon: Icons.receipt_long_outlined,
+      selected: widget.selected,
       onTap: widget.onTap,
-      onPreview: widget.onPreview == null ? null : _runPreview,
-      previewBusy: _previewing,
       previewLabel: l.preview,
+      quickActionSlots: 2,
+      quickActions: [
+        if (widget.onEdit != null)
+          CompactDocumentQuickAction(
+            icon: Icons.edit_outlined,
+            tooltip: l.edit,
+            onPressed: widget.onEdit,
+          ),
+        if (widget.onDownload != null)
+          CompactDocumentQuickAction(
+            icon: Icons.download_rounded,
+            tooltip: l.download,
+            onPressed: widget.onDownload,
+          ),
+      ],
       status: Row(mainAxisSize: MainAxisSize.min, children: [
-        Tooltip(
-            message: issued ? l.statusIssued : l.statusDraft,
-            child: Icon(iconData, color: iconColor, size: 14)),
+        Flexible(
+          child: HexoraStatusBadge.document(
+            context,
+            status: issued
+                ? HexoraDocumentStatus.issued
+                : HexoraDocumentStatus.draft,
+            label: issued ? l.statusIssued : l.statusDraft,
+          ),
+        ),
+        const SizedBox(width: 4),
         DeliveryStatusBadge(
             status: widget.receipt.deliveryStatus,
             channel: widget.receipt.deliveryChannel,
@@ -373,9 +397,9 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
                 ? l.clientDetailsCollapseTooltip
                 : l.clientDetailsExpandTooltip,
             () => setState(() => _detailsExpanded = !_detailsExpanded)),
-        if (widget.onEdit != null) CompactDocumentAction(l.edit, widget.onEdit),
-        if (widget.onDownload != null)
-          CompactDocumentAction(l.download, widget.onDownload),
+        if (widget.onPreview != null)
+          CompactDocumentAction(_previewing ? '${l.preview}…' : l.preview,
+              _previewing ? null : _runPreview),
         if (canMarkSent && widget.onMarkSent != null)
           CompactDocumentAction('Marcar como enviado', widget.onMarkSent),
         if (canMarkUnsent && widget.onMarkUnsent != null)

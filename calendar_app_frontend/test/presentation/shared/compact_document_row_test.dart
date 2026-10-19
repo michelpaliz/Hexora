@@ -78,8 +78,6 @@ void main() {
               tester.getSize(find.byType(CompactDocumentMonthHeading)).height,
               lessThanOrEqualTo(24));
         }
-        await tester.tap(find.byTooltip('Vista previa'));
-        expect(calls, contains('preview'));
         final l =
             AppLocalizations.of(tester.element(find.byType(InvoiceListItem)))!;
         Future<void> select(int row, String label) async {
@@ -91,7 +89,16 @@ void main() {
           await tester.pumpAndSettle();
         }
 
-        await select(0, l.edit);
+        // Standard layout: Edit and Download are visible icons; preview and
+        // the rest live in the overflow menu.
+        await tester.tap(find.descendant(
+            of: find.byType(CompactDocumentRow).at(0),
+            matching: find.byTooltip(l.edit)));
+        await tester.tap(find.descendant(
+            of: find.byType(CompactDocumentRow).at(1),
+            matching: find.byTooltip(l.download)));
+        await select(0, 'Vista previa');
+        expect(calls, contains('preview'));
         await select(0, l.invoiceIssueCta);
         await select(0, 'Ver recurrencia');
         await select(0, l.delete);
@@ -99,7 +106,6 @@ void main() {
         expect(find.textContaining(l.invoiceLinesTitle), findsOneWidget);
         await select(0, 'Ocultar detalles');
         expect(find.textContaining(l.invoiceLinesTitle), findsNothing);
-        await select(1, l.download);
         await select(1, 'Marcar como enviado');
         await select(1, l.delete);
         expect(
