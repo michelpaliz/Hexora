@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/workers/worker.dart';
@@ -58,7 +59,7 @@ class WorkerListSection extends StatelessWidget {
     if (spacious) {
       return LayoutBuilder(builder: (context, constraints) {
         final columns = grid && constraints.maxWidth >= 740 ? 2 : 1;
-        return Wrap(spacing: 12, runSpacing: 8, children: [
+        return Wrap(spacing: 12, runSpacing: grid ? 8 : 0, children: [
           for (final worker in workers)
             SizedBox(
                 width: (constraints.maxWidth - (columns - 1) * 12) / columns,
@@ -396,14 +397,14 @@ class _WorkerRowState extends State<_WorkerRow> {
                                     }
                                   },
                                   itemBuilder: (_) => [
-                                    PopupMenuItem(
+                                    NavigationPopupMenuItem(
                                         value: 'copy',
                                         child: Text(
                                             l.localeName.startsWith('es')
                                                 ? 'Copiar nombre'
                                                 : 'Copy name')),
                                     if (hasNotes)
-                                      PopupMenuItem(
+                                      NavigationPopupMenuItem(
                                           value: 'notes',
                                           child: Text(
                                               l.localeName.startsWith('es')

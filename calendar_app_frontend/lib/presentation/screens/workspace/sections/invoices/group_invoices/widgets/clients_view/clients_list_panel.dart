@@ -1,3 +1,5 @@
+import 'package:hexora/presentation/shared/widgets/hexora_list_row.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/client_filter_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/clients_search_filters.dart';
@@ -58,6 +60,7 @@ class ClientsListPanel extends StatefulWidget {
 }
 
 class _ClientsListPanelState extends State<ClientsListPanel> {
+  String _status = 'all';
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -73,10 +76,18 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
             .where((c) => c.missingCurrentMonthInvoice == true)
             .toList(growable: false)
         : widget.allClients;
+    final visibleClients = widget.filteredClients
+        .where((client) =>
+            _status == 'all' ||
+            (_status == 'active'
+                ? client.isActive != false
+                : client.isActive == false))
+        .toList(growable: false);
     final hasSearch = widget.searchController.text.trim().isNotEmpty;
     final hasStructuredFilters =
         (widget.entityFilter ?? '').trim().isNotEmpty ||
-            (widget.propertyFilter ?? '').trim().isNotEmpty;
+            (widget.propertyFilter ?? '').trim().isNotEmpty ||
+            _status != 'all';
 
     return Card(
       color: Colors.transparent,
@@ -92,30 +103,32 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
               searchHint: l.clientSearchHint,
               padding: EdgeInsets.zero,
               clientsForCounts: countsSource,
+              statusValue: widget.hideInactive ? 'active' : _status,
+              onStatusChanged: (value) {
+                setState(() => _status = value);
+                if (value != 'active' && widget.hideInactive) {
+                  widget.onToggleHideInactive();
+                }
+              },
               activeCountLabel: l.activeClientsSection,
               inactiveCountLabel: l.statusInactive,
-              inactiveValue: widget.hideInactive,
-              onInactiveChanged: (_) => widget.onToggleHideInactive(),
-              inactiveLabelOn: l.clientInactiveHiddenChip,
-              inactiveLabelOff: l.clientHideInactiveChip,
+              // The Todos / Activos / Inactivos segments already cover
+              // hiding inactive clients, so no separate switch here.
               countInactiveAsFilter: false,
               clearInactiveOnClear: false,
-              additionalFilters: Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: [
-                  _MissingInvoiceFilterChip(
-                    label: l.clientMissingInvoiceThisMonth,
-                    selected: widget.missingCurrentMonthInvoiceOnly,
-                    onSelected: widget.onToggleMissingCurrentMonthInvoiceOnly,
-                  ),
-                  if (hasInvoiceFlagData)
-                    _MissingInvoiceCountChip(count: missingInvoiceCount),
-                ],
-              ),
+              inactiveValueMeansHidden: true,
+              additionalFilters: ClientMissingInvoiceFilter(
+                  count: hasInvoiceFlagData ? missingInvoiceCount : null,
+                  selected: widget.missingCurrentMonthInvoiceOnly,
+                  onTap: () => widget.onToggleMissingCurrentMonthInvoiceOnly(
+                      !widget.missingCurrentMonthInvoiceOnly)),
               extraActiveFilterCount:
-                  widget.missingCurrentMonthInvoiceOnly ? 1 : 0,
-              onClearFilters: widget.onClearFilters,
+                  (widget.missingCurrentMonthInvoiceOnly ? 1 : 0) +
+                      (_status != 'all' ? 1 : 0),
+              onClearFilters: () {
+                setState(() => _status = 'all');
+                widget.onClearFilters();
+              },
               entityLabel: l.clientEntityTypeLabel,
               entityOptions: widget.entityOptions,
               entityFilter: widget.entityFilter,
@@ -136,7 +149,7 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                     title: l.noClientsYet,
                     subtitle: l.noClientsYet,
                   )
-                : widget.filteredClients.isEmpty
+                : visibleClients.isEmpty
                     ? EmptyView(
                         icon: widget.missingCurrentMonthInvoiceOnly &&
                                 !hasSearch &&
@@ -162,7 +175,10 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                       )
                     : Column(
                         children: [
-                          if (widget.selectedHiddenByFilters)
+                          if (widget.selectedHiddenByFilters ||
+                              (widget.selectedClient != null &&
+                                  !visibleClients.any((client) =>
+                                      client.id == widget.selectedClient!.id)))
                             Padding(
                               padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
                               child: Container(
@@ -204,30 +220,13 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                               ),
                             ),
                           Expanded(
-                            child: ListView.separated(
-                              itemCount: widget.filteredClients.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 8),
+                            child: ListView.builder(
+                              itemCount: visibleClients.length,
                               itemBuilder: (_, i) {
-                                final c = widget.filteredClients[i];
-                                final selected =
-                                    widget.selectedClient?.id == c.id;
-
-                                final subtitleParts = <String>[
-                                  c.billing?.legalName ?? (c.email ?? ''),
-                                  if ((c.entityType ?? '').trim().isNotEmpty)
-                                    c.entityType!.trim(),
-                                  if ((c.propertyKind ?? '').trim().isNotEmpty)
-                                    c.propertyKind!.trim(),
-                                ].where((e) => e.trim().isNotEmpty).toList();
-
+                                final c = visibleClients[i];
                                 return _ClientRow(
                                   client: c,
-                                  selected: selected,
-                                  title: c.name,
-                                  subtitle: subtitleParts.isEmpty
-                                      ? null
-                                      : subtitleParts.join(' | '),
+                                  selected: widget.selectedClient?.id == c.id,
                                   onTap: () => widget.onSelectClient(c),
                                 );
                               },
@@ -242,60 +241,45 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
   }
 }
 
-class _HorizontalText extends StatelessWidget {
-  final String text;
-  final TextStyle? style;
-  const _HorizontalText(this.text, {this.style});
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      primary: false,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            text,
-            style: style,
-            softWrap: false,
-            overflow: TextOverflow.visible,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ClientRow extends StatelessWidget {
   final GroupClient client;
   final bool selected;
-  final String title;
-  final String? subtitle;
   final VoidCallback onTap;
 
   const _ClientRow({
     required this.client,
     required this.selected,
-    required this.title,
-    required this.subtitle,
     required this.onTap,
   });
 
-  static const List<Color> _avatarPalette = [
-    Color(0xFF5C6BC0),
-    Color(0xFF26A69A),
-    Color(0xFFEF5350),
-    Color(0xFFAB47BC),
-    Color(0xFF42A5F5),
-    Color(0xFF66BB6A),
-    Color(0xFFFFA726),
-    Color(0xFF8D6E63),
-  ];
+  static String _clean(String? v) => (v ?? '').trim();
 
-  Color _avatarColor() {
-    if (title.trim().isEmpty) return _avatarPalette[0];
-    return _avatarPalette[title.codeUnitAt(0) % _avatarPalette.length];
+  static String _capitalize(String v) =>
+      v.isEmpty ? v : v[0].toUpperCase() + v.substring(1);
+
+  /// One concise secondary line: the client's category, falling back to the
+  /// legal name only when it adds information, then the email.
+  String? _secondary() {
+    final property = _clean(client.propertyKind);
+    if (property.isNotEmpty) return _capitalize(property);
+    final entity = _clean(client.entityType);
+    if (entity.isNotEmpty) return _capitalize(entity);
+    final legal = _clean(client.billing?.legalName);
+    final name = client.name.trim().toLowerCase();
+    if (legal.isNotEmpty && !legal.toLowerCase().contains(name)) return legal;
+    final email = _clean(client.email);
+    return email.isEmpty ? null : email;
+  }
+
+  /// Full metadata, still available on hover.
+  String _details() {
+    final seen = <String>{};
+    return [
+      _clean(client.billing?.legalName),
+      _clean(client.entityType),
+      _clean(client.propertyKind),
+      _clean(client.email),
+    ].where((v) => v.isNotEmpty && seen.add(v.toLowerCase())).join('\n');
   }
 
   @override
@@ -304,91 +288,86 @@ class _ClientRow extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
 
-    final titleColor = ThemeColors.textPrimary(context);
-    final subtitleColor = ThemeColors.textSecondary(context);
-    final avatarBg = selected ? cs.primaryContainer : _avatarColor();
-    final avatarFg = selected ? cs.onPrimaryContainer : Colors.white;
-    final initial = title.trim().isEmpty ? '?' : title.trim()[0].toUpperCase();
+    final title = client.name.trim();
+    final secondary = _secondary();
+    final details = _details();
+    final initial = title.isEmpty ? '?' : title[0].toUpperCase();
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: ListItemCard(
-        leading: CircleAvatar(
-          radius: 17,
-          backgroundColor: avatarBg,
+    Widget summary = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: t.bodyMedium.copyWith(
+            fontSize: HexoraTypography.body,
+            fontWeight: FontWeight.w600,
+            color: ThemeColors.textPrimary(context),
+          ),
+        ),
+        if (secondary != null) ...[
+          const SizedBox(height: 2),
+          Text(
+            secondary,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: t.bodySmall.copyWith(
+              fontSize: HexoraTypography.caption,
+              fontWeight: FontWeight.w400,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ],
+    );
+    if (details.isNotEmpty && details != secondary) {
+      summary = Tooltip(
+        message: details,
+        waitDuration: const Duration(milliseconds: 600),
+        child: summary,
+      );
+    }
+
+    return HexoraListRow(
+      selected: selected,
+      onTap: onTap,
+      minHeight: 56,
+      verticalPadding: 6,
+      child: Row(children: [
+        // Neutral avatars: identity comes from the name, not a loud color.
+        CircleAvatar(
+          radius: 16,
+          backgroundColor:
+              selected ? cs.primaryContainer : cs.surfaceContainerHighest,
           child: Text(
             initial,
             style: t.bodySmall.copyWith(
-              fontWeight: FontWeight.w700,
-              color: avatarFg,
-              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
             ),
           ),
         ),
-        titleWidget: _HorizontalText(
-          title,
-          style: t.bodyMedium.copyWith(
-            fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
-            color: titleColor,
-          ),
-        ),
-        subtitleWidget: subtitle != null
-            ? _HorizontalText(
-                subtitle!,
-                style: t.bodySmall.copyWith(
-                  color: subtitleColor,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                ),
-              )
-            : null,
-        trailing: _buildTrailing(context, l, cs),
-        selected: selected,
-        showLeadingStripe: true,
-        onTap: onTap,
-      ),
+        const SizedBox(width: 10),
+        Expanded(child: summary),
+        if (_buildTrailing(l, cs) case final trailing?) ...[
+          const SizedBox(width: 8),
+          trailing,
+        ],
+      ]),
     );
   }
 
-  Widget? _buildTrailing(
-    BuildContext context,
-    AppLocalizations l,
-    ColorScheme cs,
-  ) {
+  Widget? _buildTrailing(AppLocalizations l, ColorScheme cs) {
     final parts = <Widget>[];
 
-    if (client.hasCurrentMonthInvoiceFlagData) {
-      final isMissing = client.missingCurrentMonthInvoice == true;
-      final icon = isMissing
-          ? Icons.warning_amber_rounded
-          : Icons.check_circle_outline_rounded;
-      final color = isMissing ? cs.error : cs.secondary;
-      final count = client.currentMonthInvoiceCount;
-      final tooltip = count != null
-          ? l.clientInvoiceCountThisMonth(count)
-          : (isMissing
-              ? l.clientMissingInvoiceThisMonth
-              : l.clientInvoiceAllGood);
-
+    if (client.missingCurrentMonthInvoice == true) {
       parts.add(
         Tooltip(
-          message: tooltip,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 15, color: color),
-              if (count != null) ...[
-                const SizedBox(width: 3),
-                Text(
-                  '$count',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: color,
-                  ),
-                ),
-              ],
-            ],
-          ),
+          message: l.clientMissingInvoiceThisMonth,
+          child: Icon(Icons.receipt_long_outlined, size: 16, color: cs.error),
         ),
       );
     }
@@ -400,8 +379,8 @@ class _ClientRow extends StatelessWidget {
           message: l.statusInactive,
           child: Icon(
             Icons.pause_circle_outline,
-            size: 15,
-            color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+            size: 16,
+            color: cs.onSurfaceVariant.withValues(alpha: 0.6),
           ),
         ),
       );
@@ -409,115 +388,5 @@ class _ClientRow extends StatelessWidget {
 
     if (parts.isEmpty) return null;
     return Row(mainAxisSize: MainAxisSize.min, children: parts);
-  }
-}
-
-class _MissingInvoiceCountChip extends StatelessWidget {
-  const _MissingInvoiceCountChip({required this.count});
-
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 180),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 34),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: cs.errorContainer.withValues(alpha: 0.45),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.warning_amber_rounded,
-              size: 12,
-              color: cs.onErrorContainer,
-            ),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                l.clientMissingCountThisMonth(count),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: t.bodySmall.copyWith(
-                  color: cs.onErrorContainer,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MissingInvoiceFilterChip extends StatelessWidget {
-  const _MissingInvoiceFilterChip({
-    required this.label,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final String label;
-  final bool selected;
-  final ValueChanged<bool> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final color = selected ? cs.error : cs.onSurfaceVariant;
-    final background = selected
-        ? cs.errorContainer.withValues(alpha: 0.34)
-        : cs.surfaceContainerHighest.withValues(alpha: 0.42);
-    final border = selected
-        ? cs.error.withValues(alpha: 0.32)
-        : cs.outlineVariant.withValues(alpha: 0.36);
-
-    return Semantics(
-      button: true,
-      toggled: selected,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: () => onSelected(!selected),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          constraints: const BoxConstraints(minHeight: 34, maxWidth: 218),
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: border, width: 1.1),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.warning_amber_rounded, size: 14, color: color),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: t.bodySmall.copyWith(
-                    color: color,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

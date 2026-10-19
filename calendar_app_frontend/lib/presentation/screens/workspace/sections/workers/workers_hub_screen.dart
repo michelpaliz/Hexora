@@ -1,3 +1,6 @@
+import 'package:hexora/navigation/shell/hexora_nav_components.dart';
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -38,8 +41,8 @@ class WorkersHubScreen extends StatefulWidget {
 }
 
 class _WorkersHubScreenState extends State<WorkersHubScreen> {
-  static const double _expandedMenuWidth = 168;
-  static const double _collapsedMenuWidth = 64;
+  static const double _expandedMenuWidth = NavigationTokens.sidebarWidth;
+  static const double _collapsedMenuWidth = NavigationTokens.railWidth;
 
   _WorkersSection _section = _WorkersSection.workers;
   bool _sideMenuCollapsed = false;
@@ -89,7 +92,6 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
             })>
         navItems,
   ) {
-    final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
 
     return Row(
@@ -108,29 +110,10 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
                   alignment: _sideMenuCollapsed
                       ? Alignment.center
                       : Alignment.centerRight,
-                  child: Tooltip(
-                    message: _sideMenuCollapsed
-                        ? l.groupInvoicesNavExpand
-                        : l.groupInvoicesNavCollapse,
-                    child: IconButton.filledTonal(
-                      onPressed: () => setState(
-                        () => _sideMenuCollapsed = !_sideMenuCollapsed,
-                      ),
-                      icon: Icon(
-                        _sideMenuCollapsed
-                            ? Icons.keyboard_double_arrow_right_rounded
-                            : Icons.keyboard_double_arrow_left_rounded,
-                      ),
-                      iconSize: 18,
-                      style: IconButton.styleFrom(
-                        minimumSize: const Size(40, 34),
-                        fixedSize: const Size(40, 34),
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
+                  child: SidebarCollapseToggle(
+                    collapsed: _sideMenuCollapsed,
+                    onPressed: () => setState(
+                      () => _sideMenuCollapsed = !_sideMenuCollapsed,
                     ),
                   ),
                 ),
@@ -230,7 +213,7 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
                     onSelected: (value) => setState(() => _section = value),
                     itemBuilder: (_) => [
                       for (final item in navItems)
-                        PopupMenuItem(
+                        NavigationPopupMenuItem(
                           value: item.section,
                           child: Text(item.label),
                         ),
@@ -248,7 +231,7 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
                           navItems
                               .firstWhere((item) => item.section == _section)
                               .label,
-                          style: TextStyle(
+                          style: NavigationTokens.label(context).copyWith(
                               color: cs.onPrimaryContainer,
                               fontWeight: FontWeight.w700),
                         )),

@@ -50,22 +50,30 @@ void main() {
       expectReadable(theme.chipTheme.backgroundColor!);
     });
 
-    testWidgets(
-        '$brightness leaves every web and native desktop theme unchanged',
+    testWidgets('$brightness preserves non-navigation desktop and web styling',
         (tester) async {
       final original = brightness == Brightness.dark ? darkTheme : lightTheme;
+      void expectUnrelatedThemesUnchanged(ThemeData actual) {
+        expect(actual.textTheme, original.textTheme);
+        expect(actual.colorScheme, original.colorScheme);
+        expect(actual.inputDecorationTheme, original.inputDecorationTheme);
+        expect(actual.dataTableTheme, original.dataTableTheme);
+        expect(actual.filledButtonTheme, original.filledButtonTheme);
+        expect(actual.iconButtonTheme, original.iconButtonTheme);
+        expect(actual.extension<MobileStatusColors>(), isNull);
+        expect(actual.popupMenuTheme.textStyle!.fontSize, 13);
+      }
+
       for (final platform in TargetPlatform.values) {
-        expect(
-            AppTheme.forPlatform(brightness, platform: platform, isWeb: true),
-            same(original));
+        expectUnrelatedThemesUnchanged(
+            AppTheme.forPlatform(brightness, platform: platform, isWeb: true));
         if (platform != TargetPlatform.android &&
             platform != TargetPlatform.iOS) {
-          expect(AppTheme.forPlatform(brightness, platform: platform),
-              same(original));
+          expectUnrelatedThemesUnchanged(
+              AppTheme.forPlatform(brightness, platform: platform));
         }
       }
     });
-
     for (final platform in [TargetPlatform.android, TargetPlatform.iOS]) {
       testWidgets(
           '$platform $brightness provides readable mobile surfaces and actions',

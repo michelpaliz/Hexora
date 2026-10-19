@@ -158,7 +158,10 @@ class GroupDashboardRightPanel extends StatelessWidget {
         );
     }
 
-    if (activeAnchor == 'workers' || activeAnchor == 'services') {
+    if (activeAnchor == 'workers' ||
+        activeAnchor == 'services' ||
+        activeAnchor == 'settings' ||
+        activeAnchor == 'notifications') {
       return content;
     }
 

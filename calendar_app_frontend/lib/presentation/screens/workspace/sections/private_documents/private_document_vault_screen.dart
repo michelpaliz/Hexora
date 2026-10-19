@@ -1,3 +1,5 @@
+import 'package:hexora/presentation/shared/widgets/navigation_choice.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -149,7 +151,7 @@ class _PrivateDocumentVaultScreenState
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         SizedBox(
-                          width: 224,
+                          width: NavigationTokens.sidebarWidth,
                           child: Padding(
                             padding: const EdgeInsets.only(top: 12),
                             child: _Sidebar(
@@ -423,16 +425,16 @@ class _MobileCategoryBar extends StatelessWidget {
             for (final category in categories)
               Padding(
                 padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  label: Text(
+                child: NavigationChoice(
+                  label: (
                     category == 'all'
                         ? (isEs ? 'Todos' : 'All')
                         : (isEs
                             ? PrivateDocumentCategory.labelEs(category)
-                            : PrivateDocumentCategory.labelEn(category)),
+                            : PrivateDocumentCategory.labelEn(category))
                   ),
                   selected: categoryFilter == category,
-                  onSelected: (_) => onCategoryChanged(category),
+                  onTap: () => onCategoryChanged(category),
                 ),
               ),
           ],

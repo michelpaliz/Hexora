@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/navigation_menu_header.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
@@ -10,6 +11,7 @@ class CollapsibleSidebarItem {
     required this.label,
     required this.onTap,
     this.selected = false,
+    this.count,
   });
 
   final Key? key;
@@ -17,6 +19,7 @@ class CollapsibleSidebarItem {
   final String label;
   final VoidCallback onTap;
   final bool selected;
+  final int? count;
 }
 
 /// Shared application-module navigation used by Maps, Mail, and other hubs.
@@ -42,9 +45,9 @@ class CollapsibleSidebar extends StatelessWidget {
     this.selectedItemTextStyle,
   });
 
-  static const double expandedWidth = 214;
-  static const double collapsedWidth = 64;
-  static const double responsiveBreakpoint = 760;
+  static const double expandedWidth = NavigationTokens.sidebarWidth;
+  static const double collapsedWidth = NavigationTokens.railWidth;
+  static const double responsiveBreakpoint = NavigationTokens.mobileBreakpoint;
   static const Duration animationDuration = Duration(milliseconds: 180);
 
   final String title;
@@ -96,62 +99,14 @@ class CollapsibleSidebar extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 9, 8, 8),
-                child: Row(
-                  mainAxisAlignment: layoutCollapsed
-                      ? MainAxisAlignment.center
-                      : MainAxisAlignment.start,
-                  children: [
-                    if (!layoutCollapsed) ...[
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: cs.primaryContainer,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          headerIcon,
-                          size: 17,
-                          color: cs.onPrimaryContainer,
-                        ),
-                      ),
-                      const SizedBox(width: 9),
-                      Expanded(
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style:
-                              titleTextStyle?.copyWith(color: cs.onSurface) ??
-                                  Theme.of(context)
-                                      .textTheme
-                                      .labelLarge
-                                      ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                    ],
-                    if (!drawer)
-                      IconButton.filledTonal(
-                        key: const ValueKey('collapsible-sidebar-toggle'),
-                        tooltip: collapsed ? expandTooltip : collapseTooltip,
-                        onPressed: onToggleCollapsed,
-                        icon: Icon(
-                          collapsed
-                              ? Icons.keyboard_double_arrow_right_rounded
-                              : Icons.keyboard_double_arrow_left_rounded,
-                        ),
-                        iconSize: 18,
-                        style: IconButton.styleFrom(
-                          minimumSize: const Size(40, 34),
-                          fixedSize: const Size(40, 34),
-                          padding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ),
-                  ],
-                ),
+              NavigationMenuHeader(
+                title: title,
+                icon: headerIcon,
+                collapsed: layoutCollapsed,
+                onToggle: drawer ? null : onToggleCollapsed,
+                toggleKey: const ValueKey('collapsible-sidebar-toggle'),
+                expandTooltip: expandTooltip,
+                collapseTooltip: collapseTooltip,
               ),
               Divider(
                 height: 1,
@@ -200,6 +155,7 @@ class CollapsibleSidebar extends StatelessWidget {
         isSelected: item.selected,
         collapsed: isCollapsed,
         onTap: item.onTap,
+        count: item.count,
         textStyle: item.selected
             ? selectedItemTextStyle ?? itemTextStyle
             : itemTextStyle,
@@ -212,42 +168,14 @@ class CollapsibleSidebar extends StatelessWidget {
     CollapsibleSidebarItem item,
     bool isCollapsed,
   ) {
-    if (isCollapsed) {
-      return Center(
-        child: IconButton.filledTonal(
-          key: item.key,
-          tooltip: item.label,
-          onPressed: item.onTap,
-          icon: Icon(item.icon, size: 20),
-          style: IconButton.styleFrom(
-            fixedSize: const Size(44, 44),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return SizedBox(
-      height: 44,
-      child: FilledButton.icon(
+    return SidebarItem(
         key: item.key,
-        onPressed: item.onTap,
-        icon: Icon(item.icon, size: 20),
-        label: Text(
-          item.label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        style: FilledButton.styleFrom(
-          alignment: Alignment.centerLeft,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      ),
-    );
+        icon: item.icon,
+        label: item.label,
+        isSelected: item.selected,
+        collapsed: isCollapsed,
+        onTap: item.onTap,
+        count: item.count,
+        primaryAction: true);
   }
 }

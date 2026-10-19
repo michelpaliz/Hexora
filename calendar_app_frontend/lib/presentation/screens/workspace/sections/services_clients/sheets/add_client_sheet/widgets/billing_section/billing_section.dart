@@ -42,20 +42,15 @@ class _BillingSectionState extends State<BillingSection> {
 
     return Container(
       decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(14),
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
-        boxShadow: Theme.of(context).brightness == Brightness.light
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ]
-            : null,
       ),
       child: ExpansionTile(
+        maintainState: true,
+        dense: true,
+        shape: const Border(),
+        collapsedShape: const Border(),
         initiallyExpanded: initiallyExpanded,
         onExpansionChanged: (v) => setState(() => c.billingExpanded = v),
         tilePadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
@@ -76,12 +71,6 @@ class _BillingSectionState extends State<BillingSection> {
               total: total,
             ),
           ],
-        ),
-        subtitle: Text(
-          l.billingDetailsSubtitle,
-          style: text.bodyMedium!.copyWith(
-            color: cs.onSurfaceVariant,
-          ),
         ),
         childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
         children: [

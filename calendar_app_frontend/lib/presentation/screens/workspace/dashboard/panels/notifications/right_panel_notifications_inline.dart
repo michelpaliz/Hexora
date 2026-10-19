@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/downloads/download_job.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -41,6 +42,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
   final DownloadsApi _downloadsApi = DownloadsApi();
   List<NotificationUser> _notifications = const [];
   NotificationUser? _selected;
+  bool _detailsClosed = false;
   DownloadJob? _selectedDownload;
   BackgroundJob? _selectedOcrJob;
   Category? _selectedCategory;
@@ -48,6 +50,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
   bool _downloadsMode = false;
   bool _ocrJobsMode = false;
   bool _loading = true;
+  bool _markingAllRead = false;
   String? _error;
   bool _initialized = false;
   List<JobNotification> _jobNotifications = const [];
@@ -104,7 +107,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
           style: IconButton.styleFrom(
             backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.38),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
           splashRadius: 16,
@@ -114,7 +117,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
             size: 16,
             color: cs.onSurface.withValues(alpha: 0.75),
           ),
-          onPressed: _load,
+          onPressed: _loading || _markingAllRead ? null : _load,
         ),
       ),
     );
@@ -122,55 +125,89 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
 
   Widget _compactActionsMenu(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final es = Localizations.localeOf(context).languageCode == 'es';
     final unreadCount = _notifications.where((n) => !n.isRead).length;
-    final hasUnreadJobs = _jobNotifications.isNotEmpty;
+    Widget menuLabel(IconData icon, String label, {String? subtitle}) =>
+        Row(children: [
+          Icon(icon, size: 18, color: cs.primary),
+          const SizedBox(width: 12),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                Text(label,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+                if (subtitle != null)
+                  Text(subtitle,
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelSmall
+                          ?.copyWith(color: cs.onSurfaceVariant)),
+              ])),
+        ]);
     return PopupMenuButton<String>(
-      tooltip: 'Acciones',
+      tooltip: es ? 'Más acciones' : 'More actions',
+      enabled: !_markingAllRead,
       padding: EdgeInsets.zero,
-      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-      style: IconButton.styleFrom(
-        backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.38),
-        shape: RoundedRectangleBorder(
+      constraints: const BoxConstraints(minWidth: 280, maxWidth: 320),
+      position: PopupMenuPosition.under,
+      offset: const Offset(0, 6),
+      elevation: 4,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-        ),
+          side: BorderSide(color: cs.outlineVariant)),
+      style: IconButton.styleFrom(
+        minimumSize: const Size(36, 36),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        backgroundColor: cs.primaryContainer.withValues(alpha: .4),
+        foregroundColor: cs.primary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
-      icon: Icon(
-        Icons.more_horiz_rounded,
-        size: 16,
-        color: cs.onSurface.withValues(alpha: 0.75),
-      ),
+      icon: _markingAllRead
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.more_horiz_rounded, size: 18),
       onSelected: (value) async {
-        if (value == 'refresh') {
-          await _load();
-          return;
-        }
+        if (value == 'refresh') await _load();
         if (value == 'mark_notifications_read') {
-          await _markVisibleNotificationsRead();
-          return;
+          await _markAllNotificationsRead();
         }
-        if (value == 'mark_jobs_read') {
-          await _markAllJobNotificationsRead();
-        }
+        if (value == 'mark_jobs_read') await _markAllJobNotificationsRead();
       },
       itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: 'refresh',
-          child: Text('Actualizar'),
+        NavigationPopupMenuItem(
+          value: 'mark_notifications_read',
+          enabled: unreadCount > 0,
+          child: menuLabel(Icons.done_all_rounded,
+              es ? 'Marcar todas como leídas' : 'Mark all as read',
+              subtitle: unreadCount == 0
+                  ? (es
+                      ? 'No hay notificaciones sin leer'
+                      : 'No unread notifications')
+                  : (es
+                      ? '$unreadCount sin leer en este grupo'
+                      : '$unreadCount unread in this group')),
         ),
-        if (unreadCount > 0)
-          PopupMenuItem(
-            value: 'mark_notifications_read',
-            child: Text('Marcar $unreadCount como leidas'),
-          ),
-        if (hasUnreadJobs)
-          const PopupMenuItem(
-            value: 'mark_jobs_read',
-            child: Text('Marcar automatizaciones como leidas'),
-          ),
-        const PopupMenuItem(
-          enabled: false,
-          child: Text('Ajustes proximamente'),
-        ),
+        const PopupMenuDivider(),
+        NavigationPopupMenuItem(
+            value: 'refresh',
+            child: menuLabel(
+                Icons.refresh_rounded, es ? 'Actualizar' : 'Refresh')),
+        if (_jobNotifications.isNotEmpty)
+          NavigationPopupMenuItem(
+              value: 'mark_jobs_read',
+              child: menuLabel(
+                  Icons.auto_awesome_outlined,
+                  es
+                      ? 'Marcar automatizaciones como leídas'
+                      : 'Mark automations as read')),
       ],
     );
   }
@@ -313,6 +350,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
       setState(() {
         _downloadsMode = false;
         _selected = notification;
+        _detailsClosed = false;
       });
       return;
     }
@@ -370,22 +408,33 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
     setState(() => _jobNotifications = const []);
   }
 
-  Future<void> _markVisibleNotificationsRead() async {
-    final unread = _filteredNotifications
-        .where((notification) => !notification.isRead)
-        .toList(growable: false);
-    for (final notification in unread) {
-      await _viewModel.markNotificationAsRead(notification);
+  Future<void> _markAllNotificationsRead() async {
+    if (_markingAllRead) return;
+    final unread =
+        _notifications.where((n) => !n.isRead).toList(growable: false);
+    if (unread.isEmpty) return;
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    setState(() => _markingAllRead = true);
+    var completed = 0;
+    try {
+      for (final notification in unread) {
+        await _viewModel.markNotificationAsRead(notification);
+        completed++;
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(es
+              ? 'Todas las notificaciones del grupo están leídas.'
+              : 'All group notifications are marked as read.')));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(es
+              ? 'Se marcaron $completed de ${unread.length}. Inténtalo de nuevo para completar el resto.'
+              : 'Marked $completed of ${unread.length}. Try again to finish the rest.')));
+    } finally {
+      if (mounted) setState(() => _markingAllRead = false);
     }
-    if (!mounted) return;
-    setState(() {
-      _notifications = _notifications.map((notification) {
-        if (unread.any((entry) => entry.id == notification.id)) {
-          notification.isRead = true;
-        }
-        return notification;
-      }).toList();
-    });
   }
 
   Future<void> _refreshSelectedDownload() async {
@@ -509,11 +558,13 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
               final ocrJobs = _ocrJobs;
               final selectedVisible = _selected != null &&
                   visibleNotifications.any((n) => n.id == _selected!.id);
-              final effectiveSelected = selectedVisible
-                  ? _selected
-                  : (visibleNotifications.isNotEmpty
-                      ? visibleNotifications.first
-                      : null);
+              final effectiveSelected = _detailsClosed
+                  ? null
+                  : selectedVisible
+                      ? _selected
+                      : (visibleNotifications.isNotEmpty
+                          ? visibleNotifications.first
+                          : null);
               final effectiveSelectedDownload = _selectedDownload != null
                   ? downloads
                           .where((d) => d.id == _selectedDownload!.id)
@@ -650,6 +701,17 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                       padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
                       child: filter,
                     ),
+                  if (isWide)
+                    Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                        child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                                Localizations.localeOf(context).languageCode ==
+                                        'es'
+                                    ? 'Mantente al día con la actividad de tu cuenta.'
+                                    : 'Stay up to date with your account activity.',
+                                style: Theme.of(context).textTheme.bodySmall))),
                   Expanded(
                     child: _ocrJobsMode
                         ? ocrJobsList
@@ -683,6 +745,18 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                       flex: 2,
                       child: FolderPanel(
                         title: l.details,
+                        actions: [
+                          if (!_downloadsMode &&
+                              !_ocrJobsMode &&
+                              effectiveSelected != null)
+                            IconButton(
+                              tooltip: MaterialLocalizations.of(context)
+                                  .closeButtonTooltip,
+                              icon: const Icon(Icons.close, size: 18),
+                              onPressed: () =>
+                                  setState(() => _detailsClosed = true),
+                            ),
+                        ],
                         child: _ocrJobsMode
                             ? _OcrJobDetailsPanel(
                                 job: effectiveSelectedOcrJob,
@@ -700,6 +774,16 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                                 : NotificationDetailsPanel(
                                     notification: effectiveSelected,
                                     groupName: widget.group.name,
+                                    onMarkRead: effectiveSelected == null
+                                        ? null
+                                        : () async {
+                                            await _viewModel
+                                                .markNotificationAsRead(
+                                                    effectiveSelected);
+                                            if (!mounted) return;
+                                            setState(() => effectiveSelected
+                                                .isRead = true);
+                                          },
                                     onConfirm: effectiveSelected == null
                                         ? null
                                         : () =>

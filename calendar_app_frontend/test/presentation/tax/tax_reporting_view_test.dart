@@ -510,22 +510,20 @@ void main() {
       Text label(String value) => tester
           .widget<Text>(find.descendant(of: menu, matching: find.text(value)));
       final expected = _typography.bodySmall.copyWith(
-        fontSize: 12.3,
-        fontWeight: FontWeight.w600,
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
         letterSpacing: 0,
       );
       final inactive = label('IVA repercutido').style!;
       expect(inactive, expected.copyWith(color: inactive.color));
       final active = label('IVA soportado').style!;
       expect(active,
-          expected.copyWith(color: active.color, fontWeight: FontWeight.w700));
-      final theme = Theme.of(tester.element(menu));
-      expect(
-          label('Impuestos').style,
-          theme.textTheme.labelLarge?.copyWith(
-            color: AppColors.navigationForeground,
-            fontWeight: FontWeight.w900,
-          ));
+          expected.copyWith(color: active.color, fontWeight: FontWeight.w600));
+      final header = label('Impuestos').style!;
+      expect(header.fontSize, 15);
+      expect(header.fontWeight, FontWeight.w600);
+      expect(header.color, AppColors.navigationForeground);
+      expect(header.fontFamily, equals('Inter'));
       expect(tester.takeException(), isNull);
     });
   }

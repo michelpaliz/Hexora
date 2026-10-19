@@ -11,8 +11,7 @@ class _MailComposeView extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
     final compact = MediaQuery.sizeOf(context).width < 600;
-    final isWideEmbedded =
-        state.widget.embedded && MediaQuery.of(context).size.width >= 1200;
+    final isWideEmbedded = MediaQuery.of(context).size.width >= 1200;
     final canSend = state._hasRecipientCandidate() &&
         state._quillController.document.toPlainText().trim().isNotEmpty &&
         state._subjectCtrl.text.trim().isNotEmpty;
@@ -110,11 +109,6 @@ class _MailComposeView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (state.widget.embedded && !compact) ...[
-            const SizedBox(height: 2),
-            Divider(color: cs.outlineVariant.withValues(alpha: 0.4)),
-            const SizedBox(height: 16),
-          ],
           // ── Recipients card ──────────────────────────────────────────────
           _composeRecipientsCard(
               state: state,
@@ -176,39 +170,71 @@ class _MailComposeView extends StatelessWidget {
       );
     }
 
-    if (state.widget.embedded) {
-      if (isWideEmbedded) {
-        return FolderSectionCard(
-          label: l.mailComposeTitle,
-          leftTabOffset: 0,
-          child: Column(
-            children: [
-              Expanded(
-                child: Row(
+    if (isWideEmbedded) {
+      final desktopBody = Padding(
+        padding: const EdgeInsets.all(16),
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child:
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                if (state.widget.onClose != null ||
+                    Navigator.of(context).canPop()) ...[
+                  IconButton(
+                      tooltip:
+                          MaterialLocalizations.of(context).backButtonTooltip,
+                      onPressed: state.widget.onClose ??
+                          () => Navigator.of(context).maybePop(),
+                      icon: const Icon(Icons.arrow_back, size: 20)),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text(l.mailComposeTitle,
+                          style: t.titleLarge.copyWith(
+                              fontSize: 20, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 4),
+                      Text(
+                          state._isSpanishLocale
+                              ? 'Envía facturas a tus clientes de forma rápida y personalizada.'
+                              : 'Send invoices to your clients with a personal message.',
+                          style:
+                              t.bodySmall.copyWith(color: cs.onSurfaceVariant)),
+                    ])),
+              ])),
+          Expanded(
+              child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      flex: 6,
-                      child: content,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      flex: 5,
-                      child: _InlineInvoiceFlowPanel(state: state),
-                    ),
-                  ],
-                ),
-              ),
-              _ComposeBottomBar(
-                sending: state._sending,
-                enabled: canSend,
-                onSend: state._send,
-                label: state._sending ? l.mailComposeSending : sendLabel,
-                disabledHint: disabledSendHint,
-              ),
-            ],
-          ),
-        );
-      }
+                Expanded(
+                    flex: 6,
+                    child: Container(
+                        decoration: BoxDecoration(
+                            color: cs.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color:
+                                    cs.outlineVariant.withValues(alpha: .4))),
+                        child: content)),
+                const SizedBox(width: 16),
+                Expanded(flex: 5, child: _InlineInvoiceFlowPanel(state: state)),
+              ])),
+          const SizedBox(height: 12),
+          _ComposeBottomBar(
+              sending: state._sending,
+              enabled: canSend,
+              onSend: state._send,
+              label: state._sending ? l.mailComposeSending : sendLabel,
+              disabledHint: disabledSendHint),
+        ]),
+      );
+      if (state.widget.embedded) return desktopBody;
+      return Scaffold(body: SafeArea(child: desktopBody));
+    }
+    if (state.widget.embedded) {
       return Column(
         children: [
           Expanded(

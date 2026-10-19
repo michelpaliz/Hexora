@@ -703,7 +703,8 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (linkedIncomeReview) ...[
+        // With rows, the review results render their own compact summary.
+        if (linkedIncomeReview && dataRows.isEmpty) ...[
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),

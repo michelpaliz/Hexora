@@ -1,4 +1,5 @@
-import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
+import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
@@ -152,8 +153,16 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
               initialIndex: widget.initialTabIndex.clamp(0, 3),
               child: Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: cs.outlineVariant.withValues(alpha: 0.35),
+                        ),
+                      ),
+                    ),
                     child: _ClientTabs(
                       invoicesCount: widget.issuedInvoices.length,
                       contractsCount: _contractsCount,
@@ -223,95 +232,68 @@ class _ClientTabs extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
 
-    Widget tab({
+    // Label + neutral count pill; the active tab is marked by the underline.
+    Tab tab({
       required IconData icon,
       required String label,
       int? count,
     }) {
       return Tab(
-        height: 40,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 15),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: HexoraDocumentTokens.icon),
+            const SizedBox(width: 6),
+            Text(label),
+            if (count != null) ...[
               const SizedBox(width: 6),
-              Text(label),
-              if (count != null) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: cs.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '$count',
-                    style: t.bodySmall.copyWith(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11,
-                    ),
+              Container(
+                constraints: const BoxConstraints(minWidth: 18),
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: cs.onSurfaceVariant.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$count',
+                  textAlign: TextAlign.center,
+                  style: t.bodySmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: HexoraTypography.caption,
+                    fontFeatures: HexoraTypography.numericFeatures,
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
-              ],
+              ),
             ],
-          ),
+          ],
         ),
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.dashboardTopBar,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-      ),
-      padding: const EdgeInsets.all(3),
-      child: TabBar(
-        isScrollable: true,
-        tabAlignment: TabAlignment.start,
-        dividerColor: Colors.transparent,
-        splashFactory: NoSplash.splashFactory,
-        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
-        indicatorSize: TabBarIndicatorSize.tab,
-        indicator: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(999),
-          boxShadow: [
-            BoxShadow(
-              color: cs.primary.withValues(alpha: 0.08),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
-            ),
-          ],
+    return HexoraSectionTabs(
+      compact: true,
+      tabs: [
+        tab(
+          icon: Icons.receipt_long_outlined,
+          label: l.invoicesListTitle,
+          count: invoicesCount,
         ),
-        labelColor: Colors.white,
-        unselectedLabelColor: AppColors.navigationForeground,
-        labelStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
-        unselectedLabelStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
-        indicatorPadding: EdgeInsets.zero,
-        labelPadding: EdgeInsets.zero,
-        tabs: [
-          tab(
-            icon: Icons.receipt_long_outlined,
-            label: l.groupInvoicesTabInvoices(invoicesCount),
-          ),
-          tab(
-            icon: Icons.description_outlined,
-            label: '${l.receiptsTitle} ($receiptsCount)',
-          ),
-          tab(
-            icon: Icons.folder_outlined,
-            label: '${l.contractsTitle} ($contractsCount)',
-          ),
-          tab(
-            icon: Icons.insights_outlined,
-            label: isSpanish ? 'Grafico' : 'Graph',
-          ),
-        ],
-      ),
+        tab(
+          icon: Icons.description_outlined,
+          label: l.receiptsTitle,
+          count: receiptsCount,
+        ),
+        tab(
+          icon: Icons.folder_outlined,
+          label: l.contractsTitle,
+          count: contractsCount,
+        ),
+        tab(
+          icon: Icons.insights_outlined,
+          label: isSpanish ? 'Gráfico' : 'Chart',
+        ),
+      ],
     );
   }
 }
@@ -442,7 +424,7 @@ class _InvoiceListState extends State<_InvoiceList> {
     }).toList();
 
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -452,66 +434,30 @@ class _InvoiceListState extends State<_InvoiceList> {
             fromDate: _fromDate,
             toDate: _toDate,
             showLabel: true,
-            labelActions: [
+            trailingActions: [
               Tooltip(
                 message: filtered.isEmpty
                     ? l.noInvoicesYet
                     : isSpanish
                         ? 'Descargar las facturas visibles (${filtered.length})'
                         : 'Download visible invoices (${filtered.length})',
-                child: InkWell(
-                  onTap: filtered.isEmpty || _downloadingVisible
+                child: TextButton.icon(
+                  onPressed: filtered.isEmpty || _downloadingVisible
                       ? null
                       : () => _downloadVisible(filtered),
-                  borderRadius: BorderRadius.circular(999),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: cs.surface.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: cs.outlineVariant.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (_downloadingVisible)
-                          SizedBox(
-                            width: 13,
-                            height: 13,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: cs.onSurfaceVariant,
-                            ),
-                          )
-                        else
-                          Icon(
-                            Icons.folder_zip_outlined,
-                            size: 14,
-                            color: filtered.isEmpty
-                                ? cs.onSurfaceVariant.withValues(alpha: 0.35)
-                                : cs.onSurfaceVariant,
-                          ),
-                        const SizedBox(width: 6),
-                        Text(
-                          isSpanish
-                              ? 'ZIP visibles (${filtered.length})'
-                              : 'Visible ZIP (${filtered.length})',
-                          style: t.bodySmall.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: filtered.isEmpty
-                                ? cs.onSurfaceVariant.withValues(alpha: 0.35)
-                                : cs.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  style: TextButton.styleFrom(
+                      minimumSize: Size(
+                          0, MediaQuery.sizeOf(context).width < 650 ? 48 : 32),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      foregroundColor: cs.onSurfaceVariant),
+                  icon: _downloadingVisible
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.folder_zip_outlined, size: 14),
+                  label: Text('ZIP (${filtered.length})', style: t.bodySmall),
                 ),
               ),
             ],
@@ -583,10 +529,7 @@ class _InvoiceListState extends State<_InvoiceList> {
         final item = items[i];
         if (item is _MonthKey) {
           return Padding(
-            padding: EdgeInsets.only(
-              top: i == 0 ? 0 : 12,
-              bottom: 6,
-            ),
+            padding: EdgeInsets.zero,
             child: _MonthSeparator(label: item.label),
           );
         }
@@ -595,12 +538,13 @@ class _InvoiceListState extends State<_InvoiceList> {
           (c) => c.id == inv.clientId,
           orElse: () => widget.fallbackClient,
         );
-        final isLast = i == items.length - 1 || items[i + 1] is _MonthKey;
+
         return Padding(
-          padding: EdgeInsets.only(bottom: isLast ? 0 : 8),
+          padding: EdgeInsets.zero,
           child: InvoiceListItem(
             invoice: inv,
             client: client,
+            showClient: false,
             onTap: () => widget.onTap(inv),
             onDelete:
                 widget.onDelete == null ? null : () => widget.onDelete!(inv),
@@ -631,43 +575,6 @@ class _MonthSeparator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    return Row(
-      children: [
-        Expanded(
-          child: Divider(
-            color: cs.outlineVariant.withValues(alpha: 0.35),
-            height: 1,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.3),
-            ),
-          ),
-          child: Text(
-            label,
-            style: t.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-              fontSize: 11,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Divider(
-            color: cs.outlineVariant.withValues(alpha: 0.35),
-            height: 1,
-          ),
-        ),
-      ],
-    );
+    return CompactDocumentMonthHeading(label: label);
   }
 }

@@ -1,3 +1,4 @@
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:flutter/material.dart';
 
 class NavPillButton extends StatefulWidget {
@@ -32,13 +33,13 @@ class _NavPillButtonState extends State<NavPillButton> {
     final showHighlight = widget.isSelected || _hovering;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(NavigationTokens.radius),
       onTap: widget.onTap,
       onHover: (value) => setState(() => _hovering = value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
-        height: 44,
+        height: NavigationTokens.rowHeight(context),
         padding: EdgeInsets.symmetric(
           horizontal: showHighlight ? 16 : 12,
         ),
@@ -46,16 +47,16 @@ class _NavPillButtonState extends State<NavPillButton> {
           color: showHighlight
               ? widget.activeColor.withValues(alpha: 0.12)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(NavigationTokens.radius),
         ),
         child: Center(
           child: AnimatedScale(
             duration: const Duration(milliseconds: 160),
-            scale: widget.isSelected ? 1.08 : (_hovering ? 1.04 : 1.0),
+            scale: 1,
             child: widget.child ??
                 Icon(
                   widget.icon!,
-                  size: widget.isSelected ? 28 : 24,
+                  size: NavigationTokens.iconSize,
                   color: widget.isSelected
                       ? widget.activeColor
                       : widget.inactiveColor,

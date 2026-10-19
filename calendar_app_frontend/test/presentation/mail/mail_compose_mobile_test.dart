@@ -6,6 +6,36 @@ import 'package:hexora/theme/themes/app_theme.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 void main() {
+  testWidgets('desktop composer shows invoice panel and compact send bar',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.forPlatform(Brightness.light,
+          platform: TargetPlatform.windows),
+      locale: const Locale('es'),
+      localizationsDelegates: const [
+        ...AppLocalizations.localizationsDelegates,
+        quill.FlutterQuillLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: const MailComposeScreen(),
+    ));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Adjuntar facturas'), findsOneWidget);
+    final send = find
+        .ancestor(
+            of: find.text('Enviar correo'),
+            matching: find.byWidgetPredicate((w) => w is FilledButton))
+        .first;
+    expect(tester.widget<FilledButton>(send).onPressed, isNull);
+    expect(tester.getSize(send).width, lessThan(300));
+    expect(tester.getTopLeft(find.text('Adjuntar facturas')).dx,
+        greaterThan(tester.getTopLeft(find.byType(quill.QuillEditor)).dx));
+  });
   for (final scale in [1.0, 1.5]) {
     testWidgets('mobile composer supports recipients and keyboard at $scale',
         (tester) async {

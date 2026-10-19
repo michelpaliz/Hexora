@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
@@ -21,6 +22,8 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/j
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/prompt_clipboard_helper.dart';
 import 'package:hexora/presentation/shared/widgets/client_search_select.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
+import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
+import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/presentation/shared/widgets/wizard_steps_header.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -31,6 +34,7 @@ part 'sections/presupuestos_view_flow_section.dart';
 part 'sections/presupuestos_view_import_extract_section.dart';
 part 'sections/presupuestos_view_payload_section.dart';
 part 'sections/presupuestos_view_step_content_section.dart';
+part 'sections/presupuestos_view_details_section.dart';
 
 enum GroupInvoicesBudgetsMode { list, create }
 
@@ -85,6 +89,7 @@ class GroupInvoicesBudgetsView extends StatefulWidget {
     this.onEditDraftBudget,
     this.onExitEditor,
     this.onUnsavedStateChanged,
+    this.api,
   });
 
   final String groupId;
@@ -95,6 +100,7 @@ class GroupInvoicesBudgetsView extends StatefulWidget {
   final ValueChanged<String>? onEditDraftBudget;
   final VoidCallback? onExitEditor;
   final ValueChanged<bool>? onUnsavedStateChanged;
+  final PresupuestosApi? api;
 
   @override
   State<GroupInvoicesBudgetsView> createState() =>
@@ -102,7 +108,7 @@ class GroupInvoicesBudgetsView extends StatefulWidget {
 }
 
 class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
-  final PresupuestosApi _presupuestosApi = PresupuestosApi();
+  late final PresupuestosApi _presupuestosApi = widget.api ?? PresupuestosApi();
   bool _loadingBudgets = false;
   bool _downloadingBudgetsZip = false;
   final Set<String> _issuingBudgetIds = <String>{};
@@ -134,7 +140,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   final TextEditingController _budgetDiscountPercentCtrl =
       TextEditingController();
   final TextEditingController _budgetAdvancePercentCtrl =
-      TextEditingController(text: '70');
+      TextEditingController(text: '0');
   _ClientSource _clientSource = _ClientSource.existing;
   final List<LineDraft> _budgetLines = <LineDraft>[LineDraft(position: 1)];
   final List<InvoiceBlockDraft> _budgetBlocks = <InvoiceBlockDraft>[
@@ -149,7 +155,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   String? _draftId;
   Future<String>? _draftCreateInFlight;
   String? _issuedPresupuestoNumber;
-  DateTime? _budgetIssueDate;
+  DateTime? _budgetIssueDate = DateUtils.dateOnly(DateTime.now());
   bool _loadingEditableBudget = false;
   String? _editableBudgetError;
   bool _editableBudgetDirty = false;
@@ -192,16 +198,18 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   }
 
   num? get _budgetAdvancePercent =>
-      _parseBudgetDiscountInput(_budgetAdvancePercentCtrl.text);
+      _budgetAdvancePercentCtrl.text.trim().isEmpty
+          ? 0
+          : _parseBudgetDiscountInput(_budgetAdvancePercentCtrl.text);
 
   bool get _isBudgetAdvancePercentValid {
     final value = _budgetAdvancePercent;
-    return value != null && value >= 1 && value <= 100;
+    return value != null && value >= 0 && value <= 100;
   }
 
   String get _budgetAdvancePercentError => _isSpanishLocale
-      ? 'El anticipo debe estar entre 1% y 100%.'
-      : 'The advance must be between 1% and 100%.';
+      ? 'El anticipo debe estar entre 0% y 100%.'
+      : 'The advance must be between 0% and 100%.';
 
   void _setBudgetAdvancePercentText(String _) {
     setState(() {
@@ -511,14 +519,14 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     _editableBudgetVersion = null;
     _draftId = null;
     _issuedPresupuestoNumber = null;
-    _budgetIssueDate = null;
+    _budgetIssueDate = DateUtils.dateOnly(DateTime.now());
     _budgetCurrencyCtrl.text = 'EUR';
     _budgetNotesCtrl.clear();
     _issuedEditReasonCtrl.clear();
     _useBudgetDiscountPercent = false;
     _budgetDiscountAmountCtrl.clear();
     _budgetDiscountPercentCtrl.clear();
-    _budgetAdvancePercentCtrl.text = '70';
+    _budgetAdvancePercentCtrl.text = '0';
     _selectedClientId = null;
     _clientNameCtrl.clear();
     _clientAddressCtrl.clear();
@@ -644,24 +652,18 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                 ? Icons.cloud_done_outlined
                 : Icons.save_outlined;
     final color = _issuing || _editableBudgetDirty ? cs.tertiary : cs.primary;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.32)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: color),
+          Icon(icon, size: 14, color: color),
           const SizedBox(width: 6),
           Text(
             text,
             style: t.bodySmall.copyWith(
               color: color,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -850,245 +852,206 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(10),
+    if (!isCreate) {
+      return ListView(
+          padding: const EdgeInsets.all(26),
+          children: [_buildBudgetsListLayout(context)]);
+    }
+    if (_loadingEditableBudget) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if ((_editableBudgetError ?? '').trim().isNotEmpty) {
+      return Center(
+          child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(_editableBudgetError!, style: TextStyle(color: cs.error)),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+              onPressed: () => _loadEditableBudget(
+                  (widget.initialSelectedBudgetId ?? '').trim()),
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(l.tryAgain)),
+        ]),
+      ));
+    }
+    final actions = Row(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!isCreate) ...[
-                _buildBudgetsListLayout(context),
-              ] else ...[
-                if (_loadingEditableBudget)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 48),
-                    child: Center(
-                      child: SizedBox(
-                        width: 32,
-                        height: 32,
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
-                      ),
-                    ),
-                  )
-                else if ((_editableBudgetError ?? '').trim().isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border:
-                          Border.all(color: cs.error.withValues(alpha: 0.4)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _editableBudgetError!,
-                          style: TextStyle(color: cs.error),
-                        ),
-                        const SizedBox(height: 10),
-                        OutlinedButton.icon(
-                          onPressed: () => _loadEditableBudget(
-                            (widget.initialSelectedBudgetId ?? '').trim(),
-                          ),
-                          icon: const Icon(Icons.refresh_rounded),
-                          label: Text(l.tryAgain),
-                        ),
-                      ],
-                    ),
-                  )
-                else ...[
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final showInlineClient = selectedClientName.isNotEmpty &&
-                          constraints.maxWidth >= 860;
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: WizardStepsHeader(
-                                  steps: steps,
-                                  currentStep: _visibleStep,
-                                  isWide: true,
-                                  maxWidth: double.infinity,
-                                  height: 112,
-                                  onStepTapped: (target) {
-                                    if (target >= _minVisibleStep &&
-                                        target <= _maxAllowedStep) {
-                                      setState(() {
-                                        _setVisibleStep(target);
-                                      });
-                                      if (target == 3) {
-                                        _createDraftAndPreparePreview();
-                                      }
-                                    }
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              _budgetDraftStatusChip(cs, t),
-                              if (showInlineClient) ...[
-                                const SizedBox(width: 10),
-                                ConstrainedBox(
-                                  constraints:
-                                      const BoxConstraints(maxWidth: 320),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: cs.primaryContainer
-                                          .withValues(alpha: 0.4),
-                                      borderRadius: BorderRadius.circular(999),
-                                      border: Border.all(
-                                        color:
-                                            cs.primary.withValues(alpha: 0.45),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      l.budgetConfirmClientValue(
-                                          selectedClientName),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: cs.onSurfaceVariant,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          if (!showInlineClient &&
-                              selectedClientName.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              l.budgetConfirmClientValue(selectedClientName),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildStepContent(cs, l),
-                  if (_error != null) ...[
-                    const SizedBox(height: 8),
-                    _BudgetInlineErrorCard(
-                      message: _error!,
-                      visibleStep: _visibleStep,
-                      isSpanishLocale: _isSpanishLocale,
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      if (_visibleStep > _minVisibleStep ||
-                          (_isEditingBudget && widget.onExitEditor != null))
-                        TextButton(
-                          onPressed: _issuing ? null : _handleBudgetBack,
-                          child: Text(l.budgetBackCta),
-                        ),
-                      const Spacer(),
-                      if (_visibleStep < 3)
-                        FilledButton(
-                          onPressed: !_issuing
-                              ? () async {
-                                  if (!_validateCurrentStep()) return;
-                                  final target = _visibleStep + 1;
-                                  setState(() {
-                                    _setVisibleStep(target);
-                                  });
-                                  if (target == 3) {
-                                    await _createDraftAndPreparePreview();
-                                  }
-                                }
-                              : null,
-                          child: Text(l.budgetNextCta),
-                        )
-                      else ...[
-                        if (_isEditingBudget &&
-                            (_editableBudgetVersion ?? 0) > 0)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: Chip(
-                              visualDensity: VisualDensity.compact,
-                              label: Text('Versión $_editableBudgetVersion'),
-                            ),
-                          ),
-                        if (_isEditingBudget &&
-                            (_draftId ?? '').trim().isNotEmpty)
-                          OutlinedButton.icon(
-                            onPressed: () => _showBudgetHistoryDialog({
-                              'id': _draftId,
-                              'clientName': _clientNameCtrl.text.trim(),
-                              'presupuestoNumber': _issuedPresupuestoNumber,
-                            }),
-                            icon: const Icon(Icons.history_rounded),
-                            label: Text(
-                              _isSpanishLocale ? 'Historial' : 'History',
-                            ),
-                          ),
-                        if (_isEditingBudget &&
-                            !_isDraftEditable &&
-                            !_isIssuedEditable)
-                          Text(
-                            _isSpanishLocale
-                                ? 'Este presupuesto no se puede editar.'
-                                : 'This presupuesto cannot be edited.',
-                            style: TextStyle(color: cs.onSurfaceVariant),
-                          )
-                        else
-                          FilledButton.icon(
-                            onPressed: (_issuing ||
-                                    (_isEditingBudget &&
-                                        !_editableBudgetDirty &&
-                                        (_draftId ?? '').trim().isNotEmpty))
-                                ? null
-                                : _saveDraftOnly,
-                            icon: _issuing
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.save_outlined),
-                            label: Text(
-                              _isEditingBudget
-                                  ? (_isIssuedEditable
-                                      ? (_isSpanishLocale
-                                          ? 'Guardar nueva versión'
-                                          : 'Save new version')
-                                      : (_isSpanishLocale
-                                          ? 'Guardar cambios'
-                                          : 'Save changes'))
-                                  : (_isSpanishLocale
-                                      ? 'Guardar borrador'
-                                      : 'Save draft'),
-                            ),
-                          ),
-                      ],
-                    ],
-                  ),
-                ],
-              ],
-            ],
+        if (_visibleStep > _minVisibleStep ||
+            (_isEditingBudget && widget.onExitEditor != null))
+          TextButton(
+            onPressed: _issuing ? null : _handleBudgetBack,
+            child: Text(l.budgetBackCta),
           ),
-        ),
+        const Spacer(),
+        if (_visibleStep < 3)
+          FilledButton(
+            onPressed: !_issuing
+                ? () async {
+                    if (!_validateCurrentStep()) return;
+                    final target = _visibleStep + 1;
+                    setState(() {
+                      _setVisibleStep(target);
+                    });
+                    if (target == 3) {
+                      await _createDraftAndPreparePreview();
+                    }
+                  }
+                : null,
+            child: Text(_visibleStep == 1
+                ? (_isSpanishLocale
+                    ? 'Continuar a líneas'
+                    : 'Continue to line items')
+                : _visibleStep == 2
+                    ? l.budgetStepPreview
+                    : l.budgetNextCta),
+          )
+        else ...[
+          if (_isEditingBudget && (_editableBudgetVersion ?? 0) > 0)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Chip(
+                visualDensity: VisualDensity.compact,
+                label: Text('Versión $_editableBudgetVersion'),
+              ),
+            ),
+          if (_isEditingBudget && (_draftId ?? '').trim().isNotEmpty)
+            OutlinedButton.icon(
+              onPressed: () => _showBudgetHistoryDialog({
+                'id': _draftId,
+                'clientName': _clientNameCtrl.text.trim(),
+                'presupuestoNumber': _issuedPresupuestoNumber,
+              }),
+              icon: const Icon(Icons.history_rounded),
+              label: Text(
+                _isSpanishLocale ? 'Historial' : 'History',
+              ),
+            ),
+          if (_isEditingBudget && !_isDraftEditable && !_isIssuedEditable)
+            Text(
+              _isSpanishLocale
+                  ? 'Este presupuesto no se puede editar.'
+                  : 'This presupuesto cannot be edited.',
+              style: TextStyle(color: cs.onSurfaceVariant),
+            )
+          else
+            FilledButton.icon(
+              onPressed: (_issuing ||
+                      (_isEditingBudget &&
+                          !_editableBudgetDirty &&
+                          (_draftId ?? '').trim().isNotEmpty))
+                  ? null
+                  : _saveDraftOnly,
+              icon: _issuing
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.save_outlined),
+              label: Text(
+                _isEditingBudget
+                    ? (_isIssuedEditable
+                        ? (_isSpanishLocale
+                            ? 'Guardar nueva versión'
+                            : 'Save new version')
+                        : (_isSpanishLocale
+                            ? 'Guardar cambios'
+                            : 'Save changes'))
+                    : (_isSpanishLocale ? 'Guardar borrador' : 'Save draft'),
+              ),
+            ),
+        ],
       ],
     );
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(
+        key: const ValueKey('budget_wizard_header'),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: constraints.maxWidth < 600
+                          ? 600
+                          : constraints.maxWidth,
+                      child: WizardStepsHeader(
+                        steps: steps,
+                        currentStep: _visibleStep,
+                        isWide: true,
+                        maxWidth: double.infinity,
+                        onStepTapped: (target) {
+                          if (target >= _minVisibleStep &&
+                              target <= _maxAllowedStep) {
+                            if (target > _visibleStep &&
+                                !_validateCurrentStep()) {
+                              return;
+                            }
+                            setState(() => _setVisibleStep(target));
+                            if (target == 3) _createDraftAndPreparePreview();
+                          }
+                        },
+                      ),
+                    ),
+                  )),
+          const SizedBox(height: 8),
+          Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              spacing: 16,
+              runSpacing: 4,
+              children: [
+                if (selectedClientName.isNotEmpty)
+                  Text(l.budgetConfirmClientValue(selectedClientName),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w600)),
+                _budgetDraftStatusChip(cs, t),
+              ]),
+        ]),
+      ),
+      Expanded(
+          child: ListView(
+        key: const ValueKey('budget_wizard_content'),
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        children: [
+          _buildStepContent(cs, l),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            _BudgetInlineErrorCard(
+                message: _error!,
+                visibleStep: _visibleStep,
+                isSpanishLocale: _isSpanishLocale),
+          ],
+        ],
+      )),
+      SafeArea(
+          top: false,
+          child: Container(
+            key: const ValueKey('budget_wizard_actions'),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            decoration: BoxDecoration(
+                color: cs.surface,
+                border: Border(
+                    top: BorderSide(
+                        color: cs.outlineVariant.withValues(alpha: 0.25)))),
+            child: LayoutBuilder(
+                builder: (context, constraints) => constraints.maxWidth < 650
+                    ? OverflowBar(
+                        alignment: MainAxisAlignment.end,
+                        spacing: 12,
+                        overflowSpacing: 8,
+                        children: actions.children
+                            .where((child) => child is! Spacer)
+                            .toList())
+                    : actions),
+          )),
+    ]);
   }
 
   String _budgetId(Map<String, dynamic> item) {
@@ -1198,6 +1161,53 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     if (raw == null) return null;
     if (raw is DateTime) return raw;
     return DateTime.tryParse(raw.toString());
+  }
+
+  /// Rows for the budget list. Date sorting is re-applied locally on the same
+  /// date the rows display, then grouped by month, so each month appears
+  /// once. Number sorting has no chronological order, so it stays flat.
+  List<Object> _groupBudgetsForList(
+    List<Map<String, dynamic>> budgets,
+    BudgetSortState sort,
+    String locale,
+  ) {
+    if (sort.by != BudgetSortBy.date) return List<Object>.of(budgets);
+    final ascending = sort.dir == BudgetSortDir.asc;
+    // Index tiebreak keeps the sort stable: same-day budgets keep the
+    // server order.
+    final order = List<int>.generate(budgets.length, (i) => i)
+      ..sort((i, j) {
+        final da = _budgetDate(budgets[i]);
+        final db = _budgetDate(budgets[j]);
+        final int byDate;
+        if (da == null && db == null) {
+          byDate = 0;
+        } else if (da == null) {
+          byDate = 1;
+        } else if (db == null) {
+          byDate = -1;
+        } else {
+          byDate = ascending ? da.compareTo(db) : db.compareTo(da);
+        }
+        return byDate != 0 ? byDate : i.compareTo(j);
+      });
+    final sorted = [for (final i in order) budgets[i]];
+    final items = <Object>[];
+    String? lastKey;
+    for (final b in sorted) {
+      final date = _budgetDate(b)?.toLocal();
+      final key = date == null
+          ? '__none__'
+          : '${date.year}-${date.month.toString().padLeft(2, '0')}';
+      if (key != lastKey) {
+        items.add(date == null
+            ? (_isSpanishLocale ? 'Sin fecha' : 'No date')
+            : _budgetMonthLabel(date, locale));
+        lastKey = key;
+      }
+      items.add(b);
+    }
+    return items;
   }
 
   String _budgetMonthLabel(DateTime dt, String locale) {
@@ -2115,6 +2125,8 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       _ => _budgets,
     };
     final sortState = _effectiveBudgetSortState;
+    // Same width on every row so totals align whether or not a row is a draft.
+    final primaryActionWidth = activeList.any(_isDraftBudget) ? 84.0 : 0.0;
     final selected = activeList.cast<Map<String, dynamic>?>().firstWhere(
           (e) =>
               _budgetId(e ?? const {}).trim() ==
@@ -2124,30 +2136,61 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
 
     Widget statusTab(int index, String label) {
       final selected = _budgetsTabIndex == index;
-      return Expanded(
+      return Semantics(
+        selected: selected,
+        button: true,
         child: InkWell(
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(6),
           onTap: () => setState(() => _budgetsTabIndex = index),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.symmetric(vertical: 6),
+            height: 28,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(999),
-              color: selected ? cs.primaryContainer : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+              color: selected
+                  ? cs.primary.withValues(alpha: 0.14)
+                  : Colors.transparent,
             ),
-            child: Center(
-              child: Text(
-                label,
-                style: t.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-                ),
+            child: Text(
+              label,
+              style: t.bodySmall?.copyWith(
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                color: selected ? cs.primary : cs.onSurfaceVariant,
               ),
             ),
           ),
         ),
       );
     }
+
+    // 18px icons with 36px targets, matching the document row actions.
+    Widget toolbarIconButton({
+      required String tooltip,
+      required VoidCallback? onPressed,
+      required IconData icon,
+      bool busy = false,
+    }) =>
+        SizedBox(
+          width: 36,
+          height: 36,
+          child: IconButton(
+            tooltip: tooltip,
+            onPressed: onPressed,
+            padding: EdgeInsets.zero,
+            iconSize: 18,
+            color: cs.onSurfaceVariant,
+            icon: busy
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(icon),
+          ),
+        );
 
     Widget budgetListCard(Map<String, dynamic> item) {
       final isLight = Theme.of(context).brightness == Brightness.light;
@@ -2173,21 +2216,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
               ? 'Completa datos del cliente antes de emitir: ${missingClientFields.join(', ')}'
               : 'Emitir';
 
-      Widget budgetBadge(String label, Color color) => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.11),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              label,
-              style: t.labelSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          );
-
       Widget busySpinner(Color color) => SizedBox(
             width: 14,
             height: 14,
@@ -2197,270 +2225,88 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
             ),
           );
 
-      Widget budgetActionButton({
-        required String tooltip,
-        required IconData icon,
-        required VoidCallback? onPressed,
-        required Color color,
-        Widget? busyIcon,
-      }) {
-        final enabled = onPressed != null;
-        var hovered = false;
-        return StatefulBuilder(
-          builder: (context, setHoverState) {
-            return Tooltip(
-              message: tooltip,
-              child: MouseRegion(
-                cursor: enabled
-                    ? SystemMouseCursors.click
-                    : SystemMouseCursors.basic,
-                onEnter: (_) => setHoverState(() => hovered = true),
-                onExit: (_) => setHoverState(() => hovered = false),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(9),
-                  onTap: onPressed,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 110),
-                    curve: Curves.easeOut,
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: enabled
-                          ? color.withValues(alpha: hovered ? 0.16 : 0.07)
-                          : cs.surfaceContainerHighest.withValues(alpha: 0.24),
-                      borderRadius: BorderRadius.circular(9),
-                      border: Border.all(
-                        color: enabled && hovered
-                            ? color.withValues(alpha: 0.30)
-                            : enabled
-                                ? Colors.transparent
-                                : cs.outlineVariant.withValues(alpha: 0.20),
-                      ),
-                    ),
-                    child: Center(
-                      child: busyIcon ??
-                          Icon(
-                            icon,
-                            size: 15,
-                            color: enabled
-                                ? color.withValues(alpha: hovered ? 1.0 : 0.75)
-                                : cs.onSurfaceVariant.withValues(alpha: 0.42),
-                          ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      }
+      final statusLabel = isDraft
+          ? (_isSpanishLocale ? 'Borrador' : 'Draft')
+          : isIssued
+              ? (_isSpanishLocale ? 'Emitido' : 'Issued')
+              : (_isSpanishLocale ? 'Anulado' : 'Void');
+      final statusColor = isDraft
+          ? cs.tertiary
+          : isIssued
+              ? (isLight ? Colors.green.shade700 : Colors.green.shade300)
+              : cs.error;
+      final number = _budgetNumber(item).trim();
+      final hasNumber = number.isNotEmpty && number != '-';
 
-      return InkWell(
-        borderRadius: BorderRadius.circular(14),
+      return CompactDocumentRow(
+        icon: Icons.request_quote_outlined,
+        title: _budgetClientName(item, l),
+        metadata: [
+          hasNumber ? number : statusLabel,
+          dateLabel,
+        ].join(' · '),
+        amount: totalLabel,
+        selected: selectedRow,
         onTap: () {
           setState(() => _selectedBudgetId = id);
           _loadDetailPreviewPdf(id);
         },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          decoration: BoxDecoration(
-            color: selectedRow
-                ? cs.primaryContainer.withValues(alpha: 0.12)
-                : isLight
-                    ? Colors.white
-                    : cs.surfaceContainerHighest.withValues(alpha: 0.13),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: selectedRow
-                  ? cs.primary.withValues(alpha: 0.55)
-                  : cs.outlineVariant.withValues(alpha: 0.28),
+        previewLabel: l.download,
+        status: HexoraStatusBadge(label: statusLabel, color: statusColor),
+        primaryActionWidth: primaryActionWidth,
+        primaryAction: !isDraft
+            ? null
+            : Tooltip(
+                message: canIssueBudget
+                    ? (_isSpanishLocale
+                        ? 'Emitir presupuesto: asigna número y lo marca como emitido'
+                        : 'Issue budget: assigns a number and marks it issued')
+                    : issueTooltip,
+                child: TextButton.icon(
+                  onPressed: (canIssueBudget && !isIssuing && !isDeleting)
+                      ? () => _issueBudgetFromList(item)
+                      : null,
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(0, 30),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    foregroundColor: cs.primary,
+                    textStyle:
+                        t.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  icon: isIssuing
+                      ? busySpinner(cs.primary)
+                      : const Icon(Icons.publish_outlined, size: 16),
+                  label: Text(_isSpanishLocale ? 'Emitir' : 'Issue'),
+                ),
+              ),
+        quickActions: [
+          CompactDocumentQuickAction(
+            icon: Icons.download_rounded,
+            tooltip: l.download,
+            onPressed: () => _downloadBudgetPdf(item),
+          ),
+          CompactDocumentQuickAction(
+            icon: Icons.edit_outlined,
+            tooltip: _isSpanishLocale ? 'Editar presupuesto' : 'Edit budget',
+            onPressed: widget.onEditDraftBudget == null
+                ? null
+                : () => widget.onEditDraftBudget!.call(id),
+          ),
+        ],
+        actions: [
+          if (isDraft)
+            CompactDocumentAction(
+              isDeleting
+                  ? (_isSpanishLocale ? 'Eliminando…' : 'Deleting…')
+                  : l.delete,
+              (!isDeleting && !isIssuing)
+                  ? () => _deleteDraftBudget(item)
+                  : null,
+              destructive: true,
             ),
-            boxShadow: isLight || selectedRow
-                ? [
-                    BoxShadow(
-                      color: (selectedRow ? cs.primary : Colors.black)
-                          .withValues(alpha: selectedRow ? 0.07 : 0.028),
-                      blurRadius: selectedRow ? 12 : 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                width: 3,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: selectedRow ? cs.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: LinearGradient(
-                    colors: [
-                      cs.primary.withValues(alpha: selectedRow ? 0.24 : 0.14),
-                      cs.tertiary.withValues(alpha: selectedRow ? 0.16 : 0.08),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  border: Border.all(
-                    color: cs.primary.withValues(alpha: 0.18),
-                  ),
-                ),
-                child: Icon(
-                  Icons.request_quote_outlined,
-                  size: 17,
-                  color: selectedRow ? cs.primary : cs.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _budgetClientName(item, l),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style:
-                          t.bodyMedium?.copyWith(fontWeight: FontWeight.w900),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${_budgetNumber(item)} · $dateLabel',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: t.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 132,
-                child: Wrap(
-                  alignment: WrapAlignment.end,
-                  spacing: 5,
-                  runSpacing: 4,
-                  children: [
-                    budgetBadge(
-                      _isSpanishLocale ? 'Partidas' : 'Itemized',
-                      cs.primary,
-                    ),
-                    budgetBadge(
-                      isDraft
-                          ? (_isSpanishLocale ? 'Borrador' : 'Draft')
-                          : isIssued
-                              ? (_isSpanishLocale ? 'Emitido' : 'Issued')
-                              : (_isSpanishLocale ? 'Anulado' : 'Void'),
-                      isDraft
-                          ? cs.tertiary
-                          : isIssued
-                              ? Colors.green.shade700
-                              : cs.error,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 88,
-                child: Text(
-                  totalLabel,
-                  maxLines: 1,
-                  textAlign: TextAlign.right,
-                  style: t.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: cs.onSurface,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 164,
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: cs.surface.withValues(alpha: 0.34),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: cs.outlineVariant.withValues(alpha: 0.22),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (isDraft) ...[
-                          budgetActionButton(
-                            tooltip: issueTooltip,
-                            icon: Icons.publish_outlined,
-                            onPressed: (canIssueBudget && !isIssuing)
-                                ? () => _issueBudgetFromList(item)
-                                : null,
-                            color: cs.tertiary,
-                            busyIcon:
-                                isIssuing ? busySpinner(cs.tertiary) : null,
-                          ),
-                          const SizedBox(width: 6),
-                        ],
-                        budgetActionButton(
-                          tooltip: l.download,
-                          icon: Icons.download_rounded,
-                          onPressed: () => _downloadBudgetPdf(item),
-                          color: cs.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 6),
-                        budgetActionButton(
-                          tooltip: _isSpanishLocale
-                              ? 'Editar presupuesto'
-                              : 'Edit budget',
-                          onPressed: widget.onEditDraftBudget == null
-                              ? null
-                              : () => widget.onEditDraftBudget!.call(id),
-                          icon: Icons.edit_outlined,
-                          color: cs.primary,
-                        ),
-                        if (isDraft) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            width: 1,
-                            height: 16,
-                            color: cs.outlineVariant.withValues(alpha: 0.4),
-                          ),
-                          const SizedBox(width: 6),
-                          budgetActionButton(
-                            tooltip: l.delete,
-                            onPressed: (!isDeleting && !isIssuing)
-                                ? () => _deleteDraftBudget(item)
-                                : null,
-                            icon: Icons.delete_outline_rounded,
-                            color: cs.error,
-                            busyIcon: isDeleting ? busySpinner(cs.error) : null,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        ],
       );
     }
 
@@ -2611,162 +2457,87 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                     children: [
                       Row(
                         children: [
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: BoxDecoration(
-                                color: cs.surfaceContainerHighest
-                                    .withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color:
-                                      cs.outlineVariant.withValues(alpha: 0.35),
-                                ),
+                          // Content-sized segmented filters.
+                          Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: cs.surfaceContainerHighest
+                                  .withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color:
+                                    cs.outlineVariant.withValues(alpha: 0.35),
                               ),
-                              child: Row(
-                                children: [
-                                  statusTab(
-                                    0,
-                                    '${_isSpanishLocale ? 'Todos' : 'All'} (${_budgets.length})',
-                                  ),
-                                  statusTab(
-                                    1,
-                                    '${_isSpanishLocale ? 'Borradores' : 'Drafts'} (${drafts.length})',
-                                  ),
-                                  statusTab(
-                                    2,
-                                    '${_isSpanishLocale ? 'Emitidos' : 'Issued'} (${issuedBudgets.length})',
-                                  ),
-                                ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                statusTab(
+                                  0,
+                                  '${_isSpanishLocale ? 'Todos' : 'All'} (${_budgets.length})',
+                                ),
+                                statusTab(
+                                  1,
+                                  '${_isSpanishLocale ? 'Borradores' : 'Drafts'} (${drafts.length})',
+                                ),
+                                statusTab(
+                                  2,
+                                  '${_isSpanishLocale ? 'Emitidos' : 'Issued'} (${issuedBudgets.length})',
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _isSpanishLocale
+                                  ? '${activeList.length} ${activeList.length == 1 ? 'presupuesto' : 'presupuestos'}'
+                                  : '${activeList.length} ${activeList.length == 1 ? 'budget' : 'budgets'}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.labelSmall?.copyWith(
+                                fontSize: 11,
+                                color: cs.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          IconButton(
+                          _BudgetSortMenuButton(
+                            state: sortState,
+                            enabled: !_loadingBudgets && activeList.isNotEmpty,
+                            isSpanishLocale: _isSpanishLocale,
+                            onChanged: (by) async {
+                              final next = nextBudgetSortState(
+                                _effectiveBudgetSortState,
+                                by,
+                              );
+                              if (next.by == _effectiveBudgetSortState.by &&
+                                  next.dir == _effectiveBudgetSortState.dir) {
+                                return;
+                              }
+                              setState(() => _budgetSortState = next);
+                              await _loadBudgets();
+                            },
+                          ),
+                          toolbarIconButton(
                             tooltip: l.refreshAction,
                             onPressed: _loadingBudgets ? null : _loadBudgets,
-                            icon: _loadingBudgets
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2),
-                                  )
-                                : const Icon(Icons.refresh),
+                            busy: _loadingBudgets,
+                            icon: Icons.refresh_rounded,
                           ),
-                          IconButton(
+                          toolbarIconButton(
                             tooltip: '${l.download} ZIP',
                             onPressed: (_loadingBudgets ||
                                     _downloadingBudgetsZip ||
                                     _budgets.isEmpty)
                                 ? null
                                 : _downloadBudgetsZip,
-                            icon: _downloadingBudgetsZip
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2),
-                                  )
-                                : const Icon(Icons.folder_zip_outlined),
+                            busy: _downloadingBudgetsZip,
+                            icon: Icons.folder_zip_outlined,
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      if (!_loadingBudgets &&
-                          (_budgetsError ?? '').trim().isEmpty &&
-                          activeList.isNotEmpty) ...[
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 57,
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: _BudgetSortMenuButton(
-                                    state: sortState,
-                                    enabled: !_loadingBudgets,
-                                    isSpanishLocale: _isSpanishLocale,
-                                    onChanged: (by) async {
-                                      final next = nextBudgetSortState(
-                                        _effectiveBudgetSortState,
-                                        by,
-                                      );
-                                      if (next.by ==
-                                              _effectiveBudgetSortState.by &&
-                                          next.dir ==
-                                              _effectiveBudgetSortState.dir) {
-                                        return;
-                                      }
-                                      setState(() => _budgetSortState = next);
-                                      await _loadBudgets();
-                                    },
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  _isSpanishLocale
-                                      ? 'CLIENTE · PRESUPUESTO'
-                                      : 'CLIENT · BUDGET',
-                                  style: t.labelSmall?.copyWith(
-                                    color: cs.onSurfaceVariant
-                                        .withValues(alpha: 0.65),
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.35,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              SizedBox(
-                                width: 132,
-                                child: Text(
-                                  _isSpanishLocale
-                                      ? 'TIPO · ESTADO'
-                                      : 'TYPE · STATUS',
-                                  textAlign: TextAlign.right,
-                                  style: t.labelSmall?.copyWith(
-                                    color: cs.onSurfaceVariant
-                                        .withValues(alpha: 0.65),
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.35,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              SizedBox(
-                                width: 88,
-                                child: Text(
-                                  _isSpanishLocale ? 'TOTAL' : 'TOTAL',
-                                  textAlign: TextAlign.right,
-                                  style: t.labelSmall?.copyWith(
-                                    color: cs.onSurfaceVariant
-                                        .withValues(alpha: 0.65),
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.35,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              SizedBox(
-                                width: 164,
-                                child: Text(
-                                  _isSpanishLocale ? 'ACCIONES' : 'ACTIONS',
-                                  textAlign: TextAlign.right,
-                                  style: t.labelSmall?.copyWith(
-                                    color: cs.onSurfaceVariant
-                                        .withValues(alpha: 0.65),
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.35,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                      ],
+                      const SizedBox(height: 6),
                       Expanded(
                         child: _loadingBudgets
                             ? const Center(child: CircularProgressIndicator())
@@ -2801,37 +2572,19 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                                         final locale =
                                             Localizations.localeOf(context)
                                                 .toString();
-                                        final items = <Object>[];
-                                        String? lastKey;
-                                        for (final b in activeList) {
-                                          final date = _budgetDate(b);
-                                          final key = date == null
-                                              ? '__none__'
-                                              : '${date.year}-${date.month.toString().padLeft(2, '0')}';
-                                          if (key != lastKey) {
-                                            items.add(date == null
-                                                ? '—'
-                                                : _budgetMonthLabel(
-                                                    date, locale));
-                                            lastKey = key;
-                                          }
-                                          items.add(b);
-                                        }
+                                        final items = _groupBudgetsForList(
+                                            activeList, sortState, locale);
                                         return ListView.builder(
                                           padding: EdgeInsets.zero,
                                           itemCount: items.length,
                                           itemBuilder: (_, i) {
                                             final item = items[i];
                                             if (item is String) {
-                                              return _BudgetMonthDivider(
-                                                  label: item, first: i == 0);
+                                              return CompactDocumentMonthHeading(
+                                                  label: item);
                                             }
-                                            return Padding(
-                                              padding: const EdgeInsets.only(
-                                                  bottom: 4),
-                                              child: budgetListCard(
-                                                  item as Map<String, dynamic>),
-                                            );
+                                            return budgetListCard(
+                                                item as Map<String, dynamic>);
                                           },
                                         );
                                       }),
@@ -2849,57 +2602,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
           ),
         );
       },
-    );
-  }
-}
-
-class _BudgetMonthDivider extends StatelessWidget {
-  const _BudgetMonthDivider({required this.label, this.first = false});
-  final String label;
-  final bool first;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    return Padding(
-      padding: EdgeInsets.only(top: first ? 0 : 14, bottom: 6),
-      child: Row(
-        children: [
-          Expanded(
-            child: Divider(
-              color: cs.outlineVariant.withValues(alpha: 0.35),
-              height: 1,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Text(
-              label,
-              style: t.bodySmall.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-                fontSize: 11,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Divider(
-              color: cs.outlineVariant.withValues(alpha: 0.35),
-              height: 1,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -4727,7 +4429,7 @@ class _BudgetSortMenuButton extends StatelessWidget {
       onSelected: onChanged,
       itemBuilder: (context) => [
         for (final by in BudgetSortBy.values)
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: by,
             child: Row(
               children: [
@@ -4753,32 +4455,17 @@ class _BudgetSortMenuButton extends StatelessWidget {
             ),
           ),
       ],
-      child: Container(
-        width: 34,
-        height: 34,
-        margin: const EdgeInsets.only(right: 4),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Center(child: Icon(_icon(state.by), size: 16, color: cs.secondary)),
-            Positioned(
-              right: -2,
-              bottom: -2,
-              child: Container(
-                padding: const EdgeInsets.all(1.5),
-                decoration: BoxDecoration(
-                  color: cs.surface,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(dirIcon, size: 10, color: cs.secondary),
-              ),
-            ),
-          ],
+      child: SizedBox(
+        width: 36,
+        height: 36,
+        child: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(_icon(state.by), size: 17, color: cs.onSurfaceVariant),
+              Icon(dirIcon, size: 12, color: cs.onSurfaceVariant),
+            ],
+          ),
         ),
       ),
     );

@@ -150,7 +150,7 @@ void main() {
     expect(tracking().initialYear, years.year - 1);
     expect(tracking().initialMonth, nextMonth);
     expect(tester.takeException(), isNull);
-    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.tap(find.byTooltip('Volver'));
     await tester.pumpAndSettle();
     expect(visibleIds(), ['worker']);
     await tester.tap(find.byKey(const ValueKey('directory-partners')));

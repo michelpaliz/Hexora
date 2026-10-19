@@ -21,9 +21,11 @@ class AzureMapsView extends StatefulWidget {
     required this.onPinTapped,
     this.onReady,
     this.onError,
+    this.darkMode = false,
   });
 
   final String clientId;
+  final bool darkMode;
   final String accessToken;
   final List<AzureMapPin> pins;
   final String? selectedPinId;
@@ -61,7 +63,8 @@ class _AzureMapsViewState extends State<AzureMapsView> {
     }
     final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0xFFF0F4F8))
+      ..setBackgroundColor(widget.darkMode
+          ? const Color(0xFF162739) : const Color(0xFFF0F4F8))
       ..addJavaScriptChannel(
         'HexoraMapChannel',
         onMessageReceived: (message) => _onMessage(message.message),
@@ -78,6 +81,7 @@ class _AzureMapsViewState extends State<AzureMapsView> {
       ..loadHtmlString(
         buildAzureMapsDocument(
           instanceId: _instanceId,
+          darkMode: widget.darkMode,
           clientId: widget.clientId,
           accessToken: widget.accessToken,
           pins: widget.pins,
@@ -96,6 +100,9 @@ class _AzureMapsViewState extends State<AzureMapsView> {
   void didUpdateWidget(covariant AzureMapsView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!_ready) return;
+    if (oldWidget.darkMode != widget.darkMode) {
+      _post({'action': 'theme', 'darkMode': widget.darkMode});
+    }
     if (oldWidget.accessToken != widget.accessToken) {
       _post(<String, dynamic>{
         'action': 'token',
@@ -142,12 +149,14 @@ class _AzureMapsViewState extends State<AzureMapsView> {
         case 'hexora-map-ready':
           _ready = true;
           _syncState();
-          widget.onReady?.call();
           if (widget.cameraTarget != null) _postCamera(widget.cameraTarget!);
           break;
         case 'hexora-map-pin':
           final id = (data['id'] ?? '').toString();
           if (id.isNotEmpty) widget.onPinTapped(id);
+          break;
+        case 'hexora-map-loaded':
+          widget.onReady?.call();
           break;
         case 'hexora-map-selection':
           final latitude = _number(data['latitude']);
@@ -180,6 +189,7 @@ class _AzureMapsViewState extends State<AzureMapsView> {
   }
 
   void _syncState() {
+    _post({'action': 'theme', 'darkMode': widget.darkMode});
     _post(<String, dynamic>{
       'action': 'token',
       'accessToken': widget.accessToken,

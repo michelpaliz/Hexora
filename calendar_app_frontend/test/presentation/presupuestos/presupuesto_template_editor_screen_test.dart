@@ -1,10 +1,297 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/services/presupuestos/presupuestos_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/templates/presupuesto_template_editor_screen.dart';
 
 void main() {
+  testWidgets('editing generated frequency preserves custom month ranges',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 3000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = _ServiceDocumentApi('mantenimiento del jardín');
+    api.content['sections'] = [
+      {
+        'key': 'work_frequency',
+        'generatedFrequency': true,
+        'title': 'Frecuencia',
+        'items': <String>[]
+      },
+    ];
+    await tester.pumpWidget(MaterialApp(
+        home: PresupuestoTemplateEditorScreen(
+      api: api,
+      groupId: 'group-1',
+      presupuestoId: 'draft-1',
+    )));
+    await tester.pumpAndSettle();
+    expect(find.text('Periodo personalizado conservado: Junio a septiembre'),
+        findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('high_season_frequency')),
+        '5 visitas por mes');
+    await tester.pumpAndSettle();
+    expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('high_season_summary')))
+            .data,
+        contains('Junio a septiembre'));
+    await tester.tap(find.byKey(const ValueKey('editor_step_Imagenes')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar borrador'));
+    await tester.pumpAndSettle();
+    final variables = api.lastDocumentContent!['variables'] as Map;
+    expect(variables['MESES_TEMPORADA_ALTA'], 'Junio a septiembre');
+    expect(variables['MESES_TEMPORADA_BAJA'], 'Resto del año');
+    expect(variables['DIAS_TEMPORADA_ALTA'], '5 visitas por mes');
+    expect(variables['FRECUENCIA_TEMPORADA_BAJA'], '2 veces por mes');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('payment conditions and annex are always the last two sections',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 3000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = _ServiceDocumentApi('mantenimiento del jardín');
+    api.content['sections'] = [
+      {'key': 'section_1', 'order': 1, 'title': 'Anexo (algunas fotos).'},
+      {
+        'key': 'section_2',
+        'order': 2,
+        'title': 'Condiciones de pago y duración del contrato.'
+      },
+      {'key': 'section_3', 'order': 3, 'title': 'Control de los trabajos.'},
+      {'key': 'section_4', 'order': 4, 'title': 'Referencias.'},
+    ];
+    await tester.pumpWidget(MaterialApp(
+        home: PresupuestoTemplateEditorScreen(
+      api: api,
+      groupId: 'group-1',
+      presupuestoId: 'draft-1',
+    )));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('editor_step_Secciones')));
+    await tester.pumpAndSettle();
+    // Pinned sections show a lock instead of a drag handle.
+    expect(find.byIcon(Icons.lock_outline_rounded), findsNWidgets(2));
+    await tester.tap(find.byKey(const ValueKey('editor_step_Imagenes')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar borrador'));
+    await tester.pumpAndSettle();
+    final saved = (api.lastDocumentContent!['sections'] as List)
+        .map((s) => (s as Map)['title'])
+        .toList();
+    expect(saved, [
+      'Control de los trabajos.',
+      'Referencias.',
+      'Condiciones de pago y duración del contrato.',
+      'Anexo (algunas fotos).',
+    ]);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'changing saved service patches variables without rebuilding items',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 3000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = _ServiceDocumentApi('Servicio personalizado de riego');
+    final sections = api.content['sections'];
+    await tester.pumpWidget(MaterialApp(
+        home: PresupuestoTemplateEditorScreen(
+      api: api,
+      groupId: 'group-1',
+      presupuestoId: 'draft-1',
+    )));
+    await tester.pumpAndSettle();
+    await tester
+        .tap(find.byKey(const ValueKey('service_mantenimiento del jardín')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('editor_step_Imagenes')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar borrador'));
+    await tester.pumpAndSettle();
+    expect(api.updatedVariables,
+        {'SERVICIO_MANTENIMIENTO': 'mantenimiento del jardín'});
+    expect(api.lastDocumentContent!['sections'], sections);
+    expect(
+        (api.lastDocumentContent!['variables'] as Map)['DIAS_TEMPORADA_ALTA'],
+        '4 veces por mes');
+    expect(
+        (api.lastDocumentContent!['variables']
+            as Map)['FRECUENCIA_TEMPORADA_BAJA'],
+        '2 veces por mes');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('new service requires an explicit choice for save and preview',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 3000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = _ServiceDocumentApi('limpieza de la piscina');
+    await tester.pumpWidget(MaterialApp(
+        home: PresupuestoTemplateEditorScreen(
+      api: api,
+      groupId: 'group-1',
+      createDocumentDraft: true,
+    )));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Usar plantilla').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Previsualizar'));
+    await tester.pumpAndSettle();
+    expect(api.defaultDocumentCreates, 0);
+    expect(find.text('Selecciona un tipo de servicio para continuar.'),
+        findsOneWidget);
+    expect(
+        tester
+            .widget<ChoiceChip>(
+                find.byKey(const ValueKey('service_limpieza de la piscina')))
+            .selected,
+        isFalse);
+    await tester.tap(find.byKey(const ValueKey('editor_step_Imagenes')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar borrador'));
+    await tester.pumpAndSettle();
+    expect(api.defaultDocumentCreates, 0);
+    expect(find.text('Selecciona un tipo de servicio para continuar.'),
+        findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final service in [
+    'mantenimiento del jardín y la piscina',
+    'mantenimiento del jardín',
+    'limpieza de la piscina',
+    'Servicio personalizado de riego',
+    '',
+  ]) {
+    testWidgets('reopen preserves service and authored payload: $service',
+        (tester) async {
+      tester.view.physicalSize = const Size(1600, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final api = _ServiceDocumentApi(service);
+      final originalVariables =
+          Map<String, dynamic>.from(api.content['variables'] as Map);
+      final originalSections = api.content['sections'];
+      await tester.pumpWidget(MaterialApp(
+          home: PresupuestoTemplateEditorScreen(
+        api: api,
+        groupId: 'group-1',
+        presupuestoId: 'draft-1',
+      )));
+      await tester.pumpAndSettle();
+      final chip = find.byKey(ValueKey('service_$service'));
+      if (chip.evaluate().isNotEmpty) {
+        expect(tester.widget<ChoiceChip>(chip).selected, isTrue);
+      } else if (service.isNotEmpty) {
+        expect(find.text('Servicio personalizado: $service'), findsOneWidget);
+      }
+      await tester.tap(find.byKey(const ValueKey('editor_step_Imagenes')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Guardar borrador'));
+      await tester.pumpAndSettle();
+      expect(api.lastDocumentContent!['variables'], originalVariables);
+      expect(api.lastDocumentContent!['sections'], originalSections);
+      expect(api.lastDocumentContent!['totals'],
+          {'total': 300, 'currency': 'EUR'});
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('season months complement, save and reopen on narrow screens',
+      (tester) async {
+    tester.view.physicalSize = const Size(700, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = _SeasonDocumentApi();
+    await tester.pumpWidget(MaterialApp(
+        home: PresupuestoTemplateEditorScreen(
+      api: api,
+      groupId: 'group-1',
+      createDocumentDraft: true,
+    )));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Usar plantilla').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
+    await tester.pumpAndSettle();
+    final june = find.byKey(const ValueKey('high_season_month_6'));
+    await tester.ensureVisible(june);
+    expect(tester.widget<FilterChip>(june).selected, isTrue);
+    await tester.tap(june);
+    await tester.pumpAndSettle();
+    expect(find.text('9 meses · Automático'), findsOneWidget);
+    expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('low_season_summary')))
+            .data,
+        contains('Ene, Feb, Mar, Abr, May, Jun, Oct, Nov, Dic'));
+    await tester.enterText(find.byKey(const ValueKey('high_season_frequency')),
+        '3 veces por semana');
+    await tester.enterText(
+        find.byKey(const ValueKey('low_season_frequency')), '1 vez por semana');
+    final service =
+        find.byKey(const ValueKey('service_limpieza de la piscina'));
+    await tester.ensureVisible(service);
+    await tester.pumpAndSettle();
+    expect(tester.widget<ChoiceChip>(service).selected, isFalse);
+    await tester.tap(service);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    tester.view.physicalSize = const Size(1600, 3000);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('editor_step_Imagenes')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar borrador'));
+    await tester.pumpAndSettle();
+    final content = api.lastDocumentContent!;
+    expect(content['seasonConfiguration'], {
+      'highSeason': {
+        'months': [7, 8, 9],
+        'frequency': '3 veces por semana'
+      },
+      'lowSeason': {
+        'months': [1, 2, 3, 4, 5, 6, 10, 11, 12],
+        'frequency': '1 vez por semana'
+      },
+    });
+    final variables = content['variables'] as Map;
+    expect(variables['SERVICIO_MANTENIMIENTO'], 'limpieza de la piscina');
+    expect(variables['MESES_TEMPORADA_ALTA'], 'Jul, Ago, Sep');
+    expect(variables['DIAS_TEMPORADA_ALTA'], '3 veces por semana');
+    expect(variables['FRECUENCIA_TEMPORADA_BAJA'], '1 vez por semana');
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(MaterialApp(
+        home: PresupuestoTemplateEditorScreen(
+      api: api,
+      groupId: 'group-1',
+      presupuestoId: 'draft-1',
+    )));
+    await tester.pumpAndSettle();
+    expect(tester.widget<FilterChip>(june).selected, isFalse);
+    expect(tester.widget<ChoiceChip>(service).selected, isTrue);
+    expect(
+        tester
+            .widget<TextField>(
+                find.byKey(const ValueKey('high_season_frequency')))
+            .controller!
+            .text,
+        '3 veces por semana');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'cleaning type is selected before editing and exposes its dynamic table',
     (tester) async {
@@ -384,6 +671,11 @@ void main() {
                 name: 'Comunidad Bella Beach',
                 groupId: 'group-1',
               ),
+              for (var i = 0; i < 20; i++)
+                GroupClient(
+                    id: 'client-$i',
+                    name: 'Otro cliente $i',
+                    groupId: 'group-1'),
             ];
           },
         ),
@@ -402,6 +694,18 @@ void main() {
     await tester.tap(find.byTooltip('Buscar clientes'));
     await tester.pumpAndSettle();
     expect(searches, <String>['Bella']);
+    final menuViewport = find
+        .ancestor(
+          of: find.byKey(const ValueKey('use_custom_client_name')),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    expect(tester.getSize(menuViewport).height, lessThanOrEqualTo(320));
+    expect(
+        tester.getSize(menuViewport).width,
+        lessThanOrEqualTo(tester
+            .getSize(find.byKey(const ValueKey('variable_CLIENTE')))
+            .width));
     await tester.tap(
       find.widgetWithText(MenuItemButton, 'Comunidad Bella Beach'),
     );
@@ -430,6 +734,288 @@ void main() {
       (api.lastDocumentContent!['variables'] as Map)['CLIENTE'],
       'Comunidad Bella Beach',
     );
+  });
+
+  for (final scenario in ['no matches', 'search failure', 'saved client']) {
+    testWidgets('custom client name saves without a client ID after $scenario',
+        (tester) async {
+      tester.view.physicalSize = const Size(1600, 1800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final api = _FakePresupuestosApi();
+      var searches = 0;
+      await tester.pumpWidget(MaterialApp(
+        home: PresupuestoTemplateEditorScreen(
+          api: api,
+          groupId: 'group-1',
+          createDocumentDraft: true,
+          clientSearch: (_) async {
+            searches++;
+            if (scenario == 'search failure') throw Exception('Offline');
+            return scenario == 'saved client'
+                ? [
+                    GroupClient(
+                        id: 'saved-client',
+                        name: 'Chalet Marcin',
+                        groupId: 'group-1')
+                  ]
+                : <GroupClient>[];
+          },
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Usar plantilla').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
+      await tester.pumpAndSettle();
+      final client = find.byKey(const ValueKey('variable_CLIENTE'));
+      await tester.enterText(client, 'Chalet Marcin');
+      await tester.tap(find.byTooltip('Buscar clientes'));
+      await tester.pumpAndSettle();
+      if (scenario == 'saved client') {
+        await tester.tap(find.widgetWithText(MenuItemButton, 'Chalet Marcin'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('client_mode_custom')));
+      } else {
+        expect(
+            find.textContaining(scenario == 'search failure'
+                ? 'No se pudieron cargar'
+                : 'Sin coincidencias.'),
+            findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('use_custom_client_name')));
+      }
+      await tester.pumpAndSettle();
+      expect(
+          tester.widget<TextField>(client).controller!.text, 'Chalet Marcin');
+      expect(find.text('Volver a clientes'), findsOneWidget);
+      await tester.enterText(client, 'Chalet Marcin nuevo');
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(searches, 1);
+      expect(find.byType(MenuItemButton), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('editor_step_Secciones')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
+      await tester.pumpAndSettle();
+      expect(find.text('Volver a clientes'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('editor_step_Secciones')));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Guardar borrador'), 500,
+          scrollable: find.byType(Scrollable).first);
+      await tester.tap(find.text('Guardar borrador'));
+      await tester.pumpAndSettle();
+      expect(api.lastDocumentContent!.containsKey('clientId'), isFalse);
+      expect((api.lastDocumentContent!['variables'] as Map)['CLIENTE'],
+          'Chalet Marcin nuevo');
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets(
+      'custom client name is patched when an existing field is automatic',
+      (tester) async {
+    tester.view.physicalSize = const Size(1000, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = _AutomaticClientApi();
+    await tester.pumpWidget(MaterialApp(
+      home: PresupuestoTemplateEditorScreen(
+        api: api,
+        groupId: 'group-1',
+        presupuestoId: 'budget-1',
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('Volver a clientes'), findsOneWidget);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const ValueKey('variable_CLIENTE')), 'Cliente nuevo');
+    await tester.tap(find.byKey(const ValueKey('editor_step_Secciones')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar borrador'));
+    await tester.pumpAndSettle();
+    expect(api.updatedVariables, {'CLIENTE': 'Cliente nuevo'});
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final service in <String>[
+    'mantenimiento del jardín y la piscina',
+    'mantenimiento del jardín',
+    'limpieza de la piscina',
+  ]) {
+    testWidgets('service chip persists $service', (tester) async {
+      tester.view.physicalSize = const Size(1600, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final api = _ServiceDocumentApi('');
+      (api.content['sections'] as List).insert(0, {
+        'key': 'default_frequency',
+        'order': 1,
+        'enabled': true,
+        'title': 'Frecuencia de trabajos',
+        'body': '',
+        'items': [
+          'La limpieza de la piscina se realizará tres días por semana en temporada alta: [DIAS_TEMPORADA_ALTA]',
+          'En temporada baja la limpieza de la piscina se realizará [FRECUENCIA_TEMPORADA_BAJA]',
+        ],
+      });
+      await tester.pumpWidget(MaterialApp(
+        home: PresupuestoTemplateEditorScreen(
+          api: api,
+          groupId: 'group-1',
+          createDocumentDraft: true,
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Usar plantilla').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
+      await tester.pumpAndSettle();
+      final chip = find.byKey(ValueKey('service_$service'));
+      await tester.ensureVisible(chip);
+      // Select another option first to exercise an explicit pool selection too.
+      await tester.tap(find.byKey(
+          const ValueKey('service_mantenimiento del jardín y la piscina')));
+      await tester.pumpAndSettle();
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+      expect(tester.widget<ChoiceChip>(chip).selected, isTrue);
+      for (final key in ['high_season_summary', 'low_season_summary']) {
+        expect(tester.widget<Text>(find.byKey(ValueKey(key))).data,
+            contains(service));
+      }
+      await tester.tap(find.byKey(const ValueKey('editor_step_Imagenes')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Guardar borrador'));
+      await tester.tap(find.text('Guardar borrador'));
+      await tester.pumpAndSettle();
+      expect(
+          (api.lastDocumentContent!['variables']
+              as Map)['SERVICIO_MANTENIMIENTO'],
+          service);
+      final variables = api.lastDocumentContent!['variables'] as Map;
+      expect(variables['DIAS_TEMPORADA_ALTA'], '4 veces por mes');
+      expect(variables['FRECUENCIA_TEMPORADA_BAJA'], '2 veces por mes');
+      final sections = api.lastDocumentContent!['sections'] as List;
+      expect((sections.first as Map)['items'], [
+        'Temporada alta ([MESES_TEMPORADA_ALTA]): [SERVICIO_MANTENIMIENTO], [DIAS_TEMPORADA_ALTA]',
+        'Temporada baja ([MESES_TEMPORADA_BAJA]): [SERVICIO_MANTENIMIENTO], [FRECUENCIA_TEMPORADA_BAJA]',
+      ]);
+      expect((sections[1] as Map)['items'],
+          ['Una visita especial acordada con el cliente.']);
+      expect((sections[2] as Map)['items'], isEmpty);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(MaterialApp(
+          home: PresupuestoTemplateEditorScreen(
+        api: api,
+        groupId: 'group-1',
+        presupuestoId: 'draft-1',
+      )));
+      await tester.pumpAndSettle();
+      expect(tester.widget<ChoiceChip>(chip).selected, isTrue);
+      await tester.tap(find.text('Previsualizar'));
+      await tester.pumpAndSettle();
+      expect(api.previewVariables, variables);
+      await tester.tap(find.text('Descargar PDF'));
+      await tester.pumpAndSettle();
+      expect(api.downloadVariables, variables);
+      expect(api.lastDocumentContent!['sections'], sections);
+    });
+  }
+
+  testWidgets(
+      'generated frequency follows chips and preserves manual additions',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 4000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = _SeasonDocumentApi(generatedFrequency: true);
+    await tester.pumpWidget(MaterialApp(
+        home: PresupuestoTemplateEditorScreen(
+      api: api,
+      groupId: 'group-1',
+      createDocumentDraft: true,
+    )));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Usar plantilla').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(
+        const ValueKey('service_mantenimiento del jardín y la piscina')));
+    for (final month in [5, 5]) {
+      final chip = find.byKey(ValueKey('high_season_month_$month'));
+      await tester.ensureVisible(chip);
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+    }
+    await tester.enterText(
+        find.byKey(const ValueKey('high_season_frequency')), '4 veces por mes');
+    await tester.enterText(
+        find.byKey(const ValueKey('low_season_frequency')), '2 veces por mes');
+    await tester.tap(find.byKey(const ValueKey('editor_step_Secciones')));
+    await tester.pumpAndSettle();
+    expect(find.text('Generado automáticamente'), findsOneWidget);
+    expect(
+        find.textContaining(
+            'junio, julio, agosto y septiembre, el servicio de mantenimiento del jardín y la piscina'),
+        findsWidgets);
+    expect(find.byKey(const ValueKey('work_frequency_item_field_0')),
+        findsNothing);
+    await tester.tap(find.text('Añadir elemento'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const ValueKey('work_frequency_item_field_0')),
+        'Revisar el riego.');
+    await tester.tap(find.text('Editar servicio y frecuencias'));
+    await tester.pumpAndSettle();
+    await tester
+        .tap(find.byKey(const ValueKey('service_mantenimiento del jardín')));
+    await tester.tap(find.byKey(const ValueKey('editor_step_Secciones')));
+    await tester.pumpAndSettle();
+    expect(
+        tester
+            .widget<TextField>(
+                find.byKey(const ValueKey('work_frequency_item_field_0')))
+            .controller!
+            .text,
+        'Revisar el riego.');
+    await tester.tap(find.byKey(const ValueKey('editor_step_Imagenes')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Guardar borrador'));
+    await tester.tap(find.text('Guardar borrador'));
+    await tester.pumpAndSettle();
+    final section =
+        (api.lastDocumentContent!['sections'] as List).single as Map;
+    expect(section['generatedFrequency'], true);
+    expect(section['items'], ['Revisar el riego.']);
+    final variables = api.lastDocumentContent!['variables'] as Map;
+    expect(variables['SERVICIO_MANTENIMIENTO'], 'mantenimiento del jardín');
+    expect(variables['MESES_TEMPORADA_BAJA'],
+        'Ene, Feb, Mar, Abr, May, Oct, Nov, Dic');
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(MaterialApp(
+        home: PresupuestoTemplateEditorScreen(
+      api: api,
+      groupId: 'group-1',
+      presupuestoId: 'draft-1',
+    )));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('editor_step_Secciones')));
+    await tester.pumpAndSettle();
+    expect(find.text('Generado automáticamente'), findsOneWidget);
+    expect(
+        tester
+            .widget<TextField>(
+                find.byKey(const ValueKey('work_frequency_item_field_0')))
+            .controller!
+            .text,
+        'Revisar el riego.');
+    expect(find.textContaining('frecuencia de 4 veces por mes.'), findsWidgets);
+    expect(find.textContaining('frecuencia de 2 veces por mes.'), findsWidgets);
   });
 
   testWidgets('garden type retains its six image slots', (tester) async {
@@ -478,6 +1064,19 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Usar plantilla').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('editor_step_Imagenes')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
+    await tester.pumpAndSettle();
+    final service =
+        find.byKey(const ValueKey('service_limpieza de la piscina'));
+    await tester.ensureVisible(service);
+    await tester.pumpAndSettle();
+    await tester.tap(service);
+    await tester.pumpAndSettle();
+    await tester
+        .ensureVisible(find.byKey(const ValueKey('editor_step_Imagenes')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('editor_step_Imagenes')));
     await tester.pumpAndSettle();
@@ -577,6 +1176,24 @@ void main() {
       find.byKey(const ValueKey('variable_PRODUCTOS_INCLUIDOS')),
       findsOneWidget,
     );
+    expect(find.text('Año: '), findsOneWidget);
+    expect(find.text('Servicios y mantenimiento'), findsOneWidget);
+    expect(find.text('Precios adicionales'), findsOneWidget);
+    expect(find.text('Condiciones del contrato'), findsOneWidget);
+    expect(find.textContaining('[ZONAS_COMUNES]'), findsNothing);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('variable_PRECIO_HORA')))
+          .keyboardType,
+      const TextInputType.numberWithOptions(decimal: true),
+    );
+    expect(
+      tester
+          .widget<TextField>(
+              find.byKey(const ValueKey('variable_ZONAS_COMUNES')))
+          .maxLines,
+      3,
+    );
     await tester.enterText(
       find.byKey(const ValueKey('variable_PRECIO_VISITA')),
       '500 €',
@@ -629,7 +1246,7 @@ void main() {
 
     final finder = find.byKey(const ValueKey('variable_TOTAL_MENSUAL'));
     expect(tester.widget<TextField>(finder).enabled, isTrue);
-    expect(find.text('Total mensual'), findsOneWidget);
+    expect(find.text('Importe mensual (opcional)'), findsOneWidget);
     for (final key in const <String>[
       'IMPORTE_MENSUAL',
       'FRECUENCIA_MENSUAL',
@@ -642,6 +1259,42 @@ void main() {
     await tester.pump();
 
     expect(tester.widget<TextField>(finder).controller!.text, '1.920 €');
+  });
+
+  testWidgets(
+      'automatic monthly amount without a formula can be edited and saved',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final api = _UnusedMonthlyTotalApi(automaticMonthlyTotal: true);
+    await tester.pumpWidget(MaterialApp(
+      home: PresupuestoTemplateEditorScreen(
+        api: api,
+        groupId: 'group-1',
+        presupuestoId: 'budget-1',
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final amount = find.byKey(const ValueKey('variable_TOTAL_MENSUAL'));
+    expect(tester.widget<TextField>(amount).enabled, isTrue);
+    await tester.enterText(amount, '1.920,50 €');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('editor_step_Secciones')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar borrador'));
+    await tester.pumpAndSettle();
+
+    expect(api.updatedVariables, {'TOTAL_MENSUAL': '1.920,50 €'});
+    expect(
+        (api.savedContent!['variables'] as Map)['TOTAL_MENSUAL'], '1.920,50 €');
+    await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(amount).controller!.text, '1.920,50 €');
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('preview warns when the backend reports unresolved variables',
@@ -736,7 +1389,10 @@ void main() {
 }
 
 class _FakePresupuestosApi extends PresupuestosApi {
-  _FakePresupuestosApi({this.omitTableCalculations = false});
+  _FakePresupuestosApi(
+      {this.omitTableCalculations = false, this.generatedFrequency = false});
+
+  final bool generatedFrequency;
 
   final bool omitTableCalculations;
   int defaultDocumentCreates = 0;
@@ -770,12 +1426,22 @@ class _FakePresupuestosApi extends PresupuestosApi {
             'ZONAS_COMUNES',
             'PRODUCTOS_INCLUIDOS',
             'DIAS_TEMPORADA_ALTA',
+            'SERVICIO_MANTENIMIENTO',
             'FRECUENCIA_TEMPORADA_BAJA',
             'IMPORTE_MENSUAL',
             'DURACION_CONTRATO',
             'PREAVISO',
           ]),
-          'sections': <Map<String, dynamic>>[],
+          'sections': <Map<String, dynamic>>[
+            if (generatedFrequency)
+              {
+                'key': 'work_frequency',
+                'order': 3,
+                'title': 'Frecuencia de trabajos.',
+                'generatedFrequency': true,
+                'items': <String>[],
+              },
+          ],
           'images': List.generate(
             6,
             (index) => <String, dynamic>{'slot': 'photo_${index + 1}'},
@@ -1086,6 +1752,10 @@ class _ExistingDocumentApi extends PresupuestosApi {
 }
 
 class _UnusedMonthlyTotalApi extends _ExistingDocumentApi {
+  _UnusedMonthlyTotalApi({this.automaticMonthlyTotal = false});
+
+  final bool automaticMonthlyTotal;
+
   @override
   Future<Map<String, dynamic>> getTemplateVariables(
     String presupuestoId,
@@ -1107,7 +1777,8 @@ class _UnusedMonthlyTotalApi extends _ExistingDocumentApi {
         <String, dynamic>{
           'key': 'TOTAL_MENSUAL',
           'label': 'TOTAL_MENSUAL',
-          'value': '',
+          'value': updatedVariables?['TOTAL_MENSUAL'] ?? '',
+          'isAutomatic': automaticMonthlyTotal,
           'isUsedInTemplate': false,
         },
         <String, dynamic>{
@@ -1131,6 +1802,21 @@ class _UnusedMonthlyTotalApi extends _ExistingDocumentApi {
   }
 }
 
+class _AutomaticClientApi extends _UnusedMonthlyTotalApi {
+  @override
+  Future<Map<String, dynamic>> getTemplateVariables(
+      String presupuestoId) async {
+    final response = await super.getTemplateVariables(presupuestoId);
+    for (final field in response['variableFields'] as List) {
+      if (field['key'] == 'CLIENTE') {
+        field['isAutomatic'] = true;
+        field['value'] = updatedVariables?['CLIENTE'] ?? field['value'];
+      }
+    }
+    return response;
+  }
+}
+
 class _UnresolvedDocumentApi extends _ExistingDocumentApi {
   @override
   Future<Map<String, dynamic>> getTemplateVariables(
@@ -1150,3 +1836,102 @@ class _UnresolvedDocumentApi extends _ExistingDocumentApi {
 List<Map<String, dynamic>> _fields(List<String> keys) => keys
     .map((key) => <String, dynamic>{'key': key, 'label': key})
     .toList(growable: false);
+
+class _SeasonDocumentApi extends _FakePresupuestosApi {
+  _SeasonDocumentApi({super.generatedFrequency});
+  @override
+  Future<Map<String, dynamic>> getTemplateContent(String presupuestoId) async =>
+      {
+        'content': lastDocumentContent,
+      };
+}
+
+class _ServiceDocumentApi extends _SeasonDocumentApi {
+  Map<String, dynamic>? updatedVariables;
+
+  @override
+  Future<Map<String, dynamic>> updateTemplateVariables(String presupuestoId,
+      {required Map<String, dynamic> variables, String? reason}) async {
+    updatedVariables = variables;
+    lastDocumentContent!['variables'] = {
+      ...lastDocumentContent!['variables'] as Map,
+      ...variables,
+    };
+    return {'presupuestoId': presupuestoId};
+  }
+
+  Map? previewVariables;
+  Map? downloadVariables;
+
+  @override
+  Future<http.Response> previewTemplatePdf(String id) async {
+    previewVariables = Map.of(lastDocumentContent!['variables'] as Map);
+    throw Exception('PDF endpoint reached');
+  }
+
+  @override
+  Future<http.Response> downloadTemplatePdf(String id) async {
+    downloadVariables = Map.of(lastDocumentContent!['variables'] as Map);
+    throw Exception('PDF endpoint reached');
+  }
+
+  _ServiceDocumentApi(String service) {
+    content = {
+      'key': 'garden_pool_annual_maintenance',
+      'name': 'Mantenimiento',
+      'variables': {
+        'SERVICIO_MANTENIMIENTO': service,
+        'MESES_TEMPORADA_ALTA': 'Junio a septiembre',
+        'MESES_TEMPORADA_BAJA': 'Resto del año',
+        'DIAS_TEMPORADA_ALTA': '4 veces por mes',
+        'FRECUENCIA_TEMPORADA_BAJA': '2 veces por mes',
+        'IMPORTE_MENSUAL': '300',
+      },
+      'variableFields': _fields([
+        'SERVICIO_MANTENIMIENTO',
+        'MESES_TEMPORADA_ALTA',
+        'MESES_TEMPORADA_BAJA',
+        'DIAS_TEMPORADA_ALTA',
+        'FRECUENCIA_TEMPORADA_BAJA',
+        'IMPORTE_MENSUAL',
+      ]),
+      'sections': [
+        {
+          'key': 'frequency',
+          'order': 1,
+          'enabled': true,
+          'title': 'Frecuencia de trabajos',
+          'body': 'Texto editado manualmente',
+          'items': ['Una visita especial acordada con el cliente.']
+        },
+        {
+          'key': 'deleted_items',
+          'order': 2,
+          'enabled': false,
+          'title': 'Otra sección',
+          'body': '',
+          'items': <String>[]
+        },
+      ],
+      'totals': {'total': 300, 'currency': 'EUR'},
+      'images': <Map<String, dynamic>>[],
+    };
+    lastDocumentContent = content;
+    // Saved values must win over a stale schema default.
+    ((content['variableFields'] as List).first as Map)['value'] =
+        'limpieza de la piscina';
+  }
+  late final Map<String, dynamic> content;
+
+  @override
+  Future<Map<String, dynamic>> listDefaultTemplates() async => {
+        'templates': [content]
+      };
+
+  @override
+  Future<Map<String, dynamic>> saveTemplateContent(
+      String presupuestoId, Map<String, dynamic> payload) async {
+    lastDocumentContent = payload;
+    return {'presupuestoId': presupuestoId};
+  }
+}

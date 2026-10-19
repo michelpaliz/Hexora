@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/presentation/shared/widgets/insights_chat_fab.dart';
 import 'package:provider/provider.dart';
@@ -33,7 +34,7 @@ class GroupDashboard extends StatelessWidget {
           ),
           bottomNavigationBar:
               state.showBottomBar ? BottomBar(state: state) : null,
-          floatingActionButton: state.showBottomBar
+          floatingActionButton: kIsWeb || state.showBottomBar
               ? null
               : InsightsChatFab(
                   groupId: group.id,

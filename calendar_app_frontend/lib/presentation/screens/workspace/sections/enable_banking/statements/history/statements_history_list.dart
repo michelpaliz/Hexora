@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -372,7 +373,7 @@ class StatementsHistoryList extends StatelessWidget {
                                     }
                                   },
                                   itemBuilder: (context) => [
-                                    PopupMenuItem(
+                                    NavigationPopupMenuItem(
                                       value: 'toggleTech',
                                       child: Text(
                                         showTech
@@ -380,7 +381,7 @@ class StatementsHistoryList extends StatelessWidget {
                                             : l.statementsShowTechDetails,
                                       ),
                                     ),
-                                    PopupMenuItem(
+                                    NavigationPopupMenuItem(
                                       value: 'delete',
                                       child: Row(
                                         children: [

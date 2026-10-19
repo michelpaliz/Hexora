@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/notifications/notification_localization.dart';
 import 'package:hexora/services/groups/event/repository/i_event_repository.dart';
@@ -651,7 +652,7 @@ class _ShowNotificationsState extends State<ShowNotifications>
             }
           },
           itemBuilder: (context) => [
-            PopupMenuItem(
+            NavigationPopupMenuItem(
                 value: 'refresh',
                 child: Row(children: [
                   const Icon(Icons.refresh),
@@ -661,7 +662,7 @@ class _ShowNotificationsState extends State<ShowNotifications>
                       : 'Refresh'),
                 ])),
             const PopupMenuDivider(),
-            PopupMenuItem(
+            NavigationPopupMenuItem(
                 value: 'clear',
                 child: Row(children: [
                   Icon(Icons.delete_outline,

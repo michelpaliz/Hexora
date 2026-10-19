@@ -3,12 +3,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hexora/services/insights/insights_api.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:intl/intl.dart';
 
 import '../insights_chat_message.dart';
 import '../insights_json_utils.dart';
 import 'insights_chat_sheet_base.dart';
+import 'linked_income_evidence.dart';
 
 mixin InsightsLinkedIncomeReviewUi on InsightsChatSheetStateBase {
+  /// Expanded review rows and the active filter, per message.
+  final Set<String> _linkedIncomeExpanded = <String>{};
+  final Map<String, String> _linkedIncomeFilters = <String, String>{};
+
   @override
   List<Map<String, dynamic>> linkedIncomeReviewInvoices(
     Map<String, dynamic> row,
@@ -88,18 +94,18 @@ mixin InsightsLinkedIncomeReviewUi on InsightsChatSheetStateBase {
     return Semantics(
       label: score.isEmpty ? 'Sin puntuación' : score,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: isDark ? 0.16 : 0.10),
+          color: color.withValues(alpha: isDark ? 0.14 : 0.09),
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: color.withValues(alpha: 0.38)),
         ),
         child: Text(
           score.isEmpty ? 'Sin puntuación' : score,
           maxLines: 1,
           style: t.caption.copyWith(
             color: color,
-            fontWeight: FontWeight.w900,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -227,56 +233,75 @@ mixin InsightsLinkedIncomeReviewUi on InsightsChatSheetStateBase {
             unlinkingLinkedIncomeRows.contains(
               '${messageKeyFor(message)}::$entryId',
             ));
-    return Wrap(
-      spacing: 6,
-      runSpacing: 4,
+    // Review is the primary action; unlinking is destructive, so it lives in
+    // the overflow menu and still goes through its confirmation dialog.
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Tooltip(
-          message:
-              isEs ? 'Revisar facturas vinculadas' : 'Review linked invoices',
-          child: OutlinedButton.icon(
+          message: isEs
+              ? 'Revisar o cambiar las facturas vinculadas'
+              : 'Review or change the linked invoices',
+          child: FilledButton.tonalIcon(
             onPressed:
                 unlinking ? null : () => reviewLinkedIncomeRow(message, row),
-            icon: const Icon(Icons.manage_search_rounded, size: 14),
+            icon: const Icon(Icons.manage_search_rounded, size: 16),
             label: Text(isEs ? 'Revisar' : 'Review'),
-            style: OutlinedButton.styleFrom(
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(0, 30),
               visualDensity: VisualDensity.compact,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              textStyle: t.caption.copyWith(fontWeight: FontWeight.w800),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              textStyle: t.caption.copyWith(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),
-        Tooltip(
-          message: unlinkAction == null
-              ? (isEs
-                  ? 'El servidor no proporcionó una acción para desvincular'
-                  : 'The server did not provide an unlink action')
-              : (isEs ? 'Desvincular facturas' : 'Unlink invoices'),
-          child: TextButton.icon(
-            onPressed: unlinking || unlinkAction == null
-                ? null
-                : () => confirmUnlinkLinkedIncome(
-                      message,
-                      row,
-                      unlinkAction,
-                    ),
-            icon: unlinking
-                ? const SizedBox(
-                    width: 13,
-                    height: 13,
+        SizedBox(
+          width: 32,
+          height: 32,
+          child: unlinking
+              ? const Center(
+                  child: SizedBox(
+                    width: 14,
+                    height: 14,
                     child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.link_off_rounded, size: 14),
-            label: Text(isEs ? 'Desvincular' : 'Unlink'),
-            style: TextButton.styleFrom(
-              foregroundColor: cs.error,
-              visualDensity: VisualDensity.compact,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              textStyle: t.caption.copyWith(fontWeight: FontWeight.w800),
-            ),
-          ),
+                  ),
+                )
+              : PopupMenuButton<String>(
+                  tooltip: isEs ? 'Más acciones' : 'More actions',
+                  padding: EdgeInsets.zero,
+                  icon: Icon(Icons.more_vert_rounded,
+                      size: 18, color: cs.onSurfaceVariant),
+                  onSelected: (_) {
+                    if (unlinkAction == null) return;
+                    confirmUnlinkLinkedIncome(message, row, unlinkAction);
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'unlink',
+                      enabled: unlinkAction != null,
+                      child: Tooltip(
+                        message: unlinkAction == null
+                            ? (isEs
+                                ? 'El servidor no proporcionó una acción para desvincular'
+                                : 'The server did not provide an unlink action')
+                            : '',
+                        child: Row(children: [
+                          Icon(Icons.link_off_rounded,
+                              size: 16, color: cs.error),
+                          const SizedBox(width: 8),
+                          Text(
+                            isEs ? 'Desvincular…' : 'Unlink…',
+                            style: TextStyle(color: cs.error),
+                          ),
+                        ]),
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ],
     );
@@ -348,241 +373,421 @@ mixin InsightsLinkedIncomeReviewUi on InsightsChatSheetStateBase {
   }) {
     final borderColor =
         cs.outlineVariant.withValues(alpha: isDark ? 0.30 : 0.55);
-    final mutedSurface = isDark
-        ? cs.surfaceContainerHighest.withValues(alpha: 0.16)
-        : cs.surfaceContainerLow.withValues(alpha: 0.55);
+    final locale = Localizations.localeOf(context).toString();
+    final money = NumberFormat.currency(locale: locale, symbol: '€');
+    final warn = isDark ? const Color(0xFFFFB45B) : const Color(0xFFA65A00);
+    final okColor = isDark ? Colors.greenAccent : const Color(0xFF07875F);
+    final messageKey = messageKeyFor(message);
+    final filter = _linkedIncomeFilters[messageKey] ?? 'all';
+    final threshold = message.table?['threshold'] ?? 60;
 
-    Widget detailLabel(String label) => Padding(
-          padding: const EdgeInsets.only(bottom: 5),
+    final evidence = [
+      for (final row in rows)
+        LinkedIncomeEvidence.fromRow(row, linkedIncomeReviewInvoices(row)),
+    ];
+    final diffCount = evidence.where((e) => e.hasAmountDifference).length;
+    final payerCount = evidence.where((e) => e.payerMissing).length;
+    final visible = <int>[
+      for (var i = 0; i < rows.length; i++)
+        if (filter == 'all' ||
+            (filter == 'amount' && evidence[i].hasAmountDifference) ||
+            (filter == 'payer' && evidence[i].payerMissing))
+          i,
+    ];
+
+    String rowKey(Map<String, dynamic> row, int index) =>
+        '$messageKey::${rowEntryId(row) ?? 'row$index'}';
+
+    String formatDate(Object? raw) {
+      final d = DateTime.tryParse(raw?.toString().trim() ?? '');
+      return d == null
+          ? (raw?.toString() ?? '')
+          : DateFormat.yMMMd(locale).format(d);
+    }
+
+    Widget sectionLabel(String label) => Padding(
+          padding: const EdgeInsets.only(bottom: 6),
           child: Text(
             label.toUpperCase(),
             style: t.caption.copyWith(
               color: cs.onSurfaceVariant,
-              fontSize: 9.5,
-              fontWeight: FontWeight.w900,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
             ),
           ),
         );
 
-    Widget desktopRow(Map<String, dynamic> row, int index) {
+    Widget filterChip(String value, String label, int count) {
+      final selected = filter == value;
+      return Padding(
+        padding: const EdgeInsets.only(left: 6),
+        child: ChoiceChip(
+          label: Text('$label · $count'),
+          selected: selected,
+          showCheckmark: false,
+          visualDensity: VisualDensity.compact,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          labelStyle: t.caption.copyWith(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: selected ? cs.primary : cs.onSurfaceVariant,
+          ),
+          side: BorderSide(
+            color: selected
+                ? cs.primary.withValues(alpha: 0.5)
+                : cs.outlineVariant.withValues(alpha: 0.5),
+          ),
+          selectedColor: cs.primary.withValues(alpha: 0.10),
+          backgroundColor: Colors.transparent,
+          onSelected: (_) =>
+              setState(() => _linkedIncomeFilters[messageKey] = value),
+        ),
+      );
+    }
+
+    final thresholdLabel = formatBankIncomeMatchNumber(threshold);
+    final summary = Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      runSpacing: 6,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.fact_check_outlined, size: 16, color: warn),
+            const SizedBox(width: 6),
+            Text(
+              isEs
+                  ? 'Coincidencia inferior al $thresholdLabel% · confirma antes de dar por buena la vinculación'
+                  : 'Match below $thresholdLabel% · confirm before accepting the link',
+              style: t.bodySmall.copyWith(
+                color: cs.onSurfaceVariant,
+                fontSize: 12,
+              ),
+            ),
+          ]),
+        ),
+        filterChip('all', isEs ? 'Todos' : 'All', rows.length),
+        if (diffCount > 0 || filter == 'amount')
+          filterChip('amount',
+              isEs ? 'Diferencia de importe' : 'Amount difference', diffCount),
+        if (payerCount > 0 || filter == 'payer')
+          filterChip('payer',
+              isEs ? 'Pagador no identificado' : 'Payer not found', payerCount),
+      ],
+    );
+
+    Widget checksList(LinkedIncomeEvidence e, Map<String, dynamic> row) {
+      final reasons = stringList(row['reviewReasons']);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final check in e.checks(isEs: isEs, money: money.format))
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    switch (check.state) {
+                      EvidenceState.ok => Icons.check_circle_outline_rounded,
+                      EvidenceState.warning => Icons.error_outline_rounded,
+                      EvidenceState.unknown => Icons.help_outline_rounded,
+                    },
+                    size: 15,
+                    color: switch (check.state) {
+                      EvidenceState.ok => okColor,
+                      EvidenceState.warning => warn,
+                      EvidenceState.unknown => cs.onSurfaceVariant,
+                    },
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      check.label,
+                      style: t.caption.copyWith(
+                        color: cs.onSurface,
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (reasons.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              isEs ? 'Según el análisis automático:' : 'Automatic analysis:',
+              style: t.caption.copyWith(color: cs.onSurfaceVariant),
+            ),
+            const SizedBox(height: 2),
+            buildLinkedIncomeReviewReasonsCell(row, cs: cs, t: t),
+          ],
+        ],
+      );
+    }
+
+    Widget details(
+      Map<String, dynamic> row,
+      LinkedIncomeEvidence e,
+      bool stacked,
+    ) {
+      final original =
+          (row['concept'] ?? row['description'])?.toString().trim() ?? '';
+      final bank = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          sectionLabel(isEs ? 'Movimiento bancario' : 'Bank transaction'),
+          SelectableText(
+            original.isEmpty ? '-' : original,
+            style: t.bodySmall.copyWith(color: cs.onSurface, fontSize: 12),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            [formatDate(row['date']), row['amountFormatted']?.toString() ?? '']
+                .where((v) => v.trim().isNotEmpty)
+                .join(' · '),
+            style: t.caption.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ],
+      );
+      final totalLabel = row['linkedInvoicesTotalFormatted']?.toString() ?? '';
+      final invoices = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          sectionLabel(isEs ? 'Facturas vinculadas' : 'Linked invoices'),
+          buildLinkedIncomeReviewInvoicesCell(row, cs: cs, t: t),
+          if (totalLabel.isNotEmpty &&
+              linkedIncomeReviewInvoices(row).length > 1) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Total: $totalLabel',
+              style: t.caption.copyWith(
+                color: cs.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
+      );
+      final checks = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          sectionLabel(isEs ? 'Comprobaciones' : 'Checks'),
+          checksList(e, row),
+        ],
+      );
+      return Container(
+        width: double.infinity,
+        margin: EdgeInsets.fromLTRB(stacked ? 12 : 38, 0, 12, 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(
+            alpha: isDark ? 0.18 : 0.30,
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: stacked
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  bank,
+                  const SizedBox(height: 12),
+                  invoices,
+                  const SizedBox(height: 12),
+                  checks,
+                ],
+              )
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 4, child: bank),
+                  const SizedBox(width: 20),
+                  Expanded(flex: 4, child: invoices),
+                  const SizedBox(width: 20),
+                  Expanded(flex: 5, child: checks),
+                ],
+              ),
+      );
+    }
+
+    Widget reviewRow(int index, bool stacked) {
+      final row = rows[index];
+      final e = evidence[index];
+      final key = rowKey(row, index);
+      final expanded = _linkedIncomeExpanded.contains(key);
+      final invoices = linkedIncomeReviewInvoices(row);
+      final original =
+          (row['concept'] ?? row['description'])?.toString().trim() ?? '';
+      final cleaned = LinkedIncomeEvidence.cleanConcept(original);
+      final numbers = invoices
+          .map((i) => (i['invoiceNumber'] ?? i['number'])?.toString() ?? '')
+          .where((v) => v.trim().isNotEmpty)
+          .join(' + ');
+      final client = invoices.isEmpty
+          ? ''
+          : (invoices.first['clientName']?.toString().trim() ?? '');
+      final meta = [
+        formatDate(row['date']),
+        numbers,
+        if (client.isNotEmpty)
+          invoices.length > 1 ? '$client +${invoices.length - 1}' : client,
+      ].where((v) => v.trim().isNotEmpty).join(' · ');
+
+      final diff = e.amountDifference;
+      final invoiceTotalLabel =
+          row['linkedInvoicesTotalFormatted']?.toString() ??
+              money.format(e.invoiceTotal ?? 0);
+      final amount = Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            row['amountFormatted']?.toString() ?? '',
+            maxLines: 1,
+            style: t.bodyMedium.copyWith(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: cs.onSurface,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+          if (e.hasAmountDifference && diff != null)
+            Tooltip(
+              message: isEs
+                  ? 'Facturas: $invoiceTotalLabel'
+                  : 'Invoices: $invoiceTotalLabel',
+              child: Text(
+                '${diff > 0 ? '+' : '−'}${money.format(diff.abs())} ${isEs ? 'vs facturas' : 'vs invoices'}',
+                style: t.caption.copyWith(
+                  color: warn,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
+      );
+
+      final summaryText = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Tooltip(
+            message: original == cleaned ? '' : original,
+            child: Text(
+              cleaned.isEmpty ? '-' : cleaned,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.bodySmall.copyWith(
+                color: cs.onSurface,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            meta,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: t.caption.copyWith(
+              color: cs.onSurfaceVariant,
+              fontSize: 11.5,
+            ),
+          ),
+        ],
+      );
+
+      final chevron = AnimatedRotation(
+        turns: expanded ? 0.25 : 0,
+        duration: const Duration(milliseconds: 150),
+        child: Icon(Icons.chevron_right_rounded,
+            size: 18, color: cs.onSurfaceVariant),
+      );
+      final score = buildLinkedIncomeReviewScoreCell(
+        row,
+        cs: cs,
+        t: t,
+        isDark: isDark,
+      );
+      final actions = buildLinkedIncomeReviewActionsCell(
+        message,
+        row,
+        cs: cs,
+        t: t,
+        isEs: isEs,
+      );
+
+      final header = stacked
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(children: [
+                  chevron,
+                  const SizedBox(width: 6),
+                  Expanded(child: summaryText),
+                ]),
+                const SizedBox(height: 8),
+                Row(children: [
+                  const SizedBox(width: 24),
+                  amount,
+                  const SizedBox(width: 10),
+                  score,
+                  const Spacer(),
+                  actions,
+                ]),
+              ],
+            )
+          : Row(children: [
+              chevron,
+              const SizedBox(width: 8),
+              Expanded(child: summaryText),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 150,
+                child: Align(alignment: Alignment.centerRight, child: amount),
+              ),
+              const SizedBox(width: 14),
+              SizedBox(width: 92, child: score),
+              const SizedBox(width: 6),
+              actions,
+            ]);
+
       return Container(
         decoration: BoxDecoration(
-          color: index.isEven ? cs.surface : mutedSurface,
           border: Border(bottom: BorderSide(color: borderColor, width: 0.6)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 100,
-                    child: Text(
-                      row['date']?.toString() ?? '',
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurface,
-                        fontWeight: FontWeight.w700,
-                      ),
+            Semantics(
+              button: true,
+              expanded: expanded,
+              child: InkWell(
+                onTap: () => setState(() {
+                  if (!_linkedIncomeExpanded.remove(key)) {
+                    _linkedIncomeExpanded.add(key);
+                  }
+                }),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 64),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      row['concept']?.toString() ?? '',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurface,
-                        fontWeight: FontWeight.w700,
-                        height: 1.25,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  SizedBox(
-                    width: 120,
-                    child: Text(
-                      row['amountFormatted']?.toString() ?? '',
-                      textAlign: TextAlign.right,
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurface,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  SizedBox(
-                    width: 125,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: buildLinkedIncomeReviewScoreCell(
-                        row,
-                        cs: cs,
-                        t: t,
-                        isDark: isDark,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  SizedBox(
-                    width: 210,
-                    child: buildLinkedIncomeReviewActionsCell(
-                      message,
-                      row,
-                      cs: cs,
-                      t: t,
-                      isEs: isEs,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-              padding: const EdgeInsets.fromLTRB(12, 9, 12, 10),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withValues(
-                  alpha: isDark ? 0.22 : 0.34,
-                ),
-                borderRadius: BorderRadius.circular(7),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 4,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        detailLabel(
-                          isEs ? 'Facturas vinculadas' : 'Linked invoices',
-                        ),
-                        buildLinkedIncomeReviewInvoicesCell(
-                          row,
-                          cs: cs,
-                          t: t,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 18),
-                  SizedBox(
-                    width: 130,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        detailLabel(
-                          isEs ? 'Total facturas' : 'Invoice total',
-                        ),
-                        Text(
-                          row['linkedInvoicesTotalFormatted']?.toString() ?? '',
-                          textAlign: TextAlign.right,
-                          style: t.bodySmall.copyWith(
-                            color: cs.onSurface,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 22),
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        detailLabel(isEs ? 'Motivo' : 'Reason'),
-                        buildLinkedIncomeReviewReasonsCell(
-                          row,
-                          cs: cs,
-                          t: t,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    Widget mobileCard(Map<String, dynamic> row) {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: borderColor),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    row['date']?.toString() ?? '',
-                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+                    child: header,
                   ),
                 ),
-                buildLinkedIncomeReviewScoreCell(
-                  row,
-                  cs: cs,
-                  t: t,
-                  isDark: isDark,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              row['concept']?.toString() ?? '',
-              style: t.bodySmall.copyWith(
-                color: cs.onSurface,
-                fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              row['amountFormatted']?.toString() ?? '',
-              style: t.bodyMedium.copyWith(
-                color: cs.primary,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const Divider(height: 20),
-            detailLabel(isEs ? 'Facturas vinculadas' : 'Linked invoices'),
-            buildLinkedIncomeReviewInvoicesCell(row, cs: cs, t: t),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    isEs ? 'Total facturas' : 'Invoice total',
-                    style: t.caption.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ),
-                Text(
-                  row['linkedInvoicesTotalFormatted']?.toString() ?? '',
-                  style: t.bodySmall.copyWith(fontWeight: FontWeight.w900),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            detailLabel(isEs ? 'Motivo' : 'Reason'),
-            buildLinkedIncomeReviewReasonsCell(row, cs: cs, t: t),
-            const SizedBox(height: 12),
-            buildLinkedIncomeReviewActionsCell(
-              message,
-              row,
-              cs: cs,
-              t: t,
-              isEs: isEs,
-            ),
+            if (expanded) details(row, e, stacked),
           ],
         ),
       );
@@ -590,63 +795,39 @@ mixin InsightsLinkedIncomeReviewUi on InsightsChatSheetStateBase {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 900;
-        final content = compact
-            ? Column(
-                children: [
-                  for (var index = 0; index < rows.length; index++) ...[
-                    if (index > 0) const SizedBox(height: 8),
-                    mobileCard(rows[index]),
-                  ],
-                ],
-              )
-            : Container(
-                decoration: BoxDecoration(
-                  color: cs.surface,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: borderColor),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                      color: isDark
-                          ? cs.surfaceContainerHighest.withValues(alpha: 0.55)
-                          : const Color(0xFFEAF2FF),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                              width: 100, child: Text(isEs ? 'Fecha' : 'Date')),
-                          const SizedBox(width: 10),
-                          Expanded(
-                              child: Text(isEs ? 'Concepto' : 'Description')),
-                          const SizedBox(width: 14),
-                          SizedBox(
-                            width: 120,
-                            child: Text(
-                              isEs ? 'Ingreso' : 'Income',
-                              textAlign: TextAlign.right,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          SizedBox(
-                            width: 125,
-                            child: Text(isEs ? 'Coincidencia' : 'Match'),
-                          ),
-                          const SizedBox(width: 10),
-                          SizedBox(
-                            width: 210,
-                            child: Text(isEs ? 'Acciones' : 'Actions'),
-                          ),
-                        ],
+        final stacked = constraints.maxWidth < 760;
+        final content = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            summary,
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: cs.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: borderColor),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: visible.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text(
+                        isEs
+                            ? 'Ningún ingreso coincide con este filtro.'
+                            : 'No income matches this filter.',
+                        textAlign: TextAlign.center,
+                        style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
                       ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final index in visible) reviewRow(index, stacked),
+                      ],
                     ),
-                    for (var index = 0; index < rows.length; index++)
-                      desktopRow(rows[index], index),
-                  ],
-                ),
-              );
+            ),
+          ],
+        );
         return Stack(
           children: [
             content,
@@ -681,7 +862,7 @@ mixin InsightsLinkedIncomeReviewUi on InsightsChatSheetStateBase {
                                 ? 'Actualizando revisión...'
                                 : 'Refreshing review...',
                             style: t.bodySmall
-                                .copyWith(fontWeight: FontWeight.w800),
+                                .copyWith(fontWeight: FontWeight.w600),
                           ),
                         ],
                       ),
@@ -852,52 +1033,45 @@ mixin InsightsLinkedIncomeReviewUi on InsightsChatSheetStateBase {
         : (isEs
             ? 'Desvincular los ${rows.length} ingresos pendientes'
             : 'Unlink all ${rows.length} pending income entries');
-    if (compact) {
+    final cs = Theme.of(context).colorScheme;
+    // A bulk destructive action shouldn't sit next to the title; it lives in
+    // an overflow menu and still requires the confirmation dialog.
+    if (busy) {
       return Tooltip(
         message: tooltip,
-        child: IconButton(
-          onPressed: busy || rows.isEmpty
-              ? null
-              : () => confirmBulkUnlinkLinkedIncome(message, rows),
-          icon: busy
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.link_off_rounded, size: 18),
-          style: IconButton.styleFrom(
-            foregroundColor: Theme.of(context).colorScheme.error,
-            backgroundColor:
-                Theme.of(context).colorScheme.error.withValues(alpha: 0.08),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2),
           ),
-        ),
+          if (!compact) ...[
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(color: cs.onSurfaceVariant)),
+          ],
+        ]),
       );
     }
-    return Tooltip(
-      message: tooltip,
-      child: OutlinedButton.icon(
-        onPressed: busy || rows.isEmpty
-            ? null
-            : () => confirmBulkUnlinkLinkedIncome(message, rows),
-        icon: busy
-            ? const SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.link_off_rounded, size: 16),
-        label: Text(label),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: Theme.of(context).colorScheme.error,
-          side: BorderSide(
-            color: Theme.of(context).colorScheme.error.withValues(alpha: 0.38),
-          ),
-          visualDensity: VisualDensity.compact,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+    return PopupMenuButton<String>(
+      tooltip: isEs ? 'Más acciones' : 'More actions',
+      icon: Icon(Icons.more_vert_rounded, size: 18, color: cs.onSurfaceVariant),
+      onSelected: (_) => confirmBulkUnlinkLinkedIncome(message, rows),
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: 'unlinkAll',
+          enabled: rows.isNotEmpty,
+          child: Row(children: [
+            Icon(Icons.link_off_rounded, size: 16, color: cs.error),
+            const SizedBox(width: 8),
+            Text(
+              isEs
+                  ? 'Desvincular los ${rows.length} ingresos…'
+                  : 'Unlink all ${rows.length} entries…',
+              style: TextStyle(color: cs.error),
+            ),
+          ]),
         ),
-      ),
+      ],
     );
   }
 
@@ -1042,5 +1216,4 @@ mixin InsightsLinkedIncomeReviewUi on InsightsChatSheetStateBase {
       }
     }
   }
-
 }

@@ -1,4 +1,9 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_list_row.dart';
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
+import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/workers/worker.dart';
@@ -34,17 +39,9 @@ class WorkerDirectoryCard extends StatelessWidget {
         (worker.displayName ?? worker.userId ?? l.unknownWorker).trim();
     final linked = (worker.userId ?? '').isNotEmpty;
     final active = worker.status == WorkerStatus.active;
-    final green = dark ? const Color(0xff86dca8) : const Color(0xff08662f);
+    final green = ThemeColors.success(context);
     final violet = dark ? const Color(0xffc8b6ff) : const Color(0xff5943d6);
-    final avatarColors = [
-      cs.primary,
-      violet,
-      const Color(0xff9a5ba1),
-      const Color(0xff23876e)
-    ];
-    final avatarColor = avatarColors[
-        worker.id.codeUnits.fold<int>(0, (sum, code) => sum + code) %
-            avatarColors.length];
+    final avatarColor = cs.onSurfaceVariant;
     String number(num amount) =>
         NumberFormat('#,##0.##', l.localeName).format(amount);
     Widget chip(IconData icon, String label, Color color) => Container(
@@ -64,6 +61,7 @@ class WorkerDirectoryCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                             fontSize: 11,
+                            fontFeatures: HexoraTypography.numericFeatures,
                             fontWeight: FontWeight.w600,
                             color: color))))
           ]),
@@ -75,15 +73,7 @@ class WorkerDirectoryCard extends StatelessWidget {
             '${number(worker.defaultHourlyRate!)} ${worker.currency ?? 'EUR'}/h',
             green),
     ]);
-    final buttonStyle = IconButton.styleFrom(
-      minimumSize: const Size(32, 32),
-      maximumSize: const Size(32, 32),
-      padding: EdgeInsets.zero,
-      visualDensity: VisualDensity.compact,
-      backgroundColor: cs.surface,
-      side: BorderSide(color: cs.outlineVariant.withValues(alpha: .55)),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
-    );
+    final buttonStyle = ThemedButtons.iconAction(context);
     final actions = Row(mainAxisSize: MainAxisSize.min, children: [
       IconButton.outlined(
           tooltip: l.addTimeEntryCta,
@@ -104,13 +94,11 @@ class WorkerDirectoryCard extends StatelessWidget {
           icon: const Icon(Icons.edit_outlined, size: 17)),
       const SizedBox(width: 5),
       SizedBox(
-          width: 32,
-          height: 32,
+          width: ThemedButtons.actionTarget(context),
+          height: ThemedButtons.actionTarget(context),
           child: DecoratedBox(
             decoration: BoxDecoration(
-                border:
-                    Border.all(color: cs.outlineVariant.withValues(alpha: .35)),
-                borderRadius: BorderRadius.circular(11)),
+                borderRadius: BorderRadius.circular(HexoraDimensions.radius)),
             child: PopupMenuButton<String>(
               padding: EdgeInsets.zero,
               tooltip: isEs ? 'Más opciones' : 'More options',
@@ -137,11 +125,11 @@ class WorkerDirectoryCard extends StatelessWidget {
                 }
               },
               itemBuilder: (_) => [
-                PopupMenuItem(
+                NavigationPopupMenuItem(
                     value: 'copy',
                     child: Text(isEs ? 'Copiar nombre' : 'Copy name')),
                 if ((worker.notes ?? '').trim().isNotEmpty)
-                  PopupMenuItem(
+                  NavigationPopupMenuItem(
                       value: 'notes',
                       child: Text(isEs ? 'Ver notas' : 'View notes')),
               ],
@@ -160,7 +148,7 @@ class WorkerDirectoryCard extends StatelessWidget {
         partnerRole == WorkerPartnerRole.coAdmin ? violet : cs.primary;
     final identity = Row(children: [
       CircleAvatar(
-          radius: 17,
+          radius: 15,
           backgroundColor: avatarColor.withValues(alpha: .10),
           child: Text(name.isEmpty ? '?' : name[0].toUpperCase(),
               style: TextStyle(
@@ -175,7 +163,7 @@ class WorkerDirectoryCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-                fontSize: 14,
+                fontSize: HexoraTypography.body,
                 fontWeight: FontWeight.w600,
                 color: cs.onSurface)),
         const SizedBox(height: 3),
@@ -234,47 +222,35 @@ class WorkerDirectoryCard extends StatelessWidget {
         ]),
       ])),
     ]);
-    return Material(
-      color: selected ? cs.primaryContainer.withValues(alpha: .25) : cs.surface,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(13),
-          side: BorderSide(
-              color: selected
-                  ? cs.primary.withValues(alpha: .45)
-                  : cs.outlineVariant.withValues(alpha: .5))),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-          onTap: onEdit,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-            child: LayoutBuilder(builder: (context, constraints) {
-              final stacked = grid ||
-                  constraints.maxWidth < 480 ||
-                  MediaQuery.textScalerOf(context).scale(1) >= 1.5;
-              if (stacked) {
-                return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      identity,
-                      const SizedBox(height: 8),
-                      Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [metrics, actions]),
-                    ]);
-              }
-              return Row(children: [
-                Expanded(child: identity),
-                const SizedBox(width: 8),
-                ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 120),
-                    child: metrics),
-                const SizedBox(width: 8),
-                actions
+    return HexoraListRow(
+      selected: selected,
+      onTap: onEdit,
+      child: LayoutBuilder(builder: (context, constraints) {
+        final stacked = grid ||
+            constraints.maxWidth < 480 ||
+            MediaQuery.textScalerOf(context).scale(1) >= 1.5;
+        if (stacked) {
+          return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                identity,
+                const SizedBox(height: 8),
+                Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [metrics, actions]),
               ]);
-            }),
-          )),
+        }
+        return Row(children: [
+          Expanded(child: identity),
+          const SizedBox(width: 8),
+          ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 120), child: metrics),
+          const SizedBox(width: 8),
+          actions
+        ]);
+      }),
     );
   }
 }

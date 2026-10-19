@@ -1035,26 +1035,8 @@ class ClientInvoicesMobileTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    return TabBar(
+    return HexoraSectionTabs(
       controller: controller,
-      isScrollable: true,
-      tabAlignment: TabAlignment.start,
-      labelPadding: const EdgeInsets.symmetric(horizontal: 12),
-      dividerColor: Colors.transparent,
-      splashFactory: NoSplash.splashFactory,
-      overlayColor: WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.08)),
-      indicatorSize: TabBarIndicatorSize.tab,
-      indicator: BoxDecoration(
-        color: cs.primaryContainer,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      indicatorPadding: const EdgeInsets.symmetric(vertical: 4),
-      labelColor: cs.onPrimaryContainer,
-      unselectedLabelColor: cs.onSurfaceVariant,
-      labelStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
-      unselectedLabelStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
       tabs: [
         Tab(
           height: 44,

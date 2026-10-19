@@ -48,7 +48,7 @@ class NotificationsList extends StatelessWidget {
         }
         final n = item.notification!;
         return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: 6),
           child: _SettingsLikeNotificationRow(
             notification: n,
             isSelected: selectedId == n.id,
@@ -174,7 +174,7 @@ class _SettingsLikeNotificationRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.fromLTRB(10, 9, 8, 9),
+          padding: const EdgeInsets.fromLTRB(10, 7, 8, 7),
           decoration: BoxDecoration(
             color: notification.isRead
                 ? cs.surfaceContainerHighest.withValues(alpha: 0.12)

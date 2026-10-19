@@ -12,7 +12,7 @@ class ClientFormFields extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
       final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
-      if (constraints.maxWidth < 500 * textScale) {
+      if (constraints.maxWidth < 380 * textScale) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [first, const SizedBox(height: 12), second],

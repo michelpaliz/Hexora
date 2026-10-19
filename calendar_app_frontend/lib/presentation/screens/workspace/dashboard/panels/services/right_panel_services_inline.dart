@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/service_catalog/service.dart';
@@ -407,45 +410,115 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
         final useSidePanel = _useSidePanel(constraints.maxWidth);
         final left = Column(
           children: [
-            Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: trackBg,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: cs.onSurface.withValues(alpha: 0.06)),
-              ),
-              child: TabBar(
-                controller: _tab,
-                tabs: [
-                  Tab(text: clientsTabLabel),
-                  Tab(text: servicesTabLabel),
+            if (!useSidePanel)
+              Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                  child: AnimatedBuilder(
+                      animation: _tab,
+                      builder: (context, _) => Row(children: [
+                            Expanded(
+                                child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                  Text(
+                                      _tab.index == 0
+                                          ? '${l.tabClients}  ${_clients.length}'
+                                          : '${l.tabServices}  ${_services.length}',
+                                      style: t.bodyMedium.copyWith(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w700)),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                      _tab.index == 0
+                                          ? 'Gestiona tus clientes y su información de facturación.'
+                                          : 'Gestiona tu catálogo de servicios.',
+                                      style: t.bodySmall),
+                                ])),
+                            const SizedBox(width: 8),
+                            FilledButton.icon(
+                                onPressed: _tab.index == 0
+                                    ? (useSidePanel
+                                        ? _startAddClient
+                                        : _openAddClientSheet)
+                                    : (useSidePanel
+                                        ? _startAddService
+                                        : _openAddServiceSheet),
+                                icon: const Icon(Icons.add, size: 16),
+                                label: Text(_tab.index == 0
+                                    ? l.addClient
+                                    : l.addService)),
+                          ]))),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+              child: Row(children: [
+                Expanded(
+                    child: Container(
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: trackBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border:
+                        Border.all(color: cs.onSurface.withValues(alpha: 0.06)),
+                  ),
+                  child: TabBar(
+                    controller: _tab,
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    tabs: [
+                      Tab(text: clientsTabLabel),
+                      Tab(text: servicesTabLabel),
+                    ],
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    dividerColor: Colors.transparent,
+                    labelColor: selectedText,
+                    unselectedLabelColor: unselectedText,
+                    labelStyle: t.bodySmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: .2,
+                    ),
+                    unselectedLabelStyle: t.bodySmall.copyWith(
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: .2,
+                    ),
+                    indicator: BoxDecoration(
+                      color: primary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    splashBorderRadius: BorderRadius.circular(10),
+                  ),
+                )),
+                if (useSidePanel) ...[
+                  const SizedBox(width: 12),
+                  AnimatedBuilder(
+                      animation: _tab,
+                      builder: (context, _) => FilledButton.icon(
+                            onPressed: _tab.index == 0
+                                ? _startAddClient
+                                : _startAddService,
+                            icon: const Icon(Icons.add, size: 16),
+                            label: Text(
+                                _tab.index == 0 ? l.addClient : l.addService),
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size(0, 34),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12),
+                              textStyle: t.bodySmall,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
+                            ),
+                          )),
                 ],
-                indicatorSize: TabBarIndicatorSize.tab,
-                dividerColor: Colors.transparent,
-                labelColor: selectedText,
-                unselectedLabelColor: unselectedText,
-                labelStyle: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: .2,
-                ),
-                unselectedLabelStyle: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: .2,
-                ),
-                indicator: BoxDecoration(
-                  color: primary,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                splashBorderRadius: BorderRadius.circular(10),
-              ),
+              ]),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 2),
             Expanded(
               child: TabBarView(
                 controller: _tab,
                 children: [
                   ClientsTab(
                     items: _clients,
+                    selectedClientId: _editingClient?.id,
                     loading: _loadingClients,
                     error: _errClients,
                     onRefresh: _loadClients,
@@ -518,11 +591,13 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
         }
 
         final panelWidth =
-            (constraints.maxWidth * 0.48).clamp(420.0, 620.0).toDouble();
+            (constraints.maxWidth * 0.35).clamp(420.0, 540.0).toDouble();
 
         final right = AnimatedBuilder(
           animation: _tab,
           builder: (context, _) {
+            final cs = Theme.of(context).colorScheme;
+            final t = AppTypography.of(context);
             final isClients = _tab.index == 0;
             final showClientEditor =
                 isClients && (_creatingClient || _editingClient != null);
@@ -540,6 +615,10 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
                 client: _editingClient,
                 existingClients: _clients,
                 closeOnSave: false,
+                onCancel: () => setState(() {
+                  _editingClient = null;
+                  _creatingClient = false;
+                }),
                 onSaved: _handleClientSaved,
                 onOpenExisting: _startEditClient,
               );
@@ -646,46 +725,64 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
           },
         );
 
+        final navigation = navigationTheme(Theme.of(context));
+        final editorTheme = navigation.copyWith(
+          canvasColor: const Color(0xFF1C3047),
+          cardColor: const Color(0xFF1C3047),
+          colorScheme: navigation.colorScheme.copyWith(
+            onPrimary: Colors.white,
+            surfaceContainerLowest: AppColors.dashboardTopBar,
+            surfaceContainerLow: const Color(0xFF1C3047),
+            surfaceContainer: const Color(0xFF223750),
+            surfaceContainerHigh: const Color(0xFF293F59),
+          ),
+          filledButtonTheme: FilledButtonThemeData(
+              style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+          )),
+          popupMenuTheme: navigation.popupMenuTheme.copyWith(
+            color: const Color(0xFF1C3047),
+            surfaceTintColor: Colors.transparent,
+          ),
+        );
         return Padding(
           padding: const EdgeInsets.all(12),
           child: FolderPanel(
             title: '${l.tabServices} · ${l.tabClients}',
-            showTab: true,
-            actions: [
-              AnimatedBuilder(
-                animation: _tab,
-                builder: (context, _) {
-                  final isClients = _tab.index == 0;
-                  return Tooltip(
-                    message: isClients ? l.addClient : l.addService,
-                    child: FilledButton(
-                      onPressed: isClients ? _startAddClient : _startAddService,
-                      style: FilledButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(40, 36),
-                      ),
-                      child: const Icon(Icons.add_rounded, size: 18),
-                    ),
-                  );
-                },
-              ),
-            ],
+            showTab: false,
+            contentTopPadding: 8,
             child: Row(
               children: [
-                Expanded(child: left),
-                Container(
-                  width: panelWidth,
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    border: Border(
-                      left: BorderSide(
-                        color: cs.outlineVariant.withValues(alpha: 0.4),
+                if (kIsWeb) ...[
+                  SizedBox(
+                    width: panelWidth,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Theme(
+                        data: editorTheme,
+                        child: ColoredBox(
+                            color: AppColors.dashboardTopBar, child: right),
                       ),
                     ),
                   ),
-                  child: right,
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(child: left),
+                ] else ...[
+                  Expanded(child: left),
+                  Container(
+                    width: panelWidth,
+                    decoration: BoxDecoration(
+                      color: cs.surface,
+                      border: Border(
+                        left: BorderSide(
+                          color: cs.outlineVariant.withValues(alpha: 0.4),
+                        ),
+                      ),
+                    ),
+                    child: right,
+                  ),
+                ],
               ],
             ),
           ),

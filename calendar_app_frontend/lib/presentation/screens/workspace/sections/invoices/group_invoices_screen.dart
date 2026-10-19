@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:intl/intl.dart';
 import 'package:hexora/presentation/shared/widgets/documents/mobile_document_card.dart';
 import 'group_invoices/mobile/mobile_client_search_list.dart';

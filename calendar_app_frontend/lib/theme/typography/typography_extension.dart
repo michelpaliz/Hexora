@@ -1,6 +1,7 @@
 // lib/theme/themes/typography_extension.dart
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'hexora_design_tokens.dart';
+export 'hexora_design_tokens.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
 
 class AppTypography extends ThemeExtension<AppTypography> {
@@ -33,146 +34,69 @@ class AppTypography extends ThemeExtension<AppTypography> {
   static TextStyle _scale(TextStyle s, double f) =>
       s.copyWith(fontSize: (s.fontSize ?? 14) * f);
 
-  static TextTheme materialTextTheme({
-    required Brightness brightness,
-  }) {
-    final base = ThemeData(
-      brightness: brightness,
-      useMaterial3: true,
-    ).textTheme;
-    final bodyTheme = GoogleFonts.manropeTextTheme(base);
-
-    TextStyle? heading(TextStyle? style, double size) => style == null
-        ? null
-        : GoogleFonts.poppins(textStyle: style.copyWith(fontSize: size));
-
-    return bodyTheme.copyWith(
-      displayLarge: heading(bodyTheme.displayLarge, 26),
-      displayMedium: heading(bodyTheme.displayMedium, 24),
-      displaySmall: heading(bodyTheme.displaySmall, 22),
-      headlineLarge: heading(bodyTheme.headlineLarge, 22),
-      headlineMedium: heading(bodyTheme.headlineMedium, 20),
-      headlineSmall: heading(bodyTheme.headlineSmall, 18),
-      titleLarge: heading(bodyTheme.titleLarge, 18),
-      titleMedium: heading(bodyTheme.titleMedium, 15),
-      titleSmall: heading(bodyTheme.titleSmall, 13),
-      bodyLarge: bodyTheme.bodyLarge?.copyWith(fontSize: 14),
-      bodyMedium: bodyTheme.bodyMedium?.copyWith(fontSize: 13),
-      bodySmall: bodyTheme.bodySmall?.copyWith(fontSize: 12),
-      labelLarge: bodyTheme.labelLarge?.copyWith(fontSize: 13),
-      labelMedium: bodyTheme.labelMedium?.copyWith(fontSize: 12),
-      labelSmall: bodyTheme.labelSmall?.copyWith(fontSize: 11),
+  static TextTheme materialTextTheme({required Brightness brightness}) {
+    final base = ThemeData(brightness: brightness, useMaterial3: true)
+        .textTheme
+        .apply(fontFamily: HexoraTypography.fontFamily);
+    TextStyle heading(TextStyle? style, double size) => style!.copyWith(
+        fontSize: size, fontWeight: FontWeight.w600, letterSpacing: 0);
+    TextStyle body(TextStyle? style, double size,
+            [FontWeight weight = FontWeight.w400]) =>
+        style!.copyWith(fontSize: size, fontWeight: weight, letterSpacing: 0);
+    return base.copyWith(
+      displayLarge: heading(base.displayLarge, HexoraTypography.pageTitle),
+      displayMedium: heading(base.displayMedium, HexoraTypography.pageTitle),
+      displaySmall: heading(base.displaySmall, HexoraTypography.pageTitle),
+      headlineLarge: heading(base.headlineLarge, HexoraTypography.pageTitle),
+      headlineMedium: heading(base.headlineMedium, HexoraTypography.pageTitle),
+      headlineSmall: heading(base.headlineSmall, HexoraTypography.pageTitle),
+      titleLarge: heading(base.titleLarge, HexoraTypography.pageTitle),
+      titleMedium: heading(base.titleMedium, HexoraTypography.sectionTitle),
+      titleSmall: heading(base.titleSmall, HexoraTypography.body),
+      bodyLarge: body(base.bodyLarge, HexoraTypography.body),
+      bodyMedium: body(base.bodyMedium, HexoraTypography.body),
+      bodySmall: body(base.bodySmall, HexoraTypography.label),
+      labelLarge: body(base.labelLarge, HexoraTypography.body, FontWeight.w500),
+      labelMedium:
+          body(base.labelMedium, HexoraTypography.label, FontWeight.w500),
+      labelSmall: body(base.labelSmall, HexoraTypography.caption),
     );
   }
 
-  // ---------- Light ----------
-  factory AppTypography.light({double scale = 1.0}) {
-    // Display: Poppins, Body: Manrope
-    const display = GoogleFonts.poppins;
-    const body = GoogleFonts.manrope;
+  factory AppTypography.light({double scale = 1.0}) => _create(
+      AppColors.textPrimary, AppColors.textSecondary, AppColors.primary, scale);
+  factory AppTypography.dark({double scale = 1.0}) => _create(
+      AppDarkColors.textPrimary,
+      AppDarkColors.textSecondary,
+      AppDarkColors.primary,
+      scale);
 
+  static AppTypography _create(
+      Color primary, Color secondary, Color accent, double scale) {
+    TextStyle style(double size, Color? color,
+            [FontWeight weight = FontWeight.w400]) =>
+        _scale(
+            TextStyle(
+                fontFamily: HexoraTypography.fontFamily,
+                fontSize: size,
+                fontWeight: weight,
+                color: color,
+                height: 1.4,
+                letterSpacing: 0),
+            scale);
     return AppTypography(
-      displayLarge: _scale(
-          display(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary),
-          scale),
-      displayMedium: _scale(
-          display(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary),
-          scale),
-      titleLarge: _scale(
-          display(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary),
-          scale),
-
-      bodyLarge:
-          _scale(body(fontSize: 14, color: AppColors.textPrimary), scale),
-      bodyMedium:
-          _scale(body(fontSize: 13, color: AppColors.textSecondary), scale),
-      bodySmall:
-          _scale(body(fontSize: 12, color: AppColors.textSecondary), scale),
-
-      buttonText:
-          _scale(body(fontSize: 13, fontWeight: FontWeight.w600), scale),
-      caption: _scale(
-          body(
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              color: AppColors.textSecondary),
-          scale),
-
-      // Accent—keep subtle (or point to display/body if you don’t want an accent family)
-      accentHeading: _scale(
-          display(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primary),
-          scale),
-      accentText: _scale(
-          body(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.primary),
-          scale),
-    );
-  }
-
-  // ---------- Dark ----------
-  factory AppTypography.dark({double scale = 1.0}) {
-    const display = GoogleFonts.poppins;
-    const body = GoogleFonts.manrope;
-
-    return AppTypography(
-      displayLarge: _scale(
-          display(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: AppDarkColors.textPrimary),
-          scale),
-      displayMedium: _scale(
-          display(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppDarkColors.textPrimary),
-          scale),
-      titleLarge: _scale(
-          display(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppDarkColors.textPrimary),
-          scale),
-      bodyLarge:
-          _scale(body(fontSize: 14, color: AppDarkColors.textPrimary), scale),
-      bodyMedium:
-          _scale(body(fontSize: 13, color: AppDarkColors.textSecondary), scale),
-      bodySmall:
-          _scale(body(fontSize: 12, color: AppDarkColors.textSecondary), scale),
-      buttonText:
-          _scale(body(fontSize: 13, fontWeight: FontWeight.w600), scale),
-      caption: _scale(
-          body(
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              color: AppDarkColors.textSecondary),
-          scale),
-      accentHeading: _scale(
-          display(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppDarkColors.primary),
-          scale),
-      accentText: _scale(
-          body(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppDarkColors.primary),
-          scale),
+      displayLarge: style(HexoraTypography.pageTitle, primary, FontWeight.w600),
+      displayMedium:
+          style(HexoraTypography.pageTitle, primary, FontWeight.w600),
+      titleLarge: style(HexoraTypography.pageTitle, primary, FontWeight.w600),
+      bodyLarge: style(HexoraTypography.body, primary),
+      bodyMedium: style(HexoraTypography.body, secondary),
+      bodySmall: style(HexoraTypography.label, secondary),
+      buttonText: style(HexoraTypography.body, null, FontWeight.w500),
+      caption: style(HexoraTypography.caption, secondary),
+      accentHeading:
+          style(HexoraTypography.sectionTitle, accent, FontWeight.w600),
+      accentText: style(HexoraTypography.body, accent, FontWeight.w500),
     );
   }
 

@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 ThemeData clientEditorThemeOf(BuildContext context) {
   final base = Theme.of(context);
   final cs = base.colorScheme;
-  final text = base.textTheme;
+  final text = base.textTheme.copyWith(
+      bodyLarge: base.textTheme.bodyLarge?.copyWith(fontSize: 12),
+      bodyMedium: base.textTheme.bodyMedium?.copyWith(fontSize: 12));
   final label = text.bodyLarge!.copyWith(fontWeight: FontWeight.w500);
   final floatingLabel = WidgetStateTextStyle.resolveWith((states) {
     final color = states.contains(WidgetState.error)
@@ -13,7 +15,7 @@ ThemeData clientEditorThemeOf(BuildContext context) {
             ? cs.primary
             : cs.onSurfaceVariant;
     // InputDecorator scales floating labels to 75%: 18 becomes 13.5 logical px.
-    return label.copyWith(fontSize: 18, color: color);
+    return label.copyWith(fontSize: 15, color: color);
   });
 
   return base.copyWith(

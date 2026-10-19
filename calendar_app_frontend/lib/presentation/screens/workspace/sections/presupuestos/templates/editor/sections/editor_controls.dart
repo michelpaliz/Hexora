@@ -175,18 +175,18 @@ extension _TemplateEditorControls on _PresupuestoTemplateEditorScreenState {
               isDense: dense,
               contentPadding: EdgeInsets.symmetric(
                 horizontal: 16,
-                vertical: maxLines > 1 ? 16 : 15,
+                vertical: dense ? 11 : (maxLines > 1 ? 16 : 15),
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(13),
+                borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(color: _editorBorder(theme)),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(13),
+                borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(color: _editorBorder(theme)),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(13),
+                borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(color: cs.primary, width: 1.6),
               ),
               hoverColor: cs.primary.withValues(alpha: 0.025),

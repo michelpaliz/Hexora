@@ -8,6 +8,27 @@ import 'package:hexora/theme/colors/app_colors.dart';
 class ThemeColors {
   ThemeColors._();
 
+  static Color success(BuildContext context) =>
+      Theme.of(context).extension<MobileStatusColors>()?.success ??
+      (Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF83D5A5)
+          : const Color(0xFF216E45));
+
+  static Color warning(BuildContext context) =>
+      Theme.of(context).extension<MobileStatusColors>()?.warning ??
+      (Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFFF2C078)
+          : const Color(0xFF815500));
+
+  static Color information(BuildContext context) =>
+      Theme.of(context).colorScheme.primary;
+
+  static Color error(BuildContext context) =>
+      Theme.of(context).colorScheme.error;
+
+  static Color neutral(BuildContext context) =>
+      Theme.of(context).colorScheme.onSurfaceVariant;
+
   /// Generic contrast for any background color.
   static Color contrastOn(Color background) {
     final brightness = ThemeData.estimateBrightnessForColor(background);

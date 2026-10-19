@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/services/tax/tax_reporting_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/all_data/statements_all_data_skeleton.dart';
@@ -273,7 +274,7 @@ class _TaxReportingViewState extends State<TaxReportingView> {
             onSelected: _selectPreset,
             itemBuilder: (context) => [
               for (var i = 0; i < presetLabels.length; i++)
-                PopupMenuItem<int>(
+                NavigationPopupMenuItem<int>(
                   value: i,
                   child: Row(children: [
                     if (_preset == i) ...[

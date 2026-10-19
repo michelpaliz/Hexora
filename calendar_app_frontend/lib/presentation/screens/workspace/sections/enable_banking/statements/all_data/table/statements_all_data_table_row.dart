@@ -1,4 +1,6 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/services/expenses/expenses_api.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
@@ -68,20 +70,19 @@ class StatementsAllDataTableRow extends StatelessWidget {
               (emphasize ? typography.bodySmall : typography.bodySmall))
           .copyWith(
         fontWeight: emphasize ? FontWeight.w700 : FontWeight.w500,
-        fontSize: emphasize ? 13 : 12.5,
+        fontSize: 12,
         color: amountColor,
         fontFeatures: const [FontFeature.tabularFigures()],
       ),
     );
     if (!asPill) return text;
     return Container(
-      height: 32,
+      height: 28,
       alignment: Alignment.center,
       padding: const EdgeInsets.symmetric(horizontal: 9),
       decoration: BoxDecoration(
         color: amountColor.withValues(alpha: 0.11),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: amountColor.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: text,
     );
@@ -93,21 +94,14 @@ class StatementsAllDataTableRow extends StatelessWidget {
     required VoidCallback? onPressed,
     Color? activeColor,
   }) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: Icon(icon, size: 17),
-      padding: EdgeInsets.zero,
-      style: IconButton.styleFrom(
-        minimumSize: const Size(28, 28),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        foregroundColor: activeColor,
-        disabledForegroundColor: activeColor?.withValues(alpha: 0.35),
-        backgroundColor: activeColor?.withValues(alpha: 0.09),
-        disabledBackgroundColor: activeColor?.withValues(alpha: 0.04),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
+    return Builder(
+        builder: (context) => IconButton(
+              tooltip: tooltip,
+              onPressed: onPressed,
+              icon: Icon(icon, size: 17),
+              padding: EdgeInsets.zero,
+              style: ThemedButtons.iconAction(context, color: activeColor),
+            ));
   }
 
   String _displayDescription(String value) {
@@ -294,12 +288,12 @@ class StatementsAllDataTableRow extends StatelessWidget {
     }) {
       return [
         if (includePrimaryActions)
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: 'suggest',
             enabled: entryId.isNotEmpty && !suggestLoading && canSuggest,
             child: menuLabel(Icons.auto_awesome, aiSuggestActionLabel),
           ),
-        PopupMenuItem(
+        NavigationPopupMenuItem(
           value: 'link_client',
           enabled: entryId.isNotEmpty && !linking,
           child: menuLabel(
@@ -307,18 +301,18 @@ class StatementsAllDataTableRow extends StatelessWidget {
             isEs ? 'Vincular cliente' : 'Link client',
           ),
         ),
-        PopupMenuItem(
+        NavigationPopupMenuItem(
           value: 'preview',
           enabled: hasLinkedDocument,
           child: menuLabel(Icons.visibility_outlined, previewActionLabel),
         ),
         if (includePrimaryActions)
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: 'link_invoice',
             enabled: entryId.isNotEmpty && canLinkInvoice,
             child: menuLabel(Icons.receipt_long, manualLinkActionLabel),
           ),
-        PopupMenuItem(
+        NavigationPopupMenuItem(
           value: 'notes',
           enabled: entryId.isNotEmpty && !savingNotes,
           child: menuLabel(
@@ -328,7 +322,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                 : (isEs ? 'Añadir nota' : 'Add note'),
           ),
         ),
-        PopupMenuItem(
+        NavigationPopupMenuItem(
           value: 'not_applicable',
           enabled: entryId.isNotEmpty,
           child: menuLabel(
@@ -338,7 +332,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                 : (isEs ? 'Marcar no procede' : 'Mark not applicable'),
           ),
         ),
-        PopupMenuItem(
+        NavigationPopupMenuItem(
           value: 'details',
           child: menuLabel(Icons.info_outline, l.statementsViewDetails),
         ),
@@ -390,7 +384,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
           : tableTheme.border.withValues(alpha: 0.82),
       child: Material(
         color: rowColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.zero,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onSecondaryTapDown: (details) => showRowMenu(details.globalPosition),
@@ -398,7 +392,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
           child: InkWell(
             hoverColor: tableTheme.rowHover,
             hoverDuration: const Duration(milliseconds: 150),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.zero,
             onTap: () => onShowDetails(entry),
             child: Padding(
               padding: const EdgeInsets.symmetric(
@@ -553,7 +547,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                         overflow: TextOverflow.ellipsis,
                                         style: typography.bodySmall.copyWith(
                                           fontWeight: FontWeight.w600,
-                                          fontSize: 13.5,
+                                          fontSize: 12.5,
                                         ),
                                       ),
                                     ),
@@ -1024,24 +1018,26 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                             hasNotes ? cs.primary : null,
                                       ),
                                       const SizedBox(width: 4),
-                                      _actionButton(
-                                        tooltip: hasNoProcede
-                                            ? 'Editar no procede'
-                                            : 'Marcar no procede',
-                                        onPressed: entryId.isEmpty
-                                            ? null
-                                            : () => onMarkNoProcede(entry),
-                                        icon: hasNoProcede
-                                            ? Icons.block
-                                            : Icons.block_outlined,
-                                        activeColor:
-                                            hasNoProcede ? cs.tertiary : null,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      _actionButton(
-                                        tooltip: l.statementsViewDetails,
-                                        onPressed: () => onShowDetails(entry),
-                                        icon: Icons.info_outline,
+                                      PopupMenuButton<String>(
+                                        tooltip: isEs
+                                            ? 'Más acciones'
+                                            : 'More actions',
+                                        padding: EdgeInsets.zero,
+                                        style: IconButton.styleFrom(
+                                          minimumSize: const Size(28, 28),
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          backgroundColor: tableTheme.chipBg,
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8)),
+                                        ),
+                                        icon: const Icon(
+                                            Icons.more_horiz_rounded,
+                                            size: 17),
+                                        itemBuilder: (_) => rowMenuItems(
+                                            includePrimaryActions: false),
+                                        onSelected: handleRowMenuSelection,
                                       ),
                                     ],
                                   ],
@@ -1095,29 +1091,16 @@ class _StatementRowSurface extends StatefulWidget {
 }
 
 class _StatementRowSurfaceState extends State<_StatementRowSurface> {
-  bool _hovering = false;
-
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovering = true),
-      onExit: (_) => setState(() => _hovering = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         curve: Curves.easeOut,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: widget.borderColor),
-          boxShadow: _hovering
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.075),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : const [],
+          borderRadius: BorderRadius.zero,
+          border: Border(bottom: BorderSide(color: widget.borderColor)),
         ),
         child: widget.child,
       ),

@@ -3745,7 +3745,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get invoiceClientInvoicesThisMonthLabel => 'Facturas este mes';
 
   @override
-  String get clientMissingInvoiceThisMonth => 'Factura pendiente este mes';
+  String get clientMissingInvoiceThisMonth => 'Sin factura este mes';
 
   @override
   String get clientInvoiceAllGood => 'Factura emitida este mes';
@@ -3785,9 +3785,9 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count pendientes este mes',
-      one: '1 pendiente este mes',
-      zero: 'Ninguno pendiente',
+      other: '$count sin factura este mes',
+      one: '1 sin factura este mes',
+      zero: 'Todos facturados este mes',
     );
     return '$_temp0';
   }
@@ -6438,7 +6438,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get budgetStepConfirm => 'Confirmar';
 
   @override
-  String get budgetStepPreview => 'Preview';
+  String get budgetStepPreview => 'Vista previa';
 
   @override
   String get budgetClientInfoPrompt =>

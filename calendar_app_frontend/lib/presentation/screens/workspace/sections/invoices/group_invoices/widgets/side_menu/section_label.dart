@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 
 class GroupInvoicesSectionLabel extends StatelessWidget {
   final String label;
@@ -8,7 +8,6 @@ class GroupInvoicesSectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 12, 6, 5),
@@ -23,11 +22,11 @@ class GroupInvoicesSectionLabel extends StatelessWidget {
           Expanded(
             child: Text(
               label.toUpperCase(),
-              style: t.caption.copyWith(
+              style: NavigationTokens.section(context).copyWith(
                 color: cs.onSurfaceVariant.withValues(alpha: 0.62),
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w600,
                 letterSpacing: 0.38,
-                fontSize: 10,
+                fontSize: NavigationTokens.sectionSize,
               ),
               overflow: TextOverflow.ellipsis,
             ),

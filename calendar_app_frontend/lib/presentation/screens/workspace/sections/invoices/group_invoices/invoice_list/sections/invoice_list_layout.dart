@@ -423,7 +423,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                         final hasMonthWarning = _hasInvoiceMonthWarning(inv);
                         return Padding(
                           key: ValueKey(inv.id),
-                          padding: const EdgeInsets.only(bottom: 6),
+                          padding: EdgeInsets.zero,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [

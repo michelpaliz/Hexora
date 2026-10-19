@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
@@ -276,7 +277,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
   Widget _buildMobileLayout(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
+
     final propertyKindOptions = _clients
         .map((c) => (c.propertyKind ?? '').trim())
         .where((v) => v.isNotEmpty)
@@ -284,21 +285,8 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
         .toList()
       ..sort();
 
-    final tabBar = TabBar(
+    final tabBar = HexoraSectionTabs(
       controller: _tab,
-      dividerColor: Colors.transparent,
-      splashFactory: NoSplash.splashFactory,
-      overlayColor: WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.08)),
-      indicatorSize: TabBarIndicatorSize.tab,
-      indicator: BoxDecoration(
-        color: cs.primaryContainer,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      indicatorPadding: const EdgeInsets.symmetric(vertical: 4),
-      labelColor: cs.onPrimaryContainer,
-      unselectedLabelColor: cs.onSurfaceVariant,
-      labelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
-      unselectedLabelStyle: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
       tabs: [
         Tab(
           height: 44,
@@ -403,12 +391,6 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
     final isMobile = MediaQuery.sizeOf(context).width < 700;
     if (isMobile) return _buildMobileLayout(context);
 
-    final Color primary = cs.primary;
-    final Color selectedText = ThemeColors.contrastOn(primary);
-    final Color unselectedText =
-        ThemeColors.textPrimary(context).withValues(alpha: 0.7);
-    final Color trackBg = ThemeColors.cardBg(context);
-
     // Optional: show counts in tab labels for quick context
     final clientsTabLabel = '${l.tabClients} · ${_clients.length}';
     final servicesTabLabel = '${l.tabServices} · ${_services.length}';
@@ -423,41 +405,13 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
       appBar: SectionAppBar(
         title: l.screenServicesClientsTitle,
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
+          preferredSize: Size.fromHeight(hexoraSectionTabsHeight(context) + 8),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: trackBg,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: cs.onSurface.withValues(alpha: 0.06)),
-              ),
-              child: TabBar(
-                controller: _tab,
-                tabs: [
-                  Tab(text: clientsTabLabel),
-                  Tab(text: servicesTabLabel),
-                ],
-                indicatorSize: TabBarIndicatorSize.tab,
-                dividerColor: Colors.transparent,
-                labelColor: selectedText,
-                unselectedLabelColor: unselectedText,
-                labelStyle: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: .2,
-                ),
-                unselectedLabelStyle: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: .2,
-                ),
-                indicator: BoxDecoration(
-                  color: primary,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                splashBorderRadius: BorderRadius.circular(10),
-              ),
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: HexoraSectionTabs(controller: _tab, tabs: [
+              Tab(text: clientsTabLabel),
+              Tab(text: servicesTabLabel)
+            ]),
           ),
         ),
       ),

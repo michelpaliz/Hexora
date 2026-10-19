@@ -20,7 +20,7 @@ BoxDecoration buildContainerDecoration(Color backgroundColor) => BoxDecoration(
 
 CalendarHeaderStyle buildHeaderStyle(double fontSize, Color textColor) =>
     CalendarHeaderStyle(
-      textAlign: TextAlign.center,
+      textAlign: TextAlign.left,
       backgroundColor: Colors.transparent,
       textStyle: AppTypography.light().titleLarge.copyWith(
             fontSize: fontSize,
@@ -37,7 +37,7 @@ ViewHeaderStyle buildViewHeaderStyle(
           .bodyMedium
           .copyWith(fontSize: fontSize, color: textColor),
       dayTextStyle: AppTypography.light().bodyMedium.copyWith(
-            fontSize: fontSize,
+            fontSize: HexoraTypography.label,
             fontWeight: FontWeight.w600,
             color: textColor,
           ),

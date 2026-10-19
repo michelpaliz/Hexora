@@ -27,7 +27,8 @@ class _InvoiceDownloadMenu extends StatelessWidget {
             VoidCallback? onPressed) =>
         MenuItemButton(
           onPressed: enabled ? onPressed : null,
-          leadingIcon: Icon(icon, size: 20, color: color),
+          leadingIcon:
+              Icon(icon, size: NavigationTokens.iconSize, color: color),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Column(
@@ -43,10 +44,6 @@ class _InvoiceDownloadMenu extends StatelessWidget {
         );
 
     return MenuAnchor(
-      style: MenuStyle(
-        shape: WidgetStatePropertyAll(
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-      ),
       menuChildren: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
@@ -73,10 +70,10 @@ class _InvoiceDownloadMenu extends StatelessWidget {
               ? () => controller.isOpen ? controller.close() : controller.open()
               : null,
           style: OutlinedButton.styleFrom(
-            visualDensity: VisualDensity.standard,
-            minimumSize: const Size(0, 36),
+            visualDensity: VisualDensity.compact,
+            minimumSize: const Size(0, 32),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             backgroundColor: controller.isOpen
                 ? cs.primaryContainer
                 : cs.primary.withValues(alpha: 0.035),
@@ -85,7 +82,7 @@ class _InvoiceDownloadMenu extends StatelessWidget {
             textStyle:
                 const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
             side: BorderSide(color: cs.primary.withValues(alpha: 0.3)),
           ),
           child: Row(

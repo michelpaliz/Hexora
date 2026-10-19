@@ -80,6 +80,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
   String? _selectedUserFilter;
   _SidePanelView _panelView = _SidePanelView.upcoming;
   bool _leftCollapsed = false;
+  bool _rightPanelCollapsed = false;
   final ValueNotifier<bool> _leftCollapsedNotifier = ValueNotifier(false);
   bool _canAddEvents = false;
   Event? _editingEvent;
@@ -136,6 +137,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
     if (isWideNow) {
       final now = DateTime.now();
       setState(() {
+        _rightPanelCollapsed = false;
         _panelView = _SidePanelView.addEvent;
         _pendingAddEventStart = now;
         _pendingAddEventEnd = now.add(const Duration(hours: 1));
@@ -145,6 +147,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
     if (widget.embedded && kIsWeb) {
       setState(() {
+        _rightPanelCollapsed = false;
         _panelView = _SidePanelView.addEvent;
       });
       return;
@@ -196,6 +199,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
   void _openAddEventForRange(DateTime start, DateTime end) {
     setState(() {
+      _rightPanelCollapsed = false;
       _panelView = _SidePanelView.addEvent;
       _pendingAddEventStart = start;
       _pendingAddEventEnd = end;
@@ -253,6 +257,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
   void _openViewEventInline(Event event) {
     setState(() {
       _viewingEvent = event;
+      _rightPanelCollapsed = false;
       _panelView = _SidePanelView.viewEvent;
     });
   }
@@ -260,6 +265,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
   void _openEditEventInline(Event event) {
     setState(() {
       _editingEvent = event;
+      _rightPanelCollapsed = false;
       _panelView = _SidePanelView.editEvent;
     });
   }
@@ -414,6 +420,21 @@ class _MainCalendarViewState extends State<MainCalendarView> {
         List<Widget> calendarHeaderActions() {
           final connectedUsers = _c.buildPresenceFor(currentGroup);
           final actions = <Widget>[
+            IconButton(
+              key: const ValueKey('calendar-details-toggle'),
+              tooltip: Localizations.localeOf(context).languageCode == 'es'
+                  ? (_rightPanelCollapsed
+                      ? 'Mostrar detalles'
+                      : 'Ocultar detalles')
+                  : (_rightPanelCollapsed ? 'Show details' : 'Hide details'),
+              onPressed: () =>
+                  setState(() => _rightPanelCollapsed = !_rightPanelCollapsed),
+              icon: Icon(
+                  _rightPanelCollapsed
+                      ? Icons.view_sidebar_outlined
+                      : Icons.chevron_right_rounded,
+                  size: 18),
+            ),
             Tooltip(
               message: 'All',
               child: InkWell(
@@ -676,6 +697,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                       setState(() {
                         _viewingEvent = _editingEvent;
                         _editingEvent = null;
+                        _rightPanelCollapsed = false;
                         _panelView = _SidePanelView.viewEvent;
                       });
                     },
@@ -1564,15 +1586,19 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 10),
-                                    SizedBox(
-                                      width: 360,
-                                      child: FolderPanel(
-                                        title: calendarRightPanelTitle(),
-                                        showTab: true,
-                                        child: calendarRightPanelContent(),
-                                      ),
-                                    ),
+                                    if (!_rightPanelCollapsed)
+                                      const SizedBox(width: 8),
+                                    Visibility(
+                                        visible: !_rightPanelCollapsed,
+                                        maintainState: true,
+                                        child: SizedBox(
+                                          width: HexoraDimensions.calendarPanel,
+                                          child: FolderPanel(
+                                            title: calendarRightPanelTitle(),
+                                            showTab: true,
+                                            child: calendarRightPanelContent(),
+                                          ),
+                                        )),
                                   ],
                                 )
                               : FolderPanel(

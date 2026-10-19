@@ -1,5 +1,6 @@
 import 'package:hexora/theme/themes/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -27,6 +28,45 @@ class _Domain extends TelegramDomain {
 }
 
 void main() {
+  for (final scrollHost in [false, true]) {
+    testWidgets(
+        'Desktop Telegram renders sidebar with scroll host: $scrollHost',
+        (tester) async {
+      tester.view.physicalSize = const Size(1900, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final domain = _Domain();
+      addTearDown(domain.dispose);
+      await tester.pumpWidget(ChangeNotifierProvider<TelegramDomain>.value(
+        value: domain,
+        child: MaterialApp(
+          theme: AppTheme.forPlatform(Brightness.light,
+              platform: TargetPlatform.windows),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: scrollHost
+              ? const SingleChildScrollView(child: TelegramSectionScreen())
+              : const TelegramSectionScreen(),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Telegram connection'), findsOneWidget);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: const Offset(400, 100));
+      await mouse.moveTo(tester.getCenter(find.text('Telegram connection')));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('Telegram connection').first);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      tester.view.physicalSize = const Size(1200, 650);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await mouse.removePointer();
+    });
+  }
   for (final brightness in Brightness.values) {
     testWidgets('Mobile Telegram without host Material in $brightness',
         (tester) async {

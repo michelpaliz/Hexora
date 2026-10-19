@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' show PointerDeviceKind;
@@ -1959,31 +1960,31 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         initialValue: _selectedSort,
         onSelected: _setSortOption,
         itemBuilder: (context) => [
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: _ExpenseListSortOption.newest,
             child: Text(isSpanish ? 'Mas recientes' : 'Newest'),
           ),
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: _ExpenseListSortOption.oldest,
             child: Text(isSpanish ? 'Mas antiguos' : 'Oldest'),
           ),
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: _ExpenseListSortOption.amountHighToLow,
             child: Text(
               isSpanish ? 'Importe mayor a menor' : 'Amount high to low',
             ),
           ),
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: _ExpenseListSortOption.amountLowToHigh,
             child: Text(
               isSpanish ? 'Importe menor a mayor' : 'Amount low to high',
             ),
           ),
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: _ExpenseListSortOption.vendorAz,
             child: Text(isSpanish ? 'Proveedor A-Z' : 'Vendor A-Z'),
           ),
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: _ExpenseListSortOption.vendorZa,
             child: Text(isSpanish ? 'Proveedor Z-A' : 'Vendor Z-A'),
           ),
@@ -2034,12 +2035,12 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         initialValue: _selectedYearFilter,
         onSelected: _setYearFilter,
         itemBuilder: (context) => [
-          PopupMenuItem<int?>(
+          NavigationPopupMenuItem<int?>(
             value: null,
             child: Text(isSpanish ? 'Todos los años' : 'All years'),
           ),
           for (final year in years)
-            PopupMenuItem<int?>(
+            NavigationPopupMenuItem<int?>(
               value: year,
               child: Text('$year'),
             ),
@@ -2142,7 +2143,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       initialValue: _selectedFileType,
       onSelected: (v) => setState(() => _selectedFileType = v),
       itemBuilder: (context) => [
-        PopupMenuItem(
+        NavigationPopupMenuItem(
           value: _ExpenseFileTypeFilter.all,
           child: Row(children: [
             const Icon(Icons.all_inclusive, size: 16),
@@ -2150,7 +2151,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
             Text(isSpanish ? 'Todos los tipos' : 'All types'),
           ]),
         ),
-        const PopupMenuItem(
+        const NavigationPopupMenuItem(
           value: _ExpenseFileTypeFilter.pdf,
           child: Row(children: <Widget>[
             Icon(Icons.picture_as_pdf_outlined, size: 16),
@@ -2158,7 +2159,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
             Text('PDF'),
           ]),
         ),
-        PopupMenuItem(
+        NavigationPopupMenuItem(
           value: _ExpenseFileTypeFilter.image,
           child: Row(children: [
             const Icon(Icons.image_outlined, size: 16),
@@ -2166,7 +2167,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
             Text(isSpanish ? 'Imagen' : 'Image'),
           ]),
         ),
-        PopupMenuItem(
+        NavigationPopupMenuItem(
           value: _ExpenseFileTypeFilter.other,
           child: Row(children: [
             const Icon(Icons.insert_drive_file_outlined, size: 16),
@@ -2304,7 +2305,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
           ),
         ),
         if (_hasActiveAuditFilters)
-          PopupMenuItem(
+          NavigationPopupMenuItem(
             value: 'clear',
             child: Row(
               children: [

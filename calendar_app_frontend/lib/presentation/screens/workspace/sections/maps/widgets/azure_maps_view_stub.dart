@@ -16,9 +16,11 @@ class AzureMapsView extends StatelessWidget {
     required this.onPinTapped,
     this.onReady,
     this.onError,
+    this.darkMode = false,
   });
 
   final String clientId;
+  final bool darkMode;
   final String accessToken;
   final List<AzureMapPin> pins;
   final String? selectedPinId;

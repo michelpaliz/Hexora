@@ -7,7 +7,7 @@ OutlineInputBorder buildInputBorder(
 }) {
   final cs = Theme.of(context).colorScheme;
   return OutlineInputBorder(
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(8),
     borderSide: BorderSide(
         color: color ?? cs.outlineVariant.withValues(alpha: 0.5), width: width),
   );
@@ -26,22 +26,27 @@ InputDecoration buildInputDecoration(
   final cs = Theme.of(context).colorScheme;
 
   return InputDecoration(
-    isDense: false,
-    contentPadding: const EdgeInsets.all(16),
+    isDense: true,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
     labelText: isRequired ? '$label *' : label,
-    floatingLabelBehavior: FloatingLabelBehavior.auto,
+    floatingLabelBehavior: FloatingLabelBehavior.always,
     hintText: hintText,
     helperText: helperText,
     helperMaxLines: 3,
     errorMaxLines: 3,
-    prefixIcon: prefixIcon,
-    prefixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+    prefixIcon: prefixIcon == null
+        ? null
+        : IconTheme(
+            data: IconThemeData(size: 17, color: cs.onSurfaceVariant),
+            child: prefixIcon),
+    prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
     suffixIcon: showCheck
-        ? Icon(Icons.check_circle_rounded, size: 18, color: cs.secondary)
+        ? const Icon(Icons.check_circle_rounded,
+            size: 18, color: Color(0xFF079B55))
         : null,
-    suffixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+    suffixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
     filled: true,
-    fillColor: cs.surfaceContainerLow,
+    fillColor: cs.surface,
     enabledBorder: buildInputBorder(context),
     focusedBorder: buildInputBorder(
       context,

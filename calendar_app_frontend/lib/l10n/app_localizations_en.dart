@@ -3742,9 +3742,9 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count missing this month',
-      one: '1 missing this month',
-      zero: 'None missing',
+      other: '$count without invoice this month',
+      one: '1 without invoice this month',
+      zero: 'All invoiced this month',
     );
     return '$_temp0';
   }

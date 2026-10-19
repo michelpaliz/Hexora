@@ -62,6 +62,7 @@ class AddClientSheet extends StatefulWidget {
   final List<GroupClient> existingClients;
   final bool closeOnSave;
   final bool fullScreen;
+  final VoidCallback? onCancel;
 
   const AddClientSheet({
     super.key,
@@ -73,6 +74,7 @@ class AddClientSheet extends StatefulWidget {
     this.existingClients = const [],
     this.closeOnSave = true,
     this.fullScreen = false,
+    this.onCancel,
   });
 
   @override
@@ -309,7 +311,8 @@ class _AddClientSheetState extends State<AddClientSheet> {
       );
 
   Widget _buildEditor(BuildContext context) {
-    final pad = MediaQuery.of(context).viewInsets.bottom + 16;
+    final pad = MediaQuery.of(context).viewInsets.bottom + 12;
+    final inline = !widget.closeOnSave && !widget.fullScreen;
 
     final form = Padding(
       padding: EdgeInsets.fromLTRB(16, 16, 16, widget.fullScreen ? 16 : pad),
@@ -321,7 +324,7 @@ class _AddClientSheetState extends State<AddClientSheet> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (!widget.fullScreen) ...[
+              if (!widget.fullScreen && !inline) ...[
                 ClientHeader(isEdit: c.isEdit),
                 const SizedBox(height: 8),
                 const BillingDivider(),
@@ -359,7 +362,7 @@ class _AddClientSheetState extends State<AddClientSheet> {
                 onChanged: (v) => setState(() => c.active = v),
               ),
               const SizedBox(height: 8),
-              if (!widget.fullScreen)
+              if (!widget.fullScreen && !inline)
                 SaveButton(
                   saving: c.saving,
                   isEdit: c.isEdit,
@@ -370,6 +373,63 @@ class _AddClientSheetState extends State<AddClientSheet> {
         ),
       ),
     );
+    if (inline) {
+      final l = AppLocalizations.of(context)!;
+      final cs = Theme.of(context).colorScheme;
+      return Column(children: [
+        Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: ClientHeader(isEdit: c.isEdit)),
+        if (widget.client != null)
+          Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(children: [
+                CircleAvatar(
+                    backgroundColor: cs.primary.withValues(alpha: .1),
+                    child: Text(
+                        widget.client!.name.trim().isEmpty
+                            ? '?'
+                            : widget.client!.name.characters.first
+                                .toUpperCase(),
+                        style: TextStyle(color: cs.primary))),
+                const SizedBox(width: 12),
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text(widget.client!.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall),
+                      Text(widget.client!.email ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall),
+                    ])),
+              ])),
+        Expanded(child: form),
+        Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+                color: cs.surface,
+                border: Border(
+                    top: BorderSide(
+                        color: cs.outlineVariant.withValues(alpha: .4)))),
+            child: Row(children: [
+              if (widget.onCancel != null) ...[
+                OutlinedButton(
+                    onPressed: c.saving ? null : widget.onCancel,
+                    child: Text(l.cancel)),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                  child: SaveButton(
+                      saving: c.saving,
+                      isEdit: c.isEdit,
+                      onPressed: c.saving ? null : _onSave)),
+            ])),
+      ]);
+    }
     if (!widget.fullScreen) return form;
 
     final l = AppLocalizations.of(context)!;

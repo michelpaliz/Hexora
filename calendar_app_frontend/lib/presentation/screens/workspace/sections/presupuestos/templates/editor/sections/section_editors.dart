@@ -43,8 +43,12 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
               padding: EdgeInsets.zero,
               itemCount: _sections.length,
               onReorder: (oldIndex, newIndex) {
+                if (_sections[oldIndex].isPinned) return;
                 _updateEditorState(() {
                   if (newIndex > oldIndex) newIndex -= 1;
+                  // Free sections can't be dropped below the pinned ones.
+                  final limit = _firstPinnedSectionIndex - 1;
+                  if (newIndex > limit) newIndex = limit;
                   final section = _sections.removeAt(oldIndex);
                   _sections.insert(newIndex, section);
                 });
@@ -58,8 +62,9 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final itemsCount = section.itemControllers
-        .where((controller) => controller.text.trim().isNotEmpty)
-        .length;
+            .where((controller) => controller.text.trim().isNotEmpty)
+            .length +
+        (section.generatedFrequency ? 2 : 0);
     return Card(
       key: ValueKey('section_card_${section.key}'),
       margin: const EdgeInsets.only(bottom: 12),
@@ -88,28 +93,47 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
                   ? '$itemsCount items activos'
                   : 'Seccion desactivada',
         ),
-        leading: ReorderableDragStartListener(
-          index: index,
-          child: MouseRegion(
-            cursor: SystemMouseCursors.grab,
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: section.enabled
-                    ? cs.primary.withValues(alpha: 0.12)
-                    : _editorSoftAccentBg(theme),
-                borderRadius: BorderRadius.circular(14),
+        leading: section.isPinned
+            ? Tooltip(
+                message: section.pinnedRank == 2
+                    ? 'Posición fija: siempre la última sección'
+                    : 'Posición fija: siempre antes del anexo',
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: _editorSoftAccentBg(theme),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    Icons.lock_outline_rounded,
+                    size: 18,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              )
+            : ReorderableDragStartListener(
+                index: index,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.grab,
+                  child: Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: section.enabled
+                          ? cs.primary.withValues(alpha: 0.12)
+                          : _editorSoftAccentBg(theme),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      Icons.drag_indicator_rounded,
+                      color: section.enabled
+                          ? cs.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
               ),
-              child: Icon(
-                Icons.drag_indicator_rounded,
-                color: section.enabled
-                    ? cs.primary
-                    : theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -164,7 +188,7 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
                 ),
                 PopupMenuItem(
                   value: 'up',
-                  enabled: index != 0,
+                  enabled: index != 0 && !section.isPinned,
                   child: const ListTile(
                     contentPadding: EdgeInsets.zero,
                     dense: true,
@@ -174,7 +198,8 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
                 ),
                 PopupMenuItem(
                   value: 'down',
-                  enabled: index != _sections.length - 1,
+                  enabled: !section.isPinned &&
+                      index + 1 < _firstPinnedSectionIndex,
                   child: const ListTile(
                     contentPadding: EdgeInsets.zero,
                     dense: true,
@@ -230,13 +255,29 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (section.generatedFrequency) ...[
+            const Text('Generado automáticamente'),
+            for (final item in _generatedFrequencyItems())
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text('✓ $item'),
+              ),
+            TextButton.icon(
+              onPressed: _editFrequencyControls,
+              icon: const Icon(Icons.tune),
+              label: const Text('Editar servicio y frecuencias'),
+            ),
+            const Divider(),
+          ],
           Padding(
             padding: const EdgeInsets.only(left: 2, bottom: 8),
             child: Row(
               children: [
                 Expanded(
                   child: Text(
-                    'Elementos de la lista',
+                    section.generatedFrequency
+                        ? 'Elementos adicionales'
+                        : 'Elementos de la lista',
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: cs.onSurfaceVariant,
                       fontWeight: FontWeight.w700,
@@ -265,7 +306,9 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
                 border: Border.all(color: _editorBorder(theme, alpha: 0.7)),
               ),
               child: Text(
-                'Todavía no hay elementos en esta lista.',
+                section.generatedFrequency
+                    ? 'Puedes añadir condiciones adicionales sin modificar la frecuencia automática.'
+                    : 'Todavía no hay elementos en esta lista.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
                 ),

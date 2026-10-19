@@ -1,3 +1,5 @@
+import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
+import 'package:hexora/presentation/shared/widgets/navigation_menu_header.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -62,68 +64,8 @@ class _WorkersNavHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.38),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: Icon(
-                Icons.group_outlined,
-                size: 17,
-                color: cs.primary,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.labelLarge?.copyWith(
-                  color: cs.onSurface,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-            Tooltip(
-              message: AppLocalizations.of(context)!.groupInvoicesNavCollapse,
-              child: IconButton.filledTonal(
-                onPressed: onCollapse,
-                icon: const Icon(Icons.keyboard_double_arrow_left_rounded),
-                iconSize: 18,
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(40, 34),
-                  fixedSize: const Size(40, 34),
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return NavigationMenuHeader(
+        title: title, icon: Icons.people_outline, onToggle: onCollapse);
   }
 }
 
@@ -165,39 +107,10 @@ class _WorkersCollapsedRail extends StatelessWidget {
       VoidCallback? onTap,
       bool selectedOverride = false,
     }) {
-      final isSelected = selectedOverride || selected == section;
-      return Tooltip(
-        message: tooltip,
-        preferBelow: false,
-        waitDuration: const Duration(milliseconds: 300),
-        child: InkWell(
-          onTap: onTap ?? (section == null ? null : () => onSelect(section)),
-          borderRadius: BorderRadius.circular(10),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            width: 36,
-            height: 34,
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? cs.primary.withValues(alpha: 0.14)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isSelected
-                    ? cs.primary.withValues(alpha: 0.22)
-                    : Colors.transparent,
-              ),
-            ),
-            child: Icon(
-              icon,
-              size: 16,
-              color: isSelected ? cs.primary : cs.onSurfaceVariant,
-            ),
-          ),
-        ),
-      );
+      return SidebarItem(icon: icon, label: tooltip,
+        isSelected: selectedOverride || selected == section, collapsed: true,
+        onTap: onTap ?? (section == null ? null : () => onSelect(section)));
     }
-
     Widget divider() => Padding(
           padding: const EdgeInsets.symmetric(vertical: 5),
           child: Divider(
@@ -220,8 +133,8 @@ class _WorkersCollapsedRail extends StatelessWidget {
               onTap: onExpand,
               borderRadius: BorderRadius.circular(8),
               child: Container(
-                width: 36,
-                height: 28,
+                width: NavigationTokens.rowHeight(context),
+                height: NavigationTokens.rowHeight(context),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
@@ -230,7 +143,7 @@ class _WorkersCollapsedRail extends StatelessWidget {
                 ),
                 child: Icon(
                   Icons.chevron_right_rounded,
-                  size: 16,
+                  size: NavigationTokens.iconSize,
                   color: cs.onSurfaceVariant,
                 ),
               ),
@@ -296,8 +209,8 @@ class WorkersInlinePanel extends StatefulWidget {
 
 class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     with SingleTickerProviderStateMixin {
-  static const double _expandedMenuWidth = 218;
-  static const double _collapsedMenuWidth = 50;
+  static const double _expandedMenuWidth = NavigationTokens.sidebarWidth;
+  static const double _collapsedMenuWidth = NavigationTokens.railWidth;
 
   late UserDomain _userDomain;
   late ITimeTrackingRepository _repo;
@@ -736,14 +649,14 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                           label: l.createWorkerCta,
                           selected: false,
                           primaryAction: true,
-                          indent: 12,
+                          indent: NavigationTokens.nestedIndent,
                           onPressed: _openCreateWorkerForm,
                         ),
                         GroupInvoicesSubMenuItem(
                           icon: Icons.group_outlined,
                           label: l.workersLabel,
                           selected: _section == _InlineSection.workers,
-                          indent: 12,
+                          indent: NavigationTokens.nestedIndent,
                           onPressed: () => setState(
                             () => _section = _InlineSection.workers,
                           ),
@@ -752,7 +665,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                           icon: Icons.schedule_outlined,
                           label: isEs ? 'Registrar horas' : 'Register hours',
                           selected: _section == _InlineSection.registerHours,
-                          indent: 12,
+                          indent: NavigationTokens.nestedIndent,
                           onPressed: () => setState(
                             () => _section = _InlineSection.registerHours,
                           ),
@@ -761,7 +674,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                           icon: Icons.telegram,
                           label: isEs ? 'Importar Telegram' : 'Telegram import',
                           selected: _section == _InlineSection.telegramImport,
-                          indent: 12,
+                          indent: NavigationTokens.nestedIndent,
                           onPressed: () => setState(
                             () => _section = _InlineSection.telegramImport,
                           ),
@@ -780,7 +693,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                       icon: Icons.history_outlined,
                       label: isEs ? 'Resumen del mes' : 'Summary this month',
                       selected: _section == _InlineSection.historial,
-                      indent: 12,
+                      indent: NavigationTokens.nestedIndent,
                       onPressed: () => setState(
                         () => _section = _InlineSection.historial,
                       ),
@@ -797,7 +710,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                       icon: Icons.bar_chart_rounded,
                       label: isEs ? 'Graficas' : 'Charts',
                       selected: _section == _InlineSection.graphs,
-                      indent: 12,
+                      indent: NavigationTokens.nestedIndent,
                       onPressed: () => setState(
                         () => _section = _InlineSection.graphs,
                       ),
@@ -1051,22 +964,22 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                       child: IndexedStack(
                         index: _section.index,
                         children: [
-                        IndexedStack(
-                          index: _overviewWorker == null ? 0 : 1,
-                          children: [
-                            _buildWorkersSection(context),
-                            if (_overviewWorker != null)
-                              WorkerMonthlyOverviewInline(
-                                group: widget.group,
-                                worker: _overviewWorker!,
-                                repo: _repo,
-                                getToken: _token,
-                                onBack: () =>
-                                    setState(() => _overviewWorker = null),
-                                onDataChanged: _reloadActiveTotals,
-                              ),
-                          ],
-                        ),
+                          IndexedStack(
+                            index: _overviewWorker == null ? 0 : 1,
+                            children: [
+                              _buildWorkersSection(context),
+                              if (_overviewWorker != null)
+                                WorkerMonthlyOverviewInline(
+                                  group: widget.group,
+                                  worker: _overviewWorker!,
+                                  repo: _repo,
+                                  getToken: _token,
+                                  onBack: () =>
+                                      setState(() => _overviewWorker = null),
+                                  onDataChanged: _reloadActiveTotals,
+                                ),
+                            ],
+                          ),
                           WorkerTimeHistoryGraphView(
                             key: ValueKey(
                                 'inline-worker-graphs-${widget.group.id}'),

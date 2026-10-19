@@ -47,171 +47,217 @@ class ClientContactForm extends StatelessWidget {
 
     return Column(
       children: [
-        Focus(
-          onFocusChange: (hasFocus) {
-            if (!hasFocus) onFieldBlur('name');
-          },
-          child: TextFormField(
-            controller: c.name,
-            style: text.bodyLarge,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            decoration: buildInputDecoration(
-              context,
-              label: l.nameLabel,
-              hintText: l.e_gJohnDoe,
-              prefixIcon: const Icon(Icons.person_outline),
-              isRequired: true,
-              isFilled: c.name.text.trim().isNotEmpty,
-              showCheck: c.name.text.trim().isNotEmpty,
-            ),
-            textInputAction: TextInputAction.next,
-            onChanged: (_) => onFieldChanged(),
-            validator: (v) {
-              if (!c.shouldShowError('name', showValidation)) return null;
-              return (v == null || v.trim().isEmpty) ? l.nameIsRequired : null;
-            },
-          ),
-        ),
+        _ClientFormSection(
+            title: 'Información general',
+            icon: Icons.person_outline,
+            children: [
+              Focus(
+                onFocusChange: (hasFocus) {
+                  if (!hasFocus) onFieldBlur('name');
+                },
+                child: TextFormField(
+                  controller: c.name,
+                  style: text.bodyLarge,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  decoration: buildInputDecoration(
+                    context,
+                    label: l.nameLabel,
+                    hintText: l.e_gJohnDoe,
+                    prefixIcon: const Icon(Icons.person_outline),
+                    isRequired: true,
+                    isFilled: c.name.text.trim().isNotEmpty,
+                    showCheck: c.name.text.trim().isNotEmpty,
+                  ),
+                  textInputAction: TextInputAction.next,
+                  onChanged: (_) => onFieldChanged(),
+                  validator: (v) {
+                    if (!c.shouldShowError('name', showValidation)) return null;
+                    return (v == null || v.trim().isEmpty)
+                        ? l.nameIsRequired
+                        : null;
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+              ClientFormFields(
+                  first: Focus(
+                    onFocusChange: (hasFocus) {
+                      if (!hasFocus) onFieldBlur('email');
+                    },
+                    child: TextFormField(
+                      controller: c.email,
+                      style: text.bodyLarge,
+                      keyboardType: TextInputType.emailAddress,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      decoration: buildInputDecoration(
+                        context,
+                        label: l.emailLabel,
+                        hintText: l.e_gEmail,
+                        prefixIcon: const Icon(Icons.alternate_email),
+                        isFilled: c.email.text.trim().isNotEmpty,
+                      ),
+                      onChanged: (_) => onFieldChanged(),
+                      validator: (v) {
+                        if (!c.shouldShowError('email', showValidation)) {
+                          return null;
+                        }
+                        final txt = (v ?? '').trim();
+                        if (txt.isEmpty) return null;
+                        final ok = isLikelyValidEmail(txt);
+                        return ok ? null : l.invalidEmail;
+                      },
+                    ),
+                  ),
+                  second: Focus(
+                    onFocusChange: (hasFocus) {
+                      if (!hasFocus) onFieldBlur('phone');
+                    },
+                    child: TextFormField(
+                      controller: c.phone,
+                      style: text.bodyLarge,
+                      keyboardType: TextInputType.phone,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      decoration: buildInputDecoration(
+                        context,
+                        label: l.phoneLabel,
+                        hintText: l.e_gPhone,
+                        prefixIcon: const Icon(Icons.phone_outlined),
+                        isFilled: c.phone.text.trim().isNotEmpty,
+                      ),
+                      textInputAction: TextInputAction.next,
+                      onChanged: (_) => onFieldChanged(),
+                    ),
+                  )),
+            ]),
         const SizedBox(height: 8),
-        Focus(
-          onFocusChange: (hasFocus) {
-            if (!hasFocus) onFieldBlur('phone');
-          },
-          child: TextFormField(
-            controller: c.phone,
-            style: text.bodyLarge,
-            keyboardType: TextInputType.phone,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            decoration: buildInputDecoration(
-              context,
-              label: l.phoneLabel,
-              hintText: l.e_gPhone,
-              prefixIcon: const Icon(Icons.phone_outlined),
-              isFilled: c.phone.text.trim().isNotEmpty,
-            ),
-            textInputAction: TextInputAction.next,
-            onChanged: (_) => onFieldChanged(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Focus(
-          onFocusChange: (hasFocus) {
-            if (!hasFocus) onFieldBlur('email');
-          },
-          child: TextFormField(
-            controller: c.email,
-            style: text.bodyLarge,
-            keyboardType: TextInputType.emailAddress,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            decoration: buildInputDecoration(
-              context,
-              label: l.emailLabel,
-              hintText: l.e_gEmail,
-              prefixIcon: const Icon(Icons.alternate_email),
-              isFilled: c.email.text.trim().isNotEmpty,
-            ),
-            onChanged: (_) => onFieldChanged(),
-            validator: (v) {
-              if (!c.shouldShowError('email', showValidation)) return null;
-              final txt = (v ?? '').trim();
-              if (txt.isEmpty) return null;
-              final ok = isLikelyValidEmail(txt);
-              return ok ? null : l.invalidEmail;
-            },
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                l.clientClassificationSectionTitle,
-                style: text.bodyLarge!.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
+        _ClientFormSection(
+            title: l.clientClassificationSectionTitle,
+            icon: Icons.badge_outlined,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      l.clientClassificationSectionTitle,
+                      style: text.bodyLarge!.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: onManageClassification,
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      textStyle: text.labelLarge,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                    ),
+                    child: Text(l.clientClassificationManageCta),
+                  ),
+                ],
               ),
-            ),
-            TextButton(
-              onPressed: onManageClassification,
-              style: TextButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                textStyle: text.labelLarge,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              ),
-              child: Text(l.clientClassificationManageCta),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ClientFormFields(
-            first: DropdownButtonFormField<String>(
-              isExpanded: true,
-              initialValue: c.entityType.text.trim().isEmpty
-                  ? null
-                  : c.entityType.text.trim(),
-              hint: Text(
-                '${l.select}...',
-                style: text.bodyLarge!.copyWith(
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.65),
-                ),
-              ),
-              style: text.bodyLarge?.copyWith(color: cs.onSurface),
-              items: [
-                ...entityOptions.map(
-                  (e) => DropdownMenuItem(
-                      value: e,
-                      child: Text(e,
-                          maxLines: 1, overflow: TextOverflow.ellipsis)),
-                ),
-              ],
-              onChanged: (v) {
-                c.entityType.text = (v ?? '').trim();
-                onClassificationChanged();
-                onFieldChanged();
-              },
-              decoration: buildInputDecoration(
-                context,
-                label: l.clientEntityTypeLabel,
-                helperText: l.clientEntityTypeHint,
-                prefixIcon: const Icon(Icons.badge_outlined),
-                isFilled: c.entityType.text.trim().isNotEmpty,
-              ),
-            ),
-            second: DropdownButtonFormField<String>(
-              isExpanded: true,
-              initialValue: c.propertyKind.text.trim().isEmpty
-                  ? null
-                  : c.propertyKind.text.trim(),
-              hint: Text(
-                '${l.select}...',
-                style: text.bodyLarge!.copyWith(
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.65),
-                ),
-              ),
-              style: text.bodyLarge?.copyWith(color: cs.onSurface),
-              items: [
-                ...propertyOptions.map(
-                  (e) => DropdownMenuItem(
-                      value: e,
-                      child: Text(e,
-                          maxLines: 1, overflow: TextOverflow.ellipsis)),
-                ),
-              ],
-              onChanged: (v) {
-                c.propertyKind.text = (v ?? '').trim();
-                onClassificationChanged();
-                onFieldChanged();
-              },
-              decoration: buildInputDecoration(
-                context,
-                label: l.clientPropertyKindLabel,
-                helperText: l.clientPropertyKindHint,
-                prefixIcon: const Icon(Icons.home_work_outlined),
-                isFilled: c.propertyKind.text.trim().isNotEmpty,
-              ),
-            )),
+              const SizedBox(height: 8),
+              ClientFormFields(
+                  first: DropdownButtonFormField<String>(
+                    isExpanded: true,
+                    initialValue: c.entityType.text.trim().isEmpty
+                        ? null
+                        : c.entityType.text.trim(),
+                    hint: Text(
+                      '${l.select}...',
+                      style: text.bodyLarge!.copyWith(
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.65),
+                      ),
+                    ),
+                    style: text.bodyLarge?.copyWith(color: cs.onSurface),
+                    items: [
+                      ...entityOptions.map(
+                        (e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(e,
+                                maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      ),
+                    ],
+                    onChanged: (v) {
+                      c.entityType.text = (v ?? '').trim();
+                      onClassificationChanged();
+                      onFieldChanged();
+                    },
+                    decoration: buildInputDecoration(
+                      context,
+                      label: l.clientEntityTypeLabel,
+                      prefixIcon: const Icon(Icons.badge_outlined),
+                      isFilled: c.entityType.text.trim().isNotEmpty,
+                    ),
+                  ),
+                  second: DropdownButtonFormField<String>(
+                    isExpanded: true,
+                    initialValue: c.propertyKind.text.trim().isEmpty
+                        ? null
+                        : c.propertyKind.text.trim(),
+                    hint: Text(
+                      '${l.select}...',
+                      style: text.bodyLarge!.copyWith(
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.65),
+                      ),
+                    ),
+                    style: text.bodyLarge?.copyWith(color: cs.onSurface),
+                    items: [
+                      ...propertyOptions.map(
+                        (e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(e,
+                                maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      ),
+                    ],
+                    onChanged: (v) {
+                      c.propertyKind.text = (v ?? '').trim();
+                      onClassificationChanged();
+                      onFieldChanged();
+                    },
+                    decoration: buildInputDecoration(
+                      context,
+                      label: l.clientPropertyKindLabel,
+                      prefixIcon: const Icon(Icons.home_work_outlined),
+                      isFilled: c.propertyKind.text.trim().isNotEmpty,
+                    ),
+                  )),
+            ]),
       ],
+    );
+  }
+}
+
+class _ClientFormSection extends StatelessWidget {
+  const _ClientFormSection(
+      {required this.title, required this.icon, required this.children});
+  final String title;
+  final IconData icon;
+  final List<Widget> children;
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: .4)),
+          borderRadius: BorderRadius.circular(10)),
+      child: ExpansionTile(
+        initiallyExpanded: true,
+        maintainState: true,
+        dense: true,
+        shape: const Border(),
+        collapsedShape: const Border(),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 10),
+        childrenPadding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
+        leading: Icon(icon, size: 18, color: cs.primary),
+        title: Text(title,
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(fontWeight: FontWeight.w600)),
+        children: children,
+      ),
     );
   }
 }

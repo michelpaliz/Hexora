@@ -902,13 +902,11 @@ class TelegramChatMessagesEmptyState extends StatelessWidget {
 }
 
 class TelegramChatEmptyState extends StatelessWidget {
-  const TelegramChatEmptyState({
-    super.key,
-    this.icon = Icons.chat_bubble_outline_rounded,
-    this.title,
-    this.message,
-  });
-
+  const TelegramChatEmptyState(
+      {super.key,
+      this.icon = Icons.chat_bubble_outline_rounded,
+      this.title,
+      this.message});
   final IconData icon;
   final String? title;
   final String? message;
@@ -917,46 +915,107 @@ class TelegramChatEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
+    final es = l.localeName.startsWith('es');
+    final isWelcome = title == null && message == null;
+    Widget feature(IconData icon, String heading, String detail, Color color) =>
+        SizedBox(
+            width: 170,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                      color: color.withValues(alpha: .09),
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Icon(icon, size: 20, color: color)),
+              const SizedBox(height: 10),
+              Text(heading,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text(detail,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelSmall
+                      ?.copyWith(color: cs.onSurfaceVariant)),
+            ]));
     return Container(
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
+        color: cs.primary.withValues(alpha: .025),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .3)),
       ),
       child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 46,
-                color: cs.onSurface.withValues(alpha: 0.24),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                title ?? l.telegramSelectChatTitle,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                message ?? l.telegramSelectChatBody,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: cs.onSurface.withValues(alpha: 0.5),
-                    ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
+          child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: cs.primary.withValues(alpha: .025)),
+              child: Container(
+                  width: 88,
+                  height: 88,
+                  decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: cs.primary.withValues(alpha: .08)),
+                  child: Icon(isWelcome ? Icons.telegram : icon,
+                      size: 44, color: cs.primary))),
+          const SizedBox(height: 26),
+          Text(title ?? l.telegramSelectChatTitle,
+              textAlign: TextAlign.center,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: Text(message ?? l.telegramSelectChatBody,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: cs.onSurfaceVariant))),
+          if (isWelcome) ...[
+            const SizedBox(height: 32),
+            Wrap(
+                spacing: 16,
+                runSpacing: 20,
+                alignment: WrapAlignment.center,
+                children: [
+                  feature(
+                      Icons.chat_bubble_outline,
+                      es ? 'Conversaciones' : 'Conversations',
+                      es
+                          ? 'Lee y responde desde Hexora'
+                          : 'Read and reply from Hexora',
+                      cs.primary),
+                  feature(
+                      Icons.history,
+                      es ? 'Historial de mensajes' : 'Message history',
+                      es
+                          ? 'Consulta tus conversaciones'
+                          : 'Browse your conversations',
+                      Colors.deepPurple),
+                  feature(
+                      Icons.file_download_outlined,
+                      es ? 'Exportar conversaciones' : 'Export conversations',
+                      es
+                          ? 'Guarda los registros que necesites'
+                          : 'Save the records you need',
+                      Colors.teal),
+                ]),
+          ],
+        ]),
+      )),
     );
   }
 }
-
 // ─── Chat header ─────────────────────────────
 
 class _TelegramChatHeader extends StatelessWidget {

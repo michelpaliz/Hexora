@@ -1,3 +1,4 @@
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:hexora/models/user/user.dart';
@@ -53,7 +54,7 @@ class HomeLeftNav extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                width: 240,
+                width: NavigationTokens.sidebarWidth,
                 child: _HomeSidebarContent(
                   user: user,
                   activeNavRoute: activeNavRoute,

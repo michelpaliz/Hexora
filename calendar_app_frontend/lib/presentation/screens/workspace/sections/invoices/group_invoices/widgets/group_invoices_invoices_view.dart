@@ -1,3 +1,7 @@
+import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
+import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -104,58 +108,23 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
-                      child: Container(
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest
-                              .withValues(alpha: 0.45),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: cs.outlineVariant.withValues(alpha: 0.18),
-                          ),
-                        ),
-                        padding: const EdgeInsets.all(3),
-                        child: TabBar(
-                          dividerColor: Colors.transparent,
-                          splashFactory: NoSplash.splashFactory,
-                          overlayColor:
-                              const WidgetStatePropertyAll(Colors.transparent),
-                          indicatorSize: TabBarIndicatorSize.tab,
-                          indicator: BoxDecoration(
-                            color: cs.primary,
-                            borderRadius: BorderRadius.circular(9),
-                            boxShadow: [
-                              BoxShadow(
-                                color: cs.primary.withValues(alpha: 0.28),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          labelColor: cs.onPrimary,
-                          unselectedLabelColor: cs.onSurfaceVariant,
-                          labelStyle:
-                              t.bodySmall.copyWith(fontWeight: FontWeight.w800),
-                          unselectedLabelStyle:
-                              t.bodySmall.copyWith(fontWeight: FontWeight.w600),
-                          indicatorPadding: EdgeInsets.zero,
-                          padding: EdgeInsets.zero,
-                          tabs: [
-                            Tab(
-                              text: l.groupInvoicesTabDrafts(
-                                widget.drafts.length,
-                              ),
+                      child: HexoraSectionTabs(
+                        compact: true,
+                        tabs: [
+                          Tab(
+                            text: l.groupInvoicesTabDrafts(
+                              widget.drafts.length,
                             ),
-                            Tab(
-                              text: l.groupInvoicesTabInvoices(
-                                widget.invoices.length,
-                              ),
+                          ),
+                          Tab(
+                            text: l.groupInvoicesTabInvoices(
+                              widget.invoices.length,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Expanded(
                       child: TabBarView(
                         children: [

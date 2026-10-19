@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/navigation_choice.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
 
@@ -38,42 +39,11 @@ class HomeSectionNav extends StatelessWidget {
     final bg = isDark ? AppDarkColors.background : AppColors.background;
     final border = Colors.black.withValues(alpha: isDark ? 0.25 : 0.1);
     final pillColor = isDark ? AppDarkColors.surface : AppColors.surface;
-    final activeColor = isDark ? AppDarkColors.primary : AppColors.primary;
-    final onSurface =
-        isDark ? AppDarkColors.textPrimary : AppColors.textPrimary;
-
-    final chips = [
-      for (final item in items)
-        Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: axis == Axis.horizontal ? chipSpacing / 2 : 0,
-            vertical: axis == Axis.vertical ? chipSpacing / 2 : 0,
-          ),
-          child: ChoiceChip(
-            label: Text(item.label),
-            selected: selectedId == item.id,
-            onSelected: (_) => onSelect(item.id),
-            selectedColor: activeColor.withValues(alpha: 0.14),
-            labelStyle: TextStyle(
-              color: selectedId == item.id
-                  ? activeColor
-                  : onSurface.withValues(alpha: 0.85),
-              fontWeight:
-                  selectedId == item.id ? FontWeight.w700 : FontWeight.w500,
-            ),
-            backgroundColor: Colors.transparent,
-            shape: StadiumBorder(
-              side: BorderSide(
-                color: selectedId == item.id
-                    ? activeColor.withValues(alpha: 0.45)
-                    : border,
-              ),
-            ),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-        ),
-    ];
-
+    final chips = [for (final item in items) Padding(
+      padding: EdgeInsets.symmetric(horizontal: axis == Axis.horizontal ? chipSpacing / 2 : 0,
+        vertical: axis == Axis.vertical ? chipSpacing / 2 : 0),
+      child: NavigationChoice(label: item.label, selected: selectedId == item.id,
+        onTap: () => onSelect(item.id)))];
     final content = axis == Axis.horizontal
         ? SingleChildScrollView(
             scrollDirection: Axis.horizontal,

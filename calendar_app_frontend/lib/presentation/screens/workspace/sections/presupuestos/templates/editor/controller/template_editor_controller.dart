@@ -9,6 +9,22 @@ class _PresupuestoTemplateEditorScreenState
   final _title = TextEditingController();
   final _subtitle = TextEditingController();
   final _intro = TextEditingController();
+  final _highSeasonFrequency = TextEditingController();
+  final _lowSeasonFrequency = TextEditingController();
+  Set<int> _highSeasonMonths = {6, 7, 8, 9};
+  bool _seasonEdited = false;
+  bool _seasonMonthsEdited = false;
+  bool _serviceChosen = false;
+  bool _serviceSelectionError = false;
+
+  void _updateSeasons(VoidCallback change) {
+    setState(() {
+      _seasonEdited = true;
+      change();
+      _syncSeasonVariables();
+    });
+  }
+
   final _previewHorizontalScrollController = ScrollController();
   final Map<String, TextEditingController> _variables = {};
   final List<_TemplateSectionState> _sections = [];
@@ -43,6 +59,7 @@ class _PresupuestoTemplateEditorScreenState
   final ClientsApi _clientsApi = ClientsApi();
   String? _selectedClientId;
   String? _selectedClientName;
+  bool _customClientName = false;
 
   @override
   void initState() {
@@ -63,6 +80,8 @@ class _PresupuestoTemplateEditorScreenState
     _title.dispose();
     _subtitle.dispose();
     _intro.dispose();
+    _highSeasonFrequency.dispose();
+    _lowSeasonFrequency.dispose();
     _previewHorizontalScrollController.dispose();
     for (final controller in _variables.values) {
       controller.dispose();
@@ -101,6 +120,8 @@ class _PresupuestoTemplateEditorScreenState
           _selectedClientName = _selectedClientId == null
               ? null
               : _variables['CLIENTE']?.text.trim();
+          _customClientName = _selectedClientId == null &&
+              (_variables['CLIENTE']?.text.trim().isNotEmpty ?? false);
           _variableSchemaKey = 'document:$presupuestoId';
           return;
         }
@@ -324,6 +345,7 @@ class _PresupuestoTemplateEditorScreenState
     Map<String, String> preservedVariables = const {},
   }) {
     _sourceContent = Map<String, dynamic>.from(source);
+    _hydrateSeasons(source);
     final cleaningTemplate = _isCleaningTemplateSource(source);
     final sourceName = _string(source['name']);
     final sourceTitle = _string(source['title']);
@@ -351,14 +373,30 @@ class _PresupuestoTemplateEditorScreenState
       ..clear()
       ..addAll(_readVariableFieldDefinitions(_variableFieldsSource));
     final variableFieldValues = _readVariableFieldValues(_variableFieldsSource);
+    for (final key in {..._seasonVariableKeys, 'SERVICIO_MANTENIMIENTO'}) {
+      if (variables.containsKey(key) ||
+          (key == 'SERVICIO_MANTENIMIENTO' && _hasSeasons)) {
+        _variableFieldDefinitions.putIfAbsent(
+            key, () => _readVariableFieldDefinitions([key])[key]!);
+      }
+    }
+    _serviceChosen = false;
+    _serviceSelectionError = false;
     for (final key in _variableFieldDefinitions.keys) {
       _variables[key] = TextEditingController(
         text: preservedVariables[key] ??
+            (key == 'SERVICIO_MANTENIMIENTO'
+                ? _string(variables[key])
+                : null) ??
             variableFieldValues[key] ??
             _string(variables[key]) ??
             '',
       );
     }
+    if (_documentFlow.presupuestoId == null && !widget.templateOnly) {
+      _variables['SERVICIO_MANTENIMIENTO']?.clear();
+    }
+    _readSeasonFrequencies();
     _recalculateVariableFields();
 
     for (final section in _sections) {
@@ -367,6 +405,33 @@ class _PresupuestoTemplateEditorScreenState
     _sections
       ..clear()
       ..addAll(_sectionStates(source['sections']));
+    if (_sections.any((section) => section.generatedFrequency)) {
+      for (final key in SeasonalFrequency.keys) {
+        _variableFieldDefinitions.putIfAbsent(
+            key, () => _readVariableFieldDefinitions([key])[key]!);
+        _variables.putIfAbsent(key,
+            () => TextEditingController(text: _string(variables[key]) ?? ''));
+      }
+      if (_documentFlow.presupuestoId == null && !widget.templateOnly) {
+        _variables['SERVICIO_MANTENIMIENTO']!.clear();
+        if (_variables['MESES_TEMPORADA_ALTA']!.text.trim().isEmpty) {
+          _variables['MESES_TEMPORADA_ALTA']!.text =
+              _seasonMonthsText(_highSeasonMonths);
+        }
+      }
+      final high = SeasonalFrequency.monthIndexes(
+          _variables['MESES_TEMPORADA_ALTA']!.text);
+      if (high != null &&
+          high.isNotEmpty &&
+          _variables['MESES_TEMPORADA_BAJA']!.text.trim().isEmpty) {
+        _variables['MESES_TEMPORADA_BAJA']!.text = SeasonalFrequency.monthList(
+            List.generate(12, (i) => i).where((i) => !high.contains(i)));
+      }
+      _readSeasonFrequencies();
+    }
+    if (_documentFlow.presupuestoId == null && !widget.templateOnly) {
+      _bindDefaultServiceDescriptions();
+    }
 
     for (final image in _images) {
       image.dispose();
@@ -424,7 +489,15 @@ class _PresupuestoTemplateEditorScreenState
       if (key.isEmpty) return;
       final definition = _asMap(rawDefinition) ?? const {};
       final label = _variableLabel(key, _string(definition['label']));
-      final type = (_string(definition['type']) ?? '').toLowerCase();
+      final type = (_string(definition['type']) ??
+              (key.contains('PRECIO') ||
+                      key.contains('IMPORTE') ||
+                      key.contains('TOTAL')
+                  ? 'currency'
+                  : const {'ZONAS_COMUNES', 'PRODUCTOS_INCLUIDOS'}.contains(key)
+                      ? 'multiline'
+                      : 'text'))
+          .toLowerCase();
       final calculationMap = _asMap(definition['calculation']) ??
           (definition['operation'] != null ? definition : null);
       final calculation = calculationMap == null
@@ -432,20 +505,39 @@ class _PresupuestoTemplateEditorScreenState
           : _VariableCalculation.fromMap(calculationMap);
       final isAutomaticDate = const {'FECHA', 'DIA', 'MES', 'ANO', 'AÑO'}
           .contains(key.toUpperCase());
+      // A monthly amount without a formula must be entered and saved manually.
+      final isManualMonthlyTotal =
+          key == 'TOTAL_MENSUAL' && calculation == null;
       definitions[key] = _TemplateVariableField(
         key: key,
-        label: '$label [$key]',
+        label: label,
+        group: _string(definition['group']) ??
+            (type == 'currency'
+                ? 'pricing'
+                : key.contains('DURACION') || key.contains('PREAVISO')
+                    ? 'contract'
+                    : 'services'),
+        inputType: type,
+        isRequired: definition['required'] == true,
         hint: _string(definition['hint']) ??
             _string(definition['placeholder']) ??
             _variableHint(key),
         icon: _variableIcon(key),
-        keyboardType: key == 'ANO' || type == 'year'
-            ? TextInputType.number
-            : key == 'FECHA' || type == 'date'
-                ? TextInputType.datetime
-                : TextInputType.text,
-        maxLines: type.contains('textarea') ? 3 : 1,
-        isAutomatic: definition['isAutomatic'] == true || isAutomaticDate,
+        keyboardType: type == 'currency' || type == 'decimal'
+            ? const TextInputType.numberWithOptions(decimal: true)
+            : key == 'ANO' ||
+                    type == 'year' ||
+                    type == 'number' ||
+                    type == 'integer'
+                ? TextInputType.number
+                : key == 'FECHA' || type == 'date'
+                    ? TextInputType.datetime
+                    : TextInputType.text,
+        maxLines: type.contains('textarea') || type == 'multiline' ? 3 : 1,
+        isAutomatic: ((definition['isAutomatic'] == true ||
+                    definition['automatic'] == true) &&
+                !isManualMonthlyTotal) ||
+            isAutomaticDate,
         isUsedInTemplate: definition['isUsedInTemplate'] != false,
         readOnly: definition['readOnly'] == true ||
             isAutomaticDate ||
@@ -505,7 +597,7 @@ class _PresupuestoTemplateEditorScreenState
     return definition['value'] ??
         definition['resolvedValue'] ??
         definition['automaticValue'] ??
-        '';
+        definition['defaultValue'];
   }
 
   String _variableLabel(String key, String? backendLabel) {
@@ -514,6 +606,8 @@ class _PresupuestoTemplateEditorScreenState
       'FECHA': 'Fecha',
       'MES': 'Mes',
       'ANO': 'Año',
+      'AÑO': 'Año',
+      'DIA': 'Día',
       'FRECUENCIA_MENSUAL': 'Frecuencia mensual',
       'PRECIO_VISITA': 'Precio por visita',
       'TOTAL_MENSUAL': 'Total mensual',
@@ -524,7 +618,10 @@ class _PresupuestoTemplateEditorScreenState
       'PRECIO_PISCINA_PRIVADA': 'Precio piscina privada',
       'ZONAS_COMUNES': 'Zonas comunes',
       'PRODUCTOS_INCLUIDOS': 'Productos incluidos',
-      'DIAS_TEMPORADA_ALTA': 'Días en temporada alta',
+      'MESES_TEMPORADA_ALTA': 'Meses de temporada alta',
+      'SERVICIO_MANTENIMIENTO': 'Servicio de mantenimiento',
+      'MESES_TEMPORADA_BAJA': 'Meses de temporada baja',
+      'DIAS_TEMPORADA_ALTA': 'Frecuencia en temporada alta',
       'FRECUENCIA_TEMPORADA_BAJA': 'Frecuencia en temporada baja',
       'IMPORTE_MENSUAL': 'Importe mensual',
       'PREAVISO': 'Preaviso',
@@ -537,11 +634,20 @@ class _PresupuestoTemplateEditorScreenState
         candidate != candidate.toUpperCase();
     return backendIsReadable
         ? candidate
-        : localized[key] ?? key.replaceAll('_', ' ');
+        : localized[key] ??
+            '${key[0].toUpperCase()}${key.substring(1).replaceAll('_', ' ').toLowerCase()}';
   }
 
   String _variableHint(String key) {
     const hints = <String, String>{
+      'ZONAS_COMUNES': 'Ej. portal, escaleras y jardines',
+      'PRODUCTOS_INCLUIDOS': 'Ej. productos de limpieza y tratamiento del agua',
+      'MESES_TEMPORADA_ALTA': 'Ej. Junio, julio y agosto',
+      'SERVICIO_MANTENIMIENTO': 'Ej. mantenimiento del jardín y la piscina',
+      'MESES_TEMPORADA_BAJA': 'Ej. Octubre a mayo',
+      'DIAS_TEMPORADA_ALTA': 'Ej. 4 visitas por mes',
+      'FRECUENCIA_TEMPORADA_BAJA': 'Ej. una visita por semana',
+      'PREAVISO': 'Ej. 30 días',
       'CLIENTE': 'Ej. Comunidad Las Alondras',
       'FECHA': 'Ej. 31/07/2026',
       'MES': 'Ej. julio',
@@ -553,7 +659,10 @@ class _PresupuestoTemplateEditorScreenState
       'FRECUENCIA_LIMPIEZA_GARAJE': 'Ej. una vez al año',
       'PRECIO_LIMPIEZA_GARAJE': 'Ej. 650 €',
     };
-    return hints[key] ?? 'Valor para [$key]';
+    return hints[key] ??
+        (key.contains('PRECIO') || key.contains('IMPORTE')
+            ? 'Ej. 25,00'
+            : 'Escribe la información para el documento');
   }
 
   IconData _variableIcon(String key) {
@@ -579,6 +688,7 @@ class _PresupuestoTemplateEditorScreenState
       states.add(_TemplateSectionState.fromMap(row, fallbackOrder: i + 1));
     }
     states.sort((a, b) => a.order.compareTo(b.order));
+    _enforcePinnedSectionOrder(states);
     return states;
   }
 
@@ -598,7 +708,7 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   Future<void> _save({bool silent = false}) async {
-    if (_saving) return;
+    if (_saving || !_validateServiceSelection()) return;
     setState(() => _saving = true);
     try {
       if (widget.templateOnly) {
@@ -724,6 +834,7 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   Future<void> _previewPdf() async {
+    if (!_validateServiceSelection()) return;
     if (_previewing) return;
     if (_mustSelectDefaultTemplate) {
       showErrorSnack(context, 'Selecciona un tipo de presupuesto primero.');
@@ -921,6 +1032,7 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   Future<void> _downloadPdf() async {
+    if (!_validateServiceSelection()) return;
     if (_downloading) return;
     setState(() => _downloading = true);
     try {
@@ -1068,12 +1180,17 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   Map<String, dynamic> _payload({bool includeTemplateId = true}) {
+    _syncSeasonVariables();
+    // A section renamed to "Anexo…" / "Condiciones de pago…" is pinned too.
+    _enforcePinnedSectionOrder();
     for (var i = 0; i < _sections.length; i++) {
       _sections[i].order = i + 1;
     }
     final scheduleTotal = _scheduleTotal();
     return {
       ..._sourceContent,
+      if (_hasSeasons && _seasonEdited)
+        'seasonConfiguration': _seasonConfiguration(),
       'name': _name.text.trim().isEmpty ? 'Presupuesto' : _name.text.trim(),
       if (includeTemplateId && (_templateId ?? '').trim().isNotEmpty)
         'templateId': _templateId!.trim(),
@@ -1113,12 +1230,20 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   void _applyLoadedDocumentVariables(Map<String, dynamic> payload) {
+    final previousMaintenance = <String, String>{
+      for (final key in {..._seasonVariableKeys, 'SERVICIO_MANTENIMIENTO'})
+        if (_variables.containsKey(key)) key: _variables[key]!.text,
+    };
     final rawVariables = payload['variables'];
     final rawFields = payload['variableFields'] ??
         (payload['variables'] is List ? payload['variables'] : null);
     final definitions = _readVariableFieldDefinitions(rawVariables)
       ..addAll(_readVariableFieldDefinitions(rawFields));
     final fieldValues = _readVariableFieldValues(rawFields);
+    for (final key in previousMaintenance.keys) {
+      definitions.putIfAbsent(
+          key, () => _readVariableFieldDefinitions([key])[key]!);
+    }
     final explicitValues = rawVariables is Map
         ? <String, String>{
             for (final entry in rawVariables.entries)
@@ -1156,9 +1281,16 @@ class _PresupuestoTemplateEditorScreenState
     };
     for (final key in definitions.keys) {
       _variables[key] = TextEditingController(
-        text: fieldValues[key] ?? _string(explicitValues[key]) ?? '',
+        text: (previousMaintenance.containsKey(key)
+                ? explicitValues[key]
+                : null) ??
+            fieldValues[key] ??
+            _string(explicitValues[key]) ??
+            previousMaintenance[key] ??
+            '',
       );
     }
+    _readSeasonFrequencies();
     _recalculateVariableFields();
 
     final values = <String, String>{
@@ -1185,7 +1317,7 @@ class _PresupuestoTemplateEditorScreenState
       final definition = _variableFieldDefinitions[entry.key];
       final key = entry.key.toUpperCase();
       if (definition?.readOnly == true ||
-          definition?.isAutomatic == true ||
+          (definition?.isAutomatic == true && key != 'CLIENTE') ||
           const {'FECHA', 'DIA', 'MES', 'ANO', 'AÑO'}.contains(key)) {
         continue;
       }
@@ -1210,9 +1342,35 @@ class _PresupuestoTemplateEditorScreenState
     return 'presupuesto-$number-$suffix.pdf';
   }
 
+  /// Index of the first pinned section, i.e. how far free sections may move.
+  int get _firstPinnedSectionIndex {
+    final i = _sections.indexWhere((s) => s.isPinned);
+    return i < 0 ? _sections.length : i;
+  }
+
+  /// Keeps free sections in their current order, followed by pinned sections
+  /// (payment conditions, then annex). Stable for everything else.
+  void _enforcePinnedSectionOrder([List<_TemplateSectionState>? list]) {
+    final target = list ?? _sections;
+    final free = target.where((s) => !s.isPinned).toList();
+    final pinned = target.where((s) => s.isPinned).toList();
+    final order = {for (var i = 0; i < pinned.length; i++) pinned[i]: i};
+    pinned.sort((a, b) {
+      final byRank = a.pinnedRank.compareTo(b.pinnedRank);
+      return byRank != 0 ? byRank : order[a]!.compareTo(order[b]!);
+    });
+    target
+      ..clear()
+      ..addAll(free)
+      ..addAll(pinned);
+  }
+
   void _moveSection(int index, int delta) {
     final target = index + delta;
     if (target < 0 || target >= _sections.length) return;
+    if (_sections[index].isPinned || target >= _firstPinnedSectionIndex) {
+      return;
+    }
     setState(() {
       final item = _sections.removeAt(index);
       _sections.insert(target, item);
@@ -1229,6 +1387,15 @@ class _PresupuestoTemplateEditorScreenState
       if (_variables.containsKey(key)) return key;
     }
     return null;
+  }
+
+  List<String> _generatedFrequencyItems() => SeasonalFrequency.render({
+        for (final entry in _variables.entries) entry.key: entry.value.text,
+      });
+
+  void _editFrequencyControls() {
+    final index = _editorSteps().indexWhere((step) => step.title == 'Datos');
+    if (index >= 0) setState(() => _activeStep = index);
   }
 
   String _primaryPriceValue() {
@@ -1300,7 +1467,9 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   String _variableDisplayLabel(_TemplateVariableField field) =>
-      field.label.replaceAll('[${field.key}]', '').trim();
+      const ['TOTAL_MENSUAL', 'IMPORTE_MENSUAL'].contains(field.key)
+          ? 'Importe mensual'
+          : field.label.replaceAll('[${field.key}]', '').trim();
 
   Future<List<GroupClient>> _searchActiveClients(String search) {
     final override = widget.clientSearch;
@@ -1322,6 +1491,7 @@ class _PresupuestoTemplateEditorScreenState
         'items': <String>[],
         'enabled': true,
       }));
+      _enforcePinnedSectionOrder();
     });
   }
 
@@ -1612,7 +1782,10 @@ class _PresupuestoTemplateEditorScreenState
       'key': newKey,
       'title': title.isEmpty ? 'Seccion (copia)' : '$title (copia)',
     });
-    setState(() => _sections.insert(index + 1, duplicated));
+    setState(() {
+      _sections.insert(index + 1, duplicated);
+      _enforcePinnedSectionOrder();
+    });
   }
 
   // Keep State.setState calls on the existing lifecycle owner.

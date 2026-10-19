@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import '../../statements_controller.dart';
@@ -62,17 +63,14 @@ class StatementsAllDataTable extends StatelessWidget {
   final VoidCallback onInvoiceSortTap;
   final int invoiceSortMode;
 
-  bool _isCompact(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < 800;
-
-  bool _isTablet(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    return width >= 800 && width < 1500;
-  }
+  double _rowExtent(BuildContext context) =>
+      HexoraTableTokens.rowMinHeight +
+      HexoraTableTokens.gap +
+      math.max(0, MediaQuery.textScalerOf(context).scale(13) - 13) * 3;
 
   double _preferredHeight(BuildContext context) {
-    const headerAndGapHeight = 70.0;
-    const rowExtent = 64.0;
+    const headerAndGapHeight = 52.0;
+    final rowExtent = _rowExtent(context);
     final contentHeight = headerAndGapHeight + (entries.length * rowExtent);
     final viewportHeight = (MediaQuery.sizeOf(context).height * 0.68)
         .clamp(360.0, 720.0)
@@ -83,8 +81,6 @@ class StatementsAllDataTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final isCompact = _isCompact(context);
-    final isTablet = _isTablet(context);
 
     final selectableVisible = entries.where((entry) {
       final id = (entry['_id'] ?? entry['id'])?.toString();
@@ -97,13 +93,21 @@ class StatementsAllDataTable extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Use the space left after sidebars, not the full window width.
+        // Keep enough room for the compact fixed columns and description.
+        final availableWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final tableWidth = math.max(800.0, availableWidth);
+        final isCompact = tableWidth < 1100;
+        final isTablet = tableWidth >= 1100 && tableWidth < 1500;
         final tableHeight = constraints.maxHeight.isFinite
             ? constraints.maxHeight
             : _preferredHeight(context);
 
         final list = ListView.builder(
           itemCount: entries.length,
-          itemExtent: 64,
+          itemExtent: _rowExtent(context),
           primary: false,
           addAutomaticKeepAlives: false,
           addRepaintBoundaries: true,
@@ -114,9 +118,7 @@ class StatementsAllDataTable extends StatelessWidget {
             final entryId = (entry['_id'] ?? entry['id'])?.toString() ?? '';
             return Padding(
               key: ValueKey(entryId),
-              padding: index < entries.length - 1
-                  ? const EdgeInsets.only(bottom: 5)
-                  : EdgeInsets.zero,
+              padding: EdgeInsets.zero,
               child: StatementsAllDataTableRow(
                 entry: entry,
                 index: index,
@@ -137,8 +139,13 @@ class StatementsAllDataTable extends StatelessWidget {
           },
         );
 
-        return SizedBox(
+        final table = Container(
           height: tableHeight,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: tableTheme.border),
+          ),
           child: Column(
             children: [
               StatementsAllDataTableHeader(
@@ -161,10 +168,13 @@ class StatementsAllDataTable extends StatelessWidget {
                 onInvoiceSortTap: onInvoiceSortTap,
                 invoiceSortMode: invoiceSortMode,
               ),
-              const SizedBox(height: 6),
               Expanded(child: list),
             ],
           ),
+        );
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(width: tableWidth, child: table),
         );
       },
     );

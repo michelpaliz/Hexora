@@ -1,3 +1,5 @@
+import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -92,33 +94,12 @@ class DeliveryStatusBadge extends StatelessWidget {
     final child = compact
         ? Padding(
             padding: const EdgeInsets.all(2),
-            child: Icon(icon, size: 15, color: color),
+            child: Icon(icon, size: 14, color: color),
           )
-        : Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: color.withValues(alpha: 0.30)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 13, color: color),
-                const SizedBox(width: 5),
-                Flexible(
-                  child: Text(
-                    label,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: color,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                ),
-              ],
-            ),
-          );
-
+        : HexoraStatusBadge(
+            label: label,
+            color: color,
+            leading: Icon(icon, size: HexoraTypography.label, color: color));
     return Semantics(
       label: tooltip,
       child: Tooltip(message: tooltip, child: child),

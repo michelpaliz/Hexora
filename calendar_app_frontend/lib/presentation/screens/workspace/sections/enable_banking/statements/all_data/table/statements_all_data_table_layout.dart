@@ -28,7 +28,7 @@ class StatementsAllDataTableLayout {
   static const double clientWidth = 280.0;
   static const double notesWidth = 160.0;
   static const double invoiceWidth = 110.0;
-  static const double actionsWidth = 188.0;
-  // Two 28px actions, two 4px gaps, and the 48px overflow menu.
-  static const double compactActionsWidth = 112.0;
+  static const double actionsWidth = 256.0;
+  // Reserve accessible targets, including the overflow menu.
+  static const double compactActionsWidth = 152.0;
 }

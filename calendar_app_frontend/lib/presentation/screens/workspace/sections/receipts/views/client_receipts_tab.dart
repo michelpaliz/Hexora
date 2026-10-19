@@ -115,7 +115,7 @@ class _ClientReceiptsTabState extends State<ClientReceiptsTab> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(_error!, style: t.bodySmall.copyWith(color: cs.error)),
-            const SizedBox(height: 8),
+            const SizedBox.shrink(),
             TextButton(onPressed: _load, child: Text(l.tryAgain)),
           ],
         ),
@@ -137,7 +137,7 @@ class _ClientReceiptsTabState extends State<ClientReceiptsTab> {
     return ListView.separated(
       padding: const EdgeInsets.all(12),
       itemCount: all.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, __) => const SizedBox.shrink(),
       itemBuilder: (_, i) => ReceiptListItem(
         receipt: all[i],
         client: widget.client,

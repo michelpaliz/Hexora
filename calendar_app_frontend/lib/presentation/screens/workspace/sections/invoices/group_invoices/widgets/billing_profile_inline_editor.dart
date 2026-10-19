@@ -495,7 +495,7 @@ class _BillingProfileInlineEditorState
         isLight ? cs.primary.withValues(alpha: 0.035) : cs.primaryContainer;
 
     final inputBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(8),
       borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.45)),
     );
 
@@ -508,13 +508,13 @@ class _BillingProfileInlineEditorState
       return InputDecoration(
         labelText: label,
         helperText: helper,
-        prefixIcon: icon == null ? null : Icon(icon),
+        prefixIcon: icon == null ? null : Icon(icon, size: 16),
         suffixIcon: suffix,
         isDense: true,
         filled: true,
         fillColor: fieldColor,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         enabledBorder: inputBorder,
         focusedBorder: inputBorder.copyWith(
           borderSide: BorderSide(color: cs.primary, width: 1.5),
@@ -539,7 +539,7 @@ class _BillingProfileInlineEditorState
         enabled: enabled,
         keyboardType: keyboardType,
         maxLines: maxLines,
-        style: style ?? t.bodyMedium,
+        style: style ?? t.bodySmall,
         decoration: dec(
           label: label,
           icon: icon,
@@ -582,7 +582,8 @@ class _BillingProfileInlineEditorState
               children: [
                 Text(
                   title,
-                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
+                  style: t.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w700, color: cs.onSurface),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
@@ -610,28 +611,21 @@ class _BillingProfileInlineEditorState
             color: featured
                 ? subtleTint
                 : cardColor.withValues(alpha: isLight ? 1 : 0.16),
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: featured
-                  ? cs.primary.withValues(alpha: 0.34)
+                  ? cs.primary.withValues(alpha: 0.16)
                   : cs.outlineVariant.withValues(alpha: 0.38),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isLight ? 0.045 : 0.16),
-                blurRadius: isLight ? 18 : 22,
-                offset: const Offset(0, 8),
-              ),
-            ],
           ),
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(12),
           child: child,
         ),
       );
     }
 
-    final codeStyle = t.bodyMedium.copyWith(
-      fontFamily: 'monospace',
+    final codeStyle = t.bodySmall.copyWith(
+      fontFamily: t.bodySmall.fontFamily,
       letterSpacing: 0.2,
       fontWeight: FontWeight.w800,
     );
@@ -665,7 +659,7 @@ class _BillingProfileInlineEditorState
               ? cs.errorContainer.withValues(alpha: isLight ? 0.28 : 0.16)
               : cs.surfaceContainerHighest
                   .withValues(alpha: isLight ? 0.5 : 0.22),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: missing
                 ? cs.error.withValues(alpha: 0.22)
@@ -700,7 +694,7 @@ class _BillingProfileInlineEditorState
                     overflow: TextOverflow.ellipsis,
                     style: t.bodySmall.copyWith(
                       color: missing ? cs.error : cs.onSurface,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -717,12 +711,12 @@ class _BillingProfileInlineEditorState
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: complete
-              ? cs.tertiaryContainer.withValues(alpha: 0.55)
+              ? Colors.green.withValues(alpha: 0.10)
               : cs.primaryContainer.withValues(alpha: 0.48),
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color:
-                (complete ? cs.tertiary : cs.primary).withValues(alpha: 0.22),
+                (complete ? Colors.green : cs.primary).withValues(alpha: 0.22),
           ),
         ),
         child: Row(
@@ -731,14 +725,14 @@ class _BillingProfileInlineEditorState
             Icon(
               complete ? Icons.verified_rounded : Icons.pending_actions_rounded,
               size: 16,
-              color: complete ? cs.tertiary : cs.primary,
+              color: complete ? Colors.green.shade700 : cs.primary,
             ),
             const SizedBox(width: 6),
             Text(
               '$_completionPercent% completado',
               style: t.bodySmall.copyWith(
-                color: complete ? cs.onTertiaryContainer : cs.primary,
-                fontWeight: FontWeight.w900,
+                color: complete ? Colors.green.shade700 : cs.primary,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
@@ -779,8 +773,8 @@ class _BillingProfileInlineEditorState
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: t.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -915,7 +909,7 @@ class _BillingProfileInlineEditorState
                             : Stack(
                                 fit: StackFit.expand,
                                 children: [
-                                  CustomPaint(painter: _CheckerPainter()),
+                                  ColoredBox(color: subtleTint),
                                   Padding(
                                     padding: const EdgeInsets.all(12),
                                     child: Image.network(
@@ -970,7 +964,7 @@ class _BillingProfileInlineEditorState
                     Row(
                       children: [
                         Expanded(
-                          child: FilledButton.tonalIcon(
+                          child: FilledButton.icon(
                             onPressed: _logoBusy ? null : _pickLogo,
                             icon: _logoBusy
                                 ? const SizedBox(
@@ -985,7 +979,10 @@ class _BillingProfileInlineEditorState
                                   ),
                             label: Text(l.invoiceLogoUploadCta),
                             style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 13),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
                             ),
                           ),
                         ),
@@ -1049,6 +1046,7 @@ class _BillingProfileInlineEditorState
             const SizedBox(height: 10),
             textField(
               controller: _legalName,
+              suffix: copySuffix(_legalName),
               label: l.billingLegalName,
               icon: Icons.badge_outlined,
               validator: (v) =>
@@ -1091,25 +1089,34 @@ class _BillingProfileInlineEditorState
               },
             ),
             const SizedBox(height: 10),
-            textField(
-              controller: _website,
-              label: l.billingWebsite,
-              icon: Icons.language_outlined,
-              keyboardType: TextInputType.url,
-              suffix: copySuffix(_website),
-              validator: (v) {
-                final txt = (v ?? '').trim();
-                if (txt.isEmpty) return null;
-                final uri = Uri.tryParse(txt);
-                final ok =
-                    (uri != null && (uri.hasScheme || uri.host.isNotEmpty)) ||
-                        txt.contains('.');
-                return ok ? null : l.invalidUrl;
-              },
-            ),
           ],
         ),
       );
+    }
+
+    Widget websiteSection() {
+      return sectionCard(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        sectionHeader(l.billingWebsite, icon: Icons.language_outlined),
+        const SizedBox(height: 10),
+        textField(
+          controller: _website,
+          label: l.billingWebsite,
+          icon: Icons.language_outlined,
+          keyboardType: TextInputType.url,
+          suffix: copySuffix(_website),
+          validator: (v) {
+            final txt = (v ?? '').trim();
+            if (txt.isEmpty) return null;
+            final uri = Uri.tryParse(txt);
+            final ok =
+                (uri != null && (uri.hasScheme || uri.host.isNotEmpty)) ||
+                    txt.contains('.');
+            return ok ? null : l.invalidUrl;
+          },
+        ),
+      ]));
     }
 
     Widget addressSection(bool wide) {
@@ -1315,218 +1322,149 @@ class _BillingProfileInlineEditorState
     final formContent = Form(
       key: _formKey,
       autovalidateMode: AutovalidateMode.onUserInteraction,
-      child: Stack(
+      child: Column(
         children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final wide = constraints.maxWidth >= 980;
-              return SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    companySummaryCard(wide),
-                    const SizedBox(height: 12),
-                    if (wide)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              children: [
-                                companySection(),
-                                const SizedBox(height: 12),
-                                contactSection(),
-                                const SizedBox(height: 12),
-                                addressSection(wide),
-                              ],
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = constraints.maxWidth >= 980;
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      companySummaryCard(wide),
+                      const SizedBox(height: 12),
+                      if (wide)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  companySection(),
+                                  const SizedBox(height: 12),
+                                  contactSection(),
+                                  const SizedBox(height: 12),
+                                  addressSection(wide),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              children: [
-                                logoSection(),
-                                const SizedBox(height: 12),
-                                bankingSection(),
-                                const SizedBox(height: 12),
-                                taxSettingsSection(),
-                                const SizedBox(height: 12),
-                                regionalSettingsSection(),
-                              ],
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  logoSection(),
+                                  const SizedBox(height: 12),
+                                  websiteSection(),
+                                  const SizedBox(height: 12),
+                                  bankingSection(),
+                                  const SizedBox(height: 12),
+                                  taxSettingsSection(),
+                                  const SizedBox(height: 12),
+                                  regionalSettingsSection(),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      )
-                    else
-                      Column(
-                        children: [
-                          companySection(),
-                          const SizedBox(height: 12),
-                          contactSection(),
-                          const SizedBox(height: 12),
-                          addressSection(false),
-                          const SizedBox(height: 12),
-                          logoSection(),
-                          const SizedBox(height: 12),
-                          bankingSection(),
-                          const SizedBox(height: 12),
-                          taxSettingsSection(),
-                          const SizedBox(height: 12),
-                          regionalSettingsSection(),
-                        ],
-                      ),
-                  ],
-                ),
-              );
-            },
+                          ],
+                        )
+                      else
+                        Column(
+                          children: [
+                            companySection(),
+                            const SizedBox(height: 12),
+                            contactSection(),
+                            const SizedBox(height: 12),
+                            addressSection(false),
+                            const SizedBox(height: 12),
+                            logoSection(),
+                            const SizedBox(height: 12),
+                            websiteSection(),
+                            const SizedBox(height: 12),
+                            bankingSection(),
+                            const SizedBox(height: 12),
+                            taxSettingsSection(),
+                            const SizedBox(height: 12),
+                            regionalSettingsSection(),
+                          ],
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: SafeArea(
+          SafeArea(
               top: false,
               child: Container(
+                margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: cs.surface.withValues(alpha: 0.94),
-                  border: Border(
-                    top: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.35),
-                    ),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.22),
-                      blurRadius: 20,
-                      offset: const Offset(0, -8),
-                    ),
-                  ],
+                  color: subtleTint,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: cs.primary.withValues(alpha: .16)),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: _completionPercent / 100),
-                      duration: const Duration(milliseconds: 500),
-                      curve: Curves.easeOutCubic,
-                      builder: (_, value, __) => LinearProgressIndicator(
-                        value: value,
-                        minHeight: 3,
-                        backgroundColor:
-                            cs.surfaceContainerHighest.withValues(alpha: 0.6),
-                        color: _completionPercent >= 100
-                            ? Colors.green
-                            : _completionPercent >= 60
-                                ? cs.primary
-                                : cs.error.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Icon(
-                                  _hasChanges
-                                      ? Icons.edit_note_outlined
-                                      : Icons.check_circle_outline,
-                                  size: 18,
-                                  color: _hasChanges
-                                      ? cs.primary
-                                      : cs.onSurfaceVariant,
-                                ),
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: Text(
-                                    _hasChanges
-                                        ? 'Hay cambios pendientes'
-                                        : 'Perfil actualizado',
-                                    style: t.bodySmall.copyWith(
-                                      color: cs.onSurfaceVariant,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Flexible(
-                            flex: 0,
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              alignment: WrapAlignment.end,
-                              children: [
-                                OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 14,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(18),
-                                    ),
-                                  ),
-                                  onPressed: (!_hasChanges || _saving)
-                                      ? null
-                                      : _resetFields,
-                                  icon: const Icon(Icons.undo_rounded),
-                                  label: Text(
-                                    'Descartar cambios',
-                                    style: t.bodySmall.copyWith(
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                ),
-                                FilledButton.icon(
-                                  style: FilledButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 18,
-                                      vertical: 14,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(18),
-                                    ),
-                                  ),
-                                  onPressed:
-                                      (!_hasChanges || _saving) ? null : _save,
-                                  icon: _saving
-                                      ? const SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(
-                                              strokeWidth: 2),
-                                        )
-                                      : const Icon(Icons.save_outlined),
-                                  label: Text(
-                                    _saving ? l.saving : l.saveChanges,
-                                    style: t.bodySmall.copyWith(
-                                      color: cs.onPrimary,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          )
+                child: LayoutBuilder(builder: (context, constraints) {
+                  final es = l.localeName.startsWith('es');
+                  final status = Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(_hasChanges ? Icons.edit_note : Icons.check_circle,
+                        size: 22,
+                        color:
+                            _hasChanges ? cs.primary : Colors.green.shade700),
+                    const SizedBox(width: 8),
+                    Flexible(
+                        child: Text(
+                            _hasChanges
+                                ? (es
+                                    ? 'Hay cambios pendientes'
+                                    : 'Unsaved changes')
+                                : (es
+                                    ? 'Perfil actualizado'
+                                    : 'Profile up to date'),
+                            style: t.bodySmall)),
+                  ]);
+                  final actions = Wrap(spacing: 8, runSpacing: 8, children: [
+                    OutlinedButton.icon(
+                        onPressed:
+                            (!_hasChanges || _saving) ? null : _resetFields,
+                        style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8))),
+                        icon: const Icon(Icons.undo, size: 16),
+                        label: Text(
+                            es ? 'Descartar cambios' : 'Discard changes',
+                            style: t.bodySmall)),
+                    FilledButton.icon(
+                        key: const ValueKey('billing-profile-save'),
+                        onPressed: (!_hasChanges || _saving) ? null : _save,
+                        style: FilledButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8))),
+                        icon: _saving
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2))
+                            : const Icon(Icons.check, size: 16),
+                        label: Text(_saving ? l.saving : l.saveChanges)),
+                  ]);
+                  if (constraints.maxWidth < 600) {
+                    return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [status, const SizedBox(height: 8), actions]);
+                  }
+                  return Row(children: [
+                    Expanded(child: status),
+                    const SizedBox(width: 12),
+                    actions
+                  ]);
+                }),
+              )),
         ],
       ),
     );
-
     if (!widget.showFolder) {
       return formContent;
     }
@@ -1537,26 +1475,4 @@ class _BillingProfileInlineEditorState
       child: formContent,
     );
   }
-}
-
-class _CheckerPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    const sq = 8.0;
-    final light = Paint()..color = const Color(0xFFE8E8E8);
-    final dark = Paint()..color = const Color(0xFFF8F8F8);
-    final cols = (size.width / sq).ceil() + 1;
-    final rows = (size.height / sq).ceil() + 1;
-    for (int r = 0; r < rows; r++) {
-      for (int c = 0; c < cols; c++) {
-        canvas.drawRect(
-          Rect.fromLTWH(c * sq, r * sq, sq, sq),
-          (r + c).isEven ? light : dark,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_CheckerPainter _) => false;
 }

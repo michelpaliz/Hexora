@@ -1,123 +1,118 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 
-/// A single nav row used in the persistent web sidebar.
-///
-/// Renders icon + label when [collapsed] is false; icon only (with tooltip)
-/// when [collapsed] is true.
-class SidebarItem extends StatefulWidget {
-  const SidebarItem({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.isSelected,
-    required this.collapsed,
-    required this.onTap,
-    this.textStyle,
-  });
-
+/// Shared navigation destination for expanded menus and collapsed rails.
+class SidebarItem extends StatelessWidget {
+  const SidebarItem(
+      {super.key,
+      required this.icon,
+      required this.label,
+      required this.isSelected,
+      required this.collapsed,
+      required this.onTap,
+      this.textStyle,
+      this.count,
+      this.trailing,
+      this.primaryAction = false});
   final IconData icon;
   final String label;
   final bool isSelected;
   final bool collapsed;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final TextStyle? textStyle;
-
-  @override
-  State<SidebarItem> createState() => _SidebarItemState();
-}
-
-class _SidebarItemState extends State<SidebarItem> {
-  bool _hovering = false;
+  final int? count;
+  final Widget? trailing;
+  final bool primaryAction;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final navy = cs.surface == AppColors.dashboardTopBar;
-    final activeColor = cs.primary;
-    final inactiveColor = cs.onSurfaceVariant;
-
-    final fg = widget.isSelected
-        ? (navy ? cs.onPrimaryContainer : activeColor)
-        : inactiveColor;
-    final showBg = widget.isSelected || _hovering;
-    final borderColor = widget.isSelected
-        ? activeColor.withValues(alpha: 0.26)
-        : (_hovering
-            ? activeColor.withValues(alpha: 0.14)
-            : Colors.transparent);
-
-    final inner = MouseRegion(
-      onEnter: (_) => setState(() => _hovering = true),
-      onExit: (_) => setState(() => _hovering = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          curve: Curves.easeOut,
-          height: 44,
-          decoration: BoxDecoration(
-            color: widget.isSelected && navy
-                ? cs.primaryContainer
-                : showBg
-                    ? activeColor.withValues(
-                        alpha: widget.isSelected ? 0.1 : 0.06)
-                    : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: borderColor, width: 1),
-          ),
-          child: Row(
-            children: [
-              // Left accent bar — visible only when selected
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                width: 3,
-                height: widget.isSelected ? 22 : 0,
-                decoration: BoxDecoration(
-                  color: activeColor,
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(3),
-                    bottomRight: Radius.circular(3),
-                  ),
-                ),
-              ),
-              SizedBox(width: widget.isSelected ? 9 : 12),
-              Icon(widget.icon, size: 20, color: fg),
-              // Label — always in tree but faded out when collapsed
-              if (!widget.collapsed) ...[
-                const SizedBox(width: 12),
-                Expanded(
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 160),
-                    opacity: widget.collapsed ? 0 : 1,
-                    child: Text(
-                      widget.label,
-                      style: widget.textStyle?.copyWith(color: fg) ??
-                          Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: fg,
-                                fontSize: 12.3,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0,
-                              ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (widget.collapsed) {
-      return Tooltip(
-        message: widget.label,
-        preferBelow: false,
-        child: inner,
-      );
-    }
-    return inner;
+    final colors = NavigationColors(Theme.of(context).colorScheme);
+    final fg = onTap == null
+        ? colors.disabled
+        : isSelected
+            ? colors.selectedForeground
+            : colors.foreground;
+    final style = (textStyle ?? NavigationTokens.label(context)).copyWith(
+        fontSize: NavigationTokens.textSize,
+        color: fg,
+        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+        letterSpacing: 0);
+    final radius = BorderRadius.circular(NavigationTokens.radius);
+    return Semantics(
+        selected: isSelected,
+        button: true,
+        enabled: onTap != null,
+        label: collapsed ? label : null,
+        child: Tooltip(
+            message: label,
+            child: Material(
+                color: isSelected
+                    ? colors.selectedBackground
+                    : primaryAction
+                        ? colors.hover
+                        : Colors.transparent,
+                borderRadius: radius,
+                child: InkWell(
+                    onTap: onTap,
+                    borderRadius: radius,
+                    overlayColor:
+                        WidgetStateProperty.resolveWith(colors.overlay),
+                    child: Stack(children: [
+                      if (isSelected)
+                        PositionedDirectional(
+                            start: 0,
+                            top: 8,
+                            bottom: 8,
+                            child: Container(
+                                width: NavigationTokens.indicatorWidth,
+                                decoration: BoxDecoration(
+                                    color: colors.indicator,
+                                    borderRadius: radius))),
+                      ConstrainedBox(
+                          constraints: BoxConstraints(
+                              minHeight: NavigationTokens.rowHeight(context)),
+                          child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: collapsed
+                                      ? 8
+                                      : NavigationTokens.itemPadding,
+                                  vertical: 8),
+                              child: Row(
+                                  mainAxisAlignment: collapsed
+                                      ? MainAxisAlignment.center
+                                      : MainAxisAlignment.start,
+                                  children: [
+                                    Icon(icon,
+                                        size: NavigationTokens.iconSize,
+                                        color: fg),
+                                    if (!collapsed) ...[
+                                      const SizedBox(
+                                          width: NavigationTokens.itemPadding),
+                                      Expanded(
+                                          child: Text(label,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: style)),
+                                      if (count != null) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                                color:
+                                                    fg.withValues(alpha: .12),
+                                                borderRadius: radius),
+                                            child: Text('$count',
+                                                style: style.copyWith(
+                                                    fontSize: NavigationTokens
+                                                        .sectionSize)))
+                                      ],
+                                      if (trailing != null) ...[
+                                        const SizedBox(width: 6),
+                                        trailing!
+                                      ],
+                                    ],
+                                  ]))),
+                    ])))));
   }
 }

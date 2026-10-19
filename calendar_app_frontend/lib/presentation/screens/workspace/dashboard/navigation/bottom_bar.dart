@@ -1,5 +1,7 @@
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/presentation/shared/widgets/insights_chat_fab.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hexora/l10n/app_localizations.dart';
 
 import 'dashboard_sections.dart';
@@ -31,21 +33,24 @@ class BottomBar extends StatelessWidget {
                     )
                   : FilledButton.icon(
                       style: FilledButton.styleFrom(
-                          minimumSize: const Size.fromHeight(48)),
-                      icon: const Icon(Icons.calendar_month_rounded),
+                          textStyle: NavigationTokens.label(context),
+                          minimumSize: const Size.fromHeight(NavigationTokens.touchRowHeight)),
+                      icon: const Icon(Icons.calendar_month_rounded, size: NavigationTokens.iconSize),
                       label: Text(l.goToCalendar),
                       onPressed: () => state.openSection('calendar'),
                     ),
             ),
-            const SizedBox(width: 12),
-            SizedBox(
-              width: 48,
-              height: 48,
-              child: InsightsChatFab(
-                groupId: state.group.id,
-                heroTag: 'group-dashboard-insights-chat-fab',
+            if (!kIsWeb) ...[
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: InsightsChatFab(
+                  groupId: state.group.id,
+                  heroTag: 'group-dashboard-insights-chat-fab',
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),

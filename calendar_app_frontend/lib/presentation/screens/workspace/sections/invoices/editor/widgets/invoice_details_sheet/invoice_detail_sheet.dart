@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'dart:convert';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/emails/email_api.dart';
@@ -794,7 +795,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
                 }
               },
               itemBuilder: (_) => [
-                PopupMenuItem(
+                NavigationPopupMenuItem(
                   value: 'preview',
                   enabled: !_previewing,
                   child: ListTile(
@@ -803,7 +804,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
-                PopupMenuItem(
+                NavigationPopupMenuItem(
                   value: 'copy',
                   child: ListTile(
                     leading: const Icon(Icons.copy_outlined),
@@ -812,7 +813,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
                   ),
                 ),
                 if (hasRecurrence)
-                  PopupMenuItem(
+                  NavigationPopupMenuItem(
                     value: 'recurrence',
                     enabled: widget.onOpenRecurringSeries != null,
                     child: ListTile(
@@ -824,7 +825,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
-                PopupMenuItem<String>(
+                NavigationPopupMenuItem<String>(
                   enabled: false,
                   child: ListTile(
                     leading: Icon(
@@ -1089,9 +1090,9 @@ class _DeliverySection extends StatelessWidget {
                       enabled: !updatingDelivery,
                       onSelected: (value) => onMarkSent(channel: value),
                       itemBuilder: (_) => const [
-                        PopupMenuItem(value: 'manual', child: Text('Manual')),
-                        PopupMenuItem(value: 'email', child: Text('Email')),
-                        PopupMenuItem(
+                        NavigationPopupMenuItem(value: 'manual', child: Text('Manual')),
+                        NavigationPopupMenuItem(value: 'email', child: Text('Email')),
+                        NavigationPopupMenuItem(
                             value: 'whatsapp', child: Text('WhatsApp')),
                       ],
                       child: Container(

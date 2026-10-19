@@ -104,7 +104,7 @@ class _TelegramChatListWidgetState extends State<TelegramChatListWidget> {
             children: [
               Expanded(
                 child: SizedBox(
-                  height: 42,
+                  height: 36,
                   child: TextField(
                     controller: _searchController,
                     onChanged: (v) => setState(() => _query = v),
@@ -541,7 +541,7 @@ class _FilterChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
         decoration: BoxDecoration(
           color: selected
               ? _kTelegramBlue.withValues(alpha: 0.12)
@@ -629,7 +629,7 @@ class _ChatListItem extends StatelessWidget {
                   )
                 : null,
           ),
-          padding: EdgeInsets.fromLTRB(selected ? 6 : 8, 10, 8, 10),
+          padding: EdgeInsets.fromLTRB(selected ? 6 : 8, 6, 8, 6),
           child: Row(
             children: [
               // Avatar with type badge
@@ -637,8 +637,8 @@ class _ChatListItem extends StatelessWidget {
                 clipBehavior: Clip.none,
                 children: [
                   Container(
-                    width: 42,
-                    height: 42,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: _avatarColor(chat.title),
@@ -651,7 +651,7 @@ class _ChatListItem extends StatelessWidget {
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 17,
+                          fontSize: 15,
                         ),
                       ),
                     ),
@@ -711,7 +711,7 @@ class _ChatListItem extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      _subtitle,
+                      _subtitle(context),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: cs.onSurface.withValues(alpha: 0.5),
                           ),
@@ -786,7 +786,7 @@ class _ChatListItem extends StatelessWidget {
     );
   }
 
-  String get _subtitle {
+  String _subtitle(BuildContext context) {
     final desc = chat.description?.trim();
     if (desc != null && desc.isNotEmpty) return desc;
     final username = chat.username?.trim();
@@ -796,7 +796,13 @@ class _ChatListItem extends StatelessWidget {
       final label = chat.isChannel ? 'subscribers' : 'members';
       return '$count $label';
     }
-    return chat.typeLabel;
+    if (Localizations.localeOf(context).languageCode != 'es') {
+      return chat.typeLabel;
+    }
+    if (chat.isForumChat) return 'Foro';
+    if (chat.isChannel) return 'Canal';
+    if (chat.isGroup) return 'Grupo';
+    return 'Chat privado';
   }
 
   IconData get _typeIcon {

@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:hexora/models/notifications/notification_localization.dart';
@@ -133,10 +134,10 @@ class NotificationDetailPage extends StatelessWidget {
           },
           itemBuilder: (_) => [
             if (!notification.isRead)
-              PopupMenuItem(
+              NavigationPopupMenuItem(
                   value: NotificationDetailAction.markRead,
                   child: Text(es ? 'Marcar como leída' : 'Mark as read')),
-            PopupMenuItem(
+            NavigationPopupMenuItem(
                 value: NotificationDetailAction.delete,
                 child:
                     Text(es ? 'Eliminar notificación' : 'Delete notification')),

@@ -1,3 +1,5 @@
+import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
@@ -6,8 +8,8 @@ import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class GroupDashboardLeftNav extends StatelessWidget {
-  static const double expandedWidth = 240;
-  static const double collapsedWidth = 84;
+  static const double expandedWidth = NavigationTokens.sidebarWidth;
+  static const double collapsedWidth = NavigationTokens.railWidth;
 
   final Group group;
   final User? user;
@@ -142,43 +144,9 @@ class _NavRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final fg = isSelected
-        ? (isDark ? AppDarkColors.primary : AppColors.primary)
-        : (isDark ? AppDarkColors.textPrimary : AppColors.textPrimary);
-    final bg = isSelected ? fg.withValues(alpha: 0.10) : Colors.transparent;
-    final row = InkWell(
-      onTap: onTap,
-      child: Container(
-        padding:
-            EdgeInsets.symmetric(horizontal: collapsed ? 10 : 14, vertical: 12),
-        color: bg,
-        child: Row(
-          mainAxisAlignment:
-              collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
-          children: [
-            Icon(icon, color: fg),
-            if (!collapsed) ...[
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(color: fg, fontWeight: FontWeight.w700),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-    if (collapsed) {
-      return Tooltip(message: label, child: row);
-    }
-    return row;
-  }
+  Widget build(BuildContext context) => SidebarItem(icon: icon, label: label,
+    isSelected: isSelected, collapsed: collapsed, onTap: onTap);
 }
-
 class _GroupCompactCard extends StatelessWidget {
   final Group group;
   final bool isDark;

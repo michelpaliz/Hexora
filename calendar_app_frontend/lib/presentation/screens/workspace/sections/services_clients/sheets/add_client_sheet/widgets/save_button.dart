@@ -32,9 +32,10 @@ class SaveButton extends StatelessWidget {
         ),
         onPressed: onPressed,
         style: FilledButton.styleFrom(
-          minimumSize: const Size(0, 48),
+          minimumSize: const Size(0, 38),
           padding: const EdgeInsets.symmetric(vertical: 10),
           visualDensity: VisualDensity.compact,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
     );

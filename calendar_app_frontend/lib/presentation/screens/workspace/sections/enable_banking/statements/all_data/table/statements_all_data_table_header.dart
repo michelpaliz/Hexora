@@ -60,19 +60,19 @@ class StatementsAllDataTableHeader extends StatelessWidget {
 
     final headerStyle = typography.bodySmall.copyWith(
       fontWeight: FontWeight.w600,
-      fontSize: 13,
+      fontSize: 12,
       color: tableTheme.headerText,
       letterSpacing: 0,
     );
 
     return Container(
       padding: const EdgeInsets.symmetric(
-        vertical: 8,
+        vertical: 2,
         horizontal: 12,
       ),
       decoration: BoxDecoration(
         color: tableTheme.headerBg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(0),
         border: Border.all(
           color: tableTheme.border.withValues(alpha: 0.55),
         ),

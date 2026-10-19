@@ -1,3 +1,6 @@
+import 'package:hexora/presentation/shared/widgets/navigation_group.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
+import 'package:hexora/presentation/shared/widgets/navigation_menu_header.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -40,8 +43,8 @@ class EnableBankingLeftNav extends StatelessWidget {
       NavigationSurface(builder: _buildNavigation);
 
   Widget _buildNavigation(BuildContext context) {
-    const expandedWidth = 218.0;
-    const collapsedWidth = 50.0;
+    const expandedWidth = NavigationTokens.sidebarWidth;
+    const collapsedWidth = NavigationTokens.railWidth;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -78,82 +81,12 @@ class _NavPanelHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.38),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.account_balance_wallet_outlined,
-                size: 18,
-                color: cs.primary,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Banco',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.labelLarge?.copyWith(
-                      color: cs.onSurface,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  Text(
-                    'Menu de datos',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.labelSmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Tooltip(
-              message: 'Contraer menu',
-              child: IconButton.filledTonal(
-                onPressed: onCollapse,
-                icon: const Icon(Icons.keyboard_double_arrow_left_rounded),
-                iconSize: 18,
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(40, 34),
-                  fixedSize: const Size(40, 34),
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return NavigationMenuHeader(
+        title: Localizations.localeOf(context).languageCode == 'es'
+            ? 'Banco'
+            : 'Banking',
+        icon: Icons.account_balance_outlined,
+        onToggle: onCollapse);
   }
 }
 
@@ -175,37 +108,9 @@ class _CollapsedRail extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     Widget item(IconData icon, String tooltip, EnableBankingMenu menu) {
-      final isSel = selected == menu;
-      return Tooltip(
-        message: tooltip,
-        preferBelow: false,
-        waitDuration: const Duration(milliseconds: 300),
-        child: InkWell(
-          onTap: () => onSelect(menu),
-          borderRadius: BorderRadius.circular(10),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            width: 36,
-            height: 34,
-            decoration: BoxDecoration(
-              color: isSel ? cs.primaryContainer : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isSel
-                    ? cs.primary.withValues(alpha: 0.22)
-                    : Colors.transparent,
-              ),
-            ),
-            child: Icon(
-              icon,
-              size: 16,
-              color: isSel ? cs.primary : cs.onSurfaceVariant,
-            ),
-          ),
-        ),
-      );
+      return SidebarItem(icon: icon, label: tooltip, isSelected: selected == menu,
+        collapsed: true, onTap: () => onSelect(menu));
     }
-
     Widget divider() => Padding(
           padding: const EdgeInsets.symmetric(vertical: 5),
           child: Divider(
@@ -226,8 +131,8 @@ class _CollapsedRail extends StatelessWidget {
               onTap: onExpand,
               borderRadius: BorderRadius.circular(8),
               child: Container(
-                width: 36,
-                height: 28,
+                width: NavigationTokens.rowHeight(context),
+                height: NavigationTokens.rowHeight(context),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
@@ -236,7 +141,7 @@ class _CollapsedRail extends StatelessWidget {
                 ),
                 child: Icon(
                   Icons.chevron_right_rounded,
-                  size: 16,
+                  size: NavigationTokens.iconSize,
                   color: cs.onSurfaceVariant,
                 ),
               ),
@@ -560,83 +465,9 @@ class _NavSection extends StatelessWidget {
   final bool selected;
 
   @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    final cs = Theme.of(context).colorScheme;
-    final active = selected || expanded;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
-      curve: Curves.easeOut,
-      margin: const EdgeInsets.only(bottom: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-      decoration: BoxDecoration(
-        color:
-            active ? cs.surfaceContainerHighest.withValues(alpha: 0.28) : null,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: active
-              ? cs.outlineVariant.withValues(alpha: 0.36)
-              : Colors.transparent,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: onToggle,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-              child: Row(
-                children: [
-                  Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? cs.primary.withValues(alpha: 0.18)
-                          : cs.surfaceContainerHighest.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    child: Icon(
-                      icon,
-                      size: 16,
-                      color: selected ? cs.primary : cs.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: t.labelMedium?.copyWith(
-                        color: selected ? cs.primary : cs.onSurface,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  AnimatedRotation(
-                    turns: expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 160),
-                    child: Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 18,
-                      color: selected ? cs.primary : cs.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (expanded) ...[
-            const SizedBox(height: 4),
-            child,
-          ],
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => NavigationGroup(title: title, icon: icon,
+    expanded: expanded, onToggle: onToggle, child: child);
 }
-
 class _NavSubItem extends StatelessWidget {
   const _NavSubItem({
     required this.icon,
@@ -652,55 +483,13 @@ class _NavSubItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    final cs = Theme.of(context).colorScheme;
-    final fg = selected ? cs.onPrimaryContainer : cs.onSurfaceVariant;
     return Padding(
-      padding: const EdgeInsets.only(left: 6, right: 2, bottom: 4),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(13),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          height: 38,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(13),
-            color: selected ? cs.primaryContainer : Colors.transparent,
-            border: Border.all(
-              color: selected
-                  ? cs.primary.withValues(alpha: 0.20)
-                  : Colors.transparent,
-            ),
-          ),
-          child: Row(
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: 3,
-                height: selected ? 20 : 0,
-                margin: const EdgeInsets.only(right: 9),
-                decoration: BoxDecoration(
-                  color: cs.primary,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              Icon(icon, size: 15, color: fg),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: t.labelMedium?.copyWith(
-                    color: fg,
-                    fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+        padding: const EdgeInsets.only(left: NavigationTokens.nestedIndent, right: 0, bottom: NavigationTokens.itemGap),
+        child: SidebarItem(
+            icon: icon,
+            label: label,
+            isSelected: selected,
+            collapsed: false,
+            onTap: onTap));
   }
 }

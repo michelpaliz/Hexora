@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -570,22 +571,22 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
                         value: 0,
                         checked: _showMissingDays,
                         child: Text(l.toggleEmptyDays)),
-                    PopupMenuItem(value: 1, child: Text(l.exportExcel)),
-                    PopupMenuItem(
+                    NavigationPopupMenuItem(value: 1, child: Text(l.exportExcel)),
+                    NavigationPopupMenuItem(
                         value: 2,
                         child: Text(
                             isSpanish ? 'Importar Excel' : 'Import Excel')),
-                    PopupMenuItem(
+                    NavigationPopupMenuItem(
                         value: 3,
                         enabled: !_previewingMonthlyCalendarPdf,
                         child: Text(monthlyCalendarPdfLabel)),
-                    PopupMenuItem(
+                    NavigationPopupMenuItem(
                         value: 4,
                         enabled: !_previewingPayrollPdf,
                         child: Text(isSpanish
                             ? 'Ver PDF de horas y pagos'
                             : 'Preview hours and pay PDF')),
-                    PopupMenuItem(
+                    NavigationPopupMenuItem(
                         value: 5,
                         enabled: !_downloadingPayrollPdf,
                         child: Text(isSpanish

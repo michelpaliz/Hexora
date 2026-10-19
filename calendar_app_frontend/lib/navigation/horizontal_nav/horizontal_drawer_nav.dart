@@ -1,3 +1,4 @@
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
@@ -86,14 +87,14 @@ class _HorizontalDrawerNavState extends State<HorizontalDrawerNav> {
       elevation: 0,
       backgroundColor: cs.surface,
       surfaceTintColor: Colors.transparent,
-      indicatorColor: cs.secondaryContainer,
+      indicatorColor: NavigationColors(cs).selectedBackground,
       selectedIndex: _selectedIndex,
       onDestinationSelected: _onItemTapped,
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
-            fontSize: 11,
+            fontSize: NavigationTokens.textSize,
             fontWeight: states.contains(WidgetState.selected)
-                ? FontWeight.w700
+                ? FontWeight.w600
                 : FontWeight.w500,
             color: states.contains(WidgetState.selected)
                 ? cs.onSurface
@@ -111,7 +112,7 @@ class _HorizontalDrawerNavState extends State<HorizontalDrawerNav> {
                     activeColor: cs.onSecondaryContainer,
                     inactiveColor: cs.onSurfaceVariant,
                   )
-                : Icon(_items[i].icon, size: 24),
+                : Icon(_items[i].icon, size: NavigationTokens.iconSize),
           ),
       ],
     );

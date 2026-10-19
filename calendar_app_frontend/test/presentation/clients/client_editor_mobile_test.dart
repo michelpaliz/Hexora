@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/tabs/clients/clients_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,6 +38,70 @@ Widget _app(Widget child, {bool dark = false}) => MaterialApp(
     );
 
 void main() {
+  testWidgets('desktop client list paginates and filters active status',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1600, 1000);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pumpWidget(_app(Align(
+        alignment: Alignment.centerLeft,
+        child: SizedBox(
+            width: 970,
+            child: ClientsTab(
+              items: List.generate(
+                  28,
+                  (i) => GroupClient(
+                      id: '$i',
+                      name: 'Cliente ${i.toString().padLeft(2, '0')}',
+                      email: 'client$i@example.com',
+                      entityType: 'Com. de prop.',
+                      propertyKind: 'Comunidad de propietarios',
+                      isActive: i < 26)),
+              loading: false,
+              error: null,
+              onRefresh: () async {},
+            )))));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Mostrando 1–25 de 28 clientes'), findsOneWidget);
+    await tester.tap(find.byTooltip('Página siguiente'));
+    await tester.pumpAndSettle();
+    expect(find.text('Mostrando 26–28 de 28 clientes'), findsOneWidget);
+    await tester.tap(find.byType(DropdownButton<int>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('10').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Mostrando 1–10 de 28 clientes'), findsOneWidget);
+    await tester.tap(find.text('Inactivo 2'));
+    await tester.pumpAndSettle();
+    expect(find.text('Mostrando 1–2 de 2 clientes'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('inline editor keeps save and cancel visible while scrolling',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(540, 800);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    var cancelled = false;
+    await tester.pumpWidget(_app(AddClientSheet(
+        groupId: 'group-1',
+        api: ClientsApi(),
+        client: GroupClient(id: 'c', name: 'Las Alondras Playa'),
+        closeOnSave: false,
+        onCancel: () => cancelled = true)));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    final before = tester.getCenter(find.text('Guardar cambios'));
+    await tester.drag(
+        find.byType(SingleChildScrollView).first, const Offset(0, -400));
+    await tester.pumpAndSettle();
+    expect(tester.getCenter(find.text('Guardar cambios')), before);
+    await tester.tap(find.text('Cancelar'));
+    expect(cancelled, isTrue);
+    expect(tester.takeException(), isNull);
+  });
   for (final width in [360.0, 1280.0]) {
     for (final scale in [1.0, 1.5]) {
       testWidgets('editor at width $width keeps save visible at scale $scale',

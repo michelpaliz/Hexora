@@ -25,6 +25,7 @@ dependencies:
   shared_preferences: ^2.0.8
   carousel_slider: ^5.0.0
   geolocator: ^13.0.4
+  pointer_interceptor: ^0.10.1+2
   geocoding: ^3.0.0
   syncfusion_flutter_calendar: ^29.2.11+1
   syncfusion_flutter_charts: ^30.2.6+1
@@ -101,6 +102,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/fonts/inter/LICENSE.txt
     - assets/images/login_bg.png
     - assets/images/login_image.png
     - assets/images/beach_image.png
@@ -124,6 +126,19 @@ flutter:
     - assets/images/branding/
 
   fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/inter/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/inter/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/inter/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/inter/Inter-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/inter/Inter-Italic.ttf
+          weight: 400
+          style: italic
     - family: bagel
       fonts:
         - asset: assets/fonts/bagel_fat_one.ttf

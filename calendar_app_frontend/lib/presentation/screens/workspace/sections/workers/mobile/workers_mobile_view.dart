@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -248,10 +249,10 @@ class WorkerMobileCard extends StatelessWidget {
                 }
               },
               itemBuilder: (_) => [
-                PopupMenuItem(value: 'hours', child: Text(l.addTimeEntryCta)),
-                PopupMenuItem(
+                NavigationPopupMenuItem(value: 'hours', child: Text(l.addTimeEntryCta)),
+                NavigationPopupMenuItem(
                     value: 'overview', child: Text(l.overviewInfoTitle)),
-                PopupMenuItem(value: 'edit', child: Text(l.editWorker)),
+                NavigationPopupMenuItem(value: 'edit', child: Text(l.editWorker)),
               ],
             ),
           ]),

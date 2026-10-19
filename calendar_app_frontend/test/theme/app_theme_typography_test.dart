@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
@@ -7,6 +9,21 @@ import 'package:hexora/presentation/screens/calendar/screens/calendar/presentati
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('Inter weights and license are bundled for offline use', () async {
+    final manifest =
+        jsonDecode(await rootBundle.loadString('FontManifest.json')) as List;
+    final inter = manifest
+        .cast<Map<String, dynamic>>()
+        .singleWhere((font) => font['family'] == 'Inter');
+    final fonts = inter['fonts'] as List;
+    expect(fonts.map((font) => font['weight']), containsAll([400, 500, 600]));
+    for (final font in fonts) {
+      final data = await rootBundle.load(font['asset'] as String);
+      expect(data.lengthInBytes, greaterThan(10000));
+    }
+    expect(await rootBundle.loadString('assets/fonts/inter/LICENSE.txt'),
+        contains('SIL OPEN FONT LICENSE'));
+  });
   for (final brightness in Brightness.values) {
     for (final platform in [
       TargetPlatform.android,
@@ -17,6 +34,15 @@ void main() {
           (tester) async {
         final theme = AppTheme.forPlatform(brightness, platform: platform);
         final text = theme.textTheme;
+        expect(text.titleLarge!.fontSize, 18);
+        expect(text.titleMedium!.fontSize, 14);
+        expect(text.bodyMedium!.fontSize, 13);
+        expect(text.labelMedium!.fontSize, 12);
+        expect(text.labelLarge!.fontWeight, FontWeight.w500);
+        final mobile = platform == TargetPlatform.android ||
+            platform == TargetPlatform.iOS;
+        expect(theme.filledButtonTheme.style!.minimumSize!.resolve({})!.height,
+            mobile ? 48 : 32);
         for (final style in [
           text.displayLarge,
           text.displayMedium,
@@ -29,7 +55,7 @@ void main() {
           text.titleSmall,
           theme.appBarTheme.titleTextStyle
         ]) {
-          expect(style?.fontFamily, contains('Poppins'));
+          expect(style?.fontFamily, equals('Inter'));
         }
         for (final style in [
           text.bodyLarge,
@@ -39,12 +65,12 @@ void main() {
           text.labelMedium,
           text.labelSmall
         ]) {
-          expect(style?.fontFamily, contains('Manrope'));
+          expect(style?.fontFamily, equals('Inter'));
         }
         final typography = theme.extension<AppTypography>()!;
-        expect(typography.accentHeading.fontFamily, contains('Poppins'));
-        expect(typography.accentText.fontFamily, contains('Manrope'));
-        expect(typography.buttonText.fontFamily, contains('Manrope'));
+        expect(typography.accentHeading.fontFamily, equals('Inter'));
+        expect(typography.accentText.fontFamily, equals('Inter'));
+        expect(typography.buttonText.fontFamily, equals('Inter'));
         expect(typography.buttonText.color, isNull);
       });
     }
@@ -55,12 +81,12 @@ void main() {
             AppTheme.forPlatform(brightness, platform: TargetPlatform.windows),
         home: Builder(builder: (context) {
           final editor = clientEditorThemeOf(context);
-          expect(editor.textTheme.titleLarge?.fontFamily, contains('Poppins'));
-          expect(editor.appBarTheme.titleTextStyle?.fontFamily,
-              contains('Poppins'));
-          expect(editor.textTheme.bodyLarge?.fontFamily, contains('Manrope'));
+          expect(editor.textTheme.titleLarge?.fontFamily, equals('Inter'));
+          expect(
+              editor.appBarTheme.titleTextStyle?.fontFamily, equals('Inter'));
+          expect(editor.textTheme.bodyLarge?.fontFamily, equals('Inter'));
           expect(editor.inputDecorationTheme.labelStyle?.fontFamily,
-              contains('Manrope'));
+              equals('Inter'));
           return const SizedBox.shrink();
         }),
       ));
@@ -68,15 +94,15 @@ void main() {
   }
   testWidgets('calendar uses shared heading and body fonts', (tester) async {
     expect(buildHeaderStyle(18, Colors.black).textStyle?.fontFamily,
-        contains('Poppins'));
+        equals('Inter'));
     final days = buildViewHeaderStyle(12, Colors.black, false);
-    expect(days.dateTextStyle?.fontFamily, contains('Manrope'));
-    expect(days.dayTextStyle?.fontFamily, contains('Manrope'));
+    expect(days.dateTextStyle?.fontFamily, equals('Inter'));
+    expect(days.dayTextStyle?.fontFamily, equals('Inter'));
     expect(
         buildScheduleSettings(18, Colors.white)
             .monthHeaderSettings
             .monthTextStyle
             ?.fontFamily,
-        contains('Poppins'));
+        equals('Inter'));
   });
 }

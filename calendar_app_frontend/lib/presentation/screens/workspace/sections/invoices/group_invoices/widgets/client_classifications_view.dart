@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -704,10 +705,10 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                           tr('Cambiar clasificación', 'Change classification'),
                       onSelected: (entity) => _reclassify(targetEntity: entity),
                       itemBuilder: (_) => [
-                        PopupMenuItem(
+                        NavigationPopupMenuItem(
                             value: true,
                             child: Text(tr('Tipo de entidad', 'Entity type'))),
-                        PopupMenuItem(
+                        NavigationPopupMenuItem(
                             value: false,
                             child:
                                 Text(tr('Tipo de propiedad', 'Property type')))
@@ -924,13 +925,13 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
                                       },
                                       itemBuilder: (_) => [
                                             if (widget.onEditClient != null)
-                                              PopupMenuItem(
+                                              NavigationPopupMenuItem(
                                                   value: 'edit',
                                                   child: Text(tr(
                                                       'Editar cliente',
                                                       'Edit client'))),
                                             if (widget.onUpdateClient != null)
-                                              PopupMenuItem(
+                                              NavigationPopupMenuItem(
                                                   value: 'classify',
                                                   child: Text(tr(
                                                       'Cambiar clasificación',

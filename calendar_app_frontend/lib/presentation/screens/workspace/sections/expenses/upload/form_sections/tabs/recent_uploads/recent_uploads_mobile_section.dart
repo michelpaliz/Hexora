@@ -60,11 +60,11 @@ extension _RecentUploadsMobileSection on _ExpenseRecentUploadsTabState {
                       onSelected: (value) =>
                           _setYearFilter(value == 0 ? null : value),
                       itemBuilder: (_) => [
-                        PopupMenuItem(
+                        NavigationPopupMenuItem(
                             value: 0,
                             child: Text(isEs ? 'Todos los años' : 'All years')),
                         for (final year in _availableUploadYears)
-                          PopupMenuItem(value: year, child: Text('$year')),
+                          NavigationPopupMenuItem(value: year, child: Text('$year')),
                       ],
                       child: filterPill(
                         icon: Icons.event_outlined,
@@ -80,10 +80,10 @@ extension _RecentUploadsMobileSection on _ExpenseRecentUploadsTabState {
                     onSelected: (value) =>
                         _setQuarterFilter(value == 0 ? null : value),
                     itemBuilder: (_) => [
-                      PopupMenuItem(
+                      NavigationPopupMenuItem(
                           value: 0, child: Text(isEs ? 'Todos' : 'All')),
                       for (var q = 1; q <= 4; q++)
-                        PopupMenuItem(
+                        NavigationPopupMenuItem(
                             value: q,
                             child:
                                 Text('${isEs ? 'Trimestre' : 'Quarter'} $q')),
@@ -102,21 +102,21 @@ extension _RecentUploadsMobileSection on _ExpenseRecentUploadsTabState {
                     initialValue: _selectedSort,
                     onSelected: _setSortOption,
                     itemBuilder: (_) => [
-                      PopupMenuItem(
+                      NavigationPopupMenuItem(
                           value: _ExpenseListSortOption.newest,
                           child: Text(isEs ? 'Más recientes' : 'Newest')),
-                      PopupMenuItem(
+                      NavigationPopupMenuItem(
                           value: _ExpenseListSortOption.oldest,
                           child: Text(isEs ? 'Más antiguos' : 'Oldest')),
-                      PopupMenuItem(
+                      NavigationPopupMenuItem(
                           value: _ExpenseListSortOption.amountHighToLow,
                           child:
                               Text(isEs ? 'Mayor importe' : 'Highest amount')),
-                      PopupMenuItem(
+                      NavigationPopupMenuItem(
                           value: _ExpenseListSortOption.amountLowToHigh,
                           child:
                               Text(isEs ? 'Menor importe' : 'Lowest amount')),
-                      PopupMenuItem(
+                      NavigationPopupMenuItem(
                           value: _ExpenseListSortOption.vendorAz,
                           child: Text(isEs ? 'Proveedor A–Z' : 'Vendor A–Z')),
                     ],
@@ -257,16 +257,16 @@ extension _RecentUploadsMobileSection on _ExpenseRecentUploadsTabState {
                     }
                   },
                   itemBuilder: (_) => [
-                    PopupMenuItem(
+                    NavigationPopupMenuItem(
                         value: 'document',
                         child: Text(isEs ? 'Ver documento' : 'View document')),
-                    PopupMenuItem(value: 'edit', child: Text(l.edit)),
-                    PopupMenuItem(
+                    NavigationPopupMenuItem(value: 'edit', child: Text(l.edit)),
+                    NavigationPopupMenuItem(
                         value: 'reprocess',
                         enabled: id.isNotEmpty && !busy,
                         child:
                             Text(isEs ? 'Releer factura' : 'Re-read invoice')),
-                    PopupMenuItem(
+                    NavigationPopupMenuItem(
                         value: 'delete',
                         enabled: id.isNotEmpty,
                         child:

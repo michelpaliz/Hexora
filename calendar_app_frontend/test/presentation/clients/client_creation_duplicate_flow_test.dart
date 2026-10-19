@@ -122,7 +122,21 @@ void main() {
       find.byType(TextFormField).first,
       '  Cliente Duplicado  ',
     );
-    await tester.tap(find.byType(ExpansionTile));
+    await tester.ensureVisible(find.text('Detalles de facturación'));
+    await tester.pumpAndSettle();
+    final billingTile = find.ancestor(
+        of: find.text('Detalles de facturación'),
+        matching: find.byType(ExpansionTile));
+    if (find
+        .descendant(of: billingTile, matching: find.byType(TextFormField))
+        .evaluate()
+        .isEmpty) {
+      tester
+          .widget<ListTile>(find
+              .descendant(of: billingTile, matching: find.byType(ListTile))
+              .first)
+          .onTap!();
+    }
     await tester.pumpAndSettle();
 
     final fields = find.byType(TextFormField);

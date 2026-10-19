@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
@@ -979,10 +980,9 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     if (chips.isEmpty) {
       return const SizedBox.shrink();
     }
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      children: chips,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Wrap(spacing: 8, runSpacing: 6, children: chips),
     );
   }
 
@@ -1703,24 +1703,166 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
       children: [
         FolderSectionCard(
           label: l.statementsAllDataTitle,
-          actions: headerActions,
           leftTabOffset: 0,
           rightTabOffset: 0,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 26, 16, 16),
+            padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                StatementsAllDataBulkBar(
-                  controller: s,
-                  selectedCount: _selectedIds.length,
-                  onBulkSuggest: () => _bulkSuggest(s, l),
-                  onBulkLink: () => _showBulkLinkDialog(s),
-                  onClear: () => setState(_selectedIds.clear),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: tableTheme.border),
+                  ),
+                  child: LayoutBuilder(builder: (context, constraints) {
+                    final es = l.localeName.startsWith('es');
+                    final dateLabel = [
+                      s.allEntriesDateFrom,
+                      s.allEntriesDateTo,
+                    ]
+                        .whereType<String>()
+                        .where((v) => v.isNotEmpty)
+                        .map((v) => StatementsFormatters.formatDate(context, v))
+                        .join(' – ');
+                    final dateButton = OutlinedButton.icon(
+                      onPressed: () => _showDateFilterDialog(s),
+                      icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                      label: Text(dateLabel.isNotEmpty
+                          ? dateLabel
+                          : s.allEntriesYear?.toString() ??
+                              (es ? 'Todas las fechas' : 'All dates')),
+                      style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, 36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          side: BorderSide(color: tableTheme.border),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10))),
+                    );
+                    final search = TextFormField(
+                      key: ValueKey('statement-search-$descriptionSearch'),
+                      initialValue: descriptionSearch,
+                      style: Theme.of(context).textTheme.bodySmall,
+                      textInputAction: TextInputAction.search,
+                      onFieldSubmitted: (query) {
+                        _descriptionSearchController.text = query.trim();
+                        _applyFilters(s);
+                      },
+                      decoration: InputDecoration(
+                        hintText: es
+                            ? 'Buscar por descripción…'
+                            : 'Search description…',
+                        prefixIcon: const Icon(Icons.search, size: 16),
+                        prefixIconConstraints:
+                            const BoxConstraints(minWidth: 36, minHeight: 36),
+                        isDense: true,
+                        filled: true,
+                        fillColor: tableTheme.headerBg,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 9),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: tableTheme.border)),
+                        enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: tableTheme.border)),
+                      ),
+                    );
+                    final filters = PopupMenuButton<String>(
+                      tooltip: es ? 'Filtros' : 'Filters',
+                      onSelected: (value) {
+                        switch (value) {
+                          case 'amount':
+                            _showAmountFilterDialog();
+                          case 'contact':
+                            _showClientProviderFilterDialog(s);
+                          case 'notes':
+                            _showNotesFilterDialog(s);
+                        }
+                      },
+                      itemBuilder: (_) => [
+                        NavigationPopupMenuItem(
+                            value: 'amount',
+                            child: Text(l.statementsHeaderAmount)),
+                        NavigationPopupMenuItem(
+                            value: 'contact',
+                            child: Text(es ? 'Contacto' : 'Contact')),
+                        NavigationPopupMenuItem(
+                            value: 'notes',
+                            child: Text(es ? 'Notas' : 'Notes')),
+                      ],
+                      child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 9),
+                          decoration: BoxDecoration(
+                              border: Border.all(color: tableTheme.border),
+                              borderRadius: BorderRadius.circular(10)),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.filter_alt_outlined, size: 18),
+                            const SizedBox(width: 8),
+                            Text(es ? 'Filtros' : 'Filters'),
+                          ])),
+                    );
+                    final resultCount = Text(
+                      es ? '$totalResults resultados' : '$totalResults results',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    );
+                    if (constraints.maxWidth < 1200) {
+                      return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (constraints.maxWidth >= 650)
+                              Row(children: [
+                                dateButton,
+                                const SizedBox(width: 8),
+                                Expanded(child: search),
+                                const SizedBox(width: 8),
+                                filters
+                              ])
+                            else ...[
+                              search,
+                              const SizedBox(height: 8),
+                              Wrap(
+                                  spacing: 8,
+                                  runSpacing: 6,
+                                  children: [dateButton, filters]),
+                            ],
+                            const SizedBox(height: 6),
+                            Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [...headerActions, resultCount]),
+                          ]);
+                    }
+                    return Row(children: [
+                      dateButton,
+                      const SizedBox(width: 8),
+                      Expanded(child: search),
+                      const SizedBox(width: 8),
+                      filters,
+                      const SizedBox(width: 12),
+                      resultCount,
+                      const SizedBox(width: 12),
+                      ...headerActions.expand(
+                          (action) => [action, const SizedBox(width: 4)]),
+                    ]);
+                  }),
                 ),
-                const SizedBox(height: 12),
+                if (_selectedIds.isNotEmpty)
+                  Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: StatementsAllDataBulkBar(
+                        controller: s,
+                        selectedCount: _selectedIds.length,
+                        onBulkSuggest: () => _bulkSuggest(s, l),
+                        onBulkLink: () => _showBulkLinkDialog(s),
+                        onClear: () => setState(_selectedIds.clear),
+                      )),
                 _activeFiltersChips(l, s),
-                const SizedBox(height: 12),
                 if (s.loadingAllEntries && s.allEntries.isEmpty)
                   const StatementsAllDataSkeleton()
                 else if (s.allEntriesError != null)
@@ -1863,7 +2005,7 @@ class _HeaderActionGroup extends StatelessWidget {
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.36),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.42)),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: children),
@@ -1934,7 +2076,7 @@ class _HeaderPageSizeBadge extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: cs.surface.withValues(alpha: 0.68),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         label,
@@ -1970,7 +2112,7 @@ class _HeaderPageBadge extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: cs.primaryContainer.withValues(alpha: 0.26),
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: cs.primary.withValues(alpha: 0.28)),
         ),
         child: Text.rich(

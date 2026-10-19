@@ -100,8 +100,8 @@ class _NotificationCategoryFilterBarState
           for (final filter in primaryWorkflowFilters)
             CollapsibleSidebarItem(
               icon: _workflowIcon(filter),
-              label:
-                  '${_workflowLabel(filter, context)} (${_workflowCount(filter)})',
+              label: _workflowLabel(filter, context),
+              count: _workflowCount(filter),
               selected: widget.selectedWorkflow == filter &&
                   !widget.downloadsSelected &&
                   !widget.ocrJobsSelected,
@@ -112,8 +112,8 @@ class _NotificationCategoryFilterBarState
           for (final item in secondaryItems)
             CollapsibleSidebarItem(
               icon: _secondaryIcon(item),
-              label:
-                  '${_secondaryLabel(item, context)} (${_secondaryCount(item)})',
+              label: _secondaryLabel(item, context),
+              count: _secondaryCount(item),
               selected: _isSecondarySelected(item),
               onTap: () => _selectSecondary(item),
             ),

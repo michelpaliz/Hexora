@@ -1886,7 +1886,7 @@
       "date": { "type": "String" }
     }
   },
-  "clientMissingCountThisMonth": "{count, plural, =0{None missing} =1{1 missing this month} other{{count} missing this month}}",
+  "clientMissingCountThisMonth": "{count, plural, =0{All invoiced this month} =1{1 without invoice this month} other{{count} without invoice this month}}",
   "@clientMissingCountThisMonth": {
     "placeholders": {
       "count": { "type": "int" }

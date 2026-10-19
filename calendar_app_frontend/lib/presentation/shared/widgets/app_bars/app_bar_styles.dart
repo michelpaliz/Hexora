@@ -9,17 +9,18 @@ class AppBarStyles {
     ).titleLarge;
     return AppBarTheme(
       // Use primary blue in light mode, and its darker counterpart in dark mode
-      backgroundColor: isDarkMode ? AppDarkColors.primary : AppColors.primary,
+      backgroundColor:
+          isDarkMode ? AppDarkColors.dashboardTopBar : AppColors.primary,
       centerTitle: true,
       titleTextStyle: titleStyle?.copyWith(
-        color: Colors.white,
-        fontWeight: FontWeight.bold,
+        color: isDarkMode ? AppDarkColors.textPrimary : Colors.white,
+        fontWeight: FontWeight.w600,
         fontSize: 18,
       ),
-      iconTheme: const IconThemeData(
-        color: Colors.white, // back arrow & icons
+      iconTheme: IconThemeData(
+        color: isDarkMode ? AppDarkColors.textPrimary : Colors.white,
       ),
-      foregroundColor: Colors.white, // text & icon tint
+      foregroundColor: isDarkMode ? AppDarkColors.textPrimary : Colors.white,
     );
   }
 }

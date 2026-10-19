@@ -6733,7 +6733,7 @@ abstract class AppLocalizations {
   /// No description provided for @clientMissingCountThisMonth.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =0{None missing} =1{1 missing this month} other{{count} missing this month}}'**
+  /// **'{count, plural, =0{All invoiced this month} =1{1 without invoice this month} other{{count} without invoice this month}}'**
   String clientMissingCountThisMonth(int count);
 
   /// No description provided for @clientInvoiceCountThisMonth.

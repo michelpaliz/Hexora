@@ -20,6 +20,9 @@ class _TemplateVariableField {
     required this.label,
     required this.hint,
     required this.icon,
+    this.group = 'details',
+    this.inputType = 'text',
+    this.isRequired = false,
     this.keyboardType,
     this.maxLines = 1,
     this.isAutomatic = false,
@@ -32,6 +35,9 @@ class _TemplateVariableField {
   final String label;
   final String hint;
   final IconData icon;
+  final String group;
+  final String inputType;
+  final bool isRequired;
   final TextInputType? keyboardType;
   final int maxLines;
   final bool isAutomatic;
@@ -87,6 +93,7 @@ class _TemplateSectionState {
     Map<String, dynamic> map, {
     int fallbackOrder = 1,
   }) {
+    map = SeasonalFrequency.normalize(map);
     final items = map['items'] is List
         ? (map['items'] as List)
             .map((e) => e.toString())
@@ -110,6 +117,31 @@ class _TemplateSectionState {
   }
 
   final Map<String, dynamic> original;
+
+  /// Sections with a fixed position at the end of the document (for now):
+  /// 1 = payment conditions, 2 = annex with photos (always last), 0 = free.
+  int get pinnedRank {
+    String norm(String v) => v
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp('[áà]'), 'a')
+        .replaceAll(RegExp('[éè]'), 'e')
+        .replaceAll(RegExp('[íì]'), 'i')
+        .replaceAll(RegExp('[óò]'), 'o')
+        .replaceAll(RegExp('[úù]'), 'u');
+    final t = norm(title.text);
+    final k = norm(key);
+    if (t.startsWith('anexo') || k.contains('anexo') || k.contains('annex')) {
+      return 2;
+    }
+    if (t.startsWith('condiciones de pago') || k.contains('pago')) return 1;
+    return 0;
+  }
+
+  bool get isPinned => pinnedRank > 0;
+
+  bool get generatedFrequency =>
+      key == 'work_frequency' && original['generatedFrequency'] == true;
   final String key;
   int order;
   bool enabled;

@@ -1,3 +1,6 @@
+import 'package:hexora/navigation/shell/hexora_nav_components.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
+import 'package:hexora/presentation/shared/widgets/navigation_menu_header.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
@@ -9,8 +12,8 @@ import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class CalendarSideMenu extends StatelessWidget {
-  static const double expandedWidth = 220;
-  static const double collapsedWidth = 64;
+  static const double expandedWidth = NavigationTokens.sidebarWidth;
+  static const double collapsedWidth = NavigationTokens.railWidth;
 
   final Group group;
   final bool collapsed;
@@ -69,7 +72,7 @@ class CalendarSideMenu extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isEs = _isSpanish(context);
     final menuWidth = collapsed ? collapsedWidth : expandedWidth;
-    const childIndent = 12.0;
+    const childIndent = NavigationTokens.nestedIndent;
 
     if (collapsed) {
       return _CollapsedCalendarMenu(
@@ -272,63 +275,10 @@ class _CalendarModuleHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final l = AppLocalizations.of(context)!;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
-      decoration: BoxDecoration(
-        color: cs.primaryContainer,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.38)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: cs.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: Icon(
-              Icons.calendar_month_outlined,
-              size: 17,
-              color: cs.onPrimaryContainer,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: cs.onSurface,
-                    fontWeight: FontWeight.w900,
-                  ),
-            ),
-          ),
-          if (onToggleCollapse != null)
-            Tooltip(
-              message: l.groupInvoicesNavCollapse,
-              child: IconButton.filledTonal(
-                onPressed: onToggleCollapse,
-                icon: const Icon(Icons.keyboard_double_arrow_left_rounded),
-                iconSize: 18,
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(40, 34),
-                  fixedSize: const Size(40, 34),
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
+    return NavigationMenuHeader(
+        title: title,
+        icon: Icons.calendar_month_outlined,
+        onToggle: onToggleCollapse);
   }
 }
 
@@ -352,7 +302,7 @@ class _CollapsedCalendarMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final l = AppLocalizations.of(context)!;
+
     final isEs = _isSpanish(context);
     final activeKey = selectedMenu == 'upcoming' ||
             selectedMenu == 'completed' ||
@@ -399,16 +349,9 @@ class _CollapsedCalendarMenu extends StatelessWidget {
           if (showCollapseToggle)
             Align(
               alignment: Alignment.center,
-              child: IconButton.filledTonal(
-                tooltip: l.groupInvoicesNavExpand,
+              child: SidebarCollapseToggle(
+                collapsed: true,
                 onPressed: onToggleCollapse,
-                icon: const Icon(Icons.keyboard_double_arrow_right_rounded),
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(42, 42),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
               ),
             ),
           const SizedBox(height: 8),
@@ -420,13 +363,9 @@ class _CollapsedCalendarMenu extends StatelessWidget {
               itemBuilder: (context, index) {
                 final item = items[index];
                 final selected = item.key == activeKey;
-                return Tooltip(
-                  message: item.label,
-                  waitDuration: const Duration(milliseconds: 350),
-                  child: Center(
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: () {
+                return SidebarItem(icon: item.icon, label: item.label,
+ isSelected: selected, collapsed: true,
+ onTap: () {
                         switch (item.key) {
                           case 'actions':
                             onAddEvent?.call();
@@ -442,33 +381,7 @@ class _CollapsedCalendarMenu extends StatelessWidget {
                             onMenuChanged('week');
                             break;
                         }
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 160),
-                        curve: Curves.easeOutCubic,
-                        width: 48,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? cs.primary.withValues(alpha: 0.13)
-                              : cs.surfaceContainerHighest
-                                  .withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(13),
-                          border: Border.all(
-                            color: selected
-                                ? cs.primary.withValues(alpha: 0.25)
-                                : cs.outlineVariant.withValues(alpha: 0.18),
-                          ),
-                        ),
-                        child: Icon(
-                          item.icon,
-                          size: 19,
-                          color: selected ? cs.primary : cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
+                      },);
               },
             ),
           ),

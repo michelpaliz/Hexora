@@ -1,3 +1,6 @@
+import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
+import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:hexora/presentation/shared/widgets/documents/mobile_document_card.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
@@ -25,6 +28,10 @@ class InvoiceListItem extends StatefulWidget {
   final bool selected;
   final bool mobile;
 
+  /// Hide the client name when the list is already scoped to one client;
+  /// the invoice number becomes the row title instead.
+  final bool showClient;
+
   const InvoiceListItem({
     super.key,
     required this.invoice,
@@ -42,6 +49,7 @@ class InvoiceListItem extends StatefulWidget {
     this.monthWarningTooltip,
     this.selected = false,
     this.mobile = false,
+    this.showClient = true,
   });
 
   @override
@@ -49,12 +57,10 @@ class InvoiceListItem extends StatefulWidget {
 }
 
 class _InvoiceListItemState extends State<InvoiceListItem> {
-  static const double _actionIconGap = 6;
-
   final _linesApi = InvoiceLinesApi();
 
   bool _loadingMeta = false;
-  bool _hovered = false;
+
   bool _detailsExpanded = false;
   int? _lineCount;
   num? _subtotal;
@@ -148,9 +154,9 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
               },
               itemBuilder: (_) => [
                 if (widget.onEdit != null)
-                  PopupMenuItem(value: 'edit', child: Text(l.edit)),
+                  NavigationPopupMenuItem(value: 'edit', child: Text(l.edit)),
                 if (widget.onDelete != null)
-                  PopupMenuItem(
+                  NavigationPopupMenuItem(
                       value: 'delete',
                       child: Text(l.remove, style: TextStyle(color: cs.error))),
               ],
@@ -224,24 +230,45 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       if (issuedAtLabel != null) issuedAtLabel,
     ].join(' · ');
 
-    final statusIconColor =
-        isIssued ? cs.primary : cs.onSurface.withValues(alpha: 0.45);
-    final linkIconColor =
-        isLinked ? cs.tertiary : cs.onSurface.withValues(alpha: 0.45);
+    final rawStatus = (widget.invoice.status ?? '').trim().toLowerCase();
+    final isCancelled = rawStatus.contains('cancel');
+    final isRectified = rawStatus.contains('rectif');
+    final documentStatusLabel = isCancelled
+        ? (isEs ? 'Anulada' : 'Cancelled')
+        : isRectified
+            ? (isEs ? 'Rectificativa' : 'Rectified')
+            : isIssued
+                ? l.statusIssued
+                : l.statusDraft;
+    final documentStatusColor = isCancelled
+        ? cs.error
+        : isRectified
+            ? cs.tertiary
+            : isIssued
+                ? cs.primary
+                : cs.onSurfaceVariant;
+    final documentStatusIcon = isCancelled
+        ? Icons.cancel_outlined
+        : isRectified
+            ? Icons.replay_outlined
+            : isIssued
+                ? Icons.task_alt_outlined
+                : Icons.edit_note_outlined;
     final backendLinkStatusLabel =
         (widget.invoice.linkStatusLabel ?? '').trim();
     final linkTooltip = backendLinkStatusLabel.isNotEmpty
         ? backendLinkStatusLabel
         : (isLinked
-            ? l.statementsInvoiceAlreadyLinkedBadge
-            : l.statementsUnlinked);
+            ? (isEs
+                ? 'Conciliada con un movimiento bancario'
+                : 'Reconciled with a bank transaction')
+            : (isEs
+                ? 'Sin conciliar con movimientos bancarios'
+                : 'Not reconciled with a bank transaction'));
 
-    final isSelected = widget.selected;
-    final isActive = isSelected || _hovered;
     final warning = widget.warning;
     final monthWarning = widget.monthWarning;
     final amber = isLight ? const Color(0xFF9A5B00) : const Color(0xFFFFC247);
-    final amberBg = isLight ? const Color(0xFFFFF4D6) : const Color(0xFF5A3600);
 
     // Subtotal/IVA tooltip string
     String? breakdownTooltip;
@@ -255,627 +282,102 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       breakdownTooltip = parts.join('  ·  ');
     }
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 130),
-        curve: Curves.easeOut,
-        decoration: BoxDecoration(
-          color: warning
-              ? cs.errorContainer.withValues(alpha: 0.14)
-              : monthWarning
-                  ? amberBg.withValues(alpha: isLight ? 0.72 : 0.22)
-                  : isSelected
-                      ? cs.primaryContainer.withValues(alpha: 0.4)
-                      : isLight
-                          ? Colors.white
-                          : _hovered
-                              ? cs.surfaceContainerHighest
-                                  .withValues(alpha: 0.5)
-                              : cs.surface,
-          borderRadius: BorderRadius.circular(11),
-          border: Border.all(
-            color: warning
-                ? cs.error.withValues(alpha: 0.38)
-                : monthWarning
-                    ? amber.withValues(alpha: 0.54)
-                    : isSelected
-                        ? cs.primary.withValues(alpha: 0.65)
-                        : _hovered
-                            ? cs.outlineVariant.withValues(alpha: 0.65)
-                            : cs.outlineVariant.withValues(alpha: 0.3),
-            width: isSelected ? 1.4 : 1,
-          ),
-          boxShadow: isLight
-              ? [
-                  BoxShadow(
-                    color:
-                        Colors.black.withValues(alpha: isActive ? 0.06 : 0.035),
-                    blurRadius: isActive ? 16 : 10,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : null,
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(11),
-          onTap: widget.onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // ── Icon box ─────────────────────────────────────────────────
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: warning
-                        ? cs.errorContainer.withValues(alpha: 0.5)
-                        : monthWarning
-                            ? amberBg.withValues(alpha: isLight ? 0.92 : 0.35)
-                            : isIssued
-                                ? cs.primary.withValues(alpha: 0.10)
-                                : cs.surfaceContainerHighest
-                                    .withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(
-                      color: warning
-                          ? cs.error.withValues(alpha: 0.3)
-                          : monthWarning
-                              ? amber.withValues(alpha: 0.34)
-                              : isIssued
-                                  ? cs.primary.withValues(alpha: 0.18)
-                                  : cs.outlineVariant.withValues(alpha: 0.35),
-                    ),
-                  ),
-                  child: Icon(
-                    warning
-                        ? Icons.warning_amber_rounded
-                        : monthWarning
-                            ? Icons.calendar_month_outlined
-                            : isIssued
-                                ? Icons.receipt_long_rounded
-                                : Icons.receipt_long_outlined,
-                    size: 16,
-                    color: warning
-                        ? cs.error
-                        : monthWarning
-                            ? amber
-                            : isIssued
-                                ? cs.primary.withValues(alpha: 0.85)
-                                : cs.onSurfaceVariant.withValues(alpha: 0.65),
-                  ),
-                ),
-                const SizedBox(width: 10),
-
-                // ── Main content (2 lines) ────────────────────────────────────
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // ─ Line 1: client name + badges ──────────────────────
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    widget.client.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: t.bodySmall.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      color: cs.onSurface,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                                if (warning &&
-                                    (widget.warningLabel?.trim().isNotEmpty ??
-                                        false)) ...[
-                                  const SizedBox(width: 5),
-                                  _InlinePill(
-                                    label: widget.warningLabel!,
-                                    color: cs.error,
-                                    bg: cs.errorContainer
-                                        .withValues(alpha: 0.35),
-                                  ),
-                                ],
-                                if (showInvoiceType) ...[
-                                  const SizedBox(width: 5),
-                                  _InlinePill(
-                                    label: invoiceType == 'advance'
-                                        ? (isEs ? 'Anticipo' : 'Advance')
-                                        : 'Final',
-                                    color: cs.primary,
-                                    bg: cs.primary.withValues(alpha: 0.10),
-                                  ),
-                                ],
-                                if (monthWarning &&
-                                    (widget.monthWarningLabel
-                                            ?.trim()
-                                            .isNotEmpty ??
-                                        false)) ...[
-                                  const SizedBox(width: 5),
-                                  Tooltip(
-                                    message: widget.monthWarningTooltip ??
-                                        widget.monthWarningLabel!,
-                                    child: _InlinePill(
-                                      label: widget.monthWarningLabel!,
-                                      color: amber,
-                                      bg: amberBg.withValues(
-                                        alpha: isLight ? 0.86 : 0.42,
-                                      ),
-                                      icon: Icons.warning_amber_rounded,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          if (totalLabel.isNotEmpty)
-                            Tooltip(
-                              message: breakdownTooltip ?? '',
-                              child: Text(
-                                totalLabel,
-                                style: t.bodySmall.copyWith(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 13,
-                                  color:
-                                      hasDiscount ? cs.tertiary : cs.onSurface,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-
-                      // ─ Line 2: invoice number + date + status + actions ──────────────
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // Invoice number + date + line count
-                          Expanded(
-                            child: Text(
-                              [
-                                widget.invoice.displayNumber(
-                                  draftLabel: l.statusDraft,
-                                ),
-                                if (_lineCount != null || _loadingMeta)
-                                  '${l.invoiceLinesTitle}: $linesCountLabel',
-                                if (dateLabel.isNotEmpty) dateLabel,
-                              ].join('  ·  '),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: t.bodySmall.copyWith(
-                                fontSize: 11,
-                                color:
-                                    cs.onSurfaceVariant.withValues(alpha: 0.8),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-
-                          // Status pill
-                          _StatusPill(
-                            isIssued: isIssued,
-                            isLinked: isLinked,
-                            statusIconColor: statusIconColor,
-                            linkIconColor: linkIconColor,
-                            statusTooltip: isIssued
-                                ? '${l.statusIssued}\n$issuedByTooltip'
-                                : l.statusDraft,
-                            linkTooltip: linkTooltip,
-                            deliveryBadge: DeliveryStatusBadge(
-                              status: widget.invoice.deliveryStatus,
-                              channel: widget.invoice.deliveryChannel,
-                              sentAt: widget.invoice.sentAt,
-                              deliveryError: widget.invoice.deliveryError,
-                              compact: true,
-                              feminine: true,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-
-                          // Action buttons
-                          AnimatedOpacity(
-                            duration: const Duration(milliseconds: 130),
-                            opacity: isActive ? 1.0 : 0.45,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _ActionBtn(
-                                  icon: _detailsExpanded
-                                      ? Icons.keyboard_arrow_up_rounded
-                                      : Icons.keyboard_arrow_down_rounded,
-                                  tooltip: _detailsExpanded
-                                      ? (isEs
-                                          ? 'Ocultar detalles'
-                                          : 'Hide details')
-                                      : (isEs
-                                          ? 'Ver detalles'
-                                          : 'Show details'),
-                                  color: cs.onSurfaceVariant,
-                                  onTap: () => setState(
-                                    () => _detailsExpanded = !_detailsExpanded,
-                                  ),
-                                ),
-                                const SizedBox(width: _actionIconGap),
-                                _ActionBtn(
-                                  icon: Icons.visibility_outlined,
-                                  tooltip: isEs ? 'Vista previa' : 'Preview',
-                                  color: cs.primary,
-                                  onTap: widget.onPreview ?? widget.onTap,
-                                ),
-                                if (widget.onEdit != null) ...[
-                                  const SizedBox(width: _actionIconGap),
-                                  _ActionBtn(
-                                    icon: Icons.edit_outlined,
-                                    tooltip: l.edit,
-                                    color: cs.primary,
-                                    onTap: widget.onEdit,
-                                  ),
-                                ],
-                                if (widget.onIssue != null) ...[
-                                  const SizedBox(width: _actionIconGap),
-                                  _ActionBtn(
-                                    icon: Icons.publish_outlined,
-                                    tooltip: l.invoiceIssueCta,
-                                    color: cs.tertiary,
-                                    onTap: widget.onIssue,
-                                  ),
-                                ],
-                                if (widget.onInspectRecurrence != null) ...[
-                                  const SizedBox(width: _actionIconGap),
-                                  _ActionBtn(
-                                    icon: Icons.rule_folder_outlined,
-                                    tooltip:
-                                        isEs ? 'Ver recurrencia' : 'Recurrence',
-                                    color: cs.secondary,
-                                    onTap: widget.onInspectRecurrence,
-                                  ),
-                                ],
-                                if (widget.onDelete != null) ...[
-                                  const SizedBox(width: _actionIconGap),
-                                  Container(
-                                    width: 1,
-                                    height: 14,
-                                    color: cs.outlineVariant
-                                        .withValues(alpha: 0.4),
-                                  ),
-                                  const SizedBox(width: _actionIconGap),
-                                  _ActionBtn(
-                                    icon: Icons.delete_outline_rounded,
-                                    tooltip: l.delete,
-                                    color: cs.error,
-                                    onTap: widget.onDelete,
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      AnimatedCrossFade(
-                        duration: const Duration(milliseconds: 160),
-                        firstCurve: Curves.easeOut,
-                        secondCurve: Curves.easeOut,
-                        sizeCurve: Curves.easeOut,
-                        crossFadeState: _detailsExpanded
-                            ? CrossFadeState.showSecond
-                            : CrossFadeState.showFirst,
-                        firstChild: const SizedBox.shrink(),
-                        secondChild: Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: cs.surfaceContainerHighest
-                                  .withValues(alpha: 0.28),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color:
-                                    cs.outlineVariant.withValues(alpha: 0.22),
-                              ),
-                            ),
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (dateLabel.isNotEmpty)
-                                    _DetailChip(
-                                      label: 'Fecha',
-                                      value: dateLabel,
-                                    ),
-                                  if (isIssued)
-                                    _DetailChip(
-                                      label: isEs ? 'Emitida por' : 'Issued by',
-                                      value: issuedByValue,
-                                    ),
-                                  if (isIssued && issuedAtLabel != null)
-                                    _DetailChip(
-                                      label: isEs ? 'Emisión' : 'Issued at',
-                                      value: issuedAtLabel,
-                                    ),
-                                  _DetailChip(
-                                    label: 'Base',
-                                    value: _subtotal == null
-                                        ? (_loadingMeta ? '…' : '-')
-                                        : money.format(_subtotal),
-                                  ),
-                                  if (hasDiscount)
-                                    _DetailChip(
-                                      label: discountLabel,
-                                      value:
-                                          '-${money.format(effectiveDiscount)}',
-                                      accentColor: showsAdvanceDeduction
-                                          ? cs.tertiary
-                                          : cs.error,
-                                    ),
-                                  _DetailChip(
-                                    label: 'IVA',
-                                    value: _taxTotal == null
-                                        ? (_loadingMeta ? '…' : '-')
-                                        : money.format(_taxTotal),
-                                  ),
-                                  _DetailChip(
-                                    label: 'Total',
-                                    value: _total == null
-                                        ? (_loadingMeta ? '…' : '-')
-                                        : money.format(_total),
-                                    accentColor: cs.onSurface,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+    String warningText(String? text) => (text ?? '').trim().isNotEmpty
+        ? text!.trim()
+        : (isEs ? 'Requiere atención' : 'Requires attention');
+    final numberLabel = widget.invoice.displayNumber(draftLabel: l.statusDraft);
+    final paymentStatus =
+        (widget.invoice.paymentStatus ?? '').trim().toLowerCase();
+    final paymentLabel = switch (paymentStatus) {
+      'paid' => isEs ? 'Pago: cobrada' : 'Payment: paid',
+      'partial' => isEs ? 'Pago: parcialmente cobrada' : 'Payment: partial',
+      'overdue' => isEs ? 'Pago: vencida' : 'Payment: overdue',
+      'unpaid' => isEs ? 'Pago: pendiente' : 'Payment: pending',
+      _ => null,
+    };
+    final secondaryStates = [
+      if (paymentLabel != null) paymentLabel,
+      '${isEs ? 'Entrega' : 'Delivery'}: ${deliveryStatusLabel(widget.invoice.deliveryStatus, feminine: true)}',
+      linkTooltip,
+      if (showInvoiceType)
+        invoiceType == 'advance'
+            ? (isEs ? 'Factura de anticipo' : 'Advance invoice')
+            : (isEs ? 'Factura final' : 'Final invoice'),
+    ];
+    final warningTooltip = [
+      if (warning) warningText(widget.warningLabel),
+      if (monthWarning)
+        warningText(widget.monthWarningTooltip ?? widget.monthWarningLabel),
+    ].join('\n');
+    return CompactDocumentRow(
+      title: widget.showClient ? widget.client.name : numberLabel,
+      titleTrailing: warningTooltip.isEmpty
+          ? null
+          : Tooltip(
+              message: warningTooltip,
+              child: Icon(Icons.warning_amber_rounded,
+                  size: 16, color: warning ? cs.error : amber),
             ),
+      metadata: [
+        if (widget.showClient) numberLabel,
+        if (dateLabel.isNotEmpty) dateLabel
+      ].join(' · '),
+      amount: totalLabel,
+      selected: widget.selected,
+      onTap: widget.onTap,
+      onPreview: widget.onPreview ?? widget.onTap,
+      previewLabel: isEs ? 'Vista previa' : 'Preview',
+      status: Row(mainAxisSize: MainAxisSize.min, children: [
+        Tooltip(
+          message: isIssued
+              ? '$documentStatusLabel\n$issuedByTooltip'
+              : documentStatusLabel,
+          child: HexoraStatusBadge(
+            label: documentStatusLabel,
+            color: documentStatusColor,
+            leading:
+                Icon(documentStatusIcon, size: 14, color: documentStatusColor),
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ── Inline pill badge ──────────────────────────────────────────────────────────
-
-class _InlinePill extends StatelessWidget {
-  final String label;
-  final Color color;
-  final Color bg;
-  final IconData? icon;
-
-  const _InlinePill({
-    required this.label,
-    required this.color,
-    required this.bg,
-    this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 10, color: color),
-            const SizedBox(width: 3),
-          ],
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: color,
-              height: 1.4,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Status / Link / Delivery pill ─────────────────────────────────────────────
-
-class _DetailChip extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color? accentColor;
-
-  const _DetailChip({
-    required this.label,
-    required this.value,
-    this.accentColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(right: 14),
-      child: RichText(
-        text: TextSpan(
-          style: t.bodySmall.copyWith(
-            color: cs.onSurfaceVariant,
-            fontWeight: FontWeight.w600,
-          ),
-          children: [
-            TextSpan(text: '$label: '),
-            TextSpan(
-              text: value,
-              style: t.bodySmall.copyWith(
-                color: accentColor ?? cs.onSurface,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
+        const SizedBox(width: 4),
+        Tooltip(
+          message: secondaryStates.join('\n'),
+          child: Icon(Icons.info_outline_rounded,
+              size: 16, color: cs.onSurfaceVariant),
         ),
-      ),
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  final bool isIssued;
-  final bool isLinked;
-  final Color statusIconColor;
-  final Color linkIconColor;
-  final String statusTooltip;
-  final String linkTooltip;
-  final Widget deliveryBadge;
-
-  const _StatusPill({
-    required this.isIssued,
-    required this.isLinked,
-    required this.statusIconColor,
-    required this.linkIconColor,
-    required this.statusTooltip,
-    required this.linkTooltip,
-    required this.deliveryBadge,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.45),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _PillIcon(
-            icon: isIssued ? Icons.task_alt_outlined : Icons.edit_note_outlined,
-            color: statusIconColor,
-            tooltip: statusTooltip,
-          ),
-          _PillIcon(
-            icon: isLinked ? Icons.link_rounded : Icons.link_off_rounded,
-            color: linkIconColor,
-            tooltip: linkTooltip,
-          ),
-          deliveryBadge,
-          Icon(
-            Icons.keyboard_arrow_down_rounded,
-            size: 12,
-            color: cs.onSurfaceVariant.withValues(alpha: 0.45),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PillIcon extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String tooltip;
-
-  const _PillIcon(
-      {required this.icon, required this.color, required this.tooltip});
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: Icon(icon, size: 13, color: color),
-      ),
-    );
-  }
-}
-
-// ── Action button ──────────────────────────────────────────────────────────────
-
-class _ActionBtn extends StatefulWidget {
-  final IconData icon;
-  final Color color;
-  final String tooltip;
-  final VoidCallback? onTap;
-
-  const _ActionBtn({
-    required this.icon,
-    required this.color,
-    required this.tooltip,
-    this.onTap,
-  });
-
-  @override
-  State<_ActionBtn> createState() => _ActionBtnState();
-}
-
-class _ActionBtnState extends State<_ActionBtn> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: widget.tooltip,
-      child: MouseRegion(
-        cursor: widget.onTap != null
-            ? SystemMouseCursors.click
-            : SystemMouseCursors.basic,
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(7),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 110),
-            curve: Curves.easeOut,
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(
-              color: _hovered
-                  ? widget.color.withValues(alpha: 0.16)
-                  : widget.color.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(7),
-              border: Border.all(
-                color: _hovered
-                    ? widget.color.withValues(alpha: 0.3)
-                    : Colors.transparent,
-              ),
-            ),
-            child: Icon(
-              widget.icon,
-              size: 14,
-              color: widget.color.withValues(alpha: _hovered ? 1.0 : 0.75),
-            ),
-          ),
-        ),
-      ),
+      ]),
+      actions: [
+        CompactDocumentAction(
+            _detailsExpanded
+                ? (isEs ? 'Ocultar detalles' : 'Hide details')
+                : (isEs ? 'Ver detalles' : 'Show details'),
+            () => setState(() => _detailsExpanded = !_detailsExpanded)),
+        if (widget.onEdit != null) CompactDocumentAction(l.edit, widget.onEdit),
+        if (widget.onIssue != null)
+          CompactDocumentAction(l.invoiceIssueCta, widget.onIssue),
+        if (widget.onInspectRecurrence != null)
+          CompactDocumentAction(isEs ? 'Ver recurrencia' : 'Recurrence',
+              widget.onInspectRecurrence),
+        if (widget.onDelete != null)
+          CompactDocumentAction(l.delete, widget.onDelete, destructive: true),
+      ],
+      details: !_detailsExpanded
+          ? null
+          : Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                  [
+                    '${l.invoiceLinesTitle}: $linesCountLabel',
+                    if (dateLabel.isNotEmpty) dateLabel,
+                    if (isIssued) issuedByTooltip,
+                    if (showInvoiceType) invoiceType,
+                    if (breakdownTooltip != null) breakdownTooltip,
+                    linkTooltip,
+                    if (widget.warningLabel != null) widget.warningLabel!,
+                    if (widget.monthWarningTooltip != null)
+                      widget.monthWarningTooltip!,
+                  ].join(' · '),
+                  style: t.bodySmall)),
     );
   }
 }

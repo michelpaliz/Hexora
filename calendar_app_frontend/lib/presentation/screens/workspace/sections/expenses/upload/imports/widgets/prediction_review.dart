@@ -408,7 +408,7 @@ class _BatchExpensePreviewReviewPanelState
         onSelected: (value) => setState(() => _queue = value),
         itemBuilder: (context) => [
           for (final option in queueOptions)
-            PopupMenuItem(
+            NavigationPopupMenuItem(
               value: option.queue,
               child: Row(
                 children: [

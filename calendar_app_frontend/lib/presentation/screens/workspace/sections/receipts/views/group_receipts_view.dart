@@ -1,3 +1,5 @@
+import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
+import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -56,49 +58,8 @@ class _MonthDivider extends StatelessWidget {
   final bool first;
 
   @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    return Padding(
-      padding: EdgeInsets.only(top: first ? 0 : 14, bottom: 6),
-      child: Row(
-        children: [
-          Expanded(
-            child: Divider(
-              color: cs.outlineVariant.withValues(alpha: 0.35),
-              height: 1,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Text(
-              label,
-              style: t.bodySmall.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-                fontSize: 11,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Divider(
-              color: cs.outlineVariant.withValues(alpha: 0.35),
-              height: 1,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      CompactDocumentMonthHeading(label: label);
 }
 
 class _GroupedReceiptList extends StatelessWidget {
@@ -145,7 +106,8 @@ class _GroupedReceiptList extends StatelessWidget {
         final r = item as Receipt;
         final client = _receiptClientFor(r, clients, unknownClientLabel);
         return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.sizeOf(context).width < 650 ? 8 : 0),
           child: itemBuilder(r, client),
         );
       },
@@ -437,25 +399,7 @@ class GroupReceiptsView extends StatelessWidget {
                     // Tab bar
                     Padding(
                       padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
-                      child: TabBar(
-                        dividerColor: Colors.transparent,
-                        splashFactory: NoSplash.splashFactory,
-                        overlayColor: WidgetStatePropertyAll(
-                          cs.primary.withValues(alpha: 0.08),
-                        ),
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        indicator: BoxDecoration(
-                          color: cs.primaryContainer,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        indicatorPadding:
-                            const EdgeInsets.symmetric(vertical: 4),
-                        labelColor: cs.onPrimaryContainer,
-                        unselectedLabelColor: cs.onSurfaceVariant,
-                        labelStyle: t.bodySmall.copyWith(
-                            fontWeight: FontWeight.w800, fontSize: 12),
-                        unselectedLabelStyle: t.bodySmall.copyWith(
-                            fontWeight: FontWeight.w600, fontSize: 12),
+                      child: HexoraSectionTabs(
                         tabs: [
                           Tab(
                             child: Row(

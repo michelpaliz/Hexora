@@ -1,6 +1,10 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
@@ -14,8 +18,45 @@ import 'insights_chat_sheet_base.dart';
 mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
   @override
   Widget build(BuildContext context) {
+    final base = Theme.of(context);
+    final navy =
+        kIsWeb && widget.embedded && MediaQuery.sizeOf(context).width >= 1180;
+    if (!navy) return _buildShell(context, base, navy: false);
+    final navigation = navigationTheme(base);
+    final chatTheme = navigation.copyWith(
+      colorScheme: navigation.colorScheme.copyWith(
+        onPrimary: Colors.white,
+        surfaceContainerLowest: AppColors.dashboardTopBar,
+        surfaceContainerLow: const Color(0xFF1C3047),
+        surfaceContainer: const Color(0xFF223750),
+        surfaceContainerHigh: const Color(0xFF293F59),
+      ),
+      popupMenuTheme: navigation.popupMenuTheme.copyWith(
+        color: const Color(0xFF1C3047),
+        surfaceTintColor: Colors.transparent,
+        textStyle: navigation.textTheme.bodySmall,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+      )),
+      inputDecorationTheme: navigation.inputDecorationTheme.copyWith(
+        hintStyle: navigation.textTheme.bodySmall
+            ?.copyWith(color: const Color(0xFFAFBFD4)),
+      ),
+    );
+    return Theme(
+        data: chatTheme,
+        child: Builder(
+          builder: (context) => _buildShell(context, base, navy: true),
+        ));
+  }
+
+  Widget _buildShell(BuildContext context, ThemeData resultsTheme,
+      {required bool navy}) {
     final cs = Theme.of(context).colorScheme;
-    final canvas = Theme.of(context).canvasColor;
+    final canvas = resultsTheme.canvasColor;
     final t = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
@@ -498,7 +539,9 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         width: 3,
-                        color: isSelected ? cs.primary : Colors.transparent,
+                        color: isSelected
+                            ? (navy ? AppColors.primary : cs.primary)
+                            : Colors.transparent,
                       ),
                       Expanded(
                         child: Padding(
@@ -655,7 +698,10 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
       );
     }
 
-    Widget buildDesktopResponsePanel() {
+    Widget buildDesktopResponsePanel(BuildContext context) {
+      final cs = Theme.of(context).colorScheme;
+      final t = AppTypography.of(context);
+      final isDark = Theme.of(context).brightness == Brightness.dark;
       if (selectedAssistantMessage == null) {
         return Center(
           child: Padding(
@@ -693,8 +739,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
         );
       }
 
-      final exportAction =
-          getExportActionFromMessage(selectedAssistantMessage);
+      final exportAction = getExportActionFromMessage(selectedAssistantMessage);
       final selectedKey = messageKeyFor(selectedAssistantMessage);
       final isTableResponse =
           messageHasStructuredTable(selectedAssistantMessage);
@@ -797,8 +842,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 ),
                 onPressed: () =>
                     showTableDateFilterDialog(selectedAssistantMessage),
-                onDeleted: () =>
-                    clearTableDateFilter(selectedAssistantMessage),
+                onDeleted: () => clearTableDateFilter(selectedAssistantMessage),
                 deleteIcon: const Icon(Icons.close_rounded, size: 14),
                 visualDensity: VisualDensity.compact,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -817,8 +861,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
             Tooltip(
               message: isEs ? 'Limpiar filtro' : 'Clear filter',
               child: IconButton(
-                onPressed: () =>
-                    clearTableDateFilter(selectedAssistantMessage),
+                onPressed: () => clearTableDateFilter(selectedAssistantMessage),
                 icon: const Icon(Icons.filter_alt_off_rounded, size: 17),
                 constraints: const BoxConstraints.tightFor(
                   width: 34,
@@ -916,15 +959,23 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                       const SizedBox(height: 3),
                       Row(
                         children: [
-                          Icon(
-                            Icons.alt_route_rounded,
-                            size: 12,
-                            color: cs.primary.withValues(alpha: 0.75),
-                          ),
-                          const SizedBox(width: 4),
+                          if (!isLinkedIncomeReview) ...[
+                            Icon(
+                              Icons.alt_route_rounded,
+                              size: 12,
+                              color: cs.primary.withValues(alpha: 0.75),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
                           Expanded(
                             child: Text(
-                              selectedActionLabel,
+                              // The menu breadcrumb is noise here; tell the
+                              // user what the review is for instead.
+                              isLinkedIncomeReview
+                                  ? (isEs
+                                      ? 'Revisa las coincidencias antes de confirmar las vinculaciones.'
+                                      : 'Check each match before confirming the links.')
+                                  : selectedActionLabel,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: t.bodySmall.copyWith(
@@ -1182,11 +1233,11 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                     tooltip: l.insightsChatDaysTooltip,
                     onSelected: runtime.setDays,
                     itemBuilder: (context) => const [
-                      PopupMenuItem(value: 30, child: Text('30d')),
-                      PopupMenuItem(value: 60, child: Text('60d')),
-                      PopupMenuItem(value: 90, child: Text('90d')),
-                      PopupMenuItem(value: 120, child: Text('120d')),
-                      PopupMenuItem(value: 180, child: Text('180d')),
+                      NavigationPopupMenuItem(value: 30, child: Text('30d')),
+                      NavigationPopupMenuItem(value: 60, child: Text('60d')),
+                      NavigationPopupMenuItem(value: 90, child: Text('90d')),
+                      NavigationPopupMenuItem(value: 120, child: Text('120d')),
+                      NavigationPopupMenuItem(value: 180, child: Text('180d')),
                     ],
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -1294,8 +1345,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
               if (index == contentCount) {
                 return Column(children: [
                   if (messages.isEmpty && !sending)
-                    buildStarterQuestionCard(context,
-                        cs: cs, t: t, isEs: isEs),
+                    buildStarterQuestionCard(context, cs: cs, t: t, isEs: isEs),
                   mobileConversationFooter,
                 ]);
               }
@@ -1420,9 +1470,11 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                           child: desktopChatPaneCollapsed
                               ? Container(
                                   decoration: BoxDecoration(
-                                    color: cs.surface.withValues(
-                                      alpha: isDark ? 0.20 : 0.35,
-                                    ),
+                                    color: navy
+                                        ? AppColors.dashboardTopBar
+                                        : cs.surface.withValues(
+                                            alpha: isDark ? 0.20 : 0.35,
+                                          ),
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
                                       color: cs.outlineVariant.withValues(
@@ -1474,8 +1526,10 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                 )
                               : Container(
                                   decoration: BoxDecoration(
-                                    color: cs.surface.withValues(
-                                        alpha: isDark ? 0.20 : 0.35),
+                                    color: navy
+                                        ? AppColors.dashboardTopBar
+                                        : cs.surface.withValues(
+                                            alpha: isDark ? 0.20 : 0.35),
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
                                       color: cs.outlineVariant.withValues(
@@ -1517,19 +1571,19 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                                 onSelected: runtime.setDays,
                                                 itemBuilder: (context) =>
                                                     const [
-                                                  PopupMenuItem(
+                                                  NavigationPopupMenuItem(
                                                       value: 30,
                                                       child: Text('30d')),
-                                                  PopupMenuItem(
+                                                  NavigationPopupMenuItem(
                                                       value: 60,
                                                       child: Text('60d')),
-                                                  PopupMenuItem(
+                                                  NavigationPopupMenuItem(
                                                       value: 90,
                                                       child: Text('90d')),
-                                                  PopupMenuItem(
+                                                  NavigationPopupMenuItem(
                                                       value: 120,
                                                       child: Text('120d')),
-                                                  PopupMenuItem(
+                                                  NavigationPopupMenuItem(
                                                       value: 180,
                                                       child: Text('180d')),
                                                 ],
@@ -1540,7 +1594,9 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                                     vertical: 5,
                                                   ),
                                                   decoration: BoxDecoration(
-                                                    color: canvas,
+                                                    color: navy
+                                                        ? cs.surfaceContainerLow
+                                                        : canvas,
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                             20),
@@ -1593,7 +1649,9 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                                     InsightsResponseMode.auto,
                                                 selectedColor:
                                                     cs.primaryContainer,
-                                                backgroundColor: canvas,
+                                                backgroundColor: navy
+                                                    ? cs.surfaceContainerLow
+                                                    : canvas,
                                                 visualDensity:
                                                     VisualDensity.compact,
                                                 labelStyle:
@@ -1630,11 +1688,12 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                                 label: Text(
                                                     l.insightsChatModeStream),
                                                 selected: mode ==
-                                                    InsightsResponseMode
-                                                        .stream,
+                                                    InsightsResponseMode.stream,
                                                 selectedColor:
                                                     cs.primaryContainer,
-                                                backgroundColor: canvas,
+                                                backgroundColor: navy
+                                                    ? cs.surfaceContainerLow
+                                                    : canvas,
                                                 visualDensity:
                                                     VisualDensity.compact,
                                                 labelStyle:
@@ -1788,17 +1847,21 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                           flex: 9,
                           child: Container(
                             decoration: BoxDecoration(
-                              color: cs.surface
+                              color: resultsTheme.colorScheme.surface
                                   .withValues(alpha: isDark ? 0.20 : 0.35),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: cs.outlineVariant.withValues(
+                                color: resultsTheme.colorScheme.outlineVariant
+                                    .withValues(
                                   alpha: isDark ? 0.18 : 0.22,
                                 ),
                               ),
                             ),
                             clipBehavior: Clip.antiAlias,
-                            child: buildDesktopResponsePanel(),
+                            child: Theme(
+                                data: resultsTheme,
+                                child: Builder(
+                                    builder: buildDesktopResponsePanel)),
                           ),
                         ),
                       ],

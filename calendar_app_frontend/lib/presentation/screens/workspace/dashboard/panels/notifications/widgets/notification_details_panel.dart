@@ -23,6 +23,7 @@ class NotificationDetailsPanel extends StatefulWidget {
     required this.onConfirm,
     required this.onNegate,
     required this.onDelete,
+    this.onMarkRead,
   });
 
   final NotificationUser? notification;
@@ -30,6 +31,7 @@ class NotificationDetailsPanel extends StatefulWidget {
   final VoidCallback? onConfirm;
   final VoidCallback? onNegate;
   final VoidCallback? onDelete;
+  final VoidCallback? onMarkRead;
 
   @override
   State<NotificationDetailsPanel> createState() =>
@@ -70,7 +72,7 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
       futures.add(() async {
         try {
           final client = await ClientsApi().getById(args.clientId!.trim());
-          if (!mounted) return;
+          if (!mounted || widget.notification?.id != notification.id) return;
           setState(() => _resolvedClientName =
               client.name.trim().isEmpty ? null : client.name.trim());
         } catch (_) {}
@@ -82,7 +84,7 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
         try {
           final service =
               await ServiceApi().getById(args.primaryServiceId!.trim());
-          if (!mounted) return;
+          if (!mounted || widget.notification?.id != notification.id) return;
           setState(() => _resolvedServiceName =
               service.name.trim().isEmpty ? null : service.name.trim());
         } catch (_) {}
@@ -101,7 +103,7 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
               : (owner.name.trim().isNotEmpty
                   ? owner.name.trim()
                   : owner.userName.trim());
-          if (!mounted) return;
+          if (!mounted || widget.notification?.id != notification.id) return;
           setState(() => _resolvedOwnerName = name.isEmpty ? null : name);
         } catch (_) {}
       }());
@@ -231,7 +233,12 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
     final hasActions = n.category == Category.groupInvitation ||
         n.questionsAndAnswers.isNotEmpty;
 
-    final isEvent = isEventNotification(n);
+    final documentKey = '${n.titleKey} ${n.fallbackTitle}'.toLowerCase();
+    final isDocument = !isBankExpenseNotification &&
+        (n.args.containsKey('receiptId') ||
+            n.args.containsKey('invoiceId') ||
+            RegExp('receipt|invoice|recibo|factura').hasMatch(documentKey));
+    final isEvent = !isDocument && isEventNotification(n);
     final meta = resolveNotifMeta(n, cs);
     final args = EventArgsHelper(n.args);
     final locale = Localizations.localeOf(context).toString();
@@ -247,7 +254,7 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
     final dim = cs.onSurface.withValues(alpha: 0.55);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -271,7 +278,7 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
                       isEvent && args.eventTitle != null
                           ? args.eventTitle!
                           : n.getLocalizedTitle(l),
-                      style: t.bodyLarge.copyWith(
+                      style: t.bodyMedium.copyWith(
                         fontWeight: FontWeight.w800,
                         color: ThemeColors.textPrimary(context),
                       ),
@@ -283,7 +290,7 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
                       children: [
                         if (!n.isRead)
                           _Pill(
-                            label: isEs ? 'No leida' : 'Unread',
+                            label: isEs ? 'No leída' : 'Unread',
                             color: meta.color,
                           ),
                         if (args.action != null)
@@ -311,269 +318,285 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
               height: 1.4,
             ),
           ),
-          // ── Event section (always for event notifications) ────────────
-          if (isBankExpenseNotification && bankExpenseRows.isNotEmpty) ...[
-            _SectionDivider(
-              label: isEs ? 'Gastos detectados' : 'Detected expenses',
-              cs: cs,
-              t: t,
-            ),
-            _BankExpenseRowsSection(
-              rows: bankExpenseRows,
-              args: n.args,
-              isEs: isEs,
-            ),
-          ] else if (isBankExpenseNotification) ...[
-            _BankExpenseFallbackSummary(args: n.args, isEs: isEs),
-          ],
-          if (isEvent) ...[
-            _SectionDivider(label: isEs ? 'Evento' : 'Event', cs: cs, t: t),
-            if (args.eventTitle != null)
+          const SizedBox(height: 4),
+          Text(formatTimeDifference(n.timestamp, context),
+              style: t.caption.copyWith(color: cs.onSurfaceVariant)),
+          if (isDocument)
+            _DocumentDetails(
+                notification: n,
+                clientName: _resolvedClientName ?? args.clientName,
+                creatorName: args.createdByName ??
+                    args.senderName ??
+                    args.ownerName ??
+                    _resolvedOwnerName),
+          if (!isDocument) ...[
+            // ── Event section (always for event notifications) ────────────
+            if (isBankExpenseNotification && bankExpenseRows.isNotEmpty) ...[
+              _SectionDivider(
+                label: isEs ? 'Gastos detectados' : 'Detected expenses',
+                cs: cs,
+                t: t,
+              ),
+              _BankExpenseRowsSection(
+                rows: bankExpenseRows,
+                args: n.args,
+                isEs: isEs,
+              ),
+            ] else if (isBankExpenseNotification) ...[
+              _BankExpenseFallbackSummary(args: n.args, isEs: isEs),
+            ],
+            if (isEvent) ...[
+              _SectionDivider(label: isEs ? 'Evento' : 'Event', cs: cs, t: t),
+              if (args.eventTitle != null)
+                _IconDetailRow(
+                  icon: Icons.event_rounded,
+                  label: isEs ? 'Nombre' : 'Name',
+                  value: args.eventTitle!,
+                  color: meta.color,
+                ),
               _IconDetailRow(
-                icon: Icons.event_rounded,
-                label: isEs ? 'Nombre' : 'Name',
-                value: args.eventTitle!,
-                color: meta.color,
+                icon: Icons.person_add_rounded,
+                label: isEs ? 'Creado por' : 'Created by',
+                value: args.createdByName ??
+                    args.senderName ??
+                    args.ownerName ??
+                    _resolvedOwnerName ??
+                    _fallbackActorLabel(
+                      isEs: isEs,
+                      actorId: args.senderId ?? n.senderId,
+                    ),
+                color: dim,
+              ),
+              if (args.eventId != null)
+                _IconDetailRow(
+                  icon: Icons.tag_rounded,
+                  label: 'ID',
+                  value: args.eventId!,
+                  color: dim,
+                ),
+              if (args.eventType != null)
+                _IconDetailRow(
+                  icon: resolveEventTypeMeta(args.eventType, cs).icon,
+                  label: isEs ? 'Tipo' : 'Type',
+                  value: eventTypeLabel(args.eventType, isEs: isEs),
+                  color: resolveEventTypeMeta(args.eventType, cs).color,
+                ),
+              if (args.status != null)
+                _IconDetailRow(
+                  icon: resolveStatusMeta(args.status, cs).icon,
+                  label: isEs ? 'Estado' : 'Status',
+                  value: statusLabel(args.status, isEs: isEs),
+                  color: resolveStatusMeta(args.status, cs).color,
+                ),
+              if (args.isDone == true)
+                _IconDetailRow(
+                  icon: Icons.task_alt_rounded,
+                  label: isEs ? 'Completado' : 'Completed',
+                  value: isEs ? 'Sí' : 'Yes',
+                  color: Colors.green.shade600,
+                ),
+              if (args.recurrenceRuleId != null)
+                _IconDetailRow(
+                  icon: Icons.repeat_rounded,
+                  label: isEs ? 'Recurrencia' : 'Recurrence',
+                  value: args.recurrenceRuleId!,
+                  color: dim,
+                ),
+              if (args.categoryId != null)
+                _IconDetailRow(
+                  icon: Icons.label_rounded,
+                  label: isEs ? 'Categoría' : 'Category',
+                  value: args.subcategoryId != null
+                      ? '${args.categoryId!} › ${args.subcategoryId!}'
+                      : args.categoryId!,
+                  color: dim,
+                ),
+            ],
+
+            // ── Schedule ──────────────────────────────────────────────────────
+            if (isEvent &&
+                (args.startDate != null ||
+                    args.endDate != null ||
+                    args.allDay != null ||
+                    args.reminderTime != null)) ...[
+              _SectionDivider(
+                  label: isEs ? 'Horario' : 'Schedule', cs: cs, t: t),
+              if (args.allDay == true)
+                _IconDetailRow(
+                  icon: Icons.wb_sunny_rounded,
+                  label: isEs ? 'Todo el día' : 'All day',
+                  value: isEs ? 'Sí' : 'Yes',
+                  color: Colors.amber.shade600,
+                ),
+              if (args.formattedStartDate(locale) != null)
+                _IconDetailRow(
+                  icon: Icons.play_arrow_rounded,
+                  label: isEs ? 'Inicio' : 'Start',
+                  value: args.formattedStartDate(locale)!,
+                  trailing: relTime != null
+                      ? _Pill(label: relTime, color: meta.color)
+                      : null,
+                  color: meta.color,
+                ),
+              if (args.formattedEndDate(locale) != null)
+                _IconDetailRow(
+                  icon: Icons.stop_rounded,
+                  label: isEs ? 'Fin' : 'End',
+                  value: args.formattedEndDate(locale)!,
+                  color: dim,
+                ),
+              if (args.formattedReminderTime(isEs: isEs) != null)
+                _IconDetailRow(
+                  icon: Icons.alarm_rounded,
+                  label: isEs ? 'Recordatorio' : 'Reminder',
+                  value: args.formattedReminderTime(isEs: isEs)!,
+                  color: const Color(0xFFFF8F00),
+                ),
+            ],
+
+            // ── Content ───────────────────────────────────────────────────────
+            if (args.location != null ||
+                args.localization != null ||
+                args.description != null ||
+                args.note != null) ...[
+              _SectionDivider(
+                  label: isEs ? 'Contenido' : 'Content', cs: cs, t: t),
+              if (args.location != null || args.localization != null)
+                _IconDetailRow(
+                  icon: Icons.location_on_rounded,
+                  label: isEs ? 'Ubicación' : 'Location',
+                  value: args.location ?? args.localization!,
+                  color: dim,
+                ),
+              if (args.description != null)
+                _IconDetailRow(
+                  icon: Icons.description_rounded,
+                  label: isEs ? 'Descripción' : 'Description',
+                  value: args.description!,
+                  color: dim,
+                ),
+              if (args.note != null)
+                _IconDetailRow(
+                  icon: Icons.sticky_note_2_rounded,
+                  label: isEs ? 'Nota' : 'Note',
+                  value: args.note!,
+                  color: dim,
+                ),
+            ],
+
+            // ── Work visit ────────────────────────────────────────────────────
+            if (args.clientId != null ||
+                args.clientName != null ||
+                args.primaryServiceId != null ||
+                args.stopId != null) ...[
+              _SectionDivider(
+                  label: isEs ? 'Visita de trabajo' : 'Work visit',
+                  cs: cs,
+                  t: t),
+              if (args.clientName != null || args.clientId != null)
+                _IconDetailRow(
+                  icon: Icons.person_outline_rounded,
+                  label: isEs ? 'Cliente' : 'Client',
+                  value: _bestResolvedLabel(
+                        resolvedName: _resolvedClientName,
+                        payloadName: args.clientName,
+                        fallbackId: args.clientId,
+                      ) ??
+                      args.clientId!,
+                  color: dim,
+                ),
+              if (args.primaryServiceId != null || _resolvedServiceName != null)
+                _IconDetailRow(
+                  icon: Icons.home_repair_service_rounded,
+                  label: isEs ? 'Servicio' : 'Service',
+                  value: _bestResolvedLabel(
+                        resolvedName: _resolvedServiceName,
+                        payloadName: null,
+                        fallbackId: args.primaryServiceId,
+                      ) ??
+                      args.primaryServiceId!,
+                  color: dim,
+                ),
+              if (args.stopId != null)
+                _IconDetailRow(
+                  icon: Icons.place_rounded,
+                  label: isEs ? 'Parada' : 'Stop',
+                  value: args.stopId!,
+                  color: dim,
+                ),
+            ],
+
+            // ── Context ───────────────────────────────────────────────────────
+            _SectionDivider(label: isEs ? 'Contexto' : 'Context', cs: cs, t: t),
+            _IconDetailRow(
+              icon: Icons.group_rounded,
+              label: l.groupSectionTitle,
+              value: widget.groupName,
+              color: dim,
+            ),
+            if (args.ownerName != null || args.ownerId != null)
+              _IconDetailRow(
+                icon: Icons.manage_accounts_rounded,
+                label: isEs ? 'Responsable' : 'Owner',
+                value: _bestResolvedLabel(
+                      resolvedName: _resolvedOwnerName,
+                      payloadName: args.ownerName,
+                      fallbackId: args.ownerId,
+                    ) ??
+                    args.ownerId!,
+                color: dim,
               ),
             _IconDetailRow(
-              icon: Icons.person_add_rounded,
-              label: isEs ? 'Creado por' : 'Created by',
-              value: args.createdByName ??
-                  args.senderName ??
+              icon: Icons.send_rounded,
+              label: isEs ? 'Enviado por' : 'Sent by',
+              value: args.senderName ??
                   args.ownerName ??
-                  _resolvedOwnerName ??
                   _fallbackActorLabel(
                     isEs: isEs,
                     actorId: args.senderId ?? n.senderId,
                   ),
               color: dim,
             ),
-            if (args.eventId != null)
-              _IconDetailRow(
-                icon: Icons.tag_rounded,
-                label: 'ID',
-                value: args.eventId!,
-                color: dim,
-              ),
-            if (args.eventType != null)
-              _IconDetailRow(
-                icon: resolveEventTypeMeta(args.eventType, cs).icon,
-                label: isEs ? 'Tipo' : 'Type',
-                value: eventTypeLabel(args.eventType, isEs: isEs),
-                color: resolveEventTypeMeta(args.eventType, cs).color,
-              ),
-            if (args.status != null)
-              _IconDetailRow(
-                icon: resolveStatusMeta(args.status, cs).icon,
-                label: isEs ? 'Estado' : 'Status',
-                value: statusLabel(args.status, isEs: isEs),
-                color: resolveStatusMeta(args.status, cs).color,
-              ),
-            if (args.isDone == true)
-              _IconDetailRow(
-                icon: Icons.task_alt_rounded,
-                label: isEs ? 'Completado' : 'Completed',
-                value: isEs ? 'Sí' : 'Yes',
-                color: Colors.green.shade600,
-              ),
-            if (args.recurrenceRuleId != null)
-              _IconDetailRow(
-                icon: Icons.repeat_rounded,
-                label: isEs ? 'Recurrencia' : 'Recurrence',
-                value: args.recurrenceRuleId!,
-                color: dim,
-              ),
-            if (args.categoryId != null)
-              _IconDetailRow(
-                icon: Icons.label_rounded,
-                label: isEs ? 'Categoría' : 'Category',
-                value: args.subcategoryId != null
-                    ? '${args.categoryId!} › ${args.subcategoryId!}'
-                    : args.categoryId!,
-                color: dim,
-              ),
-          ],
-
-          // ── Schedule ──────────────────────────────────────────────────────
-          if (isEvent &&
-              (args.startDate != null ||
-                  args.endDate != null ||
-                  args.allDay != null ||
-                  args.reminderTime != null)) ...[
-            _SectionDivider(label: isEs ? 'Horario' : 'Schedule', cs: cs, t: t),
-            if (args.allDay == true)
-              _IconDetailRow(
-                icon: Icons.wb_sunny_rounded,
-                label: isEs ? 'Todo el día' : 'All day',
-                value: isEs ? 'Sí' : 'Yes',
-                color: Colors.amber.shade600,
-              ),
-            if (args.formattedStartDate(locale) != null)
-              _IconDetailRow(
-                icon: Icons.play_arrow_rounded,
-                label: isEs ? 'Inicio' : 'Start',
-                value: args.formattedStartDate(locale)!,
-                trailing: relTime != null
-                    ? _Pill(label: relTime, color: meta.color)
-                    : null,
-                color: meta.color,
-              ),
-            if (args.formattedEndDate(locale) != null)
-              _IconDetailRow(
-                icon: Icons.stop_rounded,
-                label: isEs ? 'Fin' : 'End',
-                value: args.formattedEndDate(locale)!,
-                color: dim,
-              ),
-            if (args.formattedReminderTime(isEs: isEs) != null)
-              _IconDetailRow(
-                icon: Icons.alarm_rounded,
-                label: isEs ? 'Recordatorio' : 'Reminder',
-                value: args.formattedReminderTime(isEs: isEs)!,
-                color: const Color(0xFFFF8F00),
-              ),
-          ],
-
-          // ── Content ───────────────────────────────────────────────────────
-          if (args.location != null ||
-              args.localization != null ||
-              args.description != null ||
-              args.note != null) ...[
-            _SectionDivider(
-                label: isEs ? 'Contenido' : 'Content', cs: cs, t: t),
-            if (args.location != null || args.localization != null)
-              _IconDetailRow(
-                icon: Icons.location_on_rounded,
-                label: isEs ? 'Ubicación' : 'Location',
-                value: args.location ?? args.localization!,
-                color: dim,
-              ),
-            if (args.description != null)
-              _IconDetailRow(
-                icon: Icons.description_rounded,
-                label: isEs ? 'Descripción' : 'Description',
-                value: args.description!,
-                color: dim,
-              ),
-            if (args.note != null)
-              _IconDetailRow(
-                icon: Icons.sticky_note_2_rounded,
-                label: isEs ? 'Nota' : 'Note',
-                value: args.note!,
-                color: dim,
-              ),
-          ],
-
-          // ── Work visit ────────────────────────────────────────────────────
-          if (args.clientId != null ||
-              args.clientName != null ||
-              args.primaryServiceId != null ||
-              args.stopId != null) ...[
-            _SectionDivider(
-                label: isEs ? 'Visita de trabajo' : 'Work visit', cs: cs, t: t),
-            if (args.clientName != null || args.clientId != null)
-              _IconDetailRow(
-                icon: Icons.person_outline_rounded,
-                label: isEs ? 'Cliente' : 'Client',
-                value: _bestResolvedLabel(
-                      resolvedName: _resolvedClientName,
-                      payloadName: args.clientName,
-                      fallbackId: args.clientId,
-                    ) ??
-                    args.clientId!,
-                color: dim,
-              ),
-            if (args.primaryServiceId != null || _resolvedServiceName != null)
-              _IconDetailRow(
-                icon: Icons.home_repair_service_rounded,
-                label: isEs ? 'Servicio' : 'Service',
-                value: _bestResolvedLabel(
-                      resolvedName: _resolvedServiceName,
-                      payloadName: null,
-                      fallbackId: args.primaryServiceId,
-                    ) ??
-                    args.primaryServiceId!,
-                color: dim,
-              ),
-            if (args.stopId != null)
-              _IconDetailRow(
-                icon: Icons.place_rounded,
-                label: isEs ? 'Parada' : 'Stop',
-                value: args.stopId!,
-                color: dim,
-              ),
-          ],
-
-          // ── Context ───────────────────────────────────────────────────────
-          _SectionDivider(label: isEs ? 'Contexto' : 'Context', cs: cs, t: t),
-          _IconDetailRow(
-            icon: Icons.group_rounded,
-            label: l.groupSectionTitle,
-            value: widget.groupName,
-            color: dim,
-          ),
-          if (args.ownerName != null || args.ownerId != null)
             _IconDetailRow(
-              icon: Icons.manage_accounts_rounded,
-              label: isEs ? 'Responsable' : 'Owner',
-              value: _bestResolvedLabel(
-                    resolvedName: _resolvedOwnerName,
-                    payloadName: args.ownerName,
-                    fallbackId: args.ownerId,
-                  ) ??
-                  args.ownerId!,
+              icon: Icons.notifications_rounded,
+              label: l.notifications,
+              value: _localizedCategory(n.category, l),
               color: dim,
             ),
-          _IconDetailRow(
-            icon: Icons.send_rounded,
-            label: isEs ? 'Enviado por' : 'Sent by',
-            value: args.senderName ??
-                args.ownerName ??
-                _fallbackActorLabel(
-                  isEs: isEs,
-                  actorId: args.senderId ?? n.senderId,
-                ),
-            color: dim,
-          ),
-          _IconDetailRow(
-            icon: Icons.notifications_rounded,
-            label: l.notifications,
-            value: _localizedCategory(n.category, l),
-            color: dim,
-          ),
-          _IconDetailRow(
-            icon: Icons.access_time_rounded,
-            label: isEs ? 'Recibida' : 'Received',
-            value: formatTimeDifference(n.timestamp, context),
-            color: dim,
-          ),
-          // Priority — always visible
-          _IconDetailRow(
-            icon: Icons.flag_rounded,
-            label: isEs ? 'Prioridad' : 'Priority',
-            value: switch (n.priority) {
-              PriorityLevel.high => isEs ? 'Alta' : 'High',
-              PriorityLevel.low => isEs ? 'Baja' : 'Low',
-              PriorityLevel.medium => isEs ? 'Media' : 'Medium',
-            },
-            color: switch (n.priority) {
-              PriorityLevel.high => Colors.red.shade600,
-              PriorityLevel.low => Colors.grey.shade500,
-              PriorityLevel.medium => dim,
-            },
-          ),
-          // Notification type
-          _IconDetailRow(
-            icon: Icons.category_rounded,
-            label: isEs ? 'Tipo de notif.' : 'Notif. type',
-            value: switch (n.type) {
-              NotificationType.alert => isEs ? 'Alerta' : 'Alert',
-              NotificationType.reminder => isEs ? 'Recordatorio' : 'Reminder',
-              NotificationType.message => isEs ? 'Mensaje' : 'Message',
-              NotificationType.update => isEs ? 'Actualización' : 'Update',
-            },
-            color: dim,
-          ),
+            _IconDetailRow(
+              icon: Icons.access_time_rounded,
+              label: isEs ? 'Recibida' : 'Received',
+              value: formatTimeDifference(n.timestamp, context),
+              color: dim,
+            ),
+            // Priority — always visible
+            _IconDetailRow(
+              icon: Icons.flag_rounded,
+              label: isEs ? 'Prioridad' : 'Priority',
+              value: switch (n.priority) {
+                PriorityLevel.high => isEs ? 'Alta' : 'High',
+                PriorityLevel.low => isEs ? 'Baja' : 'Low',
+                PriorityLevel.medium => isEs ? 'Media' : 'Medium',
+              },
+              color: switch (n.priority) {
+                PriorityLevel.high => Colors.red.shade600,
+                PriorityLevel.low => Colors.grey.shade500,
+                PriorityLevel.medium => dim,
+              },
+            ),
+            // Notification type
+            _IconDetailRow(
+              icon: Icons.category_rounded,
+              label: isEs ? 'Tipo de notif.' : 'Notif. type',
+              value: switch (n.type) {
+                NotificationType.alert => isEs ? 'Alerta' : 'Alert',
+                NotificationType.reminder => isEs ? 'Recordatorio' : 'Reminder',
+                NotificationType.message => isEs ? 'Mensaje' : 'Message',
+                NotificationType.update => isEs ? 'Actualización' : 'Update',
+              },
+              color: dim,
+            ),
+          ],
           if (hasActions) ...[
             const SizedBox(height: 14),
             Wrap(
@@ -588,11 +611,35 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
             ),
           ],
           const SizedBox(height: 12),
-          TextButton.icon(
-            onPressed: widget.onDelete,
-            icon: Icon(Icons.delete_outline_rounded, color: cs.error),
-            label: Text(l.delete, style: TextStyle(color: cs.error)),
-          ),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            if (!n.isRead && widget.onMarkRead != null)
+              OutlinedButton.icon(
+                onPressed: widget.onMarkRead,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 38),
+                  backgroundColor: cs.primaryContainer.withValues(alpha: .25),
+                  side: BorderSide(color: cs.primary.withValues(alpha: .25)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.mark_email_read_outlined, size: 16),
+                label: Text(isEs ? 'Marcar como leída' : 'Mark as read'),
+              ),
+            OutlinedButton.icon(
+              onPressed: widget.onDelete,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 38),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                foregroundColor: cs.error,
+                backgroundColor: cs.error.withValues(alpha: .05),
+                side: BorderSide(color: cs.error.withValues(alpha: .18)),
+              ),
+              icon:
+                  Icon(Icons.delete_outline_rounded, size: 16, color: cs.error),
+              label: Text(l.delete, style: TextStyle(color: cs.error)),
+            ),
+          ]),
         ],
       ),
     );
@@ -902,27 +949,21 @@ class _IconDetailRow extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 6),
           Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: t.bodySmall
-                    .copyWith(color: cs.onSurface.withValues(alpha: 0.75)),
-                children: [
-                  TextSpan(
-                    text: '$label: ',
-                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  TextSpan(text: value),
-                ],
-              ),
-            ),
-          ),
+              flex: 2,
+              child: Text(label,
+                  style: t.caption.copyWith(color: cs.onSurfaceVariant))),
+          const SizedBox(width: 12),
+          Expanded(
+              flex: 3,
+              child: Text(value,
+                  style: t.bodySmall.copyWith(color: cs.onSurface))),
           if (trailing != null) ...[
             const SizedBox(width: 6),
             trailing!,
@@ -1006,5 +1047,108 @@ String _localizedCategory(Category category, AppLocalizations loc) {
       return loc.groupNotificationsSectionTitle;
     default:
       return loc.notifications;
+  }
+}
+
+class _DocumentDetails extends StatelessWidget {
+  const _DocumentDetails(
+      {required this.notification, this.clientName, this.creatorName});
+  final NotificationUser notification;
+  final String? clientName;
+  final String? creatorName;
+
+  @override
+  Widget build(BuildContext context) {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    final cs = Theme.of(context).colorScheme;
+    final n = notification;
+    String? value(List<String> keys) {
+      for (final key in keys) {
+        final raw = n.args[key];
+        if (raw != null &&
+            raw is! Map &&
+            raw is! List &&
+            raw.toString().trim().isNotEmpty) {
+          return raw.toString().trim();
+        }
+      }
+      return null;
+    }
+
+    Widget row(IconData icon, String label, String? text) => _IconDetailRow(
+        icon: icon,
+        label: label,
+        value: text ?? '—',
+        color: cs.onSurfaceVariant);
+    final rawAmount = value(['amount', 'totalAmount', 'amountTotal', 'total']);
+    final amount = num.tryParse(rawAmount ?? '');
+    final currency = value(['currency']) ?? 'EUR';
+    final rawDate =
+        value(['issueDate', 'issuedAt', 'invoiceDate', 'receiptDate']);
+    final date = DateTime.tryParse(rawDate ?? '');
+    final reference = value([
+      'receiptNumber',
+      'invoiceNumber',
+      'documentNumber',
+      'reference',
+      'number'
+    ]);
+    final recurring = value(['recurrenceName', 'seriesName']);
+    final receipt = RegExp('receipt|recibo')
+        .hasMatch('${n.titleKey} ${n.fallbackTitle}'.toLowerCase());
+    final locale = Localizations.localeOf(context).toString();
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Padding(
+          padding: EdgeInsets.symmetric(vertical: 12),
+          child: Divider(height: 1)),
+      row(Icons.info_outline, es ? 'Evento' : 'Event',
+          n.getLocalizedTitle(AppLocalizations.of(context)!)),
+      row(Icons.person_add_outlined, es ? 'Creado por' : 'Created by',
+          creatorName),
+      row(Icons.person_outline, es ? 'Cliente' : 'Client', clientName),
+      row(
+          Icons.payments_outlined,
+          es ? 'Importe' : 'Amount',
+          amount == null
+              ? rawAmount
+              : NumberFormat.simpleCurrency(locale: locale, name: currency)
+                  .format(amount)),
+      row(Icons.calendar_today_outlined, es ? 'Fecha de emisión' : 'Issue date',
+          date == null ? rawDate : DateFormat.yMMMd(locale).format(date)),
+      row(Icons.credit_card_outlined, es ? 'Método de pago' : 'Payment method',
+          value(['paymentMethodName', 'paymentMethod'])),
+      row(Icons.check_circle_outline, es ? 'Estado' : 'Status',
+          value(['paymentStatus', 'status'])),
+      const Padding(
+          padding: EdgeInsets.symmetric(vertical: 12),
+          child: Divider(height: 1)),
+      row(Icons.notes_outlined, es ? 'Notas' : 'Notes', value(['notes'])),
+      row(Icons.receipt_long_outlined, es ? 'Referencia' : 'Reference',
+          reference),
+      row(Icons.description_outlined, es ? 'Tipo' : 'Type',
+          receipt ? (es ? 'Recibo' : 'Receipt') : (es ? 'Factura' : 'Invoice')),
+      if (value(['relatedInvoiceNumber', 'relatedDocumentNumber']) != null)
+        row(Icons.link, es ? 'Relacionado con' : 'Related to',
+            value(['relatedInvoiceNumber', 'relatedDocumentNumber'])),
+      if (recurring != null)
+        Container(
+            margin: const EdgeInsets.only(top: 16),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+                color: cs.primaryContainer,
+                borderRadius: BorderRadius.circular(10)),
+            child: Row(children: [
+              Icon(Icons.info_outline, size: 18, color: cs.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                  child: Text(
+                      es
+                          ? 'Documento de la recurrencia: $recurring'
+                          : 'Recurring document: $recurring',
+                      style: AppTypography.of(context)
+                          .bodySmall
+                          .copyWith(color: cs.onPrimaryContainer)))
+            ])),
+    ]);
   }
 }

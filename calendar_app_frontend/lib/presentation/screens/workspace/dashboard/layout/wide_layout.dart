@@ -1,9 +1,10 @@
 import 'package:hexora/presentation/screens/agenda/agenda_screen.dart';
-import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/navigation/shell/hexora_app_shell.dart';
+import 'package:hexora/navigation/shell/hexora_global_nav_bar.dart';
+import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
@@ -18,7 +19,6 @@ import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_s
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
 import 'package:hexora/presentation/screens/calendar/screens/calendar/screen/main_calendar_view.dart';
 import 'package:hexora/presentation/shared/widgets/user_profile_popup.dart';
-import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/presentation/utils/roles/group_role_labels.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -35,11 +35,15 @@ class WideLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
 
-    return Column(
-      children: [
-        _DashboardTopNav(state: state, l: l, user: state.user),
-        Expanded(child: _buildContent(state, context, l)),
-      ],
+    String? moduleLabel;
+    for (final d in _dashboardDestinations(l, canSeeAdmin: state.canSeeAdmin)) {
+      if (d.id == state.activeSection) moduleLabel = d.label;
+    }
+
+    return HexoraAppShell(
+      globalNav: _DashboardTopNav(state: state, l: l, user: state.user),
+      moduleLabel: moduleLabel,
+      body: _buildContent(state, context, l),
     );
   }
 
@@ -149,8 +153,92 @@ class WideLayout extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Horizontal top navigation bar
+// Global navigation (adapter over the shared HexoraGlobalNavBar)
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// Workspace modules shown in the global bar. Rarely used modules are grouped
+/// under "More"; notifications get a dedicated bell but stay searchable.
+List<HexoraNavDestination> _dashboardDestinations(
+  AppLocalizations l, {
+  required bool canSeeAdmin,
+}) {
+  final es = l.localeName.startsWith('es');
+  return [
+    HexoraNavDestination(
+      id: Sections.calendar,
+      icon: Icons.calendar_month_rounded,
+      label: l.calendar,
+    ),
+    HexoraNavDestination(
+      id: Sections.services,
+      icon: Icons.design_services_outlined,
+      label: es ? 'Operaciones' : 'Operations',
+    ),
+    HexoraNavDestination(
+      id: Sections.maps,
+      icon: Icons.map_outlined,
+      label: es ? 'Mapa' : 'Map',
+    ),
+    if (canSeeAdmin) ...[
+      HexoraNavDestination(
+        id: Sections.invoices,
+        icon: Icons.receipt_long_outlined,
+        label: es ? 'Ingresos' : 'Income',
+      ),
+      HexoraNavDestination(
+        id: Sections.budgets,
+        icon: Icons.description_outlined,
+        label: es ? 'Propuestas' : 'Proposals',
+      ),
+      HexoraNavDestination(
+        id: Sections.expenses,
+        icon: Icons.trending_down_rounded,
+        label: es ? 'Gastos' : 'Expenses',
+      ),
+      const HexoraNavDestination(
+        id: Sections.emails,
+        icon: Icons.email_outlined,
+        label: 'Emails',
+      ),
+    ],
+    const HexoraNavDestination(
+      id: Sections.chat,
+      icon: Icons.chat_bubble_outline_rounded,
+      label: 'Chat',
+    ),
+    HexoraNavDestination(
+      id: Sections.workers,
+      icon: Icons.access_time_rounded,
+      label: es ? 'Trabajadores' : 'Workers',
+    ),
+    if (canSeeAdmin) ...[
+      HexoraNavDestination(
+        id: Sections.enableBanking,
+        icon: Icons.account_balance_outlined,
+        label: l.statementsNavTitle,
+        placement: HexoraNavPlacement.more,
+      ),
+      const HexoraNavDestination(
+        id: Sections.telegram,
+        icon: Icons.telegram,
+        label: 'Telegram',
+        placement: HexoraNavPlacement.more,
+      ),
+      HexoraNavDestination(
+        id: Sections.settings,
+        icon: Icons.settings_outlined,
+        label: es ? 'Ajustes' : 'Settings',
+        placement: HexoraNavPlacement.more,
+      ),
+    ],
+    HexoraNavDestination(
+      id: Sections.notifications,
+      icon: Icons.notifications_none_rounded,
+      label: l.notifications,
+      placement: HexoraNavPlacement.searchOnly,
+    ),
+  ];
+}
 
 class _DashboardTopNav extends StatefulWidget {
   const _DashboardTopNav({
@@ -193,855 +281,60 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
     );
   }
 
-  String _shortLabel(String section, String fullLabel) {
-    final l = widget.l;
-    switch (section) {
-      case Sections.calendar:
-        return l.calendar;
-      case Sections.services:
-        return 'Servicios';
-      case Sections.maps:
-        return l.localeName.startsWith('es') ? 'Mapa' : 'Map';
-      case Sections.invoices:
-        return l.localeName.startsWith('es') ? 'Ingresos' : 'Income';
-      case Sections.budgets:
-        return l.localeName.startsWith('es') ? 'Presup.' : 'Budgets';
-      case Sections.expenses:
-        return l.localeName.startsWith('es') ? 'Gastos' : 'Expenses';
-      case Sections.emails:
-        return 'Emails';
-      case Sections.chat:
-        return 'Chat';
-      case 'enableBanking':
-        return 'Banco';
-      case Sections.telegram:
-        return 'Telegram';
-      case Sections.workers:
-        return 'Tiempo';
-      case Sections.settings:
-        return 'Ajustes';
-      case Sections.notifications:
-        return 'Notif.';
-      default:
-        return fullLabel;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
     final l = widget.l;
     final user = widget.user;
-    const textColor = AppColors.navigationForeground;
-    const activeColor = AppColors.primary;
-    const bg = AppColors.dashboardTopBar;
+    final es = l.localeName.startsWith('es');
+    const textColor = HexoraGlobalNavColors.foreground;
     final unreadNotifications = context
         .watch<NotificationDomain>()
         .notifications
         .where((n) => !n.isRead)
         .length;
 
-    final sectionItems = [
-      (
-        icon: Icons.calendar_month_rounded,
-        label: l.calendar,
-        section: Sections.calendar,
-        adminOnly: false,
-      ),
-      (
-        icon: Icons.design_services_outlined,
-        label: l.localeName.startsWith('es') ? 'Operaciones' : 'Operations',
-        section: Sections.services,
-        adminOnly: false,
-      ),
-      (
-        icon: Icons.map_outlined,
-        label: l.localeName.startsWith('es') ? 'Mapa' : 'Map',
-        section: Sections.maps,
-        adminOnly: false,
-      ),
-      (
-        icon: Icons.receipt_long_outlined,
-        label: l.localeName.startsWith('es') ? 'Ingresos' : 'Income',
-        section: Sections.invoices,
-        adminOnly: true,
-      ),
-      (
-        icon: Icons.description_outlined,
-        label: l.localeName.startsWith('es') ? 'Propuestas' : 'Proposals',
-        section: Sections.budgets,
-        adminOnly: true,
-      ),
-      (
-        icon: Icons.trending_down_rounded,
-        label: l.localeName.startsWith('es') ? 'Gastos' : 'Expenses',
-        section: Sections.expenses,
-        adminOnly: true,
-      ),
-      (
-        icon: Icons.email_outlined,
-        label: 'Emails',
-        section: Sections.emails,
-        adminOnly: true,
-      ),
-      (
-        icon: Icons.chat_bubble_outline_rounded,
-        label: 'Chat',
-        section: Sections.chat,
-        adminOnly: false,
-      ),
-      (
-        icon: Icons.account_balance_outlined,
-        label: l.statementsNavTitle,
-        section: 'enableBanking',
-        adminOnly: true,
-      ),
-      (
-        icon: Icons.telegram,
-        label: 'Telegram',
-        section: Sections.telegram,
-        adminOnly: true,
-      ),
-      (
-        icon: Icons.access_time_rounded,
-        label: l.localeName.startsWith('es') ? 'Trabajadores' : 'Workers',
-        section: Sections.workers,
-        adminOnly: false,
-      ),
-      (
-        icon: Icons.settings_outlined,
-        label: l.localeName.startsWith('es') ? 'Ajustes' : 'Settings',
-        section: Sections.settings,
-        adminOnly: true,
-      ),
-      (
-        icon: unreadNotifications > 0
-            ? Icons.notifications_active_rounded
-            : Icons.notifications_none_rounded,
-        label: l.notifications,
-        section: Sections.notifications,
-        adminOnly: false,
-      ),
-    ];
-
-    final allowedItems =
-        sectionItems.where((i) => !i.adminOnly || state.canSeeAdmin).toList();
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final isMediumWidth = width >= 1180 && width < 1380;
-
-        final mediumOverflowSections = <String>{
-          Sections.settings,
-          Sections.notifications,
-        };
-
-        final primaryItems = _compact
-            ? allowedItems
-                .map(
-                  (i) => (
-                    icon: i.icon,
-                    label: _shortLabel(i.section, i.label),
-                    section: i.section,
-                    adminOnly: i.adminOnly,
-                  ),
-                )
-                .toList()
-            : isMediumWidth
-                ? allowedItems
-                    .where((i) => !mediumOverflowSections.contains(i.section))
-                    .map(
-                      (i) => (
-                        icon: i.icon,
-                        label: _shortLabel(i.section, i.label),
-                        section: i.section,
-                        adminOnly: i.adminOnly,
-                      ),
-                    )
-                    .toList()
-                : allowedItems;
-
-        final List<
-                ({IconData icon, String label, String section, bool adminOnly})>
-            overflowItems = !_compact && isMediumWidth
-                ? allowedItems
-                    .where((i) => mediumOverflowSections.contains(i.section))
-                    .toList()
-                : <({
-                    IconData icon,
-                    String label,
-                    String section,
-                    bool adminOnly
-                  })>[];
-
-        return AnimatedSize(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          alignment: Alignment.topCenter,
-          child: Card(
-            margin: EdgeInsets.zero,
-            elevation: 0,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.zero,
-            ),
-            color: bg,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 10,
-              ),
-              child: Row(
-                children: [
-                  // Workspace brand
-                  GestureDetector(
-                    onTap: state.canSeeAdmin
-                        ? () => state.openSection(Sections.settings)
-                        : null,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.asset(
-                              'assets/images/branding/logo_icon.png',
-                              width: 32,
-                              height: 32),
-                        ),
-                        const SizedBox(width: 8),
-                        Text('HEXORA',
-                            style: AppTypography.of(context).bodyLarge.copyWith(
-                                color: textColor,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.8)),
-                      ],
-                    ),
-                  ),
-                  // Vertical divider
-                  Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: _compact ? 10 : 22),
-                    child: SizedBox(
-                      height: 28,
-                      child: VerticalDivider(
-                        thickness: 1,
-                        color: textColor.withValues(alpha: 0.15),
-                      ),
-                    ),
-                  ),
-                  // Scrollable nav items
-                  Expanded(
-                    child: _ScrollableTopNavItems(
-                      isSpanish: l.localeName.startsWith('es'),
-                      textColor: textColor,
-                      children: <Widget>[
-                        ...primaryItems.map(
-                          (item) => _TopNavItem(
-                            icon: item.icon,
-                            label: item.label,
-                            isSelected: state.activeSection == item.section,
-                            activeColor: activeColor,
-                            textColor: textColor,
-                            unreadCount: item.section == Sections.notifications
-                                ? unreadNotifications
-                                : 0,
-                            attention: item.section == Sections.notifications &&
-                                unreadNotifications > 0,
-                            compact: _compact,
-                            onTap: () => state.openSection(item.section),
-                          ),
-                        ),
-                        if (overflowItems.isNotEmpty)
-                          _TopNavOverflowMenu(
-                            items: overflowItems,
-                            textColor: textColor,
-                            activeColor: activeColor,
-                            unreadNotifications: unreadNotifications,
-                            activeSection: state.activeSection,
-                            onOpenSection: state.openSection,
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (width >= 1350) ...[
-                    const SizedBox(width: 12),
-                    SearchAnchor(
-                      builder: (context, controller) => TextButton.icon(
-                        onPressed: controller.openView,
-                        icon: const Icon(Icons.search_rounded, size: 18),
-                        label: Text(l.localeName.startsWith('es')
-                            ? 'Buscar...'
-                            : 'Search...'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: textColor,
-                          backgroundColor: Colors.white.withValues(alpha: 0.08),
-                          minimumSize: const Size(150, 38),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8)),
-                        ),
-                      ),
-                      suggestionsBuilder: (context, controller) {
-                        final query = controller.text.trim().toLowerCase();
-                        return allowedItems
-                            .where((item) =>
-                                item.label.toLowerCase().contains(query))
-                            .map((item) => ListTile(
-                                  leading: Icon(item.icon),
-                                  title: Text(item.label),
-                                  onTap: () {
-                                    controller.closeView(null);
-                                    state.openSection(item.section);
-                                  },
-                                ));
-                      },
-                    ),
-                  ],
-                  Tooltip(
-                    message: _compact
-                        ? (l.localeName.startsWith('es')
-                            ? 'Expandir navegacion'
-                            : 'Expand navigation')
-                        : (l.localeName.startsWith('es')
-                            ? 'Compactar navegacion'
-                            : 'Compact navigation'),
-                    child: IconButton(
-                      onPressed: _toggleCompact,
-                      icon: Icon(
-                        _compact
-                            ? Icons.unfold_more_rounded
-                            : Icons.unfold_less_rounded,
-                        size: 18,
-                        color: textColor.withValues(alpha: 0.62),
-                      ),
-                      visualDensity: VisualDensity.compact,
-                      constraints:
-                          const BoxConstraints.tightFor(width: 36, height: 36),
-                    ),
-                  ),
-                  // User profile avatar
-                  SizedBox(width: _compact ? 8 : 18),
-                  UserProfilePopup(user: user),
-                  if (!_compact && width >= 1100 && user != null) ...[
-                    const SizedBox(width: 10),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 140),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                              user.displayName?.isNotEmpty == true
-                                  ? user.displayName!
-                                  : user.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTypography.of(context)
-                                  .bodySmall
-                                  .copyWith(
-                                      color: textColor,
-                                      fontWeight: FontWeight.w700)),
-                          if (state.role != null)
-                            Text(roleLabelOf(context, state.role!),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTypography.of(context)
-                                    .caption
-                                    .copyWith(
-                                        color:
-                                            textColor.withValues(alpha: 0.75))),
-                        ],
-                      ),
-                    ),
-                  ],
-                  const SizedBox(width: 12),
-                  // Back to groups
-                  Tooltip(
-                    message: l.groupSectionTitle,
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.arrow_back_rounded,
-                        size: 18,
-                        color: textColor.withValues(alpha: 0.5),
-                      ),
-                      splashRadius: 18,
-                      onPressed: () => Navigator.of(context).maybePop(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _ScrollableTopNavItems extends StatefulWidget {
-  const _ScrollableTopNavItems({
-    required this.children,
-    required this.textColor,
-    required this.isSpanish,
-  });
-
-  final List<Widget> children;
-  final Color textColor;
-  final bool isSpanish;
-
-  @override
-  State<_ScrollableTopNavItems> createState() => _ScrollableTopNavItemsState();
-}
-
-class _ScrollableTopNavItemsState extends State<_ScrollableTopNavItems> {
-  final ScrollController _controller = ScrollController();
-  bool _hasOverflow = false;
-  bool _canScrollLeft = false;
-  bool _canScrollRight = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(_syncScrollState);
-    _scheduleScrollStateSync();
-  }
-
-  @override
-  void didUpdateWidget(covariant _ScrollableTopNavItems oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _scheduleScrollStateSync();
-  }
-
-  @override
-  void dispose() {
-    _controller
-      ..removeListener(_syncScrollState)
-      ..dispose();
-    super.dispose();
-  }
-
-  void _scheduleScrollStateSync() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _syncScrollState();
-    });
-  }
-
-  void _syncScrollState() {
-    if (!_controller.hasClients) return;
-    final position = _controller.position;
-    final hasOverflow = position.maxScrollExtent > 0.5;
-    final canScrollLeft = position.pixels > 0.5;
-    final canScrollRight = position.pixels < position.maxScrollExtent - 0.5;
-    if (_hasOverflow == hasOverflow &&
-        _canScrollLeft == canScrollLeft &&
-        _canScrollRight == canScrollRight) {
-      return;
-    }
-    setState(() {
-      _hasOverflow = hasOverflow;
-      _canScrollLeft = canScrollLeft;
-      _canScrollRight = canScrollRight;
-    });
-  }
-
-  void _scrollBy(double delta) {
-    if (!_controller.hasClients) return;
-    final target = (_controller.offset + delta)
-        .clamp(0.0, _controller.position.maxScrollExtent)
-        .toDouble();
-    _controller.animateTo(
-      target,
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-    );
-  }
-
-  void _handlePointerSignal(PointerSignalEvent event) {
-    if (event is! PointerScrollEvent || !_controller.hasClients) return;
-    if (event.scrollDelta.dy.abs() <= event.scrollDelta.dx.abs()) return;
-    _scrollBy(event.scrollDelta.dy);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    _scheduleScrollStateSync();
-    return Row(
-      children: [
-        if (_hasOverflow)
-          _scrollButton(
-            icon: Icons.chevron_left_rounded,
-            tooltip: widget.isSpanish
-                ? 'Ver opciones anteriores'
-                : 'View previous options',
-            enabled: _canScrollLeft,
-            onPressed: () => _scrollBy(-260),
-          ),
-        Expanded(
-          child: Listener(
-            onPointerSignal: _handlePointerSignal,
-            child: SingleChildScrollView(
-              controller: _controller,
-              scrollDirection: Axis.horizontal,
-              child: Row(children: widget.children),
-            ),
-          ),
-        ),
-        if (_hasOverflow)
-          _scrollButton(
-            icon: Icons.chevron_right_rounded,
-            tooltip:
-                widget.isSpanish ? 'Ver mas opciones' : 'View more options',
-            enabled: _canScrollRight,
-            onPressed: () => _scrollBy(260),
-          ),
-      ],
-    );
-  }
-
-  Widget _scrollButton({
-    required IconData icon,
-    required String tooltip,
-    required bool enabled,
-    required VoidCallback onPressed,
-  }) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: enabled ? onPressed : null,
-      icon: Icon(icon, size: 18),
-      color: widget.textColor.withValues(alpha: 0.72),
-      disabledColor: widget.textColor.withValues(alpha: 0.20),
-      padding: EdgeInsets.zero,
-      visualDensity: VisualDensity.compact,
-      constraints: const BoxConstraints.tightFor(width: 30, height: 36),
-    );
-  }
-}
-
-class _TopNavOverflowMenu extends StatelessWidget {
-  const _TopNavOverflowMenu({
-    required this.items,
-    required this.textColor,
-    required this.activeColor,
-    required this.unreadNotifications,
-    required this.activeSection,
-    required this.onOpenSection,
-  });
-
-  final List<({IconData icon, String label, String section, bool adminOnly})>
-      items;
-  final Color textColor;
-  final Color activeColor;
-  final int unreadNotifications;
-  final String activeSection;
-  final ValueChanged<String> onOpenSection;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    return PopupMenuButton<String>(
-      tooltip: 'More',
-      onSelected: onOpenSection,
-      itemBuilder: (_) => items
-          .map(
-            (item) => PopupMenuItem<String>(
-              value: item.section,
-              child: Row(
-                children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Icon(item.icon, size: 16),
-                      if (item.section == Sections.notifications &&
-                          unreadNotifications > 0)
-                        Positioned(
-                          right: -6,
-                          top: -6,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.error,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(width: 8),
-                  Text(item.label),
-                ],
-              ),
-            ),
-          )
-          .toList(),
-      child: Container(
-        margin: const EdgeInsets.only(left: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: items.any((i) => i.section == activeSection)
-              ? activeColor.withValues(alpha: 0.10)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.more_horiz_rounded, size: 16, color: textColor),
-            const SizedBox(width: 4),
-            Text(
-              'More',
-              style: t.bodySmall.copyWith(
-                color: textColor.withValues(alpha: 0.75),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Single nav item in the horizontal bar
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _TopNavItem extends StatefulWidget {
-  const _TopNavItem({
-    required this.icon,
-    required this.label,
-    required this.isSelected,
-    required this.activeColor,
-    required this.textColor,
-    this.unreadCount = 0,
-    this.attention = false,
-    this.compact = false,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final Color activeColor;
-  final Color textColor;
-  final int? unreadCount;
-  final bool? attention;
-  final bool compact;
-  final VoidCallback onTap;
-
-  @override
-  State<_TopNavItem> createState() => _TopNavItemState();
-}
-
-class _TopNavItemState extends State<_TopNavItem>
-    with TickerProviderStateMixin {
-  bool _hovering = false;
-  late final AnimationController _attentionController;
-  late final AnimationController _pulseController;
-
-  @override
-  void initState() {
-    super.initState();
-    _attentionController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 850),
-    );
-    _syncAttentionAnimation();
-  }
-
-  @override
-  void didUpdateWidget(covariant _TopNavItem oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.attention != widget.attention ||
-        oldWidget.unreadCount != widget.unreadCount ||
-        oldWidget.isSelected != widget.isSelected) {
-      _syncAttentionAnimation();
-    }
-  }
-
-  void _syncAttentionAnimation() {
-    final shouldAnimate = (widget.attention ?? false) &&
-        (widget.unreadCount ?? 0) > 0 &&
-        !widget.isSelected;
-    if (shouldAnimate) {
-      if (!_attentionController.isAnimating) {
-        _attentionController.repeat();
-      }
-      if (!_pulseController.isAnimating) {
-        _pulseController.repeat(reverse: true);
-      }
-      return;
-    }
-    _attentionController.stop();
-    _attentionController.value = 0;
-    _pulseController.stop();
-    _pulseController.value = 0;
-  }
-
-  @override
-  void dispose() {
-    _attentionController.dispose();
-    _pulseController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final showHighlight = widget.isSelected || _hovering;
-    final fg = widget.isSelected
-        ? Colors.white
-        : widget.textColor.withValues(alpha: _hovering ? 1 : 0.85);
-
-    final cs = Theme.of(context).colorScheme;
-    final hasUnread = (widget.unreadCount ?? 0) > 0;
-
-    final icon = Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Icon(widget.icon, size: 15, color: fg),
-        if (hasUnread) ...[
-          // Radiating ring
-          Positioned(
-            right: -9,
-            top: -9,
-            child: AnimatedBuilder(
-              animation: _pulseController,
-              builder: (_, __) {
-                final scale = Tween<double>(begin: 1.0, end: 1.8).evaluate(
-                  CurvedAnimation(
-                      parent: _pulseController, curve: Curves.easeOut),
-                );
-                final opacity = Tween<double>(begin: 0.45, end: 0.0).evaluate(
-                  CurvedAnimation(
-                      parent: _pulseController, curve: Curves.easeOut),
-                );
-                return Transform.scale(
-                  scale: scale,
-                  child: Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: cs.error.withValues(alpha: opacity),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          // Badge with pulse scale
-          Positioned(
-            right: -7,
-            top: -7,
-            child: AnimatedBuilder(
-              animation: _pulseController,
-              builder: (_, child) => Transform.scale(
-                scale: Tween<double>(begin: 0.92, end: 1.08).evaluate(
-                  CurvedAnimation(
-                      parent: _pulseController, curve: Curves.easeInOut),
+    return HexoraGlobalNavBar(
+      destinations: _dashboardDestinations(l, canSeeAdmin: state.canSeeAdmin),
+      activeId: state.activeSection,
+      onSelected: state.openSection,
+      onBrandTap: state.canSeeAdmin
+          ? () => state.openSection(Sections.settings)
+          : null,
+      brandTooltip: es ? 'Ajustes del espacio' : 'Workspace settings',
+      compact: _compact,
+      onToggleCompact: _toggleCompact,
+      notificationCount: unreadNotifications,
+      notificationsSelected: state.activeSection == Sections.notifications,
+      onOpenNotifications: () => state.openSection(Sections.notifications),
+      profile: UserProfilePopup(user: user),
+      profileDetails: user == null
+          ? null
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  user.displayName?.isNotEmpty == true
+                      ? user.displayName!
+                      : user.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.of(context).bodySmall.copyWith(
+                      color: textColor, fontWeight: FontWeight.w600),
                 ),
-                child: child,
-              ),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
-                decoration: BoxDecoration(
-                  color: cs.error,
-                  borderRadius: BorderRadius.circular(999),
-                  boxShadow: [
-                    BoxShadow(
-                      color: cs.error.withValues(alpha: 0.45),
-                      blurRadius: 4,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    (widget.unreadCount ?? 0) > 9
-                        ? '9+'
-                        : (widget.unreadCount ?? 0).toString(),
-                    style: t.bodySmall.copyWith(
-                      color: cs.onError,
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w800,
-                    ),
+                if (state.role != null)
+                  Text(
+                    roleLabelOf(context, state.role!),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.of(context).caption.copyWith(
+                        color: textColor.withValues(alpha: 0.7)),
                   ),
-                ),
-              ),
+              ],
             ),
-          ),
-        ],
-      ],
-    );
-
-    return Padding(
-      padding: EdgeInsets.only(right: widget.compact ? 4 : 8),
-      child: TooltipVisibility(
-        visible: widget.compact,
-        child: Tooltip(
-          message: widget.label,
-          child: MouseRegion(
-            onEnter: (_) => setState(() => _hovering = true),
-            onExit: (_) => setState(() => _hovering = false),
-            child: GestureDetector(
-              onTap: widget.onTap,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                curve: Curves.easeOut,
-                padding: EdgeInsets.symmetric(
-                  horizontal: widget.compact ? 10 : 12,
-                  vertical: widget.compact ? 7 : 8,
-                ),
-                decoration: BoxDecoration(
-                  color: showHighlight
-                      ? widget.activeColor
-                          .withValues(alpha: widget.isSelected ? 1 : 0.25)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AnimatedBuilder(
-                      animation: _attentionController,
-                      builder: (_, child) {
-                        final phase = _attentionController.value * 2 * math.pi;
-                        final dx = math.sin(phase) * 1.8;
-                        final rotation = math.sin(phase) * 0.06;
-                        return Transform.translate(
-                          offset: Offset(dx, 0),
-                          child: Transform.rotate(
-                            angle: rotation,
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: icon,
-                    ),
-                    if (!widget.compact || widget.isSelected) ...[
-                      const SizedBox(width: 7),
-                      Text(
-                        widget.label,
-                        style: t.bodySmall.copyWith(
-                          color: fg,
-                          fontWeight: widget.isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+      onBack: () => Navigator.of(context).maybePop(),
+      backTooltip: l.groupSectionTitle,
     );
   }
 }

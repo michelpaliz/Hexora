@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart'
+    show LicenseRegistry, LicenseEntryWithLineBreaks;
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hexora/app/bootstrap/app_bootstrap.dart';
@@ -19,6 +22,10 @@ const String _appBuildTag = String.fromEnvironment('APP_BUILD_TAG');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(['Inter'],
+        await rootBundle.loadString('assets/fonts/inter/LICENSE.txt'));
+  });
   await initializeAppServices();
   await setupLocalNotifications();
 

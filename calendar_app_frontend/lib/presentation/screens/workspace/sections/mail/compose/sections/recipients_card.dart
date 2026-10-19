@@ -13,7 +13,7 @@ Widget _composeRecipientsCard(
         required Widget recipientMode}) =>
     Container(
       decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
         boxShadow: [
@@ -62,7 +62,17 @@ Widget _composeRecipientsCard(
                         ),
                       ),
                       // Input area
-                      Expanded(child: recipientInput),
+                      Expanded(
+                          child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                  color: cs.primary.withValues(alpha: .025),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                      color: cs.outlineVariant
+                                          .withValues(alpha: .5))),
+                              child: recipientInput)),
                       const SizedBox(width: 6),
                       // Compact mode toggle
                       recipientMode,

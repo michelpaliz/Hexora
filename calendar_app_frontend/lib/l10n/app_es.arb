@@ -1840,7 +1840,7 @@
   "invoiceNotesHideCta": "Ocultar",
   "invoiceNotesOptionalLabel": "Opcional",
   "invoiceClientInvoicesThisMonthLabel": "Facturas este mes",
-  "clientMissingInvoiceThisMonth": "Factura pendiente este mes",
+  "clientMissingInvoiceThisMonth": "Sin factura este mes",
   "clientInvoiceAllGood": "Factura emitida este mes",
   "clientAllHaveInvoiceTitle": "Todos los clientes facturados",
   "clientInvoiceStatusUnavailableTitle": "Estado de factura no disponible",
@@ -1855,7 +1855,7 @@
       "date": { "type": "String" }
     }
   },
-  "clientMissingCountThisMonth": "{count, plural, =0{Ninguno pendiente} =1{1 pendiente este mes} other{{count} pendientes este mes}}",
+  "clientMissingCountThisMonth": "{count, plural, =0{Todos facturados este mes} =1{1 sin factura este mes} other{{count} sin factura este mes}}",
   "@clientMissingCountThisMonth": {
     "placeholders": {
       "count": { "type": "int" }
@@ -2984,7 +2984,7 @@
   "budgetStepBudget": "Presupuesto",
   "budgetStepLines": "Líneas",
   "budgetStepConfirm": "Confirmar",
-  "budgetStepPreview": "Preview",
+  "budgetStepPreview": "Vista previa",
   "budgetClientInfoPrompt": "La información del cliente en presupuestos es flexible. Elige un cliente existente o escribe un nombre de cliente. Se requiere al menos uno. Esto aplica solo a Presupuestos: facturas y recibos siguen requiriendo un cliente guardado.",
   "budgetClientSelectSavedLabel": "Selecciona un cliente guardado (opcional para Presupuestos).",
   "budgetClientNoneSaved": "Sin cliente guardado",

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_resizable_split.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/clients_view/client_detail_panel.dart';
@@ -181,74 +182,63 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: ClientsListPanel(
-                    allClients: widget.clients,
-                    filteredClients: filteredClients,
-                    selectedClient: widget.selectedClient,
-                    selectedHiddenByFilters: selectedHiddenByFilters,
-                    hideInactive: _hideInactive,
-                    onToggleHideInactive: () =>
-                        setState(() => _hideInactive = !_hideInactive),
-                    missingCurrentMonthInvoiceOnly:
-                        _missingCurrentMonthInvoiceOnly,
-                    onToggleMissingCurrentMonthInvoiceOnly: (value) =>
-                        setState(() {
-                      _missingCurrentMonthInvoiceOnly = value;
-                    }),
-                    searchController: _search,
-                    onSearchChanged: () => setState(() {}),
-                    entityFilter: _entityFilter,
-                    propertyFilter: _propertyFilter,
-                    entityOptions: entityOptions,
-                    propertyOptions: propertyOptions,
-                    onClearFilters: _clearFilters,
-                    onToggleEntityFilter: (v) => setState(() {
-                      _entityFilter = _entityFilter == v ? null : v;
-                    }),
-                    onTogglePropertyFilter: (v) => setState(() {
-                      _propertyFilter = _propertyFilter == v ? null : v;
-                    }),
-                    onClearEntityFilter: () =>
-                        setState(() => _entityFilter = null),
-                    onClearPropertyFilter: () =>
-                        setState(() => _propertyFilter = null),
-                    onSelectClient: widget.onSelectClient,
-                  ),
+            child: HexoraResizableSplit(
+              preferenceKey: 'invoices_clients_split_fraction_v1',
+              start: ClientsListPanel(
+                allClients: widget.clients,
+                filteredClients: filteredClients,
+                selectedClient: widget.selectedClient,
+                selectedHiddenByFilters: selectedHiddenByFilters,
+                hideInactive: _hideInactive,
+                onToggleHideInactive: () =>
+                    setState(() => _hideInactive = !_hideInactive),
+                missingCurrentMonthInvoiceOnly: _missingCurrentMonthInvoiceOnly,
+                onToggleMissingCurrentMonthInvoiceOnly: (value) => setState(() {
+                  _missingCurrentMonthInvoiceOnly = value;
+                }),
+                searchController: _search,
+                onSearchChanged: () => setState(() {}),
+                entityFilter: _entityFilter,
+                propertyFilter: _propertyFilter,
+                entityOptions: entityOptions,
+                propertyOptions: propertyOptions,
+                onClearFilters: _clearFilters,
+                onToggleEntityFilter: (v) => setState(() {
+                  _entityFilter = _entityFilter == v ? null : v;
+                }),
+                onTogglePropertyFilter: (v) => setState(() {
+                  _propertyFilter = _propertyFilter == v ? null : v;
+                }),
+                onClearEntityFilter: () => setState(() => _entityFilter = null),
+                onClearPropertyFilter: () =>
+                    setState(() => _propertyFilter = null),
+                onSelectClient: widget.onSelectClient,
+              ),
+              end: ClientDetailPanel(
+                groupId: widget.groupId,
+                clients: widget.clients,
+                selectedClient: widget.selectedClient,
+                issuedInvoices: widget.issuedInvoices,
+                draftInvoices: widget.draftInvoices,
+                entityOptions: entityOptions,
+                propertyOptions: propertyOptions,
+                assignBusy: _assignBusy,
+                initialTabIndex: widget.initialDetailTabIndex,
+                onEditSelectedClient: widget.onEditSelectedClient,
+                onCreateInvoice: widget.onCreateInvoice,
+                onCreateReceipt: widget.onCreateReceipt,
+                onOpenInvoiceDetail: widget.onOpenInvoiceDetail,
+                onDeleteInvoice: widget.onDeleteInvoice,
+                onDownloadVisibleInvoices: widget.onDownloadVisibleInvoices,
+                onApplyClassification: ({
+                  String? entityType,
+                  String? propertyKind,
+                }) =>
+                    _applyToSelected(
+                  entityType: entityType,
+                  propertyKind: propertyKind,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 3,
-                  child: ClientDetailPanel(
-                    groupId: widget.groupId,
-                    clients: widget.clients,
-                    selectedClient: widget.selectedClient,
-                    issuedInvoices: widget.issuedInvoices,
-                    draftInvoices: widget.draftInvoices,
-                    entityOptions: entityOptions,
-                    propertyOptions: propertyOptions,
-                    assignBusy: _assignBusy,
-                    initialTabIndex: widget.initialDetailTabIndex,
-                    onEditSelectedClient: widget.onEditSelectedClient,
-                    onCreateInvoice: widget.onCreateInvoice,
-                    onCreateReceipt: widget.onCreateReceipt,
-                    onOpenInvoiceDetail: widget.onOpenInvoiceDetail,
-                    onDeleteInvoice: widget.onDeleteInvoice,
-                    onDownloadVisibleInvoices: widget.onDownloadVisibleInvoices,
-                    onApplyClassification: ({
-                      String? entityType,
-                      String? propertyKind,
-                    }) =>
-                        _applyToSelected(
-                      entityType: entityType,
-                      propertyKind: propertyKind,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

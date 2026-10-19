@@ -450,7 +450,7 @@ class UserAvatarViewerDialog extends StatelessWidget {
     final textColor =
         isDark ? AppDarkColors.textPrimary : AppColors.textPrimary;
     final activeColor = isDark ? AppDarkColors.primary : AppColors.primary;
-    final cardBg = isDark ? const Color(0xFF1E1E2E) : Colors.white;
+    final cardBg = isDark ? AppDarkColors.surface : Colors.white;
 
     final hasPhoto = user.photoUrl?.trim().isNotEmpty == true;
     final displayName = (user.displayName?.trim().isNotEmpty == true)

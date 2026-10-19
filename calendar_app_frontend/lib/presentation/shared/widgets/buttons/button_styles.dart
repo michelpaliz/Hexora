@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 
 class ButtonStyles {
   static ButtonStyle saucyButtonStyle({
@@ -6,15 +7,16 @@ class ButtonStyles {
     required Color pressedBackgroundColor,
     required Color textColor,
     required Color borderColor,
-    double borderRadius = 10.0,
-    double padding = 10.0,
-    double fontSize = 16.0,
-    FontWeight fontWeight = FontWeight.bold,
-    FontStyle fontStyle = FontStyle.italic,
+    double borderRadius = HexoraDimensions.radius,
+    double padding = HexoraTableTokens.gap,
+    double fontSize = HexoraTypography.body,
+    FontWeight fontWeight = FontWeight.w500,
+    FontStyle fontStyle = FontStyle.normal,
   }) {
     return ButtonStyle(
       textStyle: WidgetStateProperty.all<TextStyle>(
         TextStyle(
+          fontFamily: HexoraTypography.fontFamily,
           fontWeight: fontWeight,
           fontSize: fontSize,
           fontStyle: fontStyle,
@@ -26,8 +28,8 @@ class ButtonStyles {
           if (states.contains(WidgetState.pressed)) {
             return pressedBackgroundColor;
           } else if (states.contains(WidgetState.hovered)) {
-            return defaultBackgroundColor
-                .withValues(alpha: 0.9); // Slight effect on hover
+            return defaultBackgroundColor.withValues(
+                alpha: 0.9); // Slight effect on hover
           }
           return defaultBackgroundColor;
         },
@@ -47,9 +49,9 @@ class ButtonStyles {
       elevation: WidgetStateProperty.resolveWith<double>(
         (Set<WidgetState> states) {
           if (states.contains(WidgetState.pressed)) {
-            return 2.0; // Lower elevation when pressed
+            return 0;
           }
-          return 6.0; // Normal elevated button
+          return 0;
         },
       ),
     );

@@ -27,18 +27,19 @@ class _GroupInvoicesView extends StatelessWidget {
             : state._selectedMenu;
     final compactPrimaryButtonStyle = FilledButton.styleFrom(
       visualDensity: VisualDensity.compact,
-      minimumSize: const Size(44, 40),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      minimumSize: const Size(32, 30),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       backgroundColor: cs.primary,
       foregroundColor: cs.onPrimary,
       elevation: 0,
     );
     final compactIconButtonStyle = IconButton.styleFrom(
       visualDensity: VisualDensity.compact,
-      minimumSize: const Size(40, 40),
-      padding: const EdgeInsets.all(10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      minimumSize: const Size(30, 30),
+      fixedSize: const Size(30, 30),
+      padding: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       foregroundColor: cs.onSurfaceVariant,
       backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.5),
       side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
@@ -114,8 +115,8 @@ class _GroupInvoicesView extends StatelessWidget {
                   onPressed: state._refreshInvoiceListsOnly,
                   style: IconButton.styleFrom(
                     visualDensity: VisualDensity.standard,
-                    fixedSize: const Size(36, 36),
-                    minimumSize: const Size(36, 36),
+                    fixedSize: const Size(30, 30),
+                    minimumSize: const Size(30, 30),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     padding: EdgeInsets.zero,
                     foregroundColor: cs.onSurfaceVariant,
@@ -125,7 +126,7 @@ class _GroupInvoicesView extends StatelessWidget {
                       color: cs.outlineVariant.withValues(alpha: 0.5),
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(9),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   icon: const Icon(Icons.refresh_rounded, size: 16),
@@ -245,10 +246,10 @@ class _GroupInvoicesView extends StatelessWidget {
                             ? 'Nueva clasificación'
                             : 'New classification'),
                     style: FilledButton.styleFrom(
-                      minimumSize: const Size(0, 38),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      minimumSize: const Size(0, 30),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(8)),
                       textStyle: const TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w600),
                     ),
@@ -371,9 +372,10 @@ class _GroupInvoicesView extends StatelessWidget {
                           title: folderTitle,
                           showTab: true,
                           actions: folderActions,
-                          decorateActions: !showInvoiceActions,
-                          actionsSpacing: showInvoiceActions ? 10 : 6,
-                          contentTopPadding: showInvoiceActions ? 58 : 30,
+                          actionsSpacing: 6,
+                          contentTopPadding: showInvoiceActions
+                              ? HexoraDimensions.button + HexoraTableTokens.gap
+                              : 30,
                           child: content,
                         )
                       : content,
@@ -476,9 +478,9 @@ class _InvoiceRecentExportsButton extends StatelessWidget {
       onPressed: state._showStoredInvoiceZipDownloads,
       style: OutlinedButton.styleFrom(
         visualDensity: VisualDensity.standard,
-        minimumSize: const Size(0, 36),
+        minimumSize: const Size(0, 30),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         foregroundColor: cs.primary,
         backgroundColor: cs.primary.withValues(alpha: 0.035),
         textStyle: const TextStyle(
@@ -488,19 +490,19 @@ class _InvoiceRecentExportsButton extends StatelessWidget {
           letterSpacing: 0,
         ),
         side: BorderSide(color: cs.primary.withValues(alpha: 0.28)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(Icons.history_rounded, size: 16),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Text(isSpanish ? 'Recientes' : 'Recent'),
           if (count > 0) ...[
-            const SizedBox(width: 10),
+            const SizedBox(width: 6),
             Container(
-              constraints: const BoxConstraints(minWidth: 22, minHeight: 18),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
               decoration: BoxDecoration(
                 color: cs.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(999),

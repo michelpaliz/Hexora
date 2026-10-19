@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 /// Native mobile theme. Desktop and web keep their existing themes.
@@ -11,16 +12,20 @@ class MobileTheme {
 
   static ThemeData build(ThemeData base) {
     final dark = base.brightness == Brightness.dark;
-    final background = Color(dark ? 0xFF0F141A : 0xFFF6F8FB);
-    final card = Color(dark ? 0xFF1A222C : 0xFFFFFFFF);
-    final raised = Color(dark ? 0xFF24303D : 0xFFEDF2F7);
-    final border = Color(dark ? 0xFF354252 : 0xFFDCE3EB);
-    final text = Color(dark ? 0xFFF3F6FA : 0xFF182230);
-    final secondaryText = Color(dark ? 0xFFB5C0CF : 0xFF526173);
-    final primary = Color(dark ? 0xFF64B5F6 : 0xFF1565C0);
-    final onPrimary = Color(dark ? 0xFF08243A : 0xFFFFFFFF);
-    final selected = Color(dark ? 0xFF193A56 : 0xFFDCEBFB);
-    final onSelected = Color(dark ? 0xFFBADDFF : 0xFF124F91);
+    final background =
+        dark ? AppDarkColors.background : const Color(0xFFF6F8FB);
+    final card = dark ? AppDarkColors.surface : const Color(0xFFFFFFFF);
+    final raised = dark ? AppDarkColors.surfaceHover : const Color(0xFFEDF2F7);
+    final border = dark ? AppDarkColors.border : const Color(0xFFDCE3EB);
+    final text = dark ? AppDarkColors.textPrimary : const Color(0xFF182230);
+    final secondaryText =
+        dark ? AppDarkColors.textSecondary : const Color(0xFF526173);
+    final primary = dark ? AppDarkColors.primary : const Color(0xFF1565C0);
+    final onPrimary = dark ? AppDarkColors.background : const Color(0xFFFFFFFF);
+    final selected =
+        dark ? AppDarkColors.surfaceHover : const Color(0xFFDCEBFB);
+    final onSelected =
+        dark ? AppDarkColors.primaryLight : const Color(0xFF124F91);
     final error = Color(dark ? 0xFFFFB4AB : 0xFFB3261E);
     final cs = ColorScheme.fromSeed(
       seedColor: primary,
@@ -68,7 +73,7 @@ class MobileTheme {
     );
     final buttonText = textTheme.labelLarge?.copyWith(
       fontSize: 13,
-      fontWeight: FontWeight.w600,
+      fontWeight: FontWeight.w500,
     );
 
     return base.copyWith(
@@ -84,7 +89,8 @@ class MobileTheme {
       textTheme: textTheme.copyWith(
         titleLarge: textTheme.titleLarge
             ?.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
-        bodyLarge: textTheme.bodyLarge?.copyWith(fontSize: 14),
+        bodyLarge:
+            textTheme.bodyLarge?.copyWith(fontSize: HexoraTypography.body),
         bodyMedium: textTheme.bodyMedium?.copyWith(fontSize: 13),
         bodySmall:
             textTheme.bodySmall?.copyWith(fontSize: 12, color: secondaryText),
@@ -96,7 +102,8 @@ class MobileTheme {
           displayLarge: typography.displayLarge.copyWith(color: text),
           displayMedium: typography.displayMedium.copyWith(color: text),
           titleLarge: typography.titleLarge.copyWith(color: text, fontSize: 18),
-          bodyLarge: typography.bodyLarge.copyWith(color: text, fontSize: 14),
+          bodyLarge: typography.bodyLarge
+              .copyWith(color: text, fontSize: HexoraTypography.body),
           bodyMedium: typography.bodyMedium.copyWith(color: text, fontSize: 13),
           bodySmall:
               typography.bodySmall.copyWith(color: secondaryText, fontSize: 12),
@@ -178,7 +185,7 @@ class MobileTheme {
         // RawChip resolves stateful colors, not stateful TextStyles.
         labelStyle: TextStyle(
           fontFamily: textTheme.bodyMedium?.fontFamily,
-          fontSize: 14,
+          fontSize: HexoraTypography.body,
           color: WidgetStateColor.resolveWith(
               (states) => states.contains(WidgetState.disabled)
                   ? secondaryText.withValues(alpha: 0.38)
@@ -186,7 +193,8 @@ class MobileTheme {
                       ? onSelected
                       : secondaryText),
         ),
-        secondaryLabelStyle: TextStyle(color: onSelected, fontSize: 14),
+        secondaryLabelStyle:
+            TextStyle(color: onSelected, fontSize: HexoraTypography.body),
         side: BorderSide(color: border),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -203,7 +211,7 @@ class MobileTheme {
         focusedErrorBorder: inputBorder.copyWith(
             borderSide: BorderSide(color: error, width: 2)),
         hintStyle: TextStyle(color: secondaryText),
-        labelStyle: TextStyle(color: secondaryText),
+        labelStyle: textTheme.labelMedium?.copyWith(color: secondaryText),
       ),
       tabBarTheme: TabBarThemeData(
         labelColor: primary,

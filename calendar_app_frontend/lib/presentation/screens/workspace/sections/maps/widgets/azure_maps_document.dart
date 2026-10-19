@@ -10,9 +10,11 @@ String buildAzureMapsDocument({
   required String? selectedPinId,
   required AzureMapSelection? selection,
   required AzureMapUserLocation? userLocation,
+  bool darkMode = false,
 }) {
   final config = jsonEncode(<String, dynamic>{
     'instanceId': instanceId,
+    'darkMode': darkMode,
     'clientId': clientId,
     'accessToken': accessToken,
     'pins': pins.map((pin) => pin.toJson()).toList(growable: false),
@@ -29,7 +31,7 @@ String buildAzureMapsDocument({
   <link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css" type="text/css">
   <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
   <style>
-    html,body,#map{width:100%;height:100%;margin:0;overflow:hidden;background:#eef2f7;font-family:Arial,sans-serif}
+    html,body,#map{width:100%;height:100%;margin:0;overflow:hidden;background:${darkMode ? '#162739' : '#eef2f7'};font-family:Inter,Arial,sans-serif}
     .pin{width:28px;height:28px;border-radius:50% 50% 50% 0;background:#35649a;border:3px solid white;box-shadow:0 3px 10px rgba(15,23,42,.3);transform:rotate(-45deg)}
     .pin:after{content:'';position:absolute;width:8px;height:8px;border-radius:50%;background:white;top:7px;left:7px}
     .pin-selected{width:34px;height:34px;background:#ef7b45;border-width:4px;box-shadow:0 0 0 6px rgba(239,123,69,.24),0 5px 16px rgba(15,23,42,.42)}
@@ -40,7 +42,7 @@ String buildAzureMapsDocument({
     .user-location:before{content:'';position:absolute;inset:-11px;border-radius:50%;background:rgba(22,119,255,.28);animation:pulse 1.8s ease-out infinite}
     .user-location svg{position:relative;z-index:1;width:19px;height:19px;fill:white;filter:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
     @keyframes pulse{0%{transform:scale(.55);opacity:1}100%{transform:scale(1.45);opacity:0}}
-    .loading{position:absolute;inset:0;display:grid;place-items:center;color:#475569;font-size:14px;background:#eef2f7}
+    .loading{position:absolute;inset:0;display:grid;place-items:center;color:${darkMode ? '#dce6f1' : '#475569'};font-size:14px;background:${darkMode ? '#162739' : '#eef2f7'}}
   </style>
 </head>
 <body>
@@ -62,6 +64,7 @@ String buildAzureMapsDocument({
     let pinMarkers = [];
     let circleSource;
     let userMarker;
+    let popup;
 
     function notify(type, payload) {
       const message = Object.assign({type:type, instanceId:config.instanceId}, payload || {});
@@ -120,6 +123,7 @@ String buildAzureMapsDocument({
       if (!map || !map.markers) return;
       pinMarkers.forEach(function(marker){ map.markers.remove(marker); });
       pinMarkers = [];
+      if (popup) { popup.close(); popup = null; }
       const orderedPins = pins.slice().sort(function(a,b){
         return (a.id === selectedPinId ? 1 : 0) - (b.id === selectedPinId ? 1 : 0);
       });
@@ -135,6 +139,13 @@ String buildAzureMapsDocument({
           notify('hexora-map-pin', {id:pin.id});
         });
         pinMarkers.push(marker);
+        if (isSelected) {
+          const content = document.createElement('div');
+          content.textContent = pin.title || 'Cliente';
+          content.style.cssText = 'padding:8px 12px;font:600 13px Inter,Arial,sans-serif;color:#162739';
+          popup = new atlas.Popup({content:content, position:[pin.longitude,pin.latitude], pixelOffset:[0,-36]});
+          popup.open(map);
+        }
       });
     }
 
@@ -170,7 +181,7 @@ String buildAzureMapsDocument({
         zoom:(selection || pins.length) ? 15 : 5,
         language:'es-ES',
         view:'Auto',
-        style:'road',
+        style:config.darkMode ? 'night' : 'road',
         authOptions:{
           authType:atlas.AuthenticationType.anonymous,
           clientId:mapClientId,
@@ -213,9 +224,13 @@ String buildAzureMapsDocument({
       map.events.add('error', function(event){
         notify('hexora-map-error', {message:(event && event.error && event.error.message) || 'No se pudo cargar Azure Maps.'});
       });
+      map.events.add('load', function(){ notify('hexora-map-loaded'); });
+      if (window.ResizeObserver) {
+        new ResizeObserver(function(){ map.resize(); }).observe(document.getElementById('map'));
+      }
       try {
         map.controls.add(new atlas.control.ZoomControl(), {position:'bottom-right'});
-        map.controls.add(new atlas.control.StyleControl({mapStyles:['road','satellite','satellite_road_labels']}), {position:'top-right'});
+        map.controls.add(new atlas.control.StyleControl({mapStyles:['road','night','satellite','satellite_road_labels']}), {position:'top-right'});
       } catch (_) {
         // Controls are optional; the map and location picker remain usable.
       }
@@ -229,6 +244,11 @@ String buildAzureMapsDocument({
         try { data = JSON.parse(data); } catch (_) { return; }
       }
       if (!data || data.instanceId !== config.instanceId) return;
+      if (data.action === 'theme' && config.darkMode !== data.darkMode) {
+        config.darkMode = data.darkMode;
+        map.setStyle({style:data.darkMode ? 'night' : 'road'});
+        document.body.style.background = data.darkMode ? '#162739' : '#eef2f7';
+      }
       if (data.action === 'token') currentToken = normalizeToken(data.accessToken);
       if (data.action === 'pins') { pins = data.pins || []; renderPins(); }
       if (data.action === 'selected-pin') { selectedPinId = data.selectedPinId || null; renderPins(); }

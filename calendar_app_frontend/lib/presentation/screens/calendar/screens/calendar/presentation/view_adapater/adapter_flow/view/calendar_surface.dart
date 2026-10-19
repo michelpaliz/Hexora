@@ -1,3 +1,4 @@
+import 'package:hexora/theme/typography/typography_extension.dart';
 // calendar_surface.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -450,8 +451,7 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
     final textColor = getTextColor(context);
     final backgroundColor = Theme.of(context).canvasColor;
     // Keep headers legible but compact on web/inline layouts
-    final fontSize =
-        (MediaQuery.of(context).size.width * 0.014).clamp(11.0, 14.0);
+    const fontSize = HexoraTypography.sectionTitle;
     // inside build(BuildContext context) just after you compute fontSize, etc.
     final double monthHeaderHeight = _responsiveMonthHeaderHeight(context);
 
@@ -500,8 +500,9 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                             final isTimeGridView = _isTimeGridView();
                             final calendarHeaderHeight =
                                 isTimeGridView ? 42.0 : 36.0;
-                            final calendarViewHeaderHeight =
-                                isTimeGridView ? 56.0 : 40.0;
+                            final calendarViewHeaderHeight = isTimeGridView
+                                ? HexoraDimensions.calendarDayHeader
+                                : 40.0;
 
                             return Container(
                               decoration:
@@ -612,10 +613,28 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                         showDatePickerButton: true,
                                         firstDayOfWeek: DateTime.monday,
                                         initialSelectedDate: DateTime.now(),
+                                        cellBorderColor: Theme.of(context)
+                                            .colorScheme
+                                            .outlineVariant
+                                            .withValues(alpha: .35),
+                                        timeSlotViewSettings:
+                                            sf.TimeSlotViewSettings(
+                                                timeTextStyle: Theme.of(context)
+                                                    .textTheme
+                                                    .labelSmall
+                                                    ?.copyWith(
+                                                        fontSize:
+                                                            HexoraTypography
+                                                                .caption,
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurfaceVariant)),
                                         headerStyle: buildHeaderStyle(
                                             fontSize, textColor),
                                         viewHeaderStyle: buildViewHeaderStyle(
-                                            fontSize, textColor, isDarkMode),
+                                            HexoraTypography.body,
+                                            textColor,
+                                            isDarkMode),
                                         // scheduleViewSettings: buildScheduleSettings(
                                         //     fontSize, backgroundColor,
                                         //     monthHeaderHeight: monthHeaderHeight),

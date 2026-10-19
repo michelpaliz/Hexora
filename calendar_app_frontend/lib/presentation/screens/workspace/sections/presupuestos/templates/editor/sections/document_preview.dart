@@ -177,11 +177,13 @@ extension _TemplateDocumentPreview on _PresupuestoTemplateEditorScreenState {
   Widget _previewSection(ThemeData theme, _TemplateSectionState section) {
     final title = _resolvePreviewTags(section.title.text.trim());
     final body = _resolvePreviewTags(section.body.text.trim());
-    final items = section.itemControllers
-        .map((controller) => controller.text.trim())
-        .where((line) => line.isNotEmpty)
-        .map(_resolvePreviewTags)
-        .toList(growable: false);
+    final items = [
+      if (section.generatedFrequency) ..._generatedFrequencyItems(),
+      ...section.itemControllers
+          .map((controller) => controller.text.trim())
+          .where((line) => line.isNotEmpty)
+          .map(_resolvePreviewTags),
+    ];
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(

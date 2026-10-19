@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 // lib/presentation/screens/workspace/settings/group_settings_screen.dart
@@ -112,7 +113,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
 
   Widget _buildNavigation(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    const menuWidth = 214.0;
+    const menuWidth = NavigationTokens.sidebarWidth;
 
     return SizedBox(
       width: menuWidth,
@@ -157,50 +158,8 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
     required bool selected,
     required VoidCallback onTap,
   }) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final fg = selected ? cs.onPrimaryContainer : cs.onSurfaceVariant;
-
-    return SizedBox(
-      height: 44,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected ? cs.primaryContainer : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            children: [
-              if (selected)
-                Container(
-                  width: 3,
-                  height: 18,
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    color: cs.primary,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              Icon(icon, size: 18, color: fg),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  style: t.bodySmall.copyWith(
-                    color: fg,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    return SidebarItem(icon: icon, label: label, isSelected: selected,
+      collapsed: false, onTap: onTap);
   }
 
   Widget _buildContent(BuildContext context) {

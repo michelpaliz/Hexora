@@ -1,3 +1,5 @@
+import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
@@ -51,7 +53,7 @@ class LeftNavPanel extends StatelessWidget {
     final t = typography;
 
     return SizedBox(
-      width: 280,
+      width: NavigationTokens.sidebarWidth,
       child: Card(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -84,18 +86,11 @@ class LeftNavPanel extends StatelessWidget {
               const SizedBox(height: 12),
               totalsCard,
               const SizedBox(height: 12),
-              FilledButton.icon(
-                icon: const Icon(Icons.people_outline),
-                label: const Text('Clients invoice flow'),
-                onPressed: onSelectMenuClients,
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.receipt_long_outlined),
-                label: Text(l.invoicesListTitle),
-                onPressed: onSelectMenuInvoices,
-              ),
-            ],
+              SidebarItem(icon: Icons.people_outline, label: 'Clients invoice flow',
+                isSelected: false, collapsed: false, onTap: onSelectMenuClients),
+              const SizedBox(height: NavigationTokens.itemGap),
+              SidebarItem(icon: Icons.receipt_long_outlined, label: l.invoicesListTitle,
+                isSelected: false, collapsed: false, onTap: onSelectMenuInvoices),            ],
           ),
         ),
       ),

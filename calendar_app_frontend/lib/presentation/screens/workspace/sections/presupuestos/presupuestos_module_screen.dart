@@ -1,3 +1,6 @@
+import 'package:hexora/navigation/shell/hexora_nav_components.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
+import 'package:hexora/presentation/shared/widgets/navigation_menu_header.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
@@ -106,7 +109,7 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       SizedBox(
-                        width: _sideMenuCollapsed ? 64 : 224,
+                        width: _sideMenuCollapsed ? NavigationTokens.railWidth : NavigationTokens.sidebarWidth,
                         child: _PresupuestosMenu(
                           selected: _menu,
                           onSelected: _selectMenu,
@@ -149,6 +152,7 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
           groupId: widget.group.id,
           clients: _clients,
           mode: PresupuestoDocumentActionMode.all,
+          onCreate: () => setState(() => _menu = 'budgets_document_new'),
         );
       case 'budgets_document_new':
         return PresupuestoTemplateEditorScreen(
@@ -234,8 +238,7 @@ class _PresupuestosMenu extends StatelessWidget {
       NavigationSurface(builder: _buildNavigation);
 
   Widget _buildNavigation(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    const childIndent = 12.0;
+    const childIndent = NavigationTokens.nestedIndent;
 
     if (collapsed) {
       return _PresupuestosCollapsedMenu(
@@ -248,65 +251,11 @@ class _PresupuestosMenu extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.38),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    color: cs.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: Icon(
-                    Icons.request_quote_outlined,
-                    size: 17,
-                    color: cs.primary,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    _budgetMenuTitle(context),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: cs.onSurface,
-                          fontWeight: FontWeight.w900,
-                        ),
-                  ),
-                ),
-                Tooltip(
-                  message: _collapseMenuLabel(context),
-                  child: IconButton.filledTonal(
-                    onPressed: onToggleCollapse,
-                    icon: const Icon(Icons.keyboard_double_arrow_left_rounded),
-                    iconSize: 18,
-                    style: IconButton.styleFrom(
-                      minimumSize: const Size(36, 34),
-                      fixedSize: const Size(36, 34),
-                      padding: EdgeInsets.zero,
-                      visualDensity: VisualDensity.compact,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        NavigationMenuHeader(
+            title: _budgetMenuTitle(context),
+            collapseTooltip: _collapseMenuLabel(context),
+            icon: Icons.description_outlined,
+            onToggle: onToggleCollapse),
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
@@ -362,24 +311,16 @@ class _PresupuestosCollapsedMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
       child: Column(
         children: [
-          Tooltip(
-            message: _expandMenuLabel(context),
-            child: IconButton.filledTonal(
-              onPressed: onToggleCollapse,
-              icon: const Icon(Icons.keyboard_double_arrow_right_rounded),
-              style: IconButton.styleFrom(
-                minimumSize: const Size(42, 42),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
+          SidebarCollapseToggle(
+            collapsed: true,
+            onPressed: onToggleCollapse,
+            expandTooltip: _expandMenuLabel(context),
           ),
           const SizedBox(height: 8),
           Expanded(
@@ -391,47 +332,9 @@ class _PresupuestosCollapsedMenu extends StatelessWidget {
                 final item = _documentMenuItems[index];
                 final itemSelected = selected == item.key;
 
-                return Tooltip(
-                  message: item.label(context),
-                  waitDuration: const Duration(milliseconds: 350),
-                  child: Center(
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: () => onSelected(item.key),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 160),
-                        curve: Curves.easeOutCubic,
-                        width: 48,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: itemSelected
-                              ? cs.primary.withValues(alpha: 0.13)
-                              : item.primaryAction
-                                  ? cs.surfaceContainerHighest
-                                      .withValues(alpha: 0.28)
-                                  : cs.surfaceContainerHighest
-                                      .withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(13),
-                          border: Border.all(
-                            color: itemSelected
-                                ? cs.primary.withValues(alpha: 0.25)
-                                : cs.outlineVariant.withValues(alpha: 0.18),
-                          ),
-                        ),
-                        child: Icon(
-                          item.icon,
-                          size: 19,
-                          color: itemSelected
-                              ? cs.primary
-                              : item.primaryAction
-                                  ? cs.primary.withValues(alpha: 0.82)
-                                  : cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
+                return SidebarItem(icon: item.icon, label: item.label(context),
+                  isSelected: itemSelected, collapsed: true,
+                  primaryAction: item.primaryAction, onTap: () => onSelected(item.key));              },
             ),
           ),
         ],
@@ -504,62 +407,16 @@ class _PresupuestoMobileMenuChip extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final fg = selected
-        ? cs.primary
-        : primaryAction
-            ? cs.primary
-            : cs.onSurfaceVariant;
-
-    return Material(
-      color: selected
-          ? cs.primary.withValues(alpha: 0.12)
-          : primaryAction
-              ? cs.surfaceContainerHighest.withValues(alpha: 0.36)
-              : cs.surfaceContainerHighest.withValues(alpha: 0.22),
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: onTap,
-        child: Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: selected
-                  ? cs.primary.withValues(alpha: 0.24)
-                  : cs.outlineVariant.withValues(alpha: 0.22),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: fg),
-              const SizedBox(width: 7),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: fg,
-                      fontWeight:
-                          selected || primaryAction ? FontWeight.w800 : null,
-                    ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => IntrinsicWidth(child: SidebarItem(
+    icon: icon, label: label, isSelected: selected, collapsed: false,
+    primaryAction: primaryAction, onTap: onTap));
 }
-
 String _documentsSectionLabel(BuildContext context) {
   final isEs = Localizations.localeOf(context)
       .languageCode
       .toLowerCase()
       .startsWith('es');
-  return isEs ? 'Documentos' : 'Documents';
+  return isEs ? 'Propuestas' : 'Proposals';
 }
 
 String _budgetMenuTitle(BuildContext context) {
@@ -675,7 +532,7 @@ const _templateMenuItems = <_PresupuestosMenuEntry>[
     'New proposal',
     mobileLabelEs: 'Crear',
     mobileLabelEn: 'Create',
-    primaryAction: true,
+    primaryAction: false,
   ),
   _PresupuestosMenuEntry(
     'budget_templates',
@@ -709,7 +566,7 @@ const _documentActionMenuItems = <_PresupuestosMenuEntry>[
   _PresupuestosMenuEntry(
     'budgets_document_issued',
     Icons.verified_outlined,
-    'Emitidos',
+    'Emitidas',
     'Issued',
   ),
   _PresupuestosMenuEntry(

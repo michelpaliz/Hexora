@@ -52,16 +52,37 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
         ? const Color(0xFFB45309)
         : cs.secondary;
 
-    Widget valueChip(String label, num value, Color color) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: color.withValues(alpha: 0.55)),
+    Widget metric(String label, num value, Color color,
+            {bool emphasis = false}) =>
+        Semantics(
+          label: '$label: ${money.format(value).trim()}',
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label.toUpperCase(),
+                style: t.caption.copyWith(
+                  fontSize: 11,
+                  height: 1.05,
+                  letterSpacing: .35,
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                money.format(value).trim(),
+                style: t.bodySmall.copyWith(
+                  fontSize: emphasis ? 15 : 14,
+                  height: 1.1,
+                  color: color,
+                  fontWeight: emphasis ? FontWeight.w800 : FontWeight.w600,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
           ),
-          child: Text('$label ${money.format(value).trim()}',
-              style: t.bodySmall
-                  .copyWith(color: color, fontWeight: FontWeight.w900)),
         );
 
     final leading = Row(
@@ -69,10 +90,21 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
       children: [
         Icon(Icons.receipt_long, size: 16, color: cs.onSurfaceVariant),
         const SizedBox(width: 8),
-        Text(
-            '$displayedCount ${isEs ? (displayedCount == 1 ? 'factura' : 'facturas') : (displayedCount == 1 ? 'invoice' : 'invoices')}',
-            style: t.bodySmall.copyWith(
-                color: cs.onSurfaceVariant, fontWeight: FontWeight.w700)),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(
+              '$displayedCount ${isEs ? (displayedCount == 1 ? 'factura' : 'facturas') : (displayedCount == 1 ? 'invoice' : 'invoices')}',
+              style: t.bodySmall.copyWith(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13)),
+          Text(
+            isEs
+                ? 'Importes de las facturas mostradas'
+                : 'Displayed invoice totals',
+            style: t.caption.copyWith(
+                color: cs.onSurfaceVariant, fontSize: 10.5, height: 1.1),
+          ),
+        ]),
         const SizedBox(width: 8),
         _InvoiceFiltersMenu(
           sortActions: sortActions,
@@ -83,32 +115,37 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
         ),
       ],
     );
-    final totals = SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
+    final totals = Semantics(
+      label: isEs
+          ? 'Totales de las facturas mostradas'
+          : 'Totals for the displayed invoices',
+      child: Wrap(spacing: 18, runSpacing: 6, children: [
         if (loading)
           const SizedBox(
               width: 16,
               height: 16,
               child: CircularProgressIndicator(strokeWidth: 2))
         else ...[
-          valueChip('Base', _num(summary?['subtotal']), cs.primary),
-          const SizedBox(width: 8),
-          valueChip('IVA', _num(summary?['taxTotal']), cs.onSurface),
-          const SizedBox(width: 8),
-          valueChip('Total', _num(summary?['total']), totalColor),
+          metric('Base imponible', _num(summary?['subtotal']), cs.onSurface),
+          metric('IVA', _num(summary?['taxTotal']), cs.onSurface),
+          metric('Total facturado', _num(summary?['total']), totalColor,
+              emphasis: true),
           if (mismatches > 0) ...[
-            const SizedBox(width: 8),
             Tooltip(
-              message:
-                  isEs ? '$mismatches desajustes' : '$mismatches mismatches',
-              child:
-                  Icon(Icons.warning_amber_rounded, size: 18, color: cs.error),
+              message: isEs
+                  ? '$mismatches desajustes en los totales mostrados'
+                  : '$mismatches mismatches in the displayed totals',
+              child: Semantics(
+                label: isEs
+                    ? '$mismatches desajustes en los totales'
+                    : '$mismatches total mismatches',
+                child: Icon(Icons.warning_amber_rounded,
+                    size: 16, color: cs.error),
+              ),
             ),
           ],
         ],
         if (!loading && (error ?? '').trim().isNotEmpty) ...[
-          const SizedBox(width: 8),
           Tooltip(
               message: error!,
               child: Icon(Icons.error_outline, size: 16, color: cs.error)),
@@ -138,7 +175,7 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
               child:
                   Text(isEs ? 'Facturas no vinculadas' : 'Unlinked invoices'),
             ),
-            PopupMenuItem(
+            NavigationPopupMenuItem(
               value: _InvoiceHeaderAction.resolveLinks,
               enabled: !paymentSuggestionsLoading,
               child: ListTile(
@@ -151,8 +188,8 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
           ],
           style: IconButton.styleFrom(
             visualDensity: VisualDensity.standard,
-            fixedSize: const Size(36, 36),
-            minimumSize: const Size(36, 36),
+            fixedSize: const Size(32, 32),
+            minimumSize: const Size(32, 32),
             padding: EdgeInsets.zero,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             backgroundColor:
@@ -161,7 +198,7 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
                 unlinkedOnly ? cs.onPrimaryContainer : cs.onSurfaceVariant,
             side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
             shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
           ),
           icon: paymentSuggestionsLoading
               ? const SizedBox(
@@ -174,9 +211,9 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
     );
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
       ),
@@ -188,14 +225,9 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
           return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SingleChildScrollView(
-                    scrollDirection: Axis.horizontal, child: leading),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: totals),
-                  const SizedBox(width: 8),
-                  actions,
-                ]),
+                Wrap(spacing: 12, runSpacing: 6, children: [leading, actions]),
+                const SizedBox(height: 6),
+                totals,
               ]);
         }
         return Row(children: [

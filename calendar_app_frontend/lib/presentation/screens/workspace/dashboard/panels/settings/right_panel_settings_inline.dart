@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -198,7 +199,7 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
   Widget _buildNavigation(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    const menuWidth = 220.0;
+    const menuWidth = NavigationTokens.sidebarWidth;
 
     return SizedBox(
       width: menuWidth,
@@ -302,7 +303,7 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
     required String label,
   }) {
     final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
+
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 2),
@@ -310,7 +311,7 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
         children: [
           Icon(
             icon,
-            size: 13,
+            size: NavigationTokens.iconSize,
             color: cs.onSurfaceVariant.withValues(alpha: 0.62),
           ),
           const SizedBox(width: 7),
@@ -319,10 +320,10 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: t.bodySmall.copyWith(
+              style: NavigationTokens.section(context).copyWith(
                 color: cs.onSurfaceVariant.withValues(alpha: 0.68),
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
+                fontSize: NavigationTokens.sectionSize,
+                fontWeight: FontWeight.w600,
                 letterSpacing: 0.9,
               ),
             ),
@@ -339,72 +340,12 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
     required bool selected,
     required VoidCallback onTap,
   }) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    final fg = selected ? cs.onPrimaryContainer : cs.onSurfaceVariant;
-    final bg = selected
-        ? (isLight ? cs.primary.withValues(alpha: 0.08) : cs.primaryContainer)
-        : Colors.transparent;
-    final borderColor =
-        selected ? cs.primary.withValues(alpha: 0.22) : Colors.transparent;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(13),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOut,
-        constraints: const BoxConstraints(minHeight: 40),
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: borderColor),
-        ),
-        child: Row(
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              width: 3,
-              height: selected ? 20 : 18,
-              margin: const EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(
-                color: selected ? cs.primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-            Container(
-              width: 27,
-              height: 27,
-              decoration: BoxDecoration(
-                color: isLight
-                    ? (selected
-                        ? cs.primary.withValues(alpha: 0.08)
-                        : Colors.transparent)
-                    : (selected
-                        ? cs.primary.withValues(alpha: 0.12)
-                        : cs.surfaceContainerHighest.withValues(alpha: 0.45)),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Icon(icon, size: 15, color: fg),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
-                style: t.bodySmall.copyWith(
-                  color: selected ? cs.onSurface : fg,
-                  fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 2,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return SidebarItem(
+        icon: icon,
+        label: label,
+        isSelected: selected,
+        collapsed: false,
+        onTap: onTap);
   }
 
   Widget _buildContent(BuildContext context) {

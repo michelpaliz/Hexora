@@ -1,3 +1,4 @@
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
@@ -271,7 +272,7 @@ class GroupDashboardState extends ChangeNotifier {
                 },
                 itemBuilder: (_) => [
                   if (ma.onArchive != null)
-                    PopupMenuItem(
+                    NavigationPopupMenuItem(
                       value: 'archive',
                       child: Row(children: [
                         const Icon(Icons.archive_outlined, size: 18),
@@ -280,7 +281,7 @@ class GroupDashboardState extends ChangeNotifier {
                       ]),
                     ),
                   if (ma.onSpam != null)
-                    PopupMenuItem(
+                    NavigationPopupMenuItem(
                       value: 'spam',
                       child: Row(children: [
                         const Icon(Icons.report_gmailerrorred_outlined,
@@ -290,7 +291,7 @@ class GroupDashboardState extends ChangeNotifier {
                       ]),
                     ),
                   if (ma.onTrash != null)
-                    PopupMenuItem(
+                    NavigationPopupMenuItem(
                       value: 'trash',
                       child: Row(children: [
                         const Icon(Icons.delete_outline_rounded, size: 18),
