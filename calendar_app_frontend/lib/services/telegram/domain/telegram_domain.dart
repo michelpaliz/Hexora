@@ -9,17 +9,38 @@ class TelegramComposerAttachment {
     required this.bytes,
     this.fileSize,
     this.mimeType,
-  });
+  }) : presupuestoId = null;
+
+  /// A presupuesto the server renders to PDF when the message is sent.
+  TelegramComposerAttachment.presupuesto({
+    required String this.presupuestoId,
+    required this.fileName,
+  })  : bytes = Uint8List(0),
+        fileSize = null,
+        mimeType = 'application/pdf';
 
   final String fileName;
   final Uint8List bytes;
   final int? fileSize;
   final String? mimeType;
+  final String? presupuestoId;
+
+  bool get isPresupuesto => presupuestoId != null;
 
   bool get isPdf =>
+      isPresupuesto ||
       fileName.toLowerCase().endsWith('.pdf') ||
       (mimeType ?? '').toLowerCase().contains('pdf');
+
+  bool isSameAs(TelegramComposerAttachment other) => isPresupuesto
+      ? presupuestoId == other.presupuestoId
+      : !other.isPresupuesto &&
+          fileName == other.fileName &&
+          bytes.length == other.bytes.length;
 }
+
+/// Matches the server-side limit in sendMessageService.
+const int kTelegramMaxAttachmentsPerSend = 10;
 
 class TelegramDomain extends ChangeNotifier {
   TelegramDomain({required ITelegramApiClient apiClient})
@@ -276,13 +297,16 @@ class TelegramDomain extends ChangeNotifier {
               forumTopicId: _effectiveTopicId(chatId, forumTopicId))]
           ?.replyTarget;
 
-  TelegramComposerAttachment? attachmentForChat(
+  List<TelegramComposerAttachment> attachmentsForChat(
     String chatId, {
     String? forumTopicId,
   }) =>
-      _composerStatesStore[_threadKey(chatId,
-              forumTopicId: _effectiveTopicId(chatId, forumTopicId))]
-          ?.attachment;
+      List<TelegramComposerAttachment>.unmodifiable(
+        _composerStatesStore[_threadKey(chatId,
+                    forumTopicId: _effectiveTopicId(chatId, forumTopicId))]
+                ?.attachments ??
+            const <TelegramComposerAttachment>[],
+      );
 
   // ===== Export State =====
   TelegramExport? _currentExport;
@@ -443,30 +467,51 @@ class TelegramDomain extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setAttachment(
+  /// Appends attachments to the composer, skipping duplicates. Returns how
+  /// many were dropped because the per-send limit was reached.
+  int addAttachments(
     String chatId,
-    TelegramComposerAttachment? attachment, {
+    List<TelegramComposerAttachment> attachments, {
     String? forumTopicId,
   }) {
     final composer = _composerStateFor(chatId, forumTopicId: forumTopicId);
-    final current = composer.attachment;
-    final sameAttachment = current?.fileName == attachment?.fileName &&
-        current?.fileSize == attachment?.fileSize &&
-        current?.bytes.length == attachment?.bytes.length;
-    if (sameAttachment) return;
-    composer.attachment = attachment;
-    composer.error = null;
+    var added = 0;
+    var dropped = 0;
+    for (final attachment in attachments) {
+      if (composer.attachments.any(attachment.isSameAs)) continue;
+      if (composer.attachments.length >= kTelegramMaxAttachmentsPerSend) {
+        dropped++;
+        continue;
+      }
+      composer.attachments.add(attachment);
+      added++;
+    }
+    if (added > 0) {
+      composer.error = null;
+      notifyListeners();
+    }
+    return dropped;
+  }
+
+  void removeAttachment(
+    String chatId,
+    TelegramComposerAttachment attachment, {
+    String? forumTopicId,
+  }) {
+    final composer = _composerStatesStore[_threadKey(chatId,
+        forumTopicId: _effectiveTopicId(chatId, forumTopicId))];
+    if (composer == null || !composer.attachments.remove(attachment)) return;
     notifyListeners();
   }
 
-  void clearAttachment(
+  void clearAttachments(
     String chatId, {
     String? forumTopicId,
   }) {
     final composer = _composerStatesStore[_threadKey(chatId,
         forumTopicId: _effectiveTopicId(chatId, forumTopicId))];
-    if (composer?.attachment == null) return;
-    composer!.attachment = null;
+    if (composer == null || composer.attachments.isEmpty) return;
+    composer.attachments.clear();
     notifyListeners();
   }
 
@@ -871,8 +916,9 @@ class TelegramDomain extends ChangeNotifier {
       forumTopicId: effectiveTopicId,
     );
     final payloadText = (text ?? composer.draftText).trim();
-    final attachment = composer.attachment;
-    if ((payloadText.isEmpty && attachment == null) || composer.sending) {
+    final attachments =
+        List<TelegramComposerAttachment>.of(composer.attachments);
+    if ((payloadText.isEmpty && attachments.isEmpty) || composer.sending) {
       return null;
     }
     if (isForumChat && (effectiveTopicId == null || effectiveTopicId.isEmpty)) {
@@ -888,35 +934,51 @@ class TelegramDomain extends ChangeNotifier {
     final replyTarget = composer.replyTarget;
 
     try {
-      final sentMessage = attachment == null
-          ? await _apiClient.sendChatMessage(
+      final sentMessages = attachments.isEmpty
+          ? <TelegramChatMessage>[
+              await _apiClient.sendChatMessage(
+                chatId: chatId,
+                accountId: account!.id,
+                text: payloadText,
+                replyToMessageId: replyTarget?.messageId,
+                forumTopicId: effectiveTopicId,
+              ),
+            ]
+          : await _apiClient.sendChatDocuments(
               chatId: chatId,
               accountId: account!.id,
-              text: payloadText,
-              replyToMessageId: replyTarget?.messageId,
-              forumTopicId: effectiveTopicId,
-            )
-          : await _apiClient.sendChatDocument(
-              chatId: chatId,
-              accountId: account!.id,
-              fileBytes: attachment.bytes,
-              fileName: attachment.fileName,
+              files: attachments
+                  .where((a) => !a.isPresupuesto)
+                  .map((a) => TelegramDocumentUpload(
+                        bytes: a.bytes,
+                        fileName: a.fileName,
+                        mimeType: a.mimeType,
+                      ))
+                  .toList(growable: false),
+              presupuestoIds: attachments
+                  .where((a) => a.isPresupuesto)
+                  .map((a) => a.presupuestoId!)
+                  .toList(growable: false),
               caption: payloadText.isEmpty ? null : payloadText,
               replyToMessageId: replyTarget?.messageId,
-              mimeType: attachment.mimeType,
               forumTopicId: effectiveTopicId,
             );
+      if (sentMessages.isEmpty) {
+        throw StateError('Telegram did not confirm the sent message.');
+      }
 
-      final hydrated = _hydrateSentMessage(
-        sentMessage,
-        replyTarget: replyTarget,
-        forumTopicId: effectiveTopicId,
-      );
+      final hydratedMessages = <TelegramChatMessage>[
+        for (final (index, message) in sentMessages.indexed)
+          _hydrateSentMessage(
+            message,
+            replyTarget: index == 0 ? replyTarget : null,
+            forumTopicId: effectiveTopicId,
+          ),
+      ];
+      final hydrated = hydratedMessages.last;
 
       final feed = _feedFor(chatId, forumTopicId: effectiveTopicId);
-      final merged = _mergeMessages(feed.messages, <TelegramChatMessage>[
-        hydrated,
-      ]);
+      final merged = _mergeMessages(feed.messages, hydratedMessages);
       feed.messages = merged;
       feed.paging = TelegramChatMessagePaging(
         beforeMessageId: feed.paging.beforeMessageId ??
@@ -934,7 +996,7 @@ class TelegramDomain extends ChangeNotifier {
 
       composer.draftText = '';
       composer.replyTarget = null;
-      composer.attachment = null;
+      composer.attachments.clear();
       composer.error = null;
       return hydrated;
     } catch (e) {
@@ -1449,7 +1511,8 @@ class _TelegramChatComposerState {
   bool sending = false;
   String? error;
   TelegramChatMessage? replyTarget;
-  TelegramComposerAttachment? attachment;
+  final List<TelegramComposerAttachment> attachments =
+      <TelegramComposerAttachment>[];
 }
 
 class _TelegramForumTopicState {

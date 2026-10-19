@@ -10,23 +10,34 @@ class TelegramIssuedPresupuestoSelection {
     required this.title,
     required this.isDraft,
     required this.kind,
+    this.number = '',
+    this.clientName = '',
   });
 
   final String id;
   final String title;
   final bool isDraft;
   final PresupuestoKind kind;
+  final String number;
+  final String clientName;
+
+  /// Human-readable name for the composer, e.g. "Presupuesto 020-26 · Cliente".
+  String get label => <String>[
+        number.isEmpty ? title : '$title $number',
+        if (clientName.isNotEmpty) clientName,
+      ].join(' · ');
 }
 
 enum _PresupuestoKindFilter { all, structured, document }
 
-Future<TelegramIssuedPresupuestoSelection?>
+/// Lets the user tick one or more presupuestos; returns them in tick order.
+Future<List<TelegramIssuedPresupuestoSelection>?>
     showTelegramIssuedPresupuestoPickerDialog(
   BuildContext context, {
   required String groupId,
   PresupuestosApi? api,
 }) {
-  return showDialog<TelegramIssuedPresupuestoSelection>(
+  return showDialog<List<TelegramIssuedPresupuestoSelection>>(
     context: context,
     builder: (dialogContext) => Dialog(
       clipBehavior: Clip.antiAlias,
@@ -67,6 +78,9 @@ class _TelegramIssuedPresupuestoPickerDialogState
   _PresupuestoKindFilter _kindFilter = _PresupuestoKindFilter.all;
   bool _loading = true;
   String? _error;
+  // Keyed by id so ticks survive filter and search changes; insertion order is kept.
+  final Map<String, Map<String, dynamic>> _selected =
+      <String, Map<String, dynamic>>{};
 
   bool get _isSpanish =>
       Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
@@ -146,19 +160,33 @@ class _TelegramIssuedPresupuestoPickerDialogState
     }
   }
 
-  Future<void> _select(Map<String, dynamic> document) async {
-    final isDraft = _isDraft(document);
-    if (isDraft) {
+  void _toggle(Map<String, dynamic> document) {
+    final id = _id(document);
+    setState(() {
+      if (_selected.remove(id) == null) _selected[id] = document;
+    });
+  }
+
+  Future<void> _attachSelected() async {
+    if (_selected.isEmpty) return;
+    final drafts = _selected.values.where(_isDraft).length;
+    if (drafts > 0) {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (confirmationContext) => AlertDialog(
           title: Text(
-            _isSpanish ? '¿Enviar borrador?' : 'Send draft?',
+            _isSpanish
+                ? (drafts == 1 ? '¿Enviar borrador?' : '¿Enviar borradores?')
+                : (drafts == 1 ? 'Send draft?' : 'Send drafts?'),
           ),
           content: Text(
             _isSpanish
-                ? 'Este presupuesto todavía es un borrador. ¿Quieres enviarlo igualmente?'
-                : 'This budget is still a draft and may change. Do you want to send it anyway?',
+                ? (drafts == 1
+                    ? 'Este presupuesto todavía es un borrador. ¿Quieres enviarlo igualmente?'
+                    : '$drafts presupuestos todavía son borradores. ¿Quieres enviarlos igualmente?')
+                : (drafts == 1
+                    ? 'This budget is still a draft and may change. Do you want to send it anyway?'
+                    : '$drafts budgets are still drafts and may change. Do you want to send them anyway?'),
           ),
           actions: [
             TextButton(
@@ -169,7 +197,9 @@ class _TelegramIssuedPresupuestoPickerDialogState
               onPressed: () => Navigator.of(confirmationContext).pop(true),
               icon: const Icon(Icons.send_rounded, size: 18),
               label: Text(
-                _isSpanish ? 'Enviar borrador' : 'Send draft',
+                _isSpanish
+                    ? (drafts == 1 ? 'Enviar borrador' : 'Enviar borradores')
+                    : (drafts == 1 ? 'Send draft' : 'Send drafts'),
               ),
             ),
           ],
@@ -177,14 +207,17 @@ class _TelegramIssuedPresupuestoPickerDialogState
       );
       if (!mounted || confirmed != true) return;
     }
-    Navigator.of(context).pop(
-      TelegramIssuedPresupuestoSelection(
-        id: _id(document),
-        title: _title(document),
-        isDraft: isDraft,
-        kind: PresupuestoKind.fromJson(document),
-      ),
-    );
+    Navigator.of(context).pop(<TelegramIssuedPresupuestoSelection>[
+      for (final document in _selected.values)
+        TelegramIssuedPresupuestoSelection(
+          id: _id(document),
+          title: _title(document),
+          isDraft: _isDraft(document),
+          kind: PresupuestoKind.fromJson(document),
+          number: _number(document),
+          clientName: _clientName(document),
+        ),
+    ]);
   }
 
   @override
@@ -228,8 +261,8 @@ class _TelegramIssuedPresupuestoPickerDialogState
                       const SizedBox(height: 2),
                       Text(
                         _isSpanish
-                            ? 'Selecciona el PDF que quieres enviar a este chat.'
-                            : 'Select the PDF to send to this chat.',
+                            ? 'Selecciona uno o varios PDFs para adjuntar a este chat.'
+                            : 'Select one or more PDFs to attach to this chat.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: cs.onSurfaceVariant,
                             ),
@@ -318,6 +351,41 @@ class _TelegramIssuedPresupuestoPickerDialogState
             ),
             const SizedBox(height: 14),
             Flexible(child: _buildBody(documents, cs)),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _selected.isEmpty
+                        ? (_isSpanish
+                            ? 'Ningún presupuesto seleccionado.'
+                            : 'No budgets selected.')
+                        : (_isSpanish
+                            ? '${_selected.length} seleccionado(s). Se añadirán al mensaje.'
+                            : '${_selected.length} selected. They will be added to the message.'),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(_isSpanish ? 'Cancelar' : 'Cancel'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: _selected.isEmpty ? null : _attachSelected,
+                  icon: const Icon(Icons.attach_file_rounded, size: 18),
+                  label: Text(
+                    _selected.isEmpty
+                        ? (_isSpanish ? 'Adjuntar' : 'Attach')
+                        : (_isSpanish
+                            ? 'Adjuntar (${_selected.length})'
+                            : 'Attach (${_selected.length})'),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -387,6 +455,7 @@ class _TelegramIssuedPresupuestoPickerDialogState
       itemBuilder: (context, index) {
         final document = documents[index];
         final isDraft = _isDraft(document);
+        final selected = _selected.containsKey(_id(document));
         final kind = PresupuestoKind.fromJson(document);
         final number = _displayNumber(document, isSpanish: _isSpanish);
         final client = _clientName(document);
@@ -396,10 +465,17 @@ class _TelegramIssuedPresupuestoPickerDialogState
           if (_formattedDate(document).isNotEmpty) _formattedDate(document),
         ].join(' · ');
         return Material(
-          color: cs.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(14),
+          color: selected
+              ? cs.primaryContainer.withValues(alpha: 0.35)
+              : cs.surfaceContainerLow,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(
+              color: selected ? cs.primary : Colors.transparent,
+            ),
+          ),
           child: InkWell(
-            onTap: () => _select(document),
+            onTap: () => _toggle(document),
             borderRadius: BorderRadius.circular(14),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -475,11 +551,10 @@ class _TelegramIssuedPresupuestoPickerDialogState
                       ],
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Icon(
-                    Icons.send_rounded,
-                    color: isDraft ? cs.tertiary : cs.primary,
-                    size: 20,
+                  const SizedBox(width: 6),
+                  Checkbox(
+                    value: selected,
+                    onChanged: (_) => _toggle(document),
                   ),
                 ],
               ),
