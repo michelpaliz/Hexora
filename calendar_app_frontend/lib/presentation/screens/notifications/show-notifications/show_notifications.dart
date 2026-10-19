@@ -208,6 +208,16 @@ class _ShowNotificationsState extends State<ShowNotifications>
       );
     } catch (e) {
       if (!mounted) return;
+      if (GroupMembershipErrorMapper.isManagedGroupLimitError(e)) {
+        await showManagedGroupLimitDialog(
+          context,
+          message: GroupMembershipErrorMapper.managedLimitMessageFor(
+            loc,
+            GroupMembershipErrorContext.joinGroup,
+          ),
+        );
+        return;
+      }
       if (GroupMembershipErrorMapper.isPremiumMultiGroupError(e)) {
         await showPremiumUpgradeDialog(
           context,
@@ -583,6 +593,10 @@ class _ShowNotificationsState extends State<ShowNotifications>
       final mapping =
           await OcrImportJobMappingStore.instance.findByBackgroundJobId(jobId);
       if (mapping != null) {
+        if (mapping.userId != widget.user.id) {
+          throw StateError('Import notification belongs to another account');
+        }
+        groupId = mapping.groupId;
         OcrImportJobsStore.instance.trackStartedJob(
           backgroundJobId: mapping.backgroundJobId,
           totalFiles: 0,

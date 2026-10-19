@@ -98,6 +98,48 @@ abstract class AppLocalizations {
     Locale('es')
   ];
 
+  /// No description provided for @clientImageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Client / location image'**
+  String get clientImageLabel;
+
+  /// No description provided for @clientImageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional · JPEG, PNG or WebP · up to 5 MB. Without an image, initials are shown.'**
+  String get clientImageHint;
+
+  /// No description provided for @clientImageAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add image'**
+  String get clientImageAdd;
+
+  /// No description provided for @clientImageReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace image'**
+  String get clientImageReplace;
+
+  /// No description provided for @clientImageRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove image'**
+  String get clientImageRemove;
+
+  /// No description provided for @clientImageInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a JPEG, PNG or WebP image up to 5 MB.'**
+  String get clientImageInvalid;
+
+  /// No description provided for @clientImageSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Client details saved, but the image could not be saved. Please try again.'**
+  String get clientImageSaveFailed;
+
   /// No description provided for @darkMode.
   ///
   /// In en, this message translates to:
@@ -7318,6 +7360,138 @@ abstract class AppLocalizations {
   /// **'Could not remove invoice: {reason}'**
   String groupInvoicesRemoveFailedSnack(Object reason);
 
+  /// No description provided for @invoiceZipExportAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Export PDFs'**
+  String get invoiceZipExportAction;
+
+  /// No description provided for @invoiceToolbarNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New invoice'**
+  String get invoiceToolbarNew;
+
+  /// No description provided for @invoiceToolbarExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get invoiceToolbarExport;
+
+  /// No description provided for @invoiceToolbarHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get invoiceToolbarHistory;
+
+  /// No description provided for @invoiceToolbarPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Export as PDF'**
+  String get invoiceToolbarPdf;
+
+  /// No description provided for @invoiceToolbarExcel.
+  ///
+  /// In en, this message translates to:
+  /// **'Export as Excel'**
+  String get invoiceToolbarExcel;
+
+  /// No description provided for @invoiceZipRecentAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Export history'**
+  String get invoiceZipRecentAction;
+
+  /// No description provided for @invoiceZipDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice exports'**
+  String get invoiceZipDialogTitle;
+
+  /// No description provided for @invoiceZipDialogSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Download your recently generated ZIP files'**
+  String get invoiceZipDialogSubtitle;
+
+  /// No description provided for @invoiceZipEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No exports yet'**
+  String get invoiceZipEmptyTitle;
+
+  /// No description provided for @invoiceZipEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your generated invoice ZIP files will appear here.'**
+  String get invoiceZipEmptyMessage;
+
+  /// No description provided for @invoiceZipRefreshAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get invoiceZipRefreshAction;
+
+  /// No description provided for @invoiceZipCloseAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get invoiceZipCloseAction;
+
+  /// No description provided for @invoiceZipDownloadAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Download {fileName}'**
+  String invoiceZipDownloadAction(String fileName);
+
+  /// No description provided for @invoiceZipStatusCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get invoiceZipStatusCompleted;
+
+  /// No description provided for @invoiceZipStatusReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get invoiceZipStatusReady;
+
+  /// No description provided for @invoiceZipStatusQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued'**
+  String get invoiceZipStatusQueued;
+
+  /// No description provided for @invoiceZipStatusProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing'**
+  String get invoiceZipStatusProcessing;
+
+  /// No description provided for @invoiceZipStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get invoiceZipStatusFailed;
+
+  /// No description provided for @invoiceZipStatusUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get invoiceZipStatusUnknown;
+
+  /// No description provided for @invoiceZipFileFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'invoices.zip'**
+  String get invoiceZipFileFallback;
+
+  /// No description provided for @invoiceZipCountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 export} other{{count} exports}}'**
+  String invoiceZipCountLabel(int count);
+
   /// No description provided for @clientsTitle.
   ///
   /// In en, this message translates to:
@@ -11854,6 +12028,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You are already in a group. Upgrade to Premium to join more groups.'**
   String get premiumRequiredJoinGroupOnlyMessage;
+
+  /// No description provided for @managedGroupLimitCreateMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You already manage 2 businesses. Leave or become a worker in one before creating another.'**
+  String get managedGroupLimitCreateMessage;
+
+  /// No description provided for @managedGroupLimitJoinMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You already manage 2 businesses. You can still join as a worker, but you cannot accept another administrator or co-administrator role.'**
+  String get managedGroupLimitJoinMessage;
 
   /// No description provided for @upgradeToPremium.
   ///

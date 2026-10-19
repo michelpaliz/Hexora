@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/auth/models/verification_result.dart';
 import 'package:hexora/services/auth/repositories/auth_repository.dart';
+import 'package:hexora/presentation/shared/jobs/ocr_import_jobs_store.dart';
 
 class AuthService with ChangeNotifier implements AuthRepository {
   final AuthRepository _repo;
@@ -32,7 +33,11 @@ class AuthService with ChangeNotifier implements AuthRepository {
       });
 
   @override
-  Future<void> logOut() => _repo.logOut().then((_) => currentUser = null);
+  Future<void> logOut() async {
+    OcrImportJobsStore.instance.resetForSession();
+    await _repo.logOut();
+    currentUser = null;
+  }
 
   @override
   Future<String> createUser({

@@ -1,53 +1,79 @@
+ 
+Hexora
 
+What it is
 
-# Hexora
+Hexora is an all-in-one operations platform built for small businesses in Spain that manage teams working across multiple locations.
 
-## What it is
+It brings together the day-to-day operations of the company — workers, schedules, routes, jobs, clients, working hours, documents and finances — in one place.
 
-Hexora is the operational hub for a small business or family-run business
-that manages its work as **groups**: a group has members, a shared calendar,
-and the tools that group needs to actually run — worker hours, invoices,
-receipts, VAT, bank reconciliation, and documents — instead of juggling a
-separate app for each.
+Instead of managing field work in one app, employee hours somewhere else, invoices in another system, and business documents across spreadsheets and folders, Hexora connects everything around the actual work being done.
 
-The name comes from **Hex** (structure, connection) and **Ora** (time, from
-the Spanish *hora*).
+The goal is simple: help business owners know what needs to be done, where it needs to happen, who is responsible, and what is happening across the company.
 
-## Who it's for
+Hexora is currently focused on the Spanish market, with its operational, administrative and financial tools designed around the needs of businesses operating in Spain.
 
-A handyman crew, a small clinic, a family shop, a services business with a
-few contractors — anyone who needs to schedule work, track who worked when,
-bill clients, and keep the paperwork straight, without paying for (or
-learning) five different SaaS tools.
+Who it's for
 
-## What you can actually do with it
+Hexora is designed for small and growing businesses that have a crew of workers performing jobs at different locations.
 
-* **Run a group** — invite members, assign admin/member roles, and gate
-  billing/admin sections so only the right people see them.
-* **Schedule the work** — shared calendars (month/week/day/agenda),
-  recurring events, business hours, and a live view of who's tied to what.
-* **Track worker hours** — clock entries per worker, a monthly overview
-  grid, and bulk import from Excel or straight out of a Telegram chat.
-* **Bill clients** — a full invoice editor (line items, drafts, evidence),
-  presupuestos (quotes/budgets) that convert into invoices, receipts, and
-  quarterly VAT summaries — sent by email, exported as JSON/PDF.
-* **Reconcile the bank** — pull statements in via Enable Banking or
-  TrueLayer and match transactions to the invoices they pay.
-* **Keep documents in order** — a per-group private vault for contracts,
-  insurance, and anything else with an expiry date worth tracking.
-* **Talk to the team over Telegram** — a synced chat view, plus importing
-  hours and documents directly from it.
-* **See what's happening** — real-time notifications and live insight
-  graphs over the group's activity, pushed over sockets/SSE as it happens.
+This includes:
 
-## Everything else you'd expect
+- Maintenance and property-service companies
+- Gardening and pool-maintenance businesses
+- Cleaning companies
+- Repair and handyman crews
+- Installation and technical-service teams
+- Small contractors and other field-service businesses
 
-* Email/password auth with verification and password recovery.
-* Light/dark themes, English and Spanish.
-* Android, iOS, Web, Windows, macOS, and Linux from one codebase.
+It is especially useful for companies where workers move between several clients or job sites throughout the day.
+
+Manage the work
+
+Create jobs and visits, assign them to workers, organize the company calendar and plan daily work routes.
+
+Workers can see where they need to go, what they need to do and when the work is scheduled directly from Hexora.
+
+Work can be tracked from assignment to completion, giving managers a clear view of what has been completed and what still requires attention.
+
+Manage your crew
+
+Invite workers to your company and control what each person can access.
+
+Hexora helps businesses manage working hours, assigned jobs, schedules and daily activity, while administrative and financial information remains restricted to authorized users.
+
+Manage the business behind the work
+
+Hexora connects everyday operations with the administrative and financial side of running a business in Spain.
+
+Manage clients, invoices, receipts, IVA, expenses, documents and bank reconciliation without separating field operations from business administration.
+
+Multiple companies
+
+A Hexora user can own or belong to up to two companies.
+
+Each company has its own workers, clients, schedules, routes, jobs, documents and financial information, while users can easily switch between the companies they have access to.
+
+Built for Spain
+
+Hexora is currently developed specifically for businesses operating in Spain.
+
+This allows us to focus on the workflows, terminology and administrative requirements that Spanish small businesses actually deal with.
+
+Support for additional countries may be introduced as Hexora grows.
+
+Get started
+
+Ready to organize your business in one place?
+
+Visit hexora.dev and register to start using Hexora.
+
+For questions, support or business enquiries:
+
+contact@hexora.dev
+
+Hexora — your crew, your work and your business, connected.
 
 ---
 
-Hexora exists so a small team doesn't need a calendar app, an invoicing
-tool, a time-tracking spreadsheet, and a shared drive that never stays in
-sync — it's one group, one place, one source of truth.
+© 2026 Hexora. All rights reserved.

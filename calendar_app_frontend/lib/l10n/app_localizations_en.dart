@@ -9,6 +9,30 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get clientImageLabel => 'Client / location image';
+
+  @override
+  String get clientImageHint =>
+      'Optional · JPEG, PNG or WebP · up to 5 MB. Without an image, initials are shown.';
+
+  @override
+  String get clientImageAdd => 'Add image';
+
+  @override
+  String get clientImageReplace => 'Replace image';
+
+  @override
+  String get clientImageRemove => 'Remove image';
+
+  @override
+  String get clientImageInvalid =>
+      'Choose a JPEG, PNG or WebP image up to 5 MB.';
+
+  @override
+  String get clientImageSaveFailed =>
+      'Client details saved, but the image could not be saved. Please try again.';
+
+  @override
   String get darkMode => 'Dark Mode';
 
   @override
@@ -4095,6 +4119,84 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get invoiceZipExportAction => 'Export PDFs';
+
+  @override
+  String get invoiceToolbarNew => 'New invoice';
+
+  @override
+  String get invoiceToolbarExport => 'Export';
+
+  @override
+  String get invoiceToolbarHistory => 'History';
+
+  @override
+  String get invoiceToolbarPdf => 'Export as PDF';
+
+  @override
+  String get invoiceToolbarExcel => 'Export as Excel';
+
+  @override
+  String get invoiceZipRecentAction => 'Export history';
+
+  @override
+  String get invoiceZipDialogTitle => 'Invoice exports';
+
+  @override
+  String get invoiceZipDialogSubtitle =>
+      'Download your recently generated ZIP files';
+
+  @override
+  String get invoiceZipEmptyTitle => 'No exports yet';
+
+  @override
+  String get invoiceZipEmptyMessage =>
+      'Your generated invoice ZIP files will appear here.';
+
+  @override
+  String get invoiceZipRefreshAction => 'Refresh';
+
+  @override
+  String get invoiceZipCloseAction => 'Close';
+
+  @override
+  String invoiceZipDownloadAction(String fileName) {
+    return 'Download $fileName';
+  }
+
+  @override
+  String get invoiceZipStatusCompleted => 'Ready';
+
+  @override
+  String get invoiceZipStatusReady => 'Ready';
+
+  @override
+  String get invoiceZipStatusQueued => 'Queued';
+
+  @override
+  String get invoiceZipStatusProcessing => 'Processing';
+
+  @override
+  String get invoiceZipStatusFailed => 'Failed';
+
+  @override
+  String get invoiceZipStatusUnknown => 'Unknown';
+
+  @override
+  String get invoiceZipFileFallback => 'invoices.zip';
+
+  @override
+  String invoiceZipCountLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count exports',
+      one: '1 export',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get clientsTitle => 'Clients';
 
   @override
@@ -6620,6 +6722,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get premiumRequiredJoinGroupOnlyMessage =>
       'You are already in a group. Upgrade to Premium to join more groups.';
+
+  @override
+  String get managedGroupLimitCreateMessage =>
+      'You already manage 2 businesses. Leave or become a worker in one before creating another.';
+
+  @override
+  String get managedGroupLimitJoinMessage =>
+      'You already manage 2 businesses. You can still join as a worker, but you cannot accept another administrator or co-administrator role.';
 
   @override
   String get upgradeToPremium => 'Upgrade to Premium';

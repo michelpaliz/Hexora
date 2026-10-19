@@ -24,6 +24,7 @@ import 'package:hexora/presentation/shared/jobs/ocr_import_jobs_store.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:hexora/services/auth/auth_provider.dart';
 
 part 'screen_sections/expense_upload_import_actions_section.dart';
 part 'screen_sections/expense_upload_import_tabs_section.dart';
@@ -790,12 +791,17 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
         backgroundJobId: backgroundJobId,
         startedAt: DateTime.now(),
         type: 'OCR_IMPORT',
+        userId: context.read<AuthProvider>().currentUser?.id ?? '',
+        groupId: _batchJobCacheKey(),
       ),
     );
   }
 
   Future<bool> _restorePersistedBatchJobMapping() async {
-    final jobs = await OcrImportJobMappingStore.instance.loadAll();
+    final jobs = await OcrImportJobMappingStore.instance.loadForScope(
+      userId: context.read<AuthProvider>().currentUser?.id ?? '',
+      groupId: _batchJobCacheKey(),
+    );
     if (jobs.isEmpty) return false;
     final latest = jobs.firstWhere(
       (entry) => entry.type == 'OCR_IMPORT',

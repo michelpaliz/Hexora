@@ -11,20 +11,36 @@ enum GroupMembershipErrorContext {
 }
 
 const String _premiumRequiredMultiGroupCode = 'PREMIUM_REQUIRED_MULTI_GROUP';
+const String _managedGroupLimitCode = 'MANAGED_GROUP_LIMIT_REACHED';
 
 class GroupMembershipErrorMapper {
+  static bool isManagedGroupLimitError(Object error) =>
+      _matchesCode(error, _managedGroupLimitCode);
+
   static bool isPremiumMultiGroupError(Object error) {
+    return _matchesCode(error, _premiumRequiredMultiGroupCode);
+  }
+
+  static bool _matchesCode(Object error, String expectedCode) {
     if (error is BackendApiException) {
       return error.statusCode == 409 &&
-          (error.code ?? '').trim() == _premiumRequiredMultiGroupCode;
+          (error.code ?? '').trim() == expectedCode;
     }
     if (error is HttpFailure && error.statusCode == 409) {
       final parsed = _tryParseBody(error.message);
       final code = (parsed['code'] ?? parsed['errorCode'] ?? '').toString();
-      return code.trim() == _premiumRequiredMultiGroupCode;
+      return code.trim() == expectedCode;
     }
     return false;
   }
+
+  static String managedLimitMessageFor(
+    AppLocalizations l,
+    GroupMembershipErrorContext context,
+  ) =>
+      context == GroupMembershipErrorContext.joinGroup
+          ? l.managedGroupLimitJoinMessage
+          : l.managedGroupLimitCreateMessage;
 
   static String messageFor(
     AppLocalizations l,

@@ -16,7 +16,11 @@ class DownloadsApiException implements Exception {
 }
 
 class DownloadsApi {
+  DownloadsApi({http.Client? externalClient})
+      : _externalClient = externalClient ?? http.Client();
+
   final String _base = '${ApiConstants.baseUrl}/downloads';
+  final http.Client _externalClient;
 
   Uri _u([String path = '', Map<String, String>? query]) {
     final raw = '$_base$path';
@@ -124,12 +128,22 @@ class DownloadsApi {
     final url = job.downloadUrl.trim().isNotEmpty
         ? job.downloadUrl.trim()
         : '/api/downloads/${job.id}/file';
-    final response = await AuthenticatedHttpClient.get(
-      Uri.parse(_resolveUrl(url)),
-      headers: const <String, String>{
-        'Content-Type': 'application/octet-stream',
-      },
-    );
+    final resolved = Uri.parse(_resolveUrl(url));
+    final apiOrigin = Uri.parse(ApiConstants.baseUrl);
+    final sameOrigin = resolved.scheme == apiOrigin.scheme &&
+        resolved.host == apiOrigin.host &&
+        resolved.port == apiOrigin.port;
+    if (!sameOrigin && resolved.scheme != 'https') {
+      throw DownloadsApiException('Unsafe download URL.');
+    }
+    final response = sameOrigin
+        ? await AuthenticatedHttpClient.get(
+            resolved,
+            headers: const <String, String>{
+              'Content-Type': 'application/octet-stream',
+            },
+          )
+        : await _externalClient.get(resolved);
     _ensureOk(response, fallback: 'Could not download file.');
     return response;
   }

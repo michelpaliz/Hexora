@@ -35,12 +35,15 @@ class TelegramClientDocumentSelection {
   final String documentLabel;
 }
 
-Future<TelegramClientDocumentSelection?> showTelegramClientDocumentPickerDialog(
+/// Lets the user tick PDFs across clients and document types; returns them in
+/// tick order.
+Future<List<TelegramClientDocumentSelection>?>
+    showTelegramClientDocumentPickerDialog(
   BuildContext context, {
   required String groupId,
   String? initialClientId,
 }) {
-  return showDialog<TelegramClientDocumentSelection>(
+  return showDialog<List<TelegramClientDocumentSelection>>(
     context: context,
     barrierDismissible: false,
     builder: (dialogContext) => Dialog(
@@ -143,7 +146,10 @@ class _TelegramClientDocumentPickerDialogState
   String? _selectedClientId;
   _TelegramClientDocumentType _selectedType =
       _TelegramClientDocumentType.invoice;
-  String? _selectedDocumentKey;
+  // Keyed by entry key so ticks survive client, type and search changes.
+  final Map<String, ({_TelegramClientDocumentEntry entry, String clientId})>
+      _selectedEntries =
+      <String, ({_TelegramClientDocumentEntry entry, String clientId})>{};
 
   @override
   void initState() {
@@ -162,28 +168,21 @@ class _TelegramClientDocumentPickerDialogState
 
   void _handleDocumentSearchChanged() {
     if (!mounted) return;
-    final visibleEntries = _visibleEntriesFor(
-      clientId: _selectedClientId,
-      type: _selectedType,
-    );
-    setState(() {
-      if (!_containsDocumentKey(visibleEntries, _selectedDocumentKey)) {
-        _selectedDocumentKey =
-            visibleEntries.isNotEmpty ? visibleEntries.first.key : null;
-      }
-    });
+    setState(() {});
   }
 
   void _selectDocumentType(_TelegramClientDocumentType type) {
     if (_selectedType == type) return;
-    final nextEntries = _visibleEntriesFor(
-      clientId: _selectedClientId,
-      type: type,
-    );
+    setState(() => _selectedType = type);
+  }
+
+  void _toggleEntry(_TelegramClientDocumentEntry entry) {
+    final clientId = _selectedClientId;
+    if (clientId == null || clientId.isEmpty) return;
     setState(() {
-      _selectedType = type;
-      _selectedDocumentKey =
-          nextEntries.isNotEmpty ? nextEntries.first.key : null;
+      if (_selectedEntries.remove(entry.key) == null) {
+        _selectedEntries[entry.key] = (entry: entry, clientId: clientId);
+      }
     });
   }
 
@@ -233,18 +232,8 @@ class _TelegramClientDocumentPickerDialogState
         _invoiceCache.containsKey(clientId) &&
         _receiptCache.containsKey(clientId) &&
         _presupuestoCache.containsKey(clientId)) {
-      final visibleEntries = _visibleEntriesFor(
-        clientId: clientId,
-        type: _selectedType,
-      );
       if (mounted) {
-        setState(() {
-          _documentsError = null;
-          if (!_containsDocumentKey(visibleEntries, _selectedDocumentKey)) {
-            _selectedDocumentKey =
-                visibleEntries.isNotEmpty ? visibleEntries.first.key : null;
-          }
-        });
+        setState(() => _documentsError = null);
       }
       return;
     }
@@ -268,17 +257,7 @@ class _TelegramClientDocumentPickerDialogState
         results[2] as List<Map<String, dynamic>>,
       );
 
-      final visibleEntries = _visibleEntriesFor(
-        clientId: clientId,
-        type: _selectedType,
-      );
-      setState(() {
-        _loadingDocuments = false;
-        if (!_containsDocumentKey(visibleEntries, _selectedDocumentKey)) {
-          _selectedDocumentKey =
-              visibleEntries.isNotEmpty ? visibleEntries.first.key : null;
-        }
-      });
+      setState(() => _loadingDocuments = false);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -405,14 +384,6 @@ class _TelegramClientDocumentPickerDialogState
     return entries;
   }
 
-  bool _containsDocumentKey(
-    List<_TelegramClientDocumentEntry> entries,
-    String? key,
-  ) {
-    if (key == null || key.isEmpty) return false;
-    return entries.any((entry) => entry.key == key);
-  }
-
   _TelegramClientDocumentEntry _buildInvoiceEntry(Invoice invoice) {
     final isDraft = _isDraftStatus(invoice.status);
     final title = invoice.invoiceNumber.trim().isEmpty
@@ -524,21 +495,8 @@ class _TelegramClientDocumentPickerDialogState
   }
 
   Future<void> _handleAttachSelected() async {
-    final clientId = _selectedClientId;
-    if (clientId == null || clientId.isEmpty) return;
-
-    final entries = _visibleEntriesFor(
-      clientId: clientId,
-      type: _selectedType,
-    );
-    _TelegramClientDocumentEntry? selected;
-    for (final entry in entries) {
-      if (entry.key == _selectedDocumentKey) {
-        selected = entry;
-        break;
-      }
-    }
-    if (selected == null) return;
+    if (_selectedEntries.isEmpty) return;
+    final picked = _selectedEntries.values.toList(growable: false);
 
     setState(() {
       _attachingDocument = true;
@@ -546,24 +504,29 @@ class _TelegramClientDocumentPickerDialogState
     });
 
     try {
-      final bytes = await selected.loadBytes();
+      final allBytes = await Future.wait(
+        picked.map((item) => item.entry.loadBytes()),
+      );
       if (!mounted) return;
-      if (bytes.isEmpty) {
-        throw Exception(_isSpanish
-            ? 'El PDF seleccionado está vacío.'
-            : 'The selected PDF is empty.');
+      for (final (index, bytes) in allBytes.indexed) {
+        if (bytes.isEmpty) {
+          throw Exception(_isSpanish
+              ? 'El PDF "${picked[index].entry.title}" está vacío.'
+              : 'The PDF "${picked[index].entry.title}" is empty.');
+        }
       }
 
-      Navigator.of(context).pop(
-        TelegramClientDocumentSelection(
-          fileName: selected.fileName,
-          bytes: bytes,
-          mimeType: 'application/pdf',
-          clientId: clientId,
-          documentId: selected.documentId,
-          documentLabel: selected.title,
-        ),
-      );
+      Navigator.of(context).pop(<TelegramClientDocumentSelection>[
+        for (final (index, item) in picked.indexed)
+          TelegramClientDocumentSelection(
+            fileName: item.entry.fileName,
+            bytes: allBytes[index],
+            mimeType: 'application/pdf',
+            clientId: item.clientId,
+            documentId: item.entry.documentId,
+            documentLabel: item.entry.title,
+          ),
+      ]);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -629,7 +592,7 @@ class _TelegramClientDocumentPickerDialogState
     );
     final canAttach = !_attachingDocument &&
         !_loadingDocuments &&
-        _selectedDocumentKey != null;
+        _selectedEntries.isNotEmpty;
 
     return Column(
       children: [
@@ -731,13 +694,13 @@ class _TelegramClientDocumentPickerDialogState
         children: [
           Expanded(
             child: Text(
-              _selectedDocumentKey == null
+              _selectedEntries.isEmpty
                   ? (_isSpanish
-                      ? 'Selecciona un PDF para adjuntarlo al chat de Telegram.'
-                      : 'Select one PDF to attach into the current Telegram chat.')
+                      ? 'Selecciona uno o varios PDFs para adjuntarlos al chat de Telegram.'
+                      : 'Select one or more PDFs to attach into the current Telegram chat.')
                   : (_isSpanish
-                      ? 'El PDF seleccionado reemplazará el adjunto actual en el compositor.'
-                      : 'The selected PDF will replace any current attachment in the composer.'),
+                      ? '${_selectedEntries.length} PDF(s) seleccionado(s). Se añadirán a los adjuntos del mensaje.'
+                      : '${_selectedEntries.length} PDF(s) selected. They will be added to the message attachments.'),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: cs.onSurface.withValues(alpha: 0.58),
                   ),
@@ -762,7 +725,11 @@ class _TelegramClientDocumentPickerDialogState
                 : const Icon(Icons.attach_file_rounded, size: 16),
             label: Text(_attachingDocument
                 ? (_isSpanish ? 'Adjuntando...' : 'Attaching...')
-                : (_isSpanish ? 'Adjuntar PDF' : 'Attach PDF')),
+                : _selectedEntries.length > 1
+                    ? (_isSpanish
+                        ? 'Adjuntar ${_selectedEntries.length} PDFs'
+                        : 'Attach ${_selectedEntries.length} PDFs')
+                    : (_isSpanish ? 'Adjuntar PDF' : 'Attach PDF')),
           ),
         ],
       ),
@@ -874,7 +841,6 @@ class _TelegramClientDocumentPickerDialogState
                               if (clientId == null || clientId.isEmpty) return;
                               setState(() {
                                 _selectedClientId = clientId;
-                                _selectedDocumentKey = null;
                               });
                               await _loadDocumentsForClient(clientId);
                             },
@@ -1060,16 +1026,12 @@ class _TelegramClientDocumentPickerDialogState
                             itemBuilder: (context, index) {
                               final entry = entries[index];
                               final selected =
-                                  entry.key == _selectedDocumentKey;
+                                  _selectedEntries.containsKey(entry.key);
                               return _DocumentTile(
                                 entry: entry,
                                 selected: selected,
                                 previewing: _previewingDocumentKey == entry.key,
-                                onTap: () {
-                                  setState(() {
-                                    _selectedDocumentKey = entry.key;
-                                  });
-                                },
+                                onTap: () => _toggleEntry(entry),
                                 onPreview: () => _handlePreviewEntry(entry),
                               );
                             },
@@ -1421,7 +1383,11 @@ class _DocumentTile extends StatelessWidget {
                   color: cs.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(entry.icon, color: cs.primary, size: 20),
+                child: Icon(
+                  selected ? Icons.check_circle_rounded : entry.icon,
+                  color: cs.primary,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(

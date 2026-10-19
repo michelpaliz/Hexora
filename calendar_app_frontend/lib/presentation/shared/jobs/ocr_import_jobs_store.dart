@@ -13,6 +13,8 @@ class OcrImportJobsStore extends ChangeNotifier {
   final List<BackgroundJob> _jobs = <BackgroundJob>[];
 
   Timer? _pollTimer;
+  Future<void>? _refreshInFlight;
+  int _sessionGeneration = 0;
   bool _loading = false;
   bool _loadedOnce = false;
   String? _error;
@@ -26,27 +28,46 @@ class OcrImportJobsStore extends ChangeNotifier {
       _jobs.where((job) => job.isActive).toList(growable: false);
 
   Future<void> refresh() async {
+    final existing = _refreshInFlight;
+    if (existing != null) return existing;
+    final generation = _sessionGeneration;
+    final operation = _refresh(generation);
+    _refreshInFlight = operation;
+    try {
+      await operation;
+    } finally {
+      if (identical(_refreshInFlight, operation)) _refreshInFlight = null;
+    }
+  }
+
+  Future<void> _refresh(int generation) async {
     _loading = true;
     notifyListeners();
     try {
       final result = await _api.listJobs(type: 'OCR_IMPORT', limit: 20);
+      if (generation != _sessionGeneration) return;
       _replaceJobs(result);
       _loadedOnce = true;
       _error = null;
     } catch (e) {
+      if (generation != _sessionGeneration) return;
       _error = e.toString().replaceFirst('Exception: ', '');
     } finally {
-      _loading = false;
-      _ensurePolling();
-      notifyListeners();
+      if (generation == _sessionGeneration) {
+        _loading = false;
+        _ensurePolling();
+        notifyListeners();
+      }
     }
   }
 
   Future<BackgroundJob?> fetchJob(String id) async {
     final trimmed = id.trim();
     if (trimmed.isEmpty) return null;
+    final generation = _sessionGeneration;
     try {
       final job = await _api.getJob(trimmed);
+      if (generation != _sessionGeneration) return null;
       upsert(job);
       return job;
     } catch (_) {
@@ -120,10 +141,22 @@ class OcrImportJobsStore extends ChangeNotifier {
       _pollTimer = null;
       return;
     }
-    _pollTimer ??= Timer.periodic(
-      const Duration(seconds: 4),
-      (_) => unawaited(refresh()),
-    );
+    _pollTimer ??= Timer(const Duration(seconds: 4), () {
+      _pollTimer = null;
+      unawaited(refresh());
+    });
+  }
+
+  void resetForSession() {
+    _sessionGeneration++;
+    _pollTimer?.cancel();
+    _pollTimer = null;
+    _refreshInFlight = null;
+    _jobs.clear();
+    _loading = false;
+    _loadedOnce = false;
+    _error = null;
+    notifyListeners();
   }
 
   @override

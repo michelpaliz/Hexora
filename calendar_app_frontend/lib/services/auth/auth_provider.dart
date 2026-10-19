@@ -12,6 +12,7 @@ import 'package:hexora/services/auth/token/i_token_store.dart';
 import 'package:hexora/services/auth/exceptions/auth_exceptions.dart';
 import 'package:hexora/services/auth/repositories/auth_repository.dart';
 import 'package:hexora/services/user/repository/i_user_repository.dart';
+import 'package:hexora/presentation/shared/jobs/ocr_import_jobs_store.dart';
 
 class AuthProvider extends ChangeNotifier implements AuthRepository {
   final IUserRepository _userRepo;
@@ -162,6 +163,7 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
 
   @override
   Future<void> logOut() async {
+    OcrImportJobsStore.instance.resetForSession();
     _authToken = null;
     await _tokens.clear();
     await _clearVerificationState();

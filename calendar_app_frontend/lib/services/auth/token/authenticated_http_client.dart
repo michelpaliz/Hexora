@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 
 class AuthenticatedHttpClient {
   static final AuthApiClientImpl _authApi = AuthApiClientImpl();
-  static Future<bool>? _refreshInFlight;
+  static Future<_RefreshResult>? _refreshInFlight;
   static Future<void> Function()? _onSessionExpired;
 
   static void setSessionExpiredHandler(Future<void> Function() handler) {
@@ -130,11 +130,12 @@ class AuthenticatedHttpClient {
       );
       if (response.statusCode != 401) return response;
 
-      final refreshed = await _refreshAccessToken();
-      if (!refreshed) {
+      final refreshResult = await _refreshAccessToken();
+      if (refreshResult == _RefreshResult.invalidCredentials) {
         await _notifySessionExpired();
         return response;
       }
+      if (refreshResult == _RefreshResult.temporaryFailure) return response;
 
       final retryHeaders = await authorizedHeaders(extra: headers);
       response = await _dispatch(
@@ -207,29 +208,32 @@ class AuthenticatedHttpClient {
     throw UnsupportedError('Unsupported HTTP method: $method');
   }
 
-  static Future<bool> _refreshAccessToken() async {
+  static Future<_RefreshResult> _refreshAccessToken() async {
     final inFlight = _refreshInFlight;
     if (inFlight != null) return inFlight;
 
-    final completer = Completer<bool>();
+    final completer = Completer<_RefreshResult>();
     _refreshInFlight = completer.future;
     try {
       final refreshToken = await TokenService.loadRefreshToken();
       if (refreshToken == null || refreshToken.isEmpty) {
-        completer.complete(false);
-        return false;
+        completer.complete(_RefreshResult.invalidCredentials);
+        return _RefreshResult.invalidCredentials;
       }
       final data = await _authApi.refresh(refreshToken: refreshToken);
       final status = data['_status'] as int? ?? 200;
       if (status < 200 || status >= 300 || data['_error'] == true) {
-        completer.complete(false);
-        return false;
+        final result = status == 400 || status == 401 || status == 403
+            ? _RefreshResult.invalidCredentials
+            : _RefreshResult.temporaryFailure;
+        completer.complete(result);
+        return result;
       }
       final newAccess =
           (data['accessToken'] ?? data['access_token'])?.toString().trim();
       if (newAccess == null || newAccess.isEmpty) {
-        completer.complete(false);
-        return false;
+        completer.complete(_RefreshResult.temporaryFailure);
+        return _RefreshResult.temporaryFailure;
       }
       final newRefresh =
           (data['refreshToken'] ?? data['refresh_token'])?.toString().trim() ??
@@ -238,13 +242,15 @@ class AuthenticatedHttpClient {
         accessToken: newAccess,
         refreshToken: newRefresh,
       );
-      completer.complete(true);
-      return true;
+      completer.complete(_RefreshResult.success);
+      return _RefreshResult.success;
     } catch (_) {
-      completer.complete(false);
-      return false;
+      completer.complete(_RefreshResult.temporaryFailure);
+      return _RefreshResult.temporaryFailure;
     } finally {
       _refreshInFlight = null;
     }
   }
 }
+
+enum _RefreshResult { success, invalidCredentials, temporaryFailure }

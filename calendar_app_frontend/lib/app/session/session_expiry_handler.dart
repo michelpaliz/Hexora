@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/services/auth/token/token_service.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/presentation/shared/jobs/ocr_import_jobs_store.dart';
 
 /// Centralized session-expiry reaction used by low-level HTTP/auth code.
 class SessionExpiryHandler {
@@ -14,6 +15,7 @@ class SessionExpiryHandler {
     if (_handling) return;
     _handling = true;
     try {
+      OcrImportJobsStore.instance.resetForSession();
       await TokenService.clearTokens();
 
       final nav = navigatorKey.currentState;

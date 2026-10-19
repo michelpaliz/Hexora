@@ -7,6 +7,7 @@ import 'package:hexora/models/clients/client_invoice_stats.dart';
 import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 class ClientsApiException implements Exception {
   const ClientsApiException({
@@ -48,6 +49,30 @@ class ClientsApiException implements Exception {
 }
 
 class ClientsApi {
+  Future<String?> imageUrl(String clientId) async {
+    final response = await AuthenticatedHttpClient.get(_u('/$clientId/image'));
+    return _decode(response, (body) => body['url'] as String?);
+  }
+
+  Future<GroupClient> uploadImage(
+      String clientId, List<int> bytes, String name) async {
+    final request = http.MultipartRequest('POST', _u('/$clientId/image'));
+    request.headers.addAll(await AuthenticatedHttpClient.authorizedHeaders(
+        includeJsonContentType: false));
+    request.files.add(http.MultipartFile.fromBytes('file', bytes,
+        filename: name, contentType: MediaType('application', 'octet-stream')));
+    final response = await http.Response.fromStream(await request.send());
+    return _decode(response,
+        (body) => GroupClient.fromJson(Map<String, dynamic>.from(body)));
+  }
+
+  Future<GroupClient> removeImage(String clientId) async {
+    final response =
+        await AuthenticatedHttpClient.delete(_u('/$clientId/image'));
+    return _decode(response,
+        (body) => GroupClient.fromJson(Map<String, dynamic>.from(body)));
+  }
+
   ClientsApi({http.Client? client}) : _client = client;
 
   final http.Client? _client;

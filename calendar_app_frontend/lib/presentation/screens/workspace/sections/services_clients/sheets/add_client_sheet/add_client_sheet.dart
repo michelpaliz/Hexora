@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -15,6 +16,7 @@ import 'widgets/client_header.dart';
 import 'widgets/client_editor_theme.dart';
 import 'widgets/save_button.dart';
 import 'widgets/service_location_section.dart';
+import 'widgets/client_image_field.dart';
 
 /// Opens the client form as a page with persistent navigation and save controls.
 Future<GroupClient?> showClientEditor({
@@ -87,6 +89,9 @@ class _AddClientSheetState extends State<AddClientSheet> {
   List<String> _propertyKindOptions = const [];
   bool _showValidation = false;
   bool _locatingServiceAddress = false;
+  Uint8List? _imageBytes;
+  String? _imageName;
+  bool _removeImage = false;
 
   @override
   void initState() {
@@ -174,7 +179,30 @@ class _AddClientSheetState extends State<AddClientSheet> {
     setState(() => c.saving = true);
     try {
       var result = await c.save();
+      // Retain the new ID so retries after a secondary upload failure update
+      // the existing client rather than creating a duplicate.
+      c.client = result;
       result = await c.saveServiceLocation(result);
+      if (_imageBytes != null || _removeImage) {
+        try {
+          result = _imageBytes != null
+              ? await widget.api
+                  .uploadImage(result.id, _imageBytes!, _imageName!)
+              : await widget.api.removeImage(result.id);
+          _imageBytes = null;
+          _imageName = null;
+          _removeImage = false;
+        } catch (_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content:
+                  Text(AppLocalizations.of(context)!.clientImageSaveFailed),
+            ));
+          }
+          return;
+        }
+      }
+      c.client = result;
       if (!mounted) return;
       // Ensure options stay in sync with values actually used.
       await ClientClassificationStore.merge(
@@ -339,6 +367,23 @@ class _AddClientSheetState extends State<AddClientSheet> {
                 showValidation: _showValidation,
                 onFieldChanged: () => setState(() {}),
                 onFieldBlur: (key) => setState(() => c.markTouched(key)),
+              ),
+              ClientImageField(
+                client: c.client?.copyWith(name: c.name.text) ??
+                    GroupClient(id: '', name: c.name.text),
+                bytes: _imageBytes,
+                removed: _removeImage,
+                disabled: c.saving,
+                onChanged: (bytes, name) => setState(() {
+                  _imageBytes = bytes;
+                  _imageName = name;
+                  _removeImage = false;
+                }),
+                onRemove: () => setState(() {
+                  _imageBytes = null;
+                  _imageName = null;
+                  _removeImage = c.client?.imageVersion != null;
+                }),
               ),
               const SizedBox(height: 8),
               BillingSection(

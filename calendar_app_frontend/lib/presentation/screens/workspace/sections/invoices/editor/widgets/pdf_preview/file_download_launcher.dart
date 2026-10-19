@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:hexora/presentation/shared/downloads/session_download_registry.dart';
+import 'file_download_outcome.dart';
 
 import 'file_download_launcher_stub.dart'
     if (dart.library.html) 'file_download_launcher_web.dart';
@@ -18,12 +19,19 @@ Future<void> launchFileDownload(
   );
 
   try {
-    await launchFileDownloadImpl(
+    final outcome = await launchFileDownloadImpl(
       bytes,
       fileName: fileName,
       mimeType: mimeType,
     );
-    registry.markHandedToBrowser(downloadId);
+    switch (outcome) {
+      case FileDownloadOutcome.saved:
+        registry.markSaved(downloadId);
+      case FileDownloadOutcome.handedOff:
+        registry.markHandedToBrowser(downloadId);
+      case FileDownloadOutcome.cancelled:
+        registry.markCancelled(downloadId);
+    }
   } catch (error) {
     registry.markError(downloadId, error);
     rethrow;

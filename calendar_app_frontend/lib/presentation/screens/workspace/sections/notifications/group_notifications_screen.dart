@@ -84,10 +84,12 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
             _notifications.where((n) => n.id != notification.id).toList();
       });
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${AppLocalizations.of(context)!.error}: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${AppLocalizations.of(context)!.error}: $e')),
+        );
+      }
+      rethrow;
     }
   }
 
@@ -99,6 +101,16 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
       await _load();
     } catch (e) {
       if (!mounted) return;
+      if (GroupMembershipErrorMapper.isManagedGroupLimitError(e)) {
+        await showManagedGroupLimitDialog(
+          context,
+          message: GroupMembershipErrorMapper.managedLimitMessageFor(
+            l,
+            GroupMembershipErrorContext.joinGroup,
+          ),
+        );
+        return;
+      }
       if (GroupMembershipErrorMapper.isPremiumMultiGroupError(e)) {
         await showPremiumUpgradeDialog(
           context,
@@ -116,9 +128,18 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
   }
 
   Future<void> _handleNegate(NotificationUser notification) async {
-    await _viewModel.handleNegation(notification);
-    if (!mounted) return;
-    await _load();
+    try {
+      await _viewModel.handleNegation(notification);
+      if (!mounted) return;
+      await _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${AppLocalizations.of(context)!.error}: $e')),
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<void> _handleMarkRead(NotificationUser notification) async {
@@ -287,7 +308,7 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
     Widget body;
     if (_loading) {
       body = const Center(child: CircularProgressIndicator());
-    } else if (_error != null) {
+    } else if (_error != null && _notifications.isEmpty) {
       body = Center(
           child: Padding(
               padding: const EdgeInsets.all(24),
@@ -436,7 +457,7 @@ class _NotificationsList extends StatelessWidget {
 
   final List<NotificationUser> notifications;
   final ValueChanged<NotificationUser> onTap;
-  final ValueChanged<NotificationUser> onDelete;
+  final Future<void> Function(NotificationUser) onDelete;
   final ValueChanged<NotificationUser> onConfirm;
   final ValueChanged<NotificationUser> onNegate;
   final ValueChanged<NotificationUser> onMarkRead;
@@ -479,7 +500,8 @@ class _NotificationsList extends StatelessWidget {
                     onTap: () => onTap(notification))
                 : NotificationCard(
                     notification: notification,
-                    onDelete: () => onDelete(notification),
+                    onDelete: () {},
+                    onDeleteAsync: () => onDelete(notification),
                     onConfirm: () => onConfirm(notification),
                     onNegate: () => onNegate(notification),
                     onMarkRead: () => onMarkRead(notification),

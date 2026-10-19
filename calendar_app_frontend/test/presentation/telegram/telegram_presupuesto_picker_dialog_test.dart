@@ -81,6 +81,10 @@ void main() {
 
     await tester.tap(find.text('Trabajo pendiente'));
     await tester.pumpAndSettle();
+    expect(find.text('Adjuntar (1)'), findsOneWidget);
+
+    await tester.tap(find.text('Adjuntar (1)'));
+    await tester.pumpAndSettle();
 
     expect(find.text('¿Enviar borrador?'), findsOneWidget);
     expect(find.text('Enviar borrador'), findsOneWidget);
@@ -90,7 +94,7 @@ void main() {
     expect(find.text('Presupuestos'), findsOneWidget);
   });
 
-  testWidgets('draft confirmation returns the selected id unchanged',
+  testWidgets('draft confirmation returns the selected ids unchanged',
       (tester) async {
     final api = _FakePresupuestosApi([
       {
@@ -101,8 +105,17 @@ void main() {
         'presupuestoNumber': null,
         'createdAt': '2026-09-06T12:00:00Z',
       },
+      {
+        '_id': 'issued-9',
+        'presupuestoKind': 'structured',
+        'status': 'issued',
+        'title': 'Presupuesto',
+        'presupuestoNumber': '020-26',
+        'clientName': 'Com. de Prop. Alqueria',
+        'issueDate': '2026-09-02T12:00:00Z',
+      },
     ]);
-    TelegramIssuedPresupuestoSelection? selection;
+    List<TelegramIssuedPresupuestoSelection>? selection;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -128,6 +141,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Propuesta pendiente'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Presupuesto'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Adjuntar (2)'));
+    await tester.pumpAndSettle();
 
     expect(selection, isNull);
     expect(
@@ -140,8 +157,9 @@ void main() {
     await tester.tap(find.text('Enviar borrador'));
     await tester.pumpAndSettle();
 
-    expect(selection?.id, 'budget/7');
-    expect(selection?.kind, PresupuestoKind.document);
+    expect(selection?.map((s) => s.id), ['budget/7', 'issued-9']);
+    expect(selection?.first.kind, PresupuestoKind.document);
+    expect(selection?.last.label, 'Presupuesto 020-26 · Com. de Prop. Alqueria');
   });
 }
 

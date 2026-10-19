@@ -33,13 +33,14 @@ class DashboardPresenceStrip extends StatelessWidget {
     if (MediaQuery.sizeOf(context).width < 700) {
       return ExpansionTile(
         key: ValueKey(group.id),
+        initiallyExpanded: true,
         tilePadding: EdgeInsets.zero,
         childrenPadding: const EdgeInsets.only(bottom: 8),
         dense: true,
         shape: const Border(),
         collapsedShape: const Border(),
         title: Text(
-            es ? '${online.length} en línea' : '${online.length} online',
+            es ? 'En línea (${online.length})' : 'Online (${online.length})',
             style: Theme.of(context).textTheme.bodySmall),
         children: [details],
       );

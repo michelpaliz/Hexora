@@ -8,6 +8,18 @@ import '../../auth/token/authenticated_http_client.dart';
 import '../../config/api_constants.dart';
 import '../../errors/error_classes/error_classes.dart';
 
+class TelegramDocumentUpload {
+  const TelegramDocumentUpload({
+    required this.bytes,
+    required this.fileName,
+    this.mimeType,
+  });
+
+  final List<int> bytes;
+  final String fileName;
+  final String? mimeType;
+}
+
 abstract class ITelegramApiClient {
   /// Start connection flow, returns QR code or next step
   Future<TelegramConnectResponse> startConnect({
@@ -72,6 +84,18 @@ abstract class ITelegramApiClient {
     String? caption,
     String? replyToMessageId,
     String? mimeType,
+    String? forumTopicId,
+  });
+
+  /// Send several documents in one request: uploaded files plus presupuestos
+  /// the server renders to PDF. The caption goes on the last document.
+  Future<List<TelegramChatMessage>> sendChatDocuments({
+    required String chatId,
+    required String accountId,
+    List<TelegramDocumentUpload> files = const <TelegramDocumentUpload>[],
+    List<String> presupuestoIds = const <String>[],
+    String? caption,
+    String? replyToMessageId,
     String? forumTopicId,
   });
 
@@ -484,6 +508,72 @@ class TelegramApiClient implements ITelegramApiClient {
     final streamed = await _client.send(req);
     final response = await http.Response.fromStream(streamed);
     return _decodeMessageObject(response);
+  }
+
+  @override
+  Future<List<TelegramChatMessage>> sendChatDocuments({
+    required String chatId,
+    required String accountId,
+    List<TelegramDocumentUpload> files = const <TelegramDocumentUpload>[],
+    List<String> presupuestoIds = const <String>[],
+    String? caption,
+    String? replyToMessageId,
+    String? forumTopicId,
+  }) async {
+    final headers = await AuthenticatedHttpClient.authorizedHeaders(
+      includeJsonContentType: false,
+    );
+    final auth = headers['Authorization'] ?? '';
+    if (auth.trim().isEmpty) {
+      throw HttpFailure(401, 'Not authenticated');
+    }
+
+    final req = http.MultipartRequest(
+      'POST',
+      _u('/chats/$chatId/documents'),
+    );
+    req.headers['Authorization'] = auth;
+    req.fields['accountId'] = accountId;
+    final normalizedCaption = (caption ?? '').trim();
+    if (normalizedCaption.isNotEmpty) {
+      req.fields['caption'] = normalizedCaption;
+    }
+    final normalizedReplyId = (replyToMessageId ?? '').trim();
+    if (normalizedReplyId.isNotEmpty) {
+      req.fields['replyToMessageId'] = normalizedReplyId;
+    }
+    final normalizedTopicId = (forumTopicId ?? '').trim();
+    if (normalizedTopicId.isNotEmpty) {
+      req.fields['forumTopicId'] = normalizedTopicId;
+    }
+    final ids = presupuestoIds
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+    if (ids.isNotEmpty) {
+      req.fields['presupuestoIds'] = jsonEncode(ids);
+    }
+    for (final file in files) {
+      req.files.add(
+        http.MultipartFile.fromBytes(
+          'files',
+          file.bytes,
+          filename: file.fileName,
+          contentType: _parseMediaType(file.mimeType),
+        ),
+      );
+    }
+
+    final streamed = await _client.send(req);
+    final response = await http.Response.fromStream(streamed);
+    final data = _decode(response);
+    if (data is Map && data['messages'] is List) {
+      return (data['messages'] as List)
+          .whereType<Map>()
+          .map((m) => TelegramChatMessage.fromJson(Map<String, dynamic>.from(m)))
+          .toList(growable: false);
+    }
+    return <TelegramChatMessage>[_decodeMessageObject(response)];
   }
 
   @override

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/presentation/shared/widgets/client_property_image.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_list_row.dart';
@@ -63,15 +64,18 @@ class ClientListItem extends StatelessWidget {
         minHeight: HexoraTableTokens.compactRowMinHeight,
         verticalPadding: HexoraDimensions.space,
         child: Row(children: [
-          CircleAvatar(
-              radius: 15,
-              backgroundColor: cs.surfaceContainerHighest,
-              foregroundColor: cs.onSurfaceVariant,
-              child: Text(_initials,
-                  style: const TextStyle(
-                      fontFamily: HexoraTypography.fontFamily,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600))),
+          if (client.imageVersion != null)
+            ClientPropertyImage(client: client, width: 30, height: 30)
+          else
+            CircleAvatar(
+                radius: 15,
+                backgroundColor: cs.surfaceContainerHighest,
+                foregroundColor: cs.onSurfaceVariant,
+                child: Text(_initials,
+                    style: const TextStyle(
+                        fontFamily: HexoraTypography.fontFamily,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600))),
           const SizedBox(width: 10),
           Expanded(
               child: Column(

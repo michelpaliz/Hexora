@@ -4,7 +4,7 @@ set -e
 # ===== Configuration Variables (Adjust if paths change) =====
 
 # SSH user + host (your Linux server)
-REMOTE_USER_HOST="azureuser@hexora-vm"
+REMOTE_USER_HOST="${REMOTE_USER_HOST:-azureuser@hexora-vm}"
 
 # This MUST match where your Node app serves Hexora from:
 # In your code you have:
@@ -12,11 +12,14 @@ REMOTE_USER_HOST="azureuser@hexora-vm"
 # and that file lives under .../backend-server/calendarAPI/index.js
 # So __dirname = /home/michael/Documents/GitHub/calendarAPI/CalendarAPI/backend-server/calendarAPI
 # hexoraWebPath = /home/michael/Documents/GitHub/calendarAPI/CalendarAPI/backend-server/web_build_hexora
-REMOTE_DEST_PATH="/var/www/hexora-web/"
+REMOTE_DEST_PATH="${REMOTE_DEST_PATH:-/var/www/hexora-web/}"
 
 # Local path to the Flutter web project on Windows
-LOCAL_PROJECT_PATH="C:/Users/Michel/Documents/Hexora_frontend/Hexora/calendar_app_frontend"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOCAL_PROJECT_PATH="${LOCAL_PROJECT_PATH:-$SCRIPT_DIR}"
 LOCAL_BUILD_PATH="$LOCAL_PROJECT_PATH/build/web/"
+FLUTTER_BIN="${FLUTTER_BIN:-flutter}"
+DEPLOY_LOCAL="${DEPLOY_LOCAL:-0}"
 
 # Base path for Hexora web (must end with trailing slash)
 BASE_HREF="/hexora/"
@@ -31,7 +34,13 @@ echo "Step 1/2: Building Hexora web for base path $BASE_HREF ..."
 # The --no-tree-shake-icons flag is used to avoid the icon font issue you hit earlier.
 cd "$LOCAL_PROJECT_PATH"
 # Force cache-busting per deploy by embedding a unique compile-time tag.
-flutter build web --release --base-href "$BASE_HREF" --no-tree-shake-icons --dart-define=APP_BUILD_TAG="$(date +%s)"
+"$FLUTTER_BIN" build web --release --base-href "$BASE_HREF" --no-tree-shake-icons --pwa-strategy=none --dart-define=APP_BUILD_TAG="$(date +%s)"
+
+# Retire any previously installed offline-first Flutter worker immediately.
+# Flutter's `none` strategy emits an empty worker, which can remain waiting
+# behind the old worker and leave open browser tabs loading a stale app shell.
+cp "$LOCAL_PROJECT_PATH/web/flutter_service_worker_cleanup.js" \
+  "${LOCAL_BUILD_PATH}flutter_service_worker.js"
 
 # Check if the build/web directory exists before syncing
 if [ ! -d "$LOCAL_BUILD_PATH" ]; then
@@ -50,6 +59,16 @@ if [ ! -f "${LOCAL_BUILD_PATH}assets/fonts/MaterialIcons-Regular.otf" ] && ! fin
 fi
 
 echo "Step 2/2: Deploying files to remote server: $REMOTE_USER_HOST:$REMOTE_DEST_PATH"
+
+if [ "$DEPLOY_LOCAL" = "1" ]; then
+  echo "Deploying directly to local web root..."
+  mkdir -p "$REMOTE_DEST_PATH"
+  find "$REMOTE_DEST_PATH" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+  cp -a "$LOCAL_BUILD_PATH". "$REMOTE_DEST_PATH"
+  chmod -R a+rX "$REMOTE_DEST_PATH"
+  echo "Local deployment complete."
+  exit 0
+fi
 
 # Deploy via temp directory to avoid partial/stale asset state.
 REMOTE_TMP_PATH="${REMOTE_DEST_PATH%/}/.deploy_tmp_$(date +%s)"

@@ -102,12 +102,7 @@ class NotificationApiClient {
   Future<List<NotificationUser>> getNotificationsForUser(
       String username) async {
     final url = Uri.parse('$baseUrl/user/$username');
-    print('ðŸ“¡ GET: $url');
-
     final response = await AuthenticatedHttpClient.get(url);
-
-    print('ðŸ“¬ Status: ${response.statusCode}');
-    print('ðŸ“¦ Body: ${response.body}');
 
     if (response.statusCode == 200) {
       final body = response.body;
@@ -115,14 +110,11 @@ class NotificationApiClient {
         final List<dynamic> jsonData = jsonDecode(body);
         return _dedupeNotifications(
           jsonData.map((data) => NotificationUser.fromJson(data)).toList(),
-          includeRecipient: true,
         );
-      } catch (e) {
-        print('❌ Failed to parse notifications JSON: $e');
+      } catch (_) {
         throw Exception('Invalid response format');
       }
     } else if (response.statusCode == 404) {
-      print('ℹ️ No notifications found for user: $username');
       return []; // Don't throw — just return empty
     } else {
       throw Exception(
@@ -139,7 +131,6 @@ class NotificationApiClient {
       final List<dynamic> jsonData = jsonDecode(response.body);
       return _dedupeNotifications(
         jsonData.map((data) => NotificationUser.fromJson(data)).toList(),
-        includeRecipient: false,
       );
     } else if (response.statusCode == 404) {
       return const <NotificationUser>[];
@@ -247,57 +238,17 @@ class NotificationApiClient {
 }
 
 List<NotificationUser> _dedupeNotifications(
-  List<NotificationUser> notifications, {
-  required bool includeRecipient,
-}) {
-  final bySemanticKey = <String, NotificationUser>{};
+  List<NotificationUser> notifications,
+) {
+  final byId = <String, NotificationUser>{};
   for (final notification in notifications) {
-    final key = _notificationSemanticKey(
-      notification,
-      includeRecipient: includeRecipient,
-    );
-    final existing = bySemanticKey[key];
+    final key = notification.id.trim();
+    final existing = byId[key];
     if (existing == null ||
         notification.timestamp.isAfter(existing.timestamp)) {
-      bySemanticKey[key] = notification;
+      byId[key] = notification;
     }
   }
-  return bySemanticKey.values.toList()
+  return byId.values.toList()
     ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
-}
-
-String _notificationSemanticKey(
-  NotificationUser notification, {
-  required bool includeRecipient,
-}) {
-  return <String>[
-    notification.groupId,
-    if (includeRecipient) notification.recipientId,
-    notification.titleKey,
-    notification.messageKey,
-    notification.fallbackTitle.trim().toLowerCase(),
-    notification.fallbackMessage.trim().toLowerCase(),
-    notification.category.name,
-    notification.type.name,
-    _canonicalJson(notification.args),
-  ].join('|');
-}
-
-String _canonicalJson(dynamic value) {
-  return jsonEncode(_canonicalValue(value));
-}
-
-dynamic _canonicalValue(dynamic value) {
-  if (value is Map) {
-    final sorted = <String, dynamic>{};
-    final keys = value.keys.map((key) => key.toString()).toList()..sort();
-    for (final key in keys) {
-      sorted[key] = _canonicalValue(value[key]);
-    }
-    return sorted;
-  }
-  if (value is List) {
-    return value.map(_canonicalValue).toList(growable: false);
-  }
-  return value;
 }

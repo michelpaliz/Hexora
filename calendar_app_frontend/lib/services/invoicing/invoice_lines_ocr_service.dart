@@ -93,14 +93,25 @@ class InvoiceLinesOcrService {
         }
 
         final normalizedMessage = backendMessage.toLowerCase();
+        final errorCode = decoded is Map
+            ? (decoded['code'] ?? decoded['errorCode'])?.toString().trim()
+            : null;
         String userMessage;
-        if (response.statusCode == 404) {
+        if (response.statusCode == 404 && errorCode == 'INVOICE_NOT_FOUND') {
           userMessage = 'Factura no encontrada.';
-        } else if (response.statusCode == 400) {
+        } else if (response.statusCode == 400 ||
+            errorCode == 'INVALID_IMAGE' ||
+            errorCode == 'UNSUPPORTED_IMAGE') {
           userMessage = 'No se pudo procesar la imagen.';
-        } else if (response.statusCode >= 500) {
+        } else if (response.statusCode == 429) {
           userMessage =
-              'Error al extraer lineas. Intenta con una imagen mas nitida.';
+              'Demasiadas solicitudes. Espera un momento y reintenta.';
+        } else if (response.statusCode == 404 ||
+            response.statusCode == 501 ||
+            response.statusCode == 503 ||
+            response.statusCode >= 500) {
+          userMessage =
+              'El servicio de extracción no está disponible. Inténtalo de nuevo más tarde.';
         } else if (normalizedMessage.contains('invalid invoiceid') ||
             normalizedMessage.contains('image file is required')) {
           userMessage = 'No se pudo procesar la imagen.';

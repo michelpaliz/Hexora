@@ -7,6 +7,7 @@ import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/user/api/i_user_api_client.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/shared/backend_api_exception.dart';
+import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:http/http.dart' as http;
 
 class UserApiClient implements IUserApiClient {
@@ -24,11 +25,11 @@ class UserApiClient implements IUserApiClient {
     required String blobName,
     required String token,
   }) async {
-    final res = await http.get(
+    final res = await AuthenticatedHttpClient.get(
       Uri.parse(
         '${ApiConstants.baseUrl}/blobs/read-sas?blobName=${Uri.encodeComponent(blobName)}',
       ),
-      headers: _headers(token: token, extra: {'Accept': 'application/json'}),
+      headers: const {'Accept': 'application/json'},
     );
 
     if (res.statusCode == 200) {
@@ -228,8 +229,7 @@ class UserApiClient implements IUserApiClient {
     if (res.statusCode >= 200 && res.statusCode < 300) {
       if (res.body.isEmpty) return enabled;
       final decoded = jsonDecode(res.body);
-      if (decoded is Map &&
-          decoded['autoStatementImportEnabled'] is bool) {
+      if (decoded is Map && decoded['autoStatementImportEnabled'] is bool) {
         return decoded['autoStatementImportEnabled'] as bool;
       }
       if (decoded is Map && decoded['enabled'] is bool) {

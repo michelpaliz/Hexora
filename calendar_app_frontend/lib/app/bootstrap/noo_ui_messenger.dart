@@ -28,6 +28,10 @@ class NoopUiMessenger implements UiMessenger {
     // TODO: implement showPremiumRequired
     throw UnimplementedError();
   }
+
+  @override
+  Future<void> showManagedGroupLimit(
+      GroupMembershipErrorContext errorContext) async {}
 }
 
 final List<SingleChildWidget> editorProviders = [

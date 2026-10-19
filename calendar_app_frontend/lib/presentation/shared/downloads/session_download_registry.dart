@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 enum SessionDownloadStatus {
   preparing,
   handedToBrowser,
+  saved,
+  cancelled,
   error,
 }
 
@@ -92,6 +94,21 @@ class SessionDownloadRegistry extends ChangeNotifier {
     if (idx == -1) return;
     _items[idx] = _items[idx].copyWith(
       status: SessionDownloadStatus.handedToBrowser,
+      completedAt: DateTime.now(),
+    );
+    notifyListeners();
+  }
+
+  void markSaved(String id) => _markCompleted(id, SessionDownloadStatus.saved);
+
+  void markCancelled(String id) =>
+      _markCompleted(id, SessionDownloadStatus.cancelled);
+
+  void _markCompleted(String id, SessionDownloadStatus status) {
+    final idx = _items.indexWhere((item) => item.id == id);
+    if (idx == -1) return;
+    _items[idx] = _items[idx].copyWith(
+      status: status,
       completedAt: DateTime.now(),
     );
     notifyListeners();

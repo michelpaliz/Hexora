@@ -1,8 +1,9 @@
 import 'dart:js_interop';
 import 'package:web/web.dart' as html;
 import 'dart:typed_data';
+import 'file_download_outcome.dart';
 
-Future<void> launchFileDownloadImpl(
+Future<FileDownloadOutcome> launchFileDownloadImpl(
   Uint8List bytes, {
   required String fileName,
   String mimeType = 'application/octet-stream',
@@ -18,4 +19,5 @@ Future<void> launchFileDownloadImpl(
   anchor.click();
   anchor.remove();
   html.URL.revokeObjectURL(url);
+  return FileDownloadOutcome.handedOff;
 }

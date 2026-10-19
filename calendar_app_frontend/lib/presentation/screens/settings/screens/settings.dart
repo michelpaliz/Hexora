@@ -9,6 +9,7 @@ import 'package:hexora/presentation/screens/workspace/sections/members/presentat
 import 'package:hexora/presentation/screens/settings/dialogs/change_password_dialog.dart';
 import 'package:hexora/presentation/screens/settings/dialogs/change_username_dialog.dart';
 import 'package:hexora/presentation/screens/settings/widgets/account_section.dart';
+import 'package:hexora/presentation/screens/settings/widgets/contact_section.dart';
 import 'package:hexora/presentation/screens/settings/widgets/language_sheet.dart';
 import 'package:hexora/presentation/screens/settings/widgets/preferences_section.dart';
 import 'package:hexora/presentation/screens/settings/widgets/section_card.dart';
@@ -17,6 +18,7 @@ import 'package:hexora/theme/theme_provider.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class Settings extends StatefulWidget {
   const Settings({super.key});
@@ -140,6 +142,16 @@ class _SettingsState extends State<Settings> {
     ));
   }
 
+  Future<void> _email(String address) async {
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final uri = Uri(scheme: 'mailto', path: address);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (opened || !mounted) return;
+    _snack(isEs
+        ? 'No se pudo abrir la aplicación de correo.'
+        : 'Could not open the email application.');
+  }
+
   Future<void> _toggleAutoStatementImport(bool enabled) async {
     final loc = AppLocalizations.of(context)!;
     if (_autoStatementImportLoading) return;
@@ -231,6 +243,22 @@ class _SettingsState extends State<Settings> {
                         false,
                 autoStatementImportBusy: _autoStatementImportLoading,
                 onToggleAutoStatementImport: _toggleAutoStatementImport,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SectionHeader(
+              title: Localizations.localeOf(context).languageCode == 'es'
+                  ? 'Contactar con Hexora'
+                  : 'Contact Hexora',
+              textStyle: typography.bodyLarge.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            SectionCard(
+              child: ContactSection(
+                isSpanish: Localizations.localeOf(context).languageCode == 'es',
+                onEmail: _email,
               ),
             ),
             const SizedBox(height: 24),

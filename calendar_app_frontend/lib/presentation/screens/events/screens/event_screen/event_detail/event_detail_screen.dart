@@ -7,12 +7,22 @@ import 'package:hexora/services/service_catalog/service_api_client.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'widgets/detail_utils.dart';
 import 'package:provider/provider.dart';
 
 typedef ClientNameFetcher = Future<String?> Function(String id);
 typedef ServiceNameFetcher = Future<String?> Function(String id);
+
+Uri buildEventDirectionsUri(String location) => Uri.https(
+      'www.google.com',
+      '/maps/dir/',
+      <String, String>{
+        'api': '1',
+        'destination': location.trim(),
+      },
+    );
 
 class EventDetailScreen extends StatefulWidget {
   final Event event;
@@ -48,6 +58,28 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   String? _ownerUsername;
   final Map<String, String> _serviceNames = {};
   bool _loadingServices = false;
+
+  Future<void> _openLocation(String location) async {
+    final uri = buildEventDirectionsUri(location);
+    var opened = false;
+    try {
+      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      opened = false;
+    }
+    if (!opened && mounted) {
+      final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isSpanish
+                ? 'No se pudo abrir la aplicación de mapas.'
+                : 'Could not open the maps application.',
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -317,6 +349,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         icon: Icons.location_on_outlined,
                         label: l.eventLocationHint,
                         value: e.localization!.trim(),
+                        onTap: () => _openLocation(e.localization!.trim()),
                       ),
                     if (e.description != null &&
                         e.description!.trim().isNotEmpty)
@@ -552,40 +585,64 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     required IconData icon,
     required String label,
     required String value,
+    VoidCallback? onTap,
   }) {
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20, color: cs.primary.withValues(alpha: 0.7)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: typo.caption.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
+    final row = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: cs.primary.withValues(alpha: 0.7)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: typo.caption.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: cs.onSurface,
-                      ),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: cs.onSurface,
+                    ),
+              ),
+            ],
           ),
+        ),
+        if (onTap != null) ...[
+          const SizedBox(width: 8),
+          Icon(Icons.directions_outlined, size: 20, color: cs.primary),
         ],
-      ),
+      ],
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: onTap == null
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: row,
+            )
+          : Semantics(
+              button: true,
+              label: '$label: $value',
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                  child: row,
+                ),
+              ),
+            ),
     );
   }
 

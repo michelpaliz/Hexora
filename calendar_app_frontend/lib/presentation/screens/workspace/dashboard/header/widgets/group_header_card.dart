@@ -97,8 +97,6 @@ class GroupHeaderCard extends StatelessWidget {
               if (hasDescription) ...[
                 const SizedBox(height: 6),
                 Text(description,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: t.bodySmall
                         .copyWith(color: cs.onSurfaceVariant, height: 1.5)),
               ],

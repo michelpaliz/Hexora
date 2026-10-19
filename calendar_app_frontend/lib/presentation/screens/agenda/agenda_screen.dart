@@ -199,15 +199,13 @@ class _AgendaScreenState extends State<AgendaScreen> {
     if (!widget.showBottomNav) {
       return Scaffold(
         appBar: AppBar(
-          title:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(loc.agenda),
-            if (widget.groupName != null)
-              Text(widget.groupName!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall),
-          ]),
+          title: Text(
+            widget.groupName == null
+                ? loc.agenda
+                : '${loc.agenda} · ${widget.groupName}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           leading: const BackButton(),
         ),
         body: SafeArea(top: false, child: body),

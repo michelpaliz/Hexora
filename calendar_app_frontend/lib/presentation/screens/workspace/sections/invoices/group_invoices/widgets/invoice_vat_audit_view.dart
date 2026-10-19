@@ -28,7 +28,6 @@ class InvoiceVatAuditView extends StatefulWidget {
   @override
   State<InvoiceVatAuditView> createState() => _InvoiceVatAuditViewState();
 }
-
 class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
   final InvoicesApi _api = InvoicesApi();
   final TextEditingController _searchCtrl = TextEditingController();
@@ -1446,4 +1445,3 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
       );
 
 }
-

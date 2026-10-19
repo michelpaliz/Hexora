@@ -107,7 +107,6 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
           .map((item) => Worker.fromJson(Map<String, dynamic>.from(item)))
           .toList(growable: false);
     }
-    if (res.statusCode == 404) return const <Worker>[];
     throw BackendApiException.fromResponse(
       res,
       fallbackMessage: 'Failed to list workers',
@@ -151,9 +150,10 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
       final raw = jsonDecode(res.body) as List;
       return raw.cast<Map<String, dynamic>>().map(TimeEntry.fromJson).toList();
     }
-    if (res.statusCode == 404) return const <TimeEntry>[];
-    throw Exception(
-        'Failed to list time entries: ${res.statusCode} ${res.body}');
+    throw BackendApiException.fromResponse(
+      res,
+      fallbackMessage: 'Failed to list time entries',
+    );
   }
 
   @override
@@ -233,19 +233,11 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
-    } else if (response.statusCode == 404) {
-      // No entries found
-      return {
-        'totalHours': 0,
-        'totalPay': 0,
-        'grossPay': 0,
-        'advanceAmount': effectiveAdvance ?? 0,
-        'netPay': 0,
-        'currency': 'EUR',
-      };
-    } else {
-      throw Exception('Failed to load worker totals: ${response.body}');
     }
+    throw BackendApiException.fromResponse(
+      response,
+      fallbackMessage: 'Failed to load worker totals',
+    );
   }
 
   Uri buildActiveWorkersTotalsUri(
@@ -318,18 +310,6 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
     final res = await _client.get(uri, headers: _headers(token, json: false));
     if (res.statusCode == 200) {
       return jsonDecode(res.body) as Map<String, dynamic>;
-    }
-    if (res.statusCode == 404) {
-      return {
-        'period': {'from': null, 'to': null},
-        'activeWorkersCount': 0,
-        'entriesCount': 0,
-        'totalMinutes': 0,
-        'totalHours': 0,
-        'totalPay': 0,
-        'currency': null,
-        'totalsByCurrency': const [],
-      };
     }
     throw BackendApiException.fromResponse(
       res,

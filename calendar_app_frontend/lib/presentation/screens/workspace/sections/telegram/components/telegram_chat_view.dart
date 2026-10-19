@@ -231,7 +231,7 @@ class _TelegramChatViewState extends State<TelegramChatView> {
 
   Future<void> _handlePickAttachment() async {
     final result = await FilePicker.platform.pickFiles(
-      allowMultiple: false,
+      allowMultiple: true,
       withData: true,
       type: FileType.custom,
       allowedExtensions: const [
@@ -245,29 +245,55 @@ class _TelegramChatViewState extends State<TelegramChatView> {
       ],
     );
     if (!mounted) return;
-    final file = result?.files.single;
-    if (file == null) return;
+    final files = result?.files ?? const <PlatformFile>[];
+    if (files.isEmpty) return;
 
-    final bytes = file.bytes;
-    if (bytes == null || bytes.isEmpty) {
+    final attachments = <TelegramComposerAttachment>[];
+    var unreadable = 0;
+    for (final file in files) {
+      final bytes = file.bytes;
+      if (bytes == null || bytes.isEmpty) {
+        unreadable++;
+        continue;
+      }
+      attachments.add(
+        TelegramComposerAttachment(
+          fileName: file.name,
+          bytes: bytes,
+          fileSize: file.size,
+          mimeType: _inferMimeType(file),
+        ),
+      );
+    }
+    if (unreadable > 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context)!.telegramCouldNotReadFile),
         ),
       );
-      return;
     }
+    _addAttachments(attachments);
+  }
 
-    widget.domain.setAttachment(
+  void _addAttachments(List<TelegramComposerAttachment> attachments) {
+    if (attachments.isEmpty) return;
+    final dropped = widget.domain.addAttachments(
       widget.chat.id,
-      TelegramComposerAttachment(
-        fileName: file.name,
-        bytes: bytes,
-        fileSize: file.size,
-        mimeType: _inferMimeType(file),
-      ),
+      attachments,
       forumTopicId: widget.forumTopic?.forumTopicId,
     );
+    if (dropped > 0 && mounted) {
+      final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isSpanish
+                ? 'Máximo $kTelegramMaxAttachmentsPerSend archivos por envío. $dropped no se han añadido.'
+                : 'Up to $kTelegramMaxAttachmentsPerSend files per send. $dropped were not added.',
+          ),
+        ),
+      );
+    }
     _composerFocusNode.requestFocus();
   }
 
@@ -299,27 +325,21 @@ class _TelegramChatViewState extends State<TelegramChatView> {
       return;
     }
 
-    final selection = await showTelegramClientDocumentPickerDialog(
+    final selections = await showTelegramClientDocumentPickerDialog(
       context,
       groupId: groupId,
     );
-    if (!mounted || selection == null) return;
+    if (!mounted || selections == null || selections.isEmpty) return;
 
-    widget.domain.setAttachment(
-      widget.chat.id,
-      TelegramComposerAttachment(
-        fileName: selection.fileName,
-        bytes: selection.bytes,
-        fileSize: selection.bytes.length,
-        mimeType: selection.mimeType,
-      ),
-      forumTopicId: widget.forumTopic?.forumTopicId,
-    );
-    widget.domain.clearSendError(
-      widget.chat.id,
-      forumTopicId: widget.forumTopic?.forumTopicId,
-    );
-    _composerFocusNode.requestFocus();
+    _addAttachments([
+      for (final selection in selections)
+        TelegramComposerAttachment(
+          fileName: selection.fileName,
+          bytes: selection.bytes,
+          fileSize: selection.bytes.length,
+          mimeType: selection.mimeType,
+        ),
+    ]);
   }
 
   Future<void> _handlePickWorkerDocument() async {
@@ -342,21 +362,14 @@ class _TelegramChatViewState extends State<TelegramChatView> {
     );
     if (!mounted || selection == null) return;
 
-    widget.domain.setAttachment(
-      widget.chat.id,
+    _addAttachments([
       TelegramComposerAttachment(
         fileName: selection.fileName,
         bytes: selection.bytes,
         fileSize: selection.bytes.length,
         mimeType: selection.mimeType,
       ),
-      forumTopicId: widget.forumTopic?.forumTopicId,
-    );
-    widget.domain.clearSendError(
-      widget.chat.id,
-      forumTopicId: widget.forumTopic?.forumTopicId,
-    );
-    _composerFocusNode.requestFocus();
+    ]);
   }
 
   Future<void> _handlePickIssuedPresupuesto() async {
@@ -376,40 +389,25 @@ class _TelegramChatViewState extends State<TelegramChatView> {
       return;
     }
 
-    final selection = await showTelegramIssuedPresupuestoPickerDialog(
+    final selections = await showTelegramIssuedPresupuestoPickerDialog(
       context,
       groupId: groupId,
     );
-    if (!mounted || selection == null) return;
+    if (!mounted || selections == null || selections.isEmpty) return;
 
-    final chatId = widget.chat.id;
-    final topicId = widget.forumTopic?.forumTopicId;
-    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
-    final shouldAutoScroll = _isNearBottom();
-    final sent = await widget.domain.sendPresupuesto(
-      chatId,
-      presupuestoId: selection.id,
-      caption: selection.isDraft
-          ? (isSpanish ? 'Borrador de presupuesto' : 'Budget draft')
-          : (isSpanish ? 'Presupuesto emitido' : 'Issued budget'),
-      forumTopicId: topicId,
-    );
-    if (!mounted ||
-        _activeChatId != chatId ||
-        _activeForumTopicId != topicId ||
-        !sent) {
-      return;
-    }
-
-    if (shouldAutoScroll) {
-      _jumpToBottom(animated: true);
-    }
-    _composerFocusNode.requestFocus();
+    _addAttachments([
+      for (final selection in selections)
+        TelegramComposerAttachment.presupuesto(
+          presupuestoId: selection.id,
+          fileName: selection.label,
+        ),
+    ]);
   }
 
-  void _handleClearAttachment() {
-    widget.domain.clearAttachment(
+  void _handleRemoveAttachment(TelegramComposerAttachment attachment) {
+    widget.domain.removeAttachment(
       widget.chat.id,
+      attachment,
       forumTopicId: widget.forumTopic?.forumTopicId,
     );
     widget.domain.clearSendError(
@@ -455,11 +453,12 @@ class _TelegramChatViewState extends State<TelegramChatView> {
           forumTopicId: widget.forumTopic?.forumTopicId,
         ) &&
         (_composerController.text.trim().isNotEmpty ||
-            widget.domain.attachmentForChat(
+            widget.domain
+                .attachmentsForChat(
                   widget.chat.id,
                   forumTopicId: widget.forumTopic?.forumTopicId,
-                ) !=
-                null);
+                )
+                .isNotEmpty);
     if (!canSend) return KeyEventResult.handled;
 
     unawaited(_handleSend());
@@ -527,7 +526,7 @@ class _TelegramChatViewState extends State<TelegramChatView> {
           chatId,
           forumTopicId: topicId,
         );
-        final attachment = widget.domain.attachmentForChat(
+        final attachments = widget.domain.attachmentsForChat(
           chatId,
           forumTopicId: topicId,
         );
@@ -575,13 +574,13 @@ class _TelegramChatViewState extends State<TelegramChatView> {
                 isSending: sending,
                 error: sendError,
                 replyTarget: replyTarget,
-                attachment: attachment,
+                attachments: attachments,
                 onSend: _handleSend,
                 onPickAttachment: _handlePickAttachment,
                 onPickClientDocument: _handlePickClientDocument,
                 onPickWorkerDocument: _handlePickWorkerDocument,
                 onPickIssuedPresupuesto: _handlePickIssuedPresupuesto,
-                onClearAttachment: _handleClearAttachment,
+                onRemoveAttachment: _handleRemoveAttachment,
                 onClearReply: _handleClearReply,
                 onKeyEvent: _handleComposerKey,
               ),
@@ -1255,13 +1254,13 @@ class TelegramChatComposer extends StatelessWidget {
     required this.isSending,
     required this.error,
     required this.replyTarget,
-    required this.attachment,
+    required this.attachments,
     required this.onSend,
     required this.onPickAttachment,
     required this.onPickClientDocument,
     required this.onPickWorkerDocument,
     required this.onPickIssuedPresupuesto,
-    required this.onClearAttachment,
+    required this.onRemoveAttachment,
     required this.onClearReply,
     required this.onKeyEvent,
   });
@@ -1272,13 +1271,13 @@ class TelegramChatComposer extends StatelessWidget {
   final bool isSending;
   final String? error;
   final TelegramChatMessage? replyTarget;
-  final TelegramComposerAttachment? attachment;
+  final List<TelegramComposerAttachment> attachments;
   final VoidCallback onSend;
   final VoidCallback onPickAttachment;
   final VoidCallback onPickClientDocument;
   final VoidCallback onPickWorkerDocument;
   final VoidCallback onPickIssuedPresupuesto;
-  final VoidCallback onClearAttachment;
+  final ValueChanged<TelegramComposerAttachment> onRemoveAttachment;
   final VoidCallback onClearReply;
   final KeyEventResult Function(FocusNode node, KeyEvent event) onKeyEvent;
 
@@ -1287,7 +1286,7 @@ class TelegramChatComposer extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final phone = MediaQuery.sizeOf(context).width < 700;
-    final hasAttachment = attachment != null;
+    final hasAttachment = attachments.isNotEmpty;
     final canSend = enabled &&
         !isSending &&
         (controller.text.trim().isNotEmpty || hasAttachment);
@@ -1329,10 +1328,23 @@ class TelegramChatComposer extends StatelessWidget {
             ),
             const SizedBox(height: 8),
           ],
-          if (attachment != null) ...[
-            TelegramAttachmentComposerPreview(
-              attachment: attachment!,
-              onClear: onClearAttachment,
+          if (hasAttachment) ...[
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 190),
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    for (final (index, attachment) in attachments.indexed) ...[
+                      if (index > 0) const SizedBox(height: 6),
+                      TelegramAttachmentComposerPreview(
+                        key: ValueKey(attachment),
+                        attachment: attachment,
+                        onClear: () => onRemoveAttachment(attachment),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 8),
           ],
@@ -1756,12 +1768,19 @@ class TelegramAttachmentComposerPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final subtitleParts = <String>[
-      if (attachment.mimeType?.trim().isNotEmpty ?? false)
-        attachment.mimeType!.trim(),
-      if (attachment.fileSize != null)
-        _telegramFormatFileSize(attachment.fileSize!),
-    ];
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    final subtitleParts = attachment.isPresupuesto
+        ? <String>[
+            isSpanish
+                ? 'Presupuesto · el PDF se genera al enviar'
+                : 'Budget · PDF is generated when sent',
+          ]
+        : <String>[
+            if (attachment.mimeType?.trim().isNotEmpty ?? false)
+              attachment.mimeType!.trim(),
+            if (attachment.fileSize != null)
+              _telegramFormatFileSize(attachment.fileSize!),
+          ];
 
     return Container(
       width: double.infinity,
@@ -1782,9 +1801,11 @@ class TelegramAttachmentComposerPreview extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
-              attachment.isPdf
-                  ? Icons.picture_as_pdf_outlined
-                  : Icons.insert_drive_file_outlined,
+              attachment.isPresupuesto
+                  ? Icons.request_quote_outlined
+                  : attachment.isPdf
+                      ? Icons.picture_as_pdf_outlined
+                      : Icons.insert_drive_file_outlined,
               size: 18,
               color: cs.onTertiaryContainer,
             ),

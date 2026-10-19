@@ -458,10 +458,11 @@ class _NotificationsListState extends State<_NotificationsList> {
       while (j < list.length && _groupKey(list[j]) == key) {
         j++;
       }
+      final members = list.sublist(i, j);
       result.add(_NotifGroup(
-        groupKey: '$periodKey:$key:$i',
+        groupKey: '$periodKey:$key:${members.map((n) => n.id).join(',')}',
         representative: list[i],
-        all: list.sublist(i, j),
+        all: members,
         title: _titleFor(list[i]),
       ));
       i = j;
@@ -472,9 +473,20 @@ class _NotificationsListState extends State<_NotificationsList> {
   String _groupKey(NotificationUser n) {
     final args = EventArgsHelper(n.args);
     final et = args.eventTitle;
-    return et != null && et.isNotEmpty
-        ? '${n.titleKey}:::$et'
-        : '${n.titleKey}:::${n.messageKey}';
+    final entityId = <Object?>[
+      args.eventId,
+      n.args['documentId'],
+      n.args['invoiceId'],
+      n.args['receiptId'],
+      n.args['budgetId'],
+      n.args['jobId'],
+      n.args['taskId'],
+    ].map((value) => value?.toString().trim() ?? '').firstWhere(
+          (value) => value.isNotEmpty,
+          orElse: () => '',
+        );
+    final title = et != null && et.isNotEmpty ? et : n.messageKey;
+    return '${n.groupId}:::${n.titleKey}:::$title:::$entityId';
   }
 
   String _titleFor(NotificationUser n) {

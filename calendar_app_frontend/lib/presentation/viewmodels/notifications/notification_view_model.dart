@@ -57,11 +57,7 @@ class NotificationViewModel {
         userDomain: userDomain,
       );
 
-      // Remove notification (backend + local)
-      await notificationService.deleteNotification(notification.id);
-      await notificationDomain.removeNotificationById(
-        notification.id,
-      );
+      await _removeResolvedInvitation(notification);
     } on GroupLimitException {
       rethrow;
     } catch (e) {
@@ -82,10 +78,7 @@ class NotificationViewModel {
         userDomain: userDomain,
       );
 
-      await notificationService.deleteNotification(notification.id);
-      await notificationDomain.removeNotificationById(
-        notification.id,
-      );
+      await _removeResolvedInvitation(notification);
     } catch (e) {
       devtools.log('❌ Error declining invitation: $e');
       rethrow;
@@ -121,8 +114,20 @@ class NotificationViewModel {
       return fetched;
     } catch (e) {
       devtools.log('❌ Error fetching group notifications: $e');
-      return const <NotificationUser>[];
+      rethrow;
     }
+  }
+
+  /// Invitation response is the primary action. Cleanup must never make a
+  /// successful accept/decline appear to have failed and invite the user to
+  /// submit the same response again.
+  Future<void> _removeResolvedInvitation(NotificationUser notification) async {
+    try {
+      await notificationService.deleteNotification(notification.id);
+    } catch (e) {
+      devtools.log('Notification cleanup failed after invite response: $e');
+    }
+    await notificationDomain.removeNotificationById(notification.id);
   }
 
   Future<void> deleteNotification(NotificationUser notification) async {
