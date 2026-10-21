@@ -130,6 +130,37 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
   }
 
   @override
+  Future<void> createWorkerAccount(
+    String groupId,
+    String workerId,
+    String token, {
+    required String employeeName,
+    required String username,
+    required String temporaryPassword,
+    required String role,
+  }) async {
+    final uri = Uri.parse('$_root${_ttPath(groupId)}/worker-accounts');
+    final res = await _client.post(
+      uri,
+      headers: _headers(token),
+      body: jsonEncode({
+        'workerId': workerId,
+        'employeeName': employeeName,
+        'username': username,
+        'initialPassword': temporaryPassword,
+        'role': role,
+        'active': true,
+      }),
+    );
+    if (res.statusCode != 201 && res.statusCode != 200) {
+      throw BackendApiException.fromResponse(
+        res,
+        fallbackMessage: 'Failed to create worker account',
+      );
+    }
+  }
+
+  @override
   Future<List<TimeEntry>> listTimeEntries(
     String groupId,
     String token, {

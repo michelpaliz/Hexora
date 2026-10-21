@@ -16,6 +16,7 @@ import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/w
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/time_tracking_excel_import_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_time_history_graph_view.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_list_section.dart';
+import 'package:hexora/presentation/screens/workspace/sections/workers/worker_account_setup_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/worker_time_tracking_screen.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -29,7 +30,8 @@ enum _WorkersSection {
   historial,
   visits,
   telegramImport,
-  registerHours
+  registerHours,
+  accountSetup,
 }
 
 class WorkersHubScreen extends StatefulWidget {
@@ -67,6 +69,7 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
       GeofencedVisitsView(group: widget.group),
       TelegramWorkerHoursImportView(group: widget.group),
       _RegisterHoursImportPanel(group: widget.group),
+      WorkerAccountSetupScreen(group: widget.group),
     ];
     return IndexedStack(
       index: _section.index,
@@ -194,6 +197,12 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
         label: isEs ? 'Importar horas' : 'Import hours',
         mobileLabel: isEs ? 'Importar' : 'Import',
         section: _WorkersSection.registerHours,
+      ),
+      (
+        icon: Icons.manage_accounts_outlined,
+        label: isEs ? 'Cuentas de acceso' : 'Account setup',
+        mobileLabel: isEs ? 'Cuentas' : 'Accounts',
+        section: _WorkersSection.accountSetup,
       ),
     ];
     final isNarrow = MediaQuery.sizeOf(context).width < 760;
