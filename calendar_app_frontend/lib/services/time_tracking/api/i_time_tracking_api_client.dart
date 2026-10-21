@@ -254,6 +254,16 @@ abstract class ITimeTrackingApiClient {
     LocationBoundaryEvent event,
   );
 
+  Future<void> sendLiveLocation(
+    String groupId,
+    String sessionId,
+    String token, {
+    required double latitude,
+    required double longitude,
+    required double accuracyMeters,
+    required DateTime recordedAt,
+  });
+
   Future<void> stopLocationTracking(
     String groupId,
     String sessionId,
