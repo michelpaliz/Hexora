@@ -19,6 +19,15 @@ abstract class ITimeTrackingRepository {
     String? month,
   });
   Future<Worker> addWorker(String groupId, Worker worker, String token);
+  Future<void> createWorkerAccount(
+    String groupId,
+    String workerId,
+    String token, {
+    required String employeeName,
+    required String username,
+    required String temporaryPassword,
+    required String role,
+  });
 
   Future<List<TimeEntry>> getTimeEntries(
     String groupId,
@@ -209,6 +218,26 @@ class TimeTrackingRepository implements ITimeTrackingRepository {
   @override
   Future<Worker> addWorker(String groupId, Worker worker, String token) =>
       _api.createWorker(groupId, worker, token);
+
+  @override
+  Future<void> createWorkerAccount(
+    String groupId,
+    String workerId,
+    String token, {
+    required String employeeName,
+    required String username,
+    required String temporaryPassword,
+    required String role,
+  }) =>
+      _api.createWorkerAccount(
+        groupId,
+        workerId,
+        token,
+        employeeName: employeeName,
+        username: username,
+        temporaryPassword: temporaryPassword,
+        role: role,
+      );
 
   @override
   Future<List<TimeEntry>> getTimeEntries(

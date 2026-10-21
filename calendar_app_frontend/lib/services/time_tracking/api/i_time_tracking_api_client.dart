@@ -27,6 +27,18 @@ abstract class ITimeTrackingApiClient {
   /// POST /groups/:groupId/time-tracking/workers
   Future<Worker> createWorker(String groupId, Worker worker, String token);
 
+  /// Creates credentials for an existing worker. The temporary password is sent
+  /// only in this request and is never persisted by the client.
+  Future<void> createWorkerAccount(
+    String groupId,
+    String workerId,
+    String token, {
+    required String employeeName,
+    required String username,
+    required String temporaryPassword,
+    required String role,
+  });
+
   /// GET /groups/:groupId/time-tracking/time-entries
   /// Optional filters via query params (?from, ?to, ?workerId).
   /// Implementation may return [] on 404.

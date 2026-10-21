@@ -37,6 +37,8 @@ class Worker {
   final String? notes; // <= 1000 chars
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final bool hasAccount;
+  final WorkerAccountSummary? account;
 
   const Worker({
     required this.id,
@@ -52,6 +54,8 @@ class Worker {
     this.notes,
     this.createdAt,
     this.updatedAt,
+    this.hasAccount = false,
+    this.account,
   });
 
   /// Factory for brand-new, not-yet-saved workers (handy for UI forms).
@@ -117,6 +121,8 @@ class Worker {
     String? notes,
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool? hasAccount,
+    WorkerAccountSummary? account,
   }) {
     return Worker(
       id: id ?? this.id,
@@ -132,6 +138,8 @@ class Worker {
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      hasAccount: hasAccount ?? this.hasAccount,
+      account: account ?? this.account,
     );
   }
 
@@ -162,6 +170,11 @@ class Worker {
           : null,
       updatedAt: (json['updatedAt'] != null)
           ? DateTime.parse(json['updatedAt'])
+          : null,
+      hasAccount: json['hasAccount'] == true,
+      account: json['account'] is Map
+          ? WorkerAccountSummary.fromJson(
+              Map<String, dynamic>.from(json['account'] as Map))
           : null,
     );
   }
@@ -195,4 +208,30 @@ class Worker {
       if (notes != null) 'notes': notes,
     };
   }
+}
+
+@immutable
+class WorkerAccountSummary {
+  final String id;
+  final String username;
+  final String role;
+  final bool active;
+  final bool mustChangePassword;
+
+  const WorkerAccountSummary({
+    required this.id,
+    required this.username,
+    required this.role,
+    required this.active,
+    required this.mustChangePassword,
+  });
+
+  factory WorkerAccountSummary.fromJson(Map<String, dynamic> json) =>
+      WorkerAccountSummary(
+        id: json['id']?.toString() ?? '',
+        username: json['username']?.toString() ?? '',
+        role: json['role']?.toString() ?? 'worker',
+        active: json['active'] == true,
+        mustChangePassword: json['mustChangePassword'] == true,
+      );
 }
