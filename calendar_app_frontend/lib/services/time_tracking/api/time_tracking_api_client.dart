@@ -1009,6 +1009,33 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
   }
 
   @override
+  Future<void> sendLiveLocation(
+    String groupId,
+    String sessionId,
+    String token, {
+    required double latitude,
+    required double longitude,
+    required double accuracyMeters,
+    required DateTime recordedAt,
+  }) async {
+    final res = await _client.post(
+      Uri.parse(
+          '$_root${_ttPath(groupId)}/location-tracking/${Uri.encodeComponent(sessionId)}/location'),
+      headers: _headers(token),
+      body: jsonEncode({
+        'latitude': latitude,
+        'longitude': longitude,
+        'accuracyMeters': accuracyMeters,
+        'recordedAt': recordedAt.toUtc().toIso8601String(),
+      }),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw BackendApiException.fromResponse(res,
+          fallbackMessage: 'Failed to update live location');
+    }
+  }
+
+  @override
   Future<void> stopLocationTracking(
     String groupId,
     String sessionId,

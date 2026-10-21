@@ -42,6 +42,7 @@ class GeofencedVisitTrackingService extends ChangeNotifier {
   final UserDomain _userDomain;
   StreamSubscription<Position>? _positionSubscription;
   LocationTrackingSession? _session;
+  DateTime? _lastLiveLocationAt;
   List<ClientServiceLocation> _locations = const <ClientServiceLocation>[];
   final Map<String, bool> _insideByClient = <String, bool>{};
   bool _restored = false;
@@ -315,6 +316,21 @@ class GeofencedVisitTrackingService extends ChangeNotifier {
     _processingPosition = true;
     try {
       _lastAccuracyMeters = position.accuracy;
+      final now = DateTime.now();
+      if (_lastLiveLocationAt == null ||
+          now.difference(_lastLiveLocationAt!) >= const Duration(seconds: 30)) {
+        try {
+          final token = await _userDomain.getAuthToken();
+          await _api.sendLiveLocation(current.groupId, current.id, token,
+              latitude: position.latitude,
+              longitude: position.longitude,
+              accuracyMeters: position.accuracy,
+              recordedAt: position.timestamp);
+          _lastLiveLocationAt = now;
+        } catch (_) {
+          // Geofence visit tracking continues if a transient live update fails.
+        }
+      }
       await _flushPendingEvents();
 
       for (final location in _locations) {
