@@ -28,6 +28,9 @@ mixin _ExpenseUploadImportTabsSection on _ExpenseUploadScreenStateBase {
   set batchDetectedInvoices(int value);
   List<Uint8List> get batchDocumentBytes;
   List<String> get batchDocumentNames;
+  Uint8List? get batchArchiveBytes;
+  String? get batchArchiveName;
+  void clearBatchArchive();
   String? get batchError;
   @override
   List<String> get batchSkippedDetails;
@@ -46,6 +49,8 @@ mixin _ExpenseUploadImportTabsSection on _ExpenseUploadScreenStateBase {
   Future<void> pickBatchDocuments();
   @override
   Future<void> submitBatchImport();
+  @override
+  Future<void> cancelBatchPreviewJob();
   Future<void> confirmBatchPreviewImport();
   Future<void> exportBatchIncidentExcel();
   Future<void> generateBatchJsonWithAi();

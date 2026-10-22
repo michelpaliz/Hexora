@@ -9,7 +9,7 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
     {
       final cs = Theme.of(context).colorScheme;
       final hasGroup = resolveGroupId().trim().isNotEmpty;
-      final selectedCount = batchDocumentNames.length;
+      final selectedCount = batchArchiveName == null ? batchDocumentNames.length : 1;
       const maxBatchDocs = _ExpenseUploadScreenStateBase._maxBatchDocuments;
       final jobStatusName = _expenseBatchJobStatusFromPayload(_batchJobStatus);
       final hasTrackedJob = (_batchJobId ?? '').trim().isNotEmpty;
@@ -42,7 +42,7 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
           hasTrackedJob && jobTotalFiles > 0 ? jobTotalFiles : selectedCount;
       final remainingSlots =
           (maxBatchDocs - headerLoadedCount).clamp(0, maxBatchDocs);
-      final totalBytes = batchDocumentBytes.fold<int>(
+      final totalBytes = batchArchiveBytes?.length ?? batchDocumentBytes.fold<int>(
         0,
         (sum, bytes) => sum + bytes.length,
       );
@@ -159,6 +159,12 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
       Widget executionPanel = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (_batchStartingJob && batchArchiveName != null) ...[
+            Text('Subiendo y extrayendo facturas del ZIP…', style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 4),
+            const LinearProgressIndicator(minHeight: 3),
+            const SizedBox(height: 6),
+          ],
           _BatchCollapsibleSummary(
             collapsed: _batchSummaryCollapsed,
             onToggle: () => _updateImportState(() {
@@ -207,6 +213,20 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
               backgroundColor: cs.errorContainer.withValues(alpha: 0.22),
               borderColor: cs.error.withValues(alpha: 0.32),
               textColor: cs.onErrorContainer,
+            ),
+          ],
+          if (batchArchiveName != null) ...[
+            const SizedBox(height: 6),
+            Text('ZIP: $batchArchiveName', style: Theme.of(context).textTheme.bodySmall),
+          ],
+          if (jobActive && !batchSubmitting) ...[
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: cancelBatchPreviewJob,
+                icon: const Icon(Icons.close_rounded, size: 16),
+                label: const Text('Cancelar lote'),
+              ),
             ),
           ],
           const SizedBox(height: 6),
@@ -326,7 +346,7 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
                 !jobCompleted &&
                 !hasPreviewItems &&
                 hasGroup &&
-                batchDocumentNames.isNotEmpty,
+                (batchDocumentNames.isNotEmpty || batchArchiveBytes != null),
             jobActive: jobActive,
             jobCompleted: jobCompleted,
             jobFailed: jobFailed,
@@ -336,7 +356,7 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
             skippedCount: jobSkippedCount,
             onPickDocuments: pickBatchDocuments,
             onImport: submitBatchImport,
-            onClearSelection: batchDocumentNames.isEmpty
+            onClearSelection: batchDocumentNames.isEmpty && batchArchiveName == null
                 ? null
                 : () => _updateImportState(() {
                       _resetBatchJobTracking(
@@ -345,6 +365,7 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
                       );
                       batchDocumentBytes.clear();
                       batchDocumentNames.clear();
+                      clearBatchArchive();
                       _batchSkippedDetails.clear();
                       _batchVerifyMessage = null;
                       _batchError = null;
@@ -409,7 +430,7 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
                   ? null
                   : pickBatchDocuments,
               icon: Icons.picture_as_pdf_outlined,
-              label: l.expenseUploadBatchUploadDocsCta,
+              label: Localizations.localeOf(context).languageCode == 'es' ? 'Elegir facturas o ZIP' : 'Choose invoices or ZIP',
             ),
             const SizedBox(height: 6),
           ],

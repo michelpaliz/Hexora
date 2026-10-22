@@ -78,6 +78,16 @@ class _BatchExpensePreviewItemTile extends StatelessWidget {
                       height: 1.05,
                     ),
                   ),
+                  const SizedBox(height: 2),
+                  Tooltip(
+                    message: item.originalPath,
+                    child: Text(
+                      item.originalPath,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: ts.bodySmall?.copyWith(color: cs.onSurfaceVariant, fontSize: 11),
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [

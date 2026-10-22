@@ -566,7 +566,7 @@ class _BatchCompactWorkflowIndicator extends StatelessWidget {
                 ),
                 icon: const Icon(Icons.upload_file_outlined, size: 16),
                 label: Text(
-                  isEs ? 'Documentos' : 'Documents',
+                  isEs ? 'Documentos o ZIP' : 'Documents or ZIP',
                   style: ts.bodySmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),

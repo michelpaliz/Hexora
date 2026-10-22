@@ -90,6 +90,7 @@ class _ExpenseBatchPreviewItem {
   final String id;
   final String tempId;
   final String fileName;
+  final String originalPath;
   String status;
   Map<String, dynamic> prediction;
   final Map<String, dynamic> confidence;
@@ -103,6 +104,7 @@ class _ExpenseBatchPreviewItem {
     required this.id,
     required this.tempId,
     required this.fileName,
+    required this.originalPath,
     required this.status,
     required this.prediction,
     required this.confidence,
@@ -141,6 +143,7 @@ class _ExpenseBatchPreviewItem {
       id: tempId.isNotEmpty ? tempId : '${fileName}_$index',
       tempId: tempId,
       fileName: fileName,
+      originalPath: _batchJobFirstText([raw['originalPath'], raw['sourceDocument'] is Map ? (raw['sourceDocument'] as Map)['originalPath'] : null, fileName]),
       status: status.isEmpty ? 'needs_review' : status,
       prediction: raw['prediction'] is Map
           ? Map<String, dynamic>.from(raw['prediction'] as Map)
@@ -339,6 +342,7 @@ List<String> _expenseBatchIssuesFromPayload(Map<String, dynamic>? payload) {
   appendList(payload['errors'], fallbackReason: 'Error');
   appendList(payload['issues'], fallbackReason: 'Incidencia');
   appendList(payload['warnings'], fallbackReason: 'Advertencia');
+  appendList(payload['extractionWarnings'], fallbackReason: 'Archivo omitido');
   appendList(payload['failedFiles'], fallbackReason: 'No se pudo importar');
   appendList(payload['skippedFiles'], fallbackReason: 'Se omitio del lote');
   appendList(payload['files']);
@@ -481,6 +485,8 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   String? _jsonPromptText;
   List<Uint8List> _batchDocumentBytes = [];
   List<String> _batchDocumentNames = [];
+  Uint8List? _batchArchiveBytes;
+  String? _batchArchiveName;
   bool _batchSubmitting = false;
   bool _batchGeneratingJson = false;
   bool _batchStartingJob = false;
@@ -504,6 +510,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
 
   static const int _maxBatchDocuments = 200;
   static const int _maxBatchFileSizeBytes = 10 * 1024 * 1024;
+  static const int _maxBatchArchiveSizeBytes = 100 * 1024 * 1024;
   static final Map<String, _ExpenseBatchJobSnapshot> _batchJobCacheByGroup =
       <String, _ExpenseBatchJobSnapshot>{};
 
@@ -1803,6 +1810,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     required int selectedCount,
   });
   Future<void> submitBatchImport();
+  Future<void> cancelBatchPreviewJob();
 
   @override
   Widget build(BuildContext context) {
@@ -2106,11 +2114,11 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                       final jobTotal =
                           _batchJobInt(_batchJobStatus?['totalFiles']);
                       if (jobTotal > 0) return jobTotal;
-                      return _batchDocumentNames.length;
+                      return _batchArchiveName == null ? _batchDocumentNames.length : 1;
                     })(),
                     maxDocuments:
                         _ExpenseUploadScreenStateBase._maxBatchDocuments,
-                    totalBytes: _batchDocumentBytes.fold<int>(
+                    totalBytes: _batchArchiveBytes?.length ?? _batchDocumentBytes.fold<int>(
                       0,
                       (sum, bytes) => sum + bytes.length,
                     ),
@@ -2123,7 +2131,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                         !_batchGeneratingJson &&
                         !batchJobCompleted &&
                         hasGroupSelected &&
-                        _batchDocumentNames.isNotEmpty,
+                        (_batchDocumentNames.isNotEmpty || _batchArchiveBytes != null),
                     jobActive: batchJobActive,
                     jobCompleted: batchJobCompleted,
                     jobFailed: batchJobStatus == 'failed',
@@ -2133,7 +2141,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                         _batchJobInt(_batchJobStatus?['duplicateCount']),
                     onPickDocuments: pickBatchDocuments,
                     onImport: submitBatchImport,
-                    onClearSelection: _batchDocumentNames.isEmpty
+                    onClearSelection: _batchDocumentNames.isEmpty && _batchArchiveName == null
                         ? null
                         : () => setState(() {
                               _resetBatchJobTracking(
@@ -2142,6 +2150,8 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                               );
                               _batchDocumentBytes.clear();
                               _batchDocumentNames.clear();
+                              _batchArchiveBytes = null;
+                              _batchArchiveName = null;
                               _batchSkippedDetails.clear();
                               _batchVerifyMessage = null;
                               _batchError = null;
@@ -2456,6 +2466,12 @@ class ExpenseUploadScreenState extends _ExpenseUploadScreenStateBase
   @override
   List<String> get batchDocumentNames => _batchDocumentNames;
   @override
+  Uint8List? get batchArchiveBytes => _batchArchiveBytes;
+  @override
+  String? get batchArchiveName => _batchArchiveName;
+  @override
+  void clearBatchArchive() { _batchArchiveBytes = null; _batchArchiveName = null; }
+  @override
   String? get batchError => _batchError;
   @override
   String? get batchVerifyMessage => _batchVerifyMessage;
@@ -2478,11 +2494,13 @@ class ExpenseUploadScreenState extends _ExpenseUploadScreenStateBase
     List<({String fileName, Uint8List fileBytes})> files, {
     required int selectedCount,
   }) =>
-      _applyBatchDocuments(files, selectedCount: selectedCount);
+      _applyBatchUploadSelection(files, selectedCount: selectedCount);
   @override
   Future<void> generateBatchJsonWithAi() => _generateBatchJsonWithAi();
   @override
   Future<void> submitBatchImport() => _submitBatchImport();
+  @override
+  Future<void> cancelBatchPreviewJob() => _cancelBatchPreviewJob();
   @override
   List<Map<String, dynamic>> extractBatchInvoices(
           Map<String, dynamic> payload) =>
