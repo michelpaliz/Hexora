@@ -86,6 +86,8 @@ class ExpensesApi {
     String? groupId,
     Map<String, dynamic>? payload,
     Map<String, String>? extraFields,
+    Uint8List? archiveBytes,
+    String? archiveName,
   }) async {
     final uri = _u(endpoint);
     final req = http.MultipartRequest('POST', uri);
@@ -118,6 +120,13 @@ class ExpensesApi {
           contentType: _mediaTypeForFileName(name),
         ),
       );
+    }
+    if (archiveBytes != null && archiveBytes.isNotEmpty) {
+      req.files.add(http.MultipartFile.fromBytes(
+        'archive', archiveBytes,
+        filename: (archiveName ?? '').trim().isEmpty ? 'invoices.zip' : archiveName!.trim(),
+        contentType: MediaType('application', 'zip'),
+      ));
     }
 
     final streamed = await req.send();
@@ -793,8 +802,10 @@ class ExpensesApi {
     required List<String> documentFileNames,
     String? groupId,
     String? currency,
+    Uint8List? archiveBytes,
+    String? archiveName,
   }) async {
-    if (documentFilesBytes.isEmpty ||
+    if ((documentFilesBytes.isEmpty && (archiveBytes == null || archiveBytes.isEmpty)) ||
         documentFilesBytes.length != documentFileNames.length) {
       throw ArgumentError(
         'documentFilesBytes/documentFileNames must be non-empty and have same length',
@@ -809,6 +820,8 @@ class ExpensesApi {
       extraFields: {
         if ((currency ?? '').trim().isNotEmpty) 'currency': currency!.trim(),
       },
+      archiveBytes: archiveBytes,
+      archiveName: archiveName,
     );
   }
 
@@ -838,6 +851,19 @@ class ExpensesApi {
     }
     final uri = _u('/import-json-batch/preview/jobs/$trimmedJobId');
     return _getMap(uri);
+  }
+
+  Future<Map<String, dynamic>> cancelBatchExpensePreviewJob(String jobId) async {
+    final trimmedJobId = jobId.trim();
+    if (trimmedJobId.isEmpty) throw ArgumentError('jobId is required');
+    final uri = _u('/import-json-batch/preview/jobs/$trimmedJobId/cancel');
+    final response = await http.post(uri, headers: await _headers());
+    return _decode<Map<String, dynamic>>(
+      response,
+      url: uri,
+      method: 'POST',
+      map: (json) => json is Map ? Map<String, dynamic>.from(json) : <String, dynamic>{},
+    );
   }
 
   Future<Map<String, dynamic>> getBatchExpensePreviewJobResult(

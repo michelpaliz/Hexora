@@ -42,15 +42,48 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
 
     final droppedFiles = <({String fileName, Uint8List fileBytes})>[];
     try {
+      final names = <String>[];
       for (final file in files) {
         try {
-          final fileName = await controller.getFilename(file);
+          names.add(await controller.getFilename(file));
+        } catch (_) {
+          names.add('Archivo no legible');
+        }
+      }
+      final zipIndexes = <int>[
+        for (var i = 0; i < names.length; i++)
+          if (names[i].toLowerCase().endsWith('.zip')) i,
+      ];
+      if (zipIndexes.isNotEmpty && files.length != 1) {
+        await onDrop(
+          [(fileName: names[zipIndexes.first], fileBytes: Uint8List(0))],
+          selectedCount: files.length,
+        );
+        return;
+      }
+      for (var i = 0;
+          i < files.length && i < _ExpenseUploadScreenStateBase._maxBatchDocuments;
+          i++) {
+        final file = files[i];
+        final fileName = names[i];
+        try {
+          if (fileName.toLowerCase().endsWith('.zip') &&
+              await controller.getFileSize(file) >
+                  _ExpenseUploadScreenStateBase._maxBatchArchiveSizeBytes) {
+            droppedFiles.add(
+                (fileName: fileName, fileBytes: Uint8List(0)));
+            continue;
+          }
+          if (!fileName.toLowerCase().endsWith('.zip') &&
+              await controller.getFileSize(file) >
+                  _ExpenseUploadScreenStateBase._maxBatchFileSizeBytes) {
+            droppedFiles.add((fileName: fileName, fileBytes: Uint8List(0)));
+            continue;
+          }
           final fileBytes = await controller.getFileData(file);
-          if (fileName.trim().isEmpty || fileBytes.isEmpty) continue;
           droppedFiles.add((fileName: fileName, fileBytes: fileBytes));
         } catch (_) {
-          // The shared batch validation handles readable supported files;
-          // unreadable browser drops are skipped here.
+          droppedFiles.add((fileName: fileName, fileBytes: Uint8List(0)));
         }
       }
 
@@ -59,6 +92,7 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
       await onDrop(droppedFiles, selectedCount: files.length);
     } finally {
       _webDropProcessing = false;
+      if (mounted && _dragging) setState(() => _dragging = false);
     }
   }
 
@@ -66,6 +100,7 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
   Widget build(BuildContext context) {
     final cs = widget.cs;
     final ts = widget.ts;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
     final steps = [
       (icon: Icons.upload_file_outlined, label: 'Sube tus documentos'),
       (icon: Icons.auto_awesome_outlined, label: 'Hexora analiza con IA'),
@@ -145,8 +180,16 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
             duration: const Duration(milliseconds: 160),
             child: Text(
               _dragging
-                  ? 'Suelta los documentos para cargarlos'
-                  : 'Arrastra tus facturas aqu\u00ed',
+                  ? (isEs
+                      ? 'Suelta las facturas o el ZIP para cargarlos'
+                      : 'Drop invoices or ZIP to upload')
+                  : (webDropEnabled
+                      ? (isEs
+                          ? 'Arrastra tus facturas o un ZIP aqu\u00ed'
+                          : 'Drag invoices or a ZIP here')
+                      : (isEs
+                          ? 'Selecciona facturas o un ZIP'
+                          : 'Choose invoices or a ZIP')),
               key: ValueKey(_dragging),
               style: ts.titleMedium?.copyWith(
                 fontWeight: FontWeight.w900,
@@ -157,7 +200,9 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
           ),
           const SizedBox(height: 6),
           Text(
-            'PDF, JPG, PNG o WEBP \u2022 hasta 200 documentos por lote',
+            isEs
+                ? 'PDF, JPG, JPEG, JPE, PNG o WEBP \u2022 o un ZIP de hasta 100 MB y 200 facturas'
+                : 'PDF, JPG, JPEG, JPE, PNG or WEBP \u2022 or one ZIP up to 100 MB and 200 invoices',
             style: ts.bodySmall?.copyWith(
               color: cs.onSurfaceVariant,
               fontSize: 12.5,
