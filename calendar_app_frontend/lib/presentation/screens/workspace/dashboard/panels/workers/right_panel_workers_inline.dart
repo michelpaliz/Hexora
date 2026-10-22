@@ -13,6 +13,7 @@ import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/w
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_month_picker_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_time_history_graph_view.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_list_section.dart';
+import 'package:hexora/presentation/screens/workspace/sections/workers/worker_account_setup_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/create_time_entry_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/monthly_overview/worker_monthly_overview.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -33,7 +34,8 @@ enum _InlineSection {
   graphs,
   historial,
   telegramImport,
-  registerHours
+  registerHours,
+  accountSetup,
 }
 
 String _formatMoney(
@@ -140,6 +142,7 @@ class _WorkersCollapsedRail extends StatelessWidget {
     required this.telegramLabel,
     required this.registerHoursLabel,
     required this.createWorkerLabel,
+    required this.showAccountSetup,
   });
 
   final double width;
@@ -153,6 +156,7 @@ class _WorkersCollapsedRail extends StatelessWidget {
   final String telegramLabel;
   final String registerHoursLabel;
   final String createWorkerLabel;
+  final bool showAccountSetup;
 
   @override
   Widget build(BuildContext context) {
@@ -252,6 +256,11 @@ class _WorkersCollapsedRail extends StatelessWidget {
                     workersLabel,
                     section: _InlineSection.workers,
                   ),
+                  if (showAccountSetup) ...[
+                    const SizedBox(height: 3),
+                    item(Icons.manage_accounts_outlined, 'Cuentas de acceso',
+                        section: _InlineSection.accountSetup),
+                  ],
                   const SizedBox(height: 3),
                   item(
                     Icons.schedule_outlined,
@@ -721,6 +730,16 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     });
   }
 
+  bool get _canManageAccounts {
+    final userId = _userDomain.user?.id;
+    if (userId == null) return false;
+    final role = widget.group.userRoles[userId]?.toLowerCase();
+    return widget.group.ownerId == userId ||
+        role == 'owner' ||
+        role == 'admin' ||
+        role == 'co-admin';
+  }
+
   Widget _buildSideMenu(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final isEs = _isSpanish(context);
@@ -738,6 +757,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
         telegramLabel: isEs ? 'Importar Telegram' : 'Telegram import',
         registerHoursLabel: isEs ? 'Registrar horas' : 'Register hours',
         createWorkerLabel: l.createWorkerCta,
+        showAccountSetup: _canManageAccounts,
       );
     }
 
@@ -785,6 +805,17 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                             () => _section = _InlineSection.workers,
                           ),
                         ),
+                        if (_canManageAccounts)
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.manage_accounts_outlined,
+                            label:
+                                isEs ? 'Cuentas de acceso' : 'Worker accounts',
+                            selected: _section == _InlineSection.accountSetup,
+                            indent: 12,
+                            onPressed: () => setState(
+                              () => _section = _InlineSection.accountSetup,
+                            ),
+                          ),
                         GroupInvoicesSubMenuItem(
                           icon: Icons.schedule_outlined,
                           label: isEs ? 'Registrar horas' : 'Register hours',
@@ -861,6 +892,8 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
         isEs ? 'Importar Telegram' : 'Telegram import',
       _InlineSection.registerHours =>
         isEs ? 'Registrar horas' : 'Register hours',
+      _InlineSection.accountSetup =>
+        isEs ? 'Cuentas de acceso' : 'Worker accounts',
     };
   }
 
@@ -1122,6 +1155,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                         _buildHistorialSection(context),
                         TelegramWorkerHoursImportView(group: widget.group),
                         _buildRegisterHoursImportSection(context),
+                        WorkerAccountSetupScreen(group: widget.group),
                       ],
                     ),
                   ),

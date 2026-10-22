@@ -132,10 +132,11 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
   @override
   Future<void> createWorkerAccount(
     String groupId,
-    String workerId,
+    String? workerId,
     String token, {
     required String employeeName,
-    required String username,
+    String? username,
+    String? email,
     required String temporaryPassword,
     required String role,
   }) async {
@@ -144,9 +145,10 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
       uri,
       headers: _headers(token),
       body: jsonEncode({
-        'workerId': workerId,
+        if (workerId != null) 'workerId': workerId,
         'employeeName': employeeName,
-        'username': username,
+        if (username != null) 'username': username,
+        if (email != null) 'email': email,
         'initialPassword': temporaryPassword,
         'role': role,
         'active': true,

@@ -177,6 +177,13 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final isEs = context.isSpanishLocale;
+    final userId = context.watch<UserDomain>().user?.id;
+    final role = widget.group.userRoles[userId]?.toLowerCase();
+    final canManageAccounts = userId != null &&
+        (widget.group.ownerId == userId ||
+            role == 'owner' ||
+            role == 'admin' ||
+            role == 'co-admin');
 
     final navItems = [
       (
@@ -215,12 +222,13 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
         mobileLabel: isEs ? 'Importar' : 'Import',
         section: _WorkersSection.registerHours,
       ),
-      (
-        icon: Icons.manage_accounts_outlined,
-        label: isEs ? 'Cuentas de acceso' : 'Account setup',
-        mobileLabel: isEs ? 'Cuentas' : 'Accounts',
-        section: _WorkersSection.accountSetup,
-      ),
+      if (canManageAccounts)
+        (
+          icon: Icons.manage_accounts_outlined,
+          label: isEs ? 'Cuentas de acceso' : 'Account setup',
+          mobileLabel: isEs ? 'Cuentas' : 'Accounts',
+          section: _WorkersSection.accountSetup,
+        ),
     ];
     final isNarrow = MediaQuery.sizeOf(context).width < 760;
 

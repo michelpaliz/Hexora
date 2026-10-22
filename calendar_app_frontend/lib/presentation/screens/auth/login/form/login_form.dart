@@ -5,6 +5,7 @@ import 'package:hexora/services/auth/email_verification_state.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/auth/exceptions/auth_exceptions.dart';
 import 'package:hexora/presentation/screens/home/home_page/home_page.dart';
+import 'package:hexora/presentation/screens/settings/dialogs/change_password_dialog.dart';
 import 'package:hexora/presentation/screens/auth/register/ui/form/button_style_helper.dart';
 import 'package:hexora/presentation/shared/widgets/text_fields/text_field_widget.dart';
 import 'package:hexora/presentation/screens/auth/shared_utilities/auth_shared_widgets.dart';
@@ -60,6 +61,29 @@ class _LoginFormState extends State<LoginForm> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), action: action),
     );
+  }
+
+  Future<void> _completeWorkerPasswordChange(
+      AuthService authService, String email) async {
+    final result = await showChangePasswordDialog(context);
+    if (!mounted) return;
+    if (result == null) {
+      await authService.logOut();
+      return;
+    }
+    try {
+      await authService.changePassword(
+          result.current, result.newPass, result.confirm);
+      // Changing the password revokes the temporary session on the server.
+      await authService.logIn(email: email, password: result.newPass);
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
+    } catch (error) {
+      await authService.logOut();
+      if (mounted) _showSnack('No se pudo cambiar la contraseña: $error');
+    }
   }
 
   Future<void> _resendVerification({String? overrideEmail}) async {
@@ -276,7 +300,10 @@ class _LoginFormState extends State<LoginForm> {
                       } catch (e) {
                         if (!context.mounted) return;
 
-                        if (e is EmailNotVerifiedAuthException) {
+                        if (e is WorkerPasswordChangeRequiredException) {
+                          await _completeWorkerPasswordChange(
+                              authService, email);
+                        } else if (e is EmailNotVerifiedAuthException) {
                           _promptEmailVerification(email);
                         } else if (e is WrongPasswordAuthException) {
                           _showSnack(l10n.loginInvalidCredentials);

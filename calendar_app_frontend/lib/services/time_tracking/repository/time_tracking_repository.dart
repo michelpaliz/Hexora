@@ -21,10 +21,11 @@ abstract class ITimeTrackingRepository {
   Future<Worker> addWorker(String groupId, Worker worker, String token);
   Future<void> createWorkerAccount(
     String groupId,
-    String workerId,
+    String? workerId,
     String token, {
     required String employeeName,
-    required String username,
+    String? username,
+    String? email,
     required String temporaryPassword,
     required String role,
   });
@@ -222,10 +223,11 @@ class TimeTrackingRepository implements ITimeTrackingRepository {
   @override
   Future<void> createWorkerAccount(
     String groupId,
-    String workerId,
+    String? workerId,
     String token, {
     required String employeeName,
-    required String username,
+    String? username,
+    String? email,
     required String temporaryPassword,
     required String role,
   }) =>
@@ -235,6 +237,7 @@ class TimeTrackingRepository implements ITimeTrackingRepository {
         token,
         employeeName: employeeName,
         username: username,
+        email: email,
         temporaryPassword: temporaryPassword,
         role: role,
       );
