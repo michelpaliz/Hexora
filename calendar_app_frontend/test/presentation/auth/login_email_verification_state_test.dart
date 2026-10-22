@@ -5,6 +5,7 @@ import 'package:hexora/services/auth/api/i_auth_api_client.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/auth/email_verification_state.dart';
+import 'package:hexora/services/auth/exceptions/auth_exceptions.dart';
 import 'package:hexora/services/auth/token/token_obj.dart';
 import 'package:hexora/services/auth/token/i_token_store.dart';
 import 'package:hexora/services/user/repository/i_user_repository.dart';
@@ -32,6 +33,7 @@ class _FakeAuthApi implements IAuthApiClient {
 
   final Map<String, dynamic> loginResponse;
   String? submittedEmail;
+  int profileCalls = 0;
 
   @override
   Future<Map<String, dynamic>> login({
@@ -40,6 +42,12 @@ class _FakeAuthApi implements IAuthApiClient {
   }) async {
     submittedEmail = email;
     return loginResponse;
+  }
+
+  @override
+  Future<Map<String, dynamic>> profile({required String accessToken}) async {
+    profileCalls++;
+    return {..._user().toJson(), '_status': 200};
   }
 
   @override
@@ -181,6 +189,56 @@ void main() {
           .containsKey(EmailVerificationState.requiresEmailVerificationKey),
       isFalse,
     );
+  });
+
+  test('managed worker must change temporary password before profile load',
+      () async {
+    final api = _FakeAuthApi({
+      '_status': 200,
+      'accessToken': 'worker-access',
+      'refreshToken': 'worker-refresh',
+      'userId': 'user-1',
+      'accountType': 'worker',
+      'mustChangePassword': true,
+    });
+    final tokens = _MemoryTokenStore();
+    final auth = _authService(api.loginResponse, api: api, tokens: tokens);
+
+    await expectLater(
+      auth.logIn(email: 'worker@example.com', password: 'temporary-password'),
+      throwsA(isA<WorkerPasswordChangeRequiredException>()),
+    );
+    expect(api.profileCalls, 0);
+    expect(tokens.tokens?.access, 'worker-access');
+    expect(auth.currentUser, isNull);
+  });
+
+  testWidgets('worker first login opens password change and cancel signs out',
+      (tester) async {
+    final tokens = _MemoryTokenStore();
+    final auth = _authService({
+      '_status': 200,
+      'accessToken': 'worker-access',
+      'refreshToken': 'worker-refresh',
+      'userId': 'user-1',
+      'accountType': 'worker',
+      'mustChangePassword': true,
+    }, tokens: tokens);
+    await tester.pumpWidget(_loginApp(auth));
+    await tester.enterText(
+        find.byKey(const Key('login_email_field')), 'worker@example.com');
+    await tester.enterText(
+        find.byKey(const Key('login_password_field')), 'temporary-password');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('login_submit_button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byType(AlertDialog), findsOneWidget);
+    await tester.tap(find.text('Cancel').last);
+    await tester.pumpAndSettle();
+    expect(tokens.tokens, isNull);
+    expect(auth.currentUser, isNull);
   });
 
   testWidgets('HTTP 403 Email not verified opens verification UI',

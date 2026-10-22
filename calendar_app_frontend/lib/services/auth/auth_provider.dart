@@ -148,8 +148,21 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
     await _tokens.save(AuthTokens(access: accessToken, refresh: refreshToken));
     _authToken = accessToken;
 
+    // The backend blocks profile access until a managed worker changes the
+    // temporary password. Keep the short-lived token for that one action.
+    if (data['accountType'] == 'worker' && data['mustChangePassword'] == true) {
+      throw WorkerPasswordChangeRequiredException();
+    }
+
     try {
-      final user = await _userRepo.getUserById(userId);
+      final profile = await _authApi.profile(accessToken: accessToken);
+      if ((profile['_status'] as int? ?? 200) != 200) {
+        throw LoginRequestFailedAuthException(
+          'Unable to load your account profile',
+          statusCode: profile['_status'] as int? ?? 500,
+        );
+      }
+      final user = User.fromJson(profile, fallbackId: userId);
       _setCurrentUser(user);
       _logLoginDiagnostic(status, message, 'authenticated');
       return _user;

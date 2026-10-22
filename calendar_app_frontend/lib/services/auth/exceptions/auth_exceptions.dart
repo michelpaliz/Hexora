@@ -12,6 +12,11 @@ class WrongPasswordAuthException implements Exception {
   String toString() => 'The password entered is incorrect.';
 }
 
+class WorkerPasswordChangeRequiredException implements Exception {
+  @override
+  String toString() => 'Change your temporary password to continue.';
+}
+
 class LoginRequestFailedAuthException implements Exception {
   final String message;
   final int statusCode;

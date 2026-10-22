@@ -31,10 +31,11 @@ abstract class ITimeTrackingApiClient {
   /// only in this request and is never persisted by the client.
   Future<void> createWorkerAccount(
     String groupId,
-    String workerId,
+    String? workerId,
     String token, {
     required String employeeName,
-    required String username,
+    String? username,
+    String? email,
     required String temporaryPassword,
     required String role,
   });
