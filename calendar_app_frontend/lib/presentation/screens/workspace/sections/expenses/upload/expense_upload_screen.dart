@@ -487,6 +487,9 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   List<String> _batchDocumentNames = [];
   Uint8List? _batchArchiveBytes;
   String? _batchArchiveName;
+  Map<String, dynamic>? _batchArchiveInspection;
+  bool _batchArchiveInspecting = false;
+  String? _batchArchiveInspectionError;
   bool _batchSubmitting = false;
   bool _batchGeneratingJson = false;
   bool _batchStartingJob = false;
@@ -1810,6 +1813,8 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     required int selectedCount,
   });
   Future<void> submitBatchImport();
+  void clearBatchArchive();
+  Future<void> inspectSelectedBatchArchive();
   Future<void> cancelBatchPreviewJob();
 
   @override
@@ -2114,7 +2119,9 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                       final jobTotal =
                           _batchJobInt(_batchJobStatus?['totalFiles']);
                       if (jobTotal > 0) return jobTotal;
-                      return _batchArchiveName == null ? _batchDocumentNames.length : 1;
+                      return _batchArchiveName == null
+                          ? _batchDocumentNames.length
+                          : _batchJobInt(_batchArchiveInspection?['compatibleDocuments']);
                     })(),
                     maxDocuments:
                         _ExpenseUploadScreenStateBase._maxBatchDocuments,
@@ -2131,7 +2138,11 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                         !_batchGeneratingJson &&
                         !batchJobCompleted &&
                         hasGroupSelected &&
-                        (_batchDocumentNames.isNotEmpty || _batchArchiveBytes != null),
+                        (_batchDocumentNames.isNotEmpty ||
+                            (_batchArchiveBytes != null &&
+                                !_batchArchiveInspecting &&
+                                _batchArchiveInspection?['blocked'] != true &&
+                                _batchJobInt(_batchArchiveInspection?['compatibleDocuments']) > 0)),
                     jobActive: batchJobActive,
                     jobCompleted: batchJobCompleted,
                     jobFailed: batchJobStatus == 'failed',
@@ -2150,8 +2161,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                               );
                               _batchDocumentBytes.clear();
                               _batchDocumentNames.clear();
-                              _batchArchiveBytes = null;
-                              _batchArchiveName = null;
+                              clearBatchArchive();
                               _batchSkippedDetails.clear();
                               _batchVerifyMessage = null;
                               _batchError = null;
@@ -2470,7 +2480,13 @@ class ExpenseUploadScreenState extends _ExpenseUploadScreenStateBase
   @override
   String? get batchArchiveName => _batchArchiveName;
   @override
-  void clearBatchArchive() { _batchArchiveBytes = null; _batchArchiveName = null; }
+  void clearBatchArchive() {
+    _batchArchiveBytes = null;
+    _batchArchiveName = null;
+    _batchArchiveInspection = null;
+    _batchArchiveInspectionError = null;
+    _batchArchiveInspecting = false;
+  }
   @override
   String? get batchError => _batchError;
   @override
@@ -2499,6 +2515,8 @@ class ExpenseUploadScreenState extends _ExpenseUploadScreenStateBase
   Future<void> generateBatchJsonWithAi() => _generateBatchJsonWithAi();
   @override
   Future<void> submitBatchImport() => _submitBatchImport();
+  @override
+  Future<void> inspectSelectedBatchArchive() => _inspectSelectedBatchArchive();
   @override
   Future<void> cancelBatchPreviewJob() => _cancelBatchPreviewJob();
   @override

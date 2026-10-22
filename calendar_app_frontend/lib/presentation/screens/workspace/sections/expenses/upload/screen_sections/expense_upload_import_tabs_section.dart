@@ -30,6 +30,7 @@ mixin _ExpenseUploadImportTabsSection on _ExpenseUploadScreenStateBase {
   List<String> get batchDocumentNames;
   Uint8List? get batchArchiveBytes;
   String? get batchArchiveName;
+  @override
   void clearBatchArchive();
   String? get batchError;
   @override

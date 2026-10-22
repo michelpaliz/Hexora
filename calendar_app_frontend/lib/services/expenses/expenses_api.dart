@@ -825,6 +825,21 @@ class ExpensesApi {
     );
   }
 
+  Future<Map<String, dynamic>> inspectBatchExpenseZip({
+    required Uint8List archiveBytes,
+    required String archiveName,
+    required String groupId,
+  }) {
+    return _sendBatchMultipartRequest(
+      endpoint: '/import-json-batch/preview/inspect',
+      documentFilesBytes: const [],
+      documentFileNames: const [],
+      groupId: groupId,
+      archiveBytes: archiveBytes,
+      archiveName: archiveName,
+    );
+  }
+
   Future<Map<String, dynamic>> getBatchAiImportJobStatus(String jobId) async {
     final trimmedJobId = jobId.trim();
     if (trimmedJobId.isEmpty) {

@@ -4,12 +4,140 @@
 part of '../../expense_upload_screen.dart';
 
 extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
+  String _zipReasonLabel(String code) => switch (code) {
+        'system_file' => 'Metadatos del sistema',
+        'unsupported_type' => 'Formato no compatible',
+        'oversized' => 'Supera 10 MB',
+        'nested_archive' => 'Archivo comprimido interno',
+        'encrypted' => 'Archivo cifrado',
+        'corrupt_file' => 'Archivo dañado',
+        'unsafe_path' => 'Ruta no segura',
+        'symlink' => 'Enlace simbólico',
+        _ => 'No compatible',
+      };
+
+  String _zipTypeLabel(String type) => switch (type) {
+        'application/pdf' => 'PDF',
+        'image/jpeg' => 'JPEG',
+        'image/png' => 'PNG',
+        'image/webp' => 'WebP',
+        'application/zip' => 'ZIP',
+        'directory' => 'Carpeta',
+        'not_inspected' => 'Sin analizar',
+        _ => 'Desconocido',
+      };
+
+  Widget _buildZipInspectionPanel(ColorScheme cs) {
+    if (_batchArchiveInspecting) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: LinearProgressIndicator(minHeight: 3),
+      );
+    }
+    final error = _batchArchiveInspectionError;
+    if (error != null) {
+      return Row(children: [
+        Expanded(child: Text('No se pudo inspeccionar el ZIP: $error', style: TextStyle(color: cs.error, fontSize: 12))),
+        TextButton(onPressed: inspectSelectedBatchArchive, child: const Text('Reintentar')),
+      ]);
+    }
+    final inspection = _batchArchiveInspection;
+    if (inspection == null) return const SizedBox.shrink();
+    final entries = (inspection['entries'] as List? ?? const [])
+        .whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .toList(growable: false);
+    final entryCount = _batchJobInt(inspection['archiveEntries']);
+    final fileCount = _batchJobInt(inspection['actualFiles']);
+    final compatible = _batchJobInt(inspection['compatibleDocuments']);
+    final omitted = _batchJobInt(inspection['omittedFiles']);
+    final blocked = inspection['blocked'] == true;
+    final reasons = <String, int>{};
+    for (final entry in entries) {
+      if (entry['entryType'] != 'file' || entry['compatible'] == true) continue;
+      final code = (entry['exclusionCode'] ?? 'unsupported_type').toString();
+      reasons[code] = (reasons[code] ?? 0) + 1;
+    }
+    final textStyle = Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 280),
+      child: SingleChildScrollView(child: Container(
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Wrap(spacing: 14, runSpacing: 3, children: [
+          Text('$entryCount entradas', style: textStyle),
+          Text('$fileCount archivos · ${entryCount - fileCount} carpetas', style: textStyle),
+          Text('$compatible compatibles', style: textStyle?.copyWith(fontWeight: FontWeight.w700, color: cs.primary)),
+          Text('$omitted omitidos', style: textStyle),
+        ]),
+        if (reasons.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(reasons.entries.map((entry) => '${_zipReasonLabel(entry.key)}: ${entry.value}').join(' · '),
+              style: textStyle?.copyWith(color: cs.onSurfaceVariant)),
+        ],
+        if (compatible == 0 || blocked) ...[
+          const SizedBox(height: 5),
+          Text(blocked
+              ? 'El ZIP contiene entradas no seguras, dañadas o comprimidas internamente. No se puede analizar.'
+              : 'No hay documentos compatibles para analizar. Revisa los motivos y selecciona otro ZIP.',
+              style: textStyle?.copyWith(color: cs.onSurface, fontWeight: FontWeight.w600)),
+        ],
+        ExpansionTile(
+          dense: true,
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: EdgeInsets.zero,
+          title: Text('Ver detalle de archivos', style: textStyle?.copyWith(fontWeight: FontWeight.w600)),
+          children: [
+            Row(children: [
+              Expanded(flex: 5, child: Text('Ruta', style: textStyle?.copyWith(fontWeight: FontWeight.w700))),
+              Expanded(flex: 2, child: Text('Tipo', style: textStyle?.copyWith(fontWeight: FontWeight.w700))),
+              Expanded(flex: 3, child: Text('Resultado', style: textStyle?.copyWith(fontWeight: FontWeight.w700))),
+            ]),
+            const Divider(height: 8),
+            SizedBox(
+              height: entries.length > 4 ? 144 : entries.length * 36.0,
+              child: ListView.builder(
+                itemCount: entries.length,
+                itemBuilder: (context, index) {
+                  final entry = entries[index];
+                  final path = (entry['filename'] ?? '').toString();
+                  final status = entry['entryType'] == 'directory'
+                      ? 'Carpeta'
+                      : entry['compatible'] == true
+                          ? 'Listo para analizar'
+                          : _zipReasonLabel((entry['exclusionCode'] ?? '').toString());
+                  return SizedBox(height: 36, child: Row(children: [
+                    Expanded(flex: 5, child: Tooltip(message: path, child: Text(path, maxLines: 1, overflow: TextOverflow.ellipsis, style: textStyle))),
+                    Expanded(flex: 2, child: Text(_zipTypeLabel((entry['detectedType'] ?? '').toString()), style: textStyle)),
+                    Expanded(flex: 3, child: Tooltip(
+                      message: (entry['exclusionReason'] ?? status).toString(),
+                      child: Text(status, maxLines: 2, overflow: TextOverflow.ellipsis, style: textStyle),
+                    )),
+                  ]));
+                },
+              ),
+            ),
+          ],
+        ),
+      ]),
+    )),
+    );
+  }
+
   Widget _buildBatchImportTab(AppLocalizations l,
       {bool showInlineControls = true}) {
     {
       final cs = Theme.of(context).colorScheme;
       final hasGroup = resolveGroupId().trim().isNotEmpty;
-      final selectedCount = batchArchiveName == null ? batchDocumentNames.length : 1;
+      final selectedCount = batchArchiveName == null
+          ? batchDocumentNames.length
+          : _batchJobInt(_batchArchiveInspection?['compatibleDocuments']);
       const maxBatchDocs = _ExpenseUploadScreenStateBase._maxBatchDocuments;
       final jobStatusName = _expenseBatchJobStatusFromPayload(_batchJobStatus);
       final hasTrackedJob = (_batchJobId ?? '').trim().isNotEmpty;
@@ -218,6 +346,7 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
           if (batchArchiveName != null) ...[
             const SizedBox(height: 6),
             Text('ZIP: $batchArchiveName', style: Theme.of(context).textTheme.bodySmall),
+            _buildZipInspectionPanel(cs),
           ],
           if (jobActive && !batchSubmitting) ...[
             Align(
@@ -332,7 +461,7 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _BatchLeftControlPanel(
-            selectedCount: headerLoadedCount,
+            selectedCount: batchArchiveName == null ? headerLoadedCount : 1,
             maxDocuments: maxBatchDocs,
             totalBytes: totalBytes,
             submitting: batchSubmitting ||
@@ -346,7 +475,11 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
                 !jobCompleted &&
                 !hasPreviewItems &&
                 hasGroup &&
-                (batchDocumentNames.isNotEmpty || batchArchiveBytes != null),
+                (batchDocumentNames.isNotEmpty ||
+                    (batchArchiveBytes != null &&
+                        !_batchArchiveInspecting &&
+                        _batchArchiveInspection?['blocked'] != true &&
+                        _batchJobInt(_batchArchiveInspection?['compatibleDocuments']) > 0)),
             jobActive: jobActive,
             jobCompleted: jobCompleted,
             jobFailed: jobFailed,

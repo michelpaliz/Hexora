@@ -232,12 +232,16 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       setState(() {
         _batchArchiveBytes = archive.fileBytes;
         _batchArchiveName = archive.fileName;
+        _batchArchiveInspection = null;
+        _batchArchiveInspectionError = null;
+        _batchArchiveInspecting = true;
         _batchDocumentBytes = [];
         _batchDocumentNames = [];
         _batchError = null;
         _batchSkippedDetails = [];
         _batchVerifyMessage = null;
       });
+      await _inspectSelectedBatchArchive();
       return;
     }
     if (files.isEmpty) {
@@ -320,8 +324,7 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
 
     if (!mounted) return;
     setState(() {
-      _batchArchiveBytes = null;
-      _batchArchiveName = null;
+      clearBatchArchive();
       _batchDocumentBytes = bytes;
       _batchDocumentNames = names;
       _batchSkippedDetails = skippedDetails;
@@ -839,8 +842,7 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
     _resetBatchJobTracking(clearResult: true, clearCache: true);
     _batchDocumentBytes.clear();
     _batchDocumentNames.clear();
-    _batchArchiveBytes = null;
-    _batchArchiveName = null;
+    clearBatchArchive();
     _batchSkippedDetails.clear();
     _batchVerifyMessage = null;
     _batchError = null;
@@ -908,6 +910,51 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
     _startBatchJobPolling();
   }
 
+  Future<void> _inspectSelectedBatchArchive() async {
+    final archiveBytes = _batchArchiveBytes;
+    final archiveName = _batchArchiveName;
+    if (archiveBytes == null || archiveName == null) return;
+    final groupId = resolveGroupId().trim();
+    if (groupId.isEmpty) {
+      setState(() {
+        _batchArchiveInspecting = false;
+        _batchArchiveInspectionError = 'Selecciona un grupo para inspeccionar el ZIP.';
+      });
+      return;
+    }
+    setState(() {
+      _batchArchiveInspecting = true;
+      _batchArchiveInspectionError = null;
+    });
+    try {
+      final inspection = await _api.inspectBatchExpenseZip(
+        archiveBytes: archiveBytes,
+        archiveName: archiveName,
+        groupId: groupId,
+      );
+      if (!mounted || !identical(_batchArchiveBytes, archiveBytes)) return;
+      setState(() {
+        _batchArchiveInspection = inspection;
+        _batchArchiveInspectionError = null;
+        _batchArchiveInspecting = false;
+      });
+    } on ExpensesApiException catch (error) {
+      if (!mounted || !identical(_batchArchiveBytes, archiveBytes)) return;
+      setState(() {
+        _batchArchiveInspection = null;
+        _batchArchiveInspectionError = error.message;
+        _batchArchiveInspecting = false;
+      });
+    } catch (error) {
+      if (!mounted || !identical(_batchArchiveBytes, archiveBytes)) return;
+      setState(() {
+        _batchArchiveInspection = null;
+        _batchArchiveInspectionError = _friendlyNetworkError(error);
+        _batchArchiveInspecting = false;
+      });
+    }
+  }
+
   Future<void> _submitBatchImport() async {
     if (_batchSubmitting || _batchGeneratingJson || _batchStartingJob) return;
     final attemptId = 'expbatch_${DateTime.now().microsecondsSinceEpoch}';
@@ -928,6 +975,15 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
 
     if ((_batchDocumentBytes.isEmpty || _batchDocumentNames.isEmpty) && _batchArchiveBytes == null) {
       setState(() => _batchError = 'Upload at least 1 document first.');
+      return;
+    }
+
+    if (_batchArchiveBytes != null &&
+        (_batchArchiveInspecting ||
+            _batchArchiveInspection == null ||
+            _batchJobInt(_batchArchiveInspection?['compatibleDocuments']) == 0 ||
+            _batchArchiveInspection?['blocked'] == true)) {
+      setState(() => _batchError = 'No hay documentos ZIP compatibles confirmados para analizar. Revisa el desglose del archivo.');
       return;
     }
 
