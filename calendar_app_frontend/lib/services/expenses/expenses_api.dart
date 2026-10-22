@@ -969,6 +969,15 @@ class ExpensesApi {
     String? from,
     String? to,
     String? currency,
+    String? search,
+    String? fileType,
+    bool zeroVat = false,
+    String? category,
+    String? verificationStatus,
+    bool? hasDocument,
+    double? minAmount,
+    double? maxAmount,
+    List<String>? expenseIds,
   }) async {
     final params = <String, String>{
       'groupId': groupId.trim(),
@@ -978,6 +987,18 @@ class ExpensesApi {
       if ((from ?? '').trim().isNotEmpty) 'from': from!.trim(),
       if ((to ?? '').trim().isNotEmpty) 'to': to!.trim(),
       if ((currency ?? '').trim().isNotEmpty) 'currency': currency!.trim(),
+      if ((search ?? '').trim().isNotEmpty) 'search': search!.trim(),
+      if ((fileType ?? '').trim().isNotEmpty) 'fileType': fileType!.trim(),
+      if (zeroVat) 'zeroVat': 'true',
+      if ((category ?? '').trim().isNotEmpty) 'category': category!.trim(),
+      if ((verificationStatus ?? '').trim().isNotEmpty)
+        'verificationStatus': verificationStatus!.trim(),
+      if (hasDocument != null) 'hasDocument': hasDocument.toString(),
+      if (minAmount != null) 'minAmount': minAmount.toString(),
+      if (maxAmount != null) 'maxAmount': maxAmount.toString(),
+      if (expenseIds != null && expenseIds.isNotEmpty)
+        'expenseIds': expenseIds.join(','),
+      if (expenseIds != null && expenseIds.isEmpty) 'matchNone': 'true',
     };
     final uri = _u('/summary-totals', params);
     return _getMap(uri);

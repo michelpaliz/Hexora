@@ -127,6 +127,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   bool _bulkReprocessingVat = false;
   Map<String, dynamic>? _bulkReprocessJob;
   Timer? _bulkReprocessPollTimer;
+  Timer? _searchDebounce;
+  int _summaryRequestVersion = 0;
 
   @override
   void initState() {
@@ -170,6 +172,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   @override
   void dispose() {
     _bulkReprocessPollTimer?.cancel();
+    _searchDebounce?.cancel();
     _tabs.dispose();
     _searchController.dispose();
     _desktopToolbarScrollController.removeListener(_syncToolbarScrollState);
@@ -251,28 +254,46 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   }
 
   Future<void> _loadSummary(int quarter) async {
+    final requestVersion = ++_summaryRequestVersion;
     setState(() {
       _summaryLoading[quarter] = true;
       _summaryErrors[quarter] = null;
       _summary.remove(quarter);
     });
-    final range = _quarterRangeDates(_year, quarter);
-    final from = _formatDate(range.$1);
-    final to = _formatDate(range.$2);
+    final selectedYear = _selectedYearFilter;
+    final range = quarter == 0
+        ? selectedYear == null
+            ? null
+            : (DateTime(selectedYear, 1, 1), DateTime(selectedYear + 1, 1, 1))
+        : _quarterRangeDates(selectedYear ?? _year, quarter);
+    final from = range == null ? null : _formatDate(range.$1);
+    final to = range == null ? null : _formatDate(range.$2);
     try {
       final items = await _expensesApi.summaryTotals(
         groupId: widget.groupId,
-        from: quarter == 0 ? null : from,
-        to: quarter == 0 ? null : to,
+        from: from,
+        to: to,
         currency: 'EUR',
+        search: _searchQuery,
+        fileType: _selectedFileType.name,
+        zeroVat: _showOnlyZeroVat,
+        expenseIds:
+            (_showOnlyDuplicateInvoiceIds || _showOnlyPotentialDuplicates)
+                ? _visibleUploads
+                    .map((item) => (item['id'] ?? '').trim())
+                    .where((id) => id.isNotEmpty)
+                    .toList(growable: false)
+                : null,
       );
-      if (!mounted) return;
+      if (!mounted || requestVersion != _summaryRequestVersion) return;
       setState(() => _summary[quarter] = items);
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || requestVersion != _summaryRequestVersion) return;
       setState(() => _summaryErrors[quarter] = e.toString());
     } finally {
-      if (mounted) setState(() => _summaryLoading[quarter] = false);
+      if (mounted && requestVersion == _summaryRequestVersion) {
+        setState(() => _summaryLoading[quarter] = false);
+      }
     }
   }
 
@@ -286,7 +307,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   (DateTime, DateTime) _quarterRangeDates(int year, int quarter) {
     final startMonth = 1 + (quarter - 1) * 3;
     final start = DateTime(year, startMonth, 1);
-    final end = DateTime(year, startMonth + 3, 0);
+    // Backend date ranges use an exclusive upper bound.
+    final end = DateTime(year, startMonth + 3, 1);
     return (start, end);
   }
 
@@ -555,7 +577,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         nextVisible.any((item) => (item['id'] ?? '').trim() == selectedId);
 
     setState(() => _selectedQuarterFilter = quarter);
-    _ensureLoaded(quarter ?? 0);
+    _reloadActiveSummary();
 
     if (!keepsCurrent && nextVisible.isNotEmpty) {
       widget.onSelectExpense(nextVisible.first);
@@ -579,10 +601,26 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         nextVisible.any((item) => (item['id'] ?? '').trim() == selectedId);
 
     setState(() => _selectedYearFilter = year);
+    _reloadActiveSummary();
 
     if (!keepsCurrent && nextVisible.isNotEmpty) {
       widget.onSelectExpense(nextVisible.first);
     }
+  }
+
+  void _reloadActiveSummary() {
+    final key = _selectedQuarterFilter ?? 0;
+    _summary.remove(key);
+    _loadSummary(key);
+  }
+
+  void _onSearchChanged(String value) {
+    setState(() => _searchQuery = value.trim());
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 350),
+      _reloadActiveSummary,
+    );
   }
 
   void _setSortOption(_ExpenseListSortOption option) {
@@ -1669,9 +1707,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     final currency = _summaryCurrency(summary);
     final summaryLoading = _summaryLoading[_selectedQuarterFilter ?? 0] == true;
     final summaryError = _summaryErrors[_selectedQuarterFilter ?? 0];
-    final totalColor = cs.brightness == Brightness.light
-        ? const Color(0xFFE65100)
-        : cs.secondary;
+    final totalColor = cs.primary;
 
     Widget metric(String label, String value) {
       return Row(
@@ -1791,7 +1827,34 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.26)),
       ),
-      child: content,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Text(
+                isSpanish ? 'Resumen de gastos' : 'Expense summary',
+                style: t.bodySmall.copyWith(
+                  color: cs.onSurface,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                isSpanish ? 'Según filtros activos' : 'Based on active filters',
+                style: t.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          content,
+        ],
+      ),
     );
   }
 
@@ -1864,7 +1927,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     return TextField(
       controller: _searchController,
       style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
-      onChanged: (v) => setState(() => _searchQuery = v.trim()),
+      onChanged: _onSearchChanged,
       decoration: InputDecoration(
         hintText: isSpanish
             ? 'Buscar por proveedor, factura o importe…'
@@ -1888,6 +1951,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                 onPressed: () {
                   _searchController.clear();
                   setState(() => _searchQuery = '');
+                  _searchDebounce?.cancel();
+                  _reloadActiveSummary();
                 },
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
@@ -2140,7 +2205,10 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     return PopupMenuButton<_ExpenseFileTypeFilter>(
       tooltip: isSpanish ? 'Filtrar por tipo' : 'Filter by type',
       initialValue: _selectedFileType,
-      onSelected: (v) => setState(() => _selectedFileType = v),
+      onSelected: (v) {
+        setState(() => _selectedFileType = v);
+        _reloadActiveSummary();
+      },
       itemBuilder: (context) => [
         PopupMenuItem(
           value: _ExpenseFileTypeFilter.all,
@@ -2250,6 +2318,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
               break;
           }
         });
+        _reloadActiveSummary();
       },
       itemBuilder: (context) => [
         CheckedPopupMenuItem(
@@ -3101,12 +3170,11 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     final summaryLoading = _summaryLoading[_selectedQuarterFilter ?? 0] == true;
     final summaryError = _summaryErrors[_selectedQuarterFilter ?? 0];
 
-    final isLight = cs.brightness == Brightness.light;
     final isMobileSummary = MediaQuery.sizeOf(context).width < 520;
 
     // Light: deep orange (matches brand amber but with proper contrast)
     // Dark: secondary (light amber works on dark bg)
-    final totalColor = isLight ? const Color(0xFFE65100) : cs.secondary;
+    final totalColor = cs.primary;
 
     // Thin group separator
     Widget divider() => Container(
