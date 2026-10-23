@@ -397,6 +397,7 @@ class _NotificationCategoryFilterBarState
     final isEs = Localizations.localeOf(context).languageCode == 'es';
     switch (category) {
       case Category.eventReminder:
+      case Category.eventStarted:
         return isEs ? 'Recordatorios' : 'Reminders';
       case Category.userInvitation:
         return isEs ? 'Invitaciones' : 'Invitations';
@@ -432,6 +433,7 @@ class _NotificationCategoryFilterBarState
   IconData _iconForCategory(Category category) {
     switch (category) {
       case Category.eventReminder:
+      case Category.eventStarted:
         return Icons.alarm;
       case Category.userInvitation:
         return Icons.person_add_rounded;
@@ -473,6 +475,7 @@ class _NotificationCategoryFilterBarState
         return _Priority.high;
       case Category.message:
       case Category.eventReminder:
+      case Category.eventStarted:
       case Category.taskUpdate:
         return _Priority.medium;
       case Category.achievement:
@@ -498,6 +501,7 @@ class _NotificationCategoryFilterBarState
       case Category.message:
         return NotificationFilterTone.message;
       case Category.eventReminder:
+      case Category.eventStarted:
       case Category.taskUpdate:
         return NotificationFilterTone.medium;
       case Category.achievement:

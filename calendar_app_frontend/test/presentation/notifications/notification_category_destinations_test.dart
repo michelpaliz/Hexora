@@ -1,6 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/presentation/enums/category/broad_category.dart';
+import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_category_meta.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_destination.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_payload_helper.dart';
 
@@ -9,6 +11,34 @@ NotificationUser notice(Category category,
     NotificationUser.fromJson(
         {'id': 'n', 'category': category.index, 'titleKey': key, 'args': args});
 void main() {
+  test('legacy activity categories resolve from notification keys', () {
+    for (final entry in <String, (int, Category)>{
+      'notification.invoice.issued': (5, Category.billing),
+      'notification.event.concurrentCreated': (6, Category.actionRequired),
+      'notification.bankExpensesDetected': (7, Category.systemUpdate),
+      'notification.recurringInvoice.draftCreated': (8, Category.billing),
+    }.entries) {
+      final notification = NotificationUser.fromJson({
+        'id': 'legacy',
+        'titleKey': '${entry.key}.title',
+        'category': entry.value.$1,
+      });
+      expect(notification.category, entry.value.$2, reason: entry.key);
+    }
+  });
+
+  test('routine activity uses document and banking icons, not warning icons',
+      () {
+    const colors = ColorScheme.light();
+    final draft = notice(Category.systemAlert,
+        key: 'notification.recurringInvoice.draftCreated.title');
+    final bank = notice(Category.message,
+        key: 'notification.bankExpensesDetected.title');
+    expect(resolveNotifMeta(draft, colors).icon, Icons.receipt_long_rounded);
+    expect(resolveNotifMeta(bank, colors).icon,
+        Icons.account_balance_wallet_outlined);
+  });
+
   const expectations = {
     Category.groupCreation: (
       BroadCategory.group,
@@ -41,6 +71,10 @@ void main() {
       NotificationDestination.information
     ),
     Category.eventReminder: (
+      BroadCategory.other,
+      NotificationDestination.information
+    ),
+    Category.eventStarted: (
       BroadCategory.other,
       NotificationDestination.information
     ),
@@ -128,7 +162,12 @@ void main() {
         resolveNotificationDestination(
             notice(Category.systemAlert, args: {'eventId': 'event'})),
         NotificationDestination.event);
-    for (final stem in ['bankExpensesDetected', 'bank.expenses.detected']) {
+    for (final stem in [
+      'bankExpensesDetected',
+      'bank.expenses.detected',
+      'suspectExpenses.detected',
+      'statement.expenseDetected'
+    ]) {
       expect(
           resolveNotificationDestination(
               notice(Category.systemAlert, key: 'notification.$stem.title')),

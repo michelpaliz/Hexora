@@ -20,6 +20,8 @@ enum Category {
   systemUpdate,
   feedbackRequest,
   errorReport,
+  // Wire category 15, emitted when an event transitions to started.
+  eventStarted,
 }
 
 class NotificationUser {
@@ -101,11 +103,7 @@ class NotificationUser {
         ),
 
         // ✅ Robust enum parsing for category
-        category: _parseEnum<Category>(
-          json['category'],
-          Category.values,
-          Category.message,
-        ),
+        category: _parseNotificationCategory(json),
       );
     } catch (e) {
       debugPrint('❌ Error parsing NotificationUser from JSON: $e');
@@ -159,6 +157,42 @@ class NotificationUser {
     map.remove('_id');
     return map;
   }
+}
+
+Category _parseNotificationCategory(Map<String, dynamic> json) {
+  final titleKey = (json['titleKey'] ?? '').toString();
+  final messageKey = (json['messageKey'] ?? '').toString();
+  bool hasKey(String stem) =>
+      titleKey == '$stem.title' || messageKey == '$stem.message';
+
+  // Earlier activity notifications used numeric categories that conflict with
+  // the shared wire enum. Use their stable localization keys for old records.
+  if (const [
+    'notification.invoice.issued',
+    'notification.receipt.issued',
+    'notification.presupuesto.issued',
+    'notification.recurringInvoice.draftCreated',
+    'notification.recurring.invoice.draft.created',
+    'notification.recurringDraftInvoice.created',
+  ].any(hasKey)) {
+    return Category.billing;
+  }
+  if (const [
+    'notification.bankExpensesDetected',
+    'notification.bank.expenses.detected',
+    'notification.suspectExpenses.detected',
+    'notification.statement.expenseDetected',
+  ].any(hasKey)) {
+    return Category.systemUpdate;
+  }
+  if (hasKey('notification.event.concurrentCreated')) {
+    return Category.actionRequired;
+  }
+  return _parseEnum<Category>(
+    json['category'],
+    Category.values,
+    Category.message,
+  );
 }
 
 T _parseEnum<T>(dynamic value, List<T> enumValues, T fallback) {

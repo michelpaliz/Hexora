@@ -398,6 +398,7 @@ _NotificationPriority _priorityForCategory(Category category) {
       return _NotificationPriority.high;
     case Category.message:
     case Category.eventReminder:
+    case Category.eventStarted:
     case Category.taskUpdate:
       return _NotificationPriority.medium;
     case Category.achievement:

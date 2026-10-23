@@ -6,6 +6,7 @@ import 'package:hexora/models/jobs/job_notification.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/services/downloads/downloads_api.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/services/groups/event/repository/i_event_repository.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/notification/notification_api_client.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
@@ -18,6 +19,10 @@ import 'package:hexora/presentation/shared/downloads/download_jobs_store.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/notifications/widgets/mobile_notification.dart';
+import 'package:hexora/presentation/screens/notifications/show-notifications/utils/event_args_helper.dart';
+import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_destination.dart';
+import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_payload_helper.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/utils/errors/group_membership_error_mapper.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/premium_upgrade_dialog.dart';
@@ -48,6 +53,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
   bool _downloadsMode = false;
   bool _ocrJobsMode = false;
   bool _loading = true;
+  bool _processing = false;
   String? _error;
   bool _initialized = false;
   List<JobNotification> _jobNotifications = const [];
@@ -310,6 +316,10 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
     final jobId = notification.args['downloadJobId']?.toString().trim() ?? '';
     if (jobId.isEmpty) {
       if (!mounted) return;
+      if (MediaQuery.sizeOf(context).width < 1180) {
+        await _showNotificationDetail(notification);
+        return;
+      }
       setState(() {
         _downloadsMode = false;
         _selected = notification;
@@ -338,6 +348,227 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
       _downloadsMode = true;
       _selectedDownload = latest;
     });
+  }
+
+  GroupInvoicesRouteArgs? _documentRouteArgs(NotificationUser notification) {
+    if (!isIssuedDocumentNotification(notification)) return null;
+    final data = documentIssuedNotification(notification);
+    final documentId = (data.documentId ?? '').trim();
+    if (documentId.isEmpty) return null;
+    switch (data.documentType) {
+      case IssuedDocumentType.invoice:
+        return GroupInvoicesRouteArgs(
+          group: widget.group,
+          initialMenu: 'invoices_issued',
+          initialInvoiceId: documentId,
+        );
+      case IssuedDocumentType.receipt:
+        return GroupInvoicesRouteArgs(
+          group: widget.group,
+          initialMenu: 'receipts',
+          initialReceiptId: documentId,
+        );
+      case IssuedDocumentType.presupuesto:
+        return GroupInvoicesRouteArgs(
+          group: widget.group,
+          initialMenu: 'budgets_list',
+          initialBudgetId: documentId,
+        );
+      case IssuedDocumentType.unknown:
+        return null;
+    }
+  }
+
+  NotificationDestination? _openDestination(NotificationUser notification) {
+    final groupId = (notification.args['groupId'] ?? notification.groupId)
+        .toString()
+        .trim();
+    if (groupId.isNotEmpty && groupId != widget.group.id) return null;
+    final destination = resolveNotificationDestination(notification);
+    switch (destination) {
+      case NotificationDestination.document:
+        return _documentRouteArgs(notification) == null ? null : destination;
+      case NotificationDestination.invoiceDraft:
+        final invoiceId = (notification.args['invoiceId'] ??
+                notification.args['documentId'] ??
+                '')
+            .toString()
+            .trim();
+        return invoiceId.isEmpty ? null : destination;
+      case NotificationDestination.event:
+        return EventArgsHelper(notification.args).eventId == null
+            ? null
+            : destination;
+      case NotificationDestination.expenses:
+      case NotificationDestination.members:
+      case NotificationDestination.group:
+        return destination;
+      case NotificationDestination.information:
+      case NotificationDestination.invitation:
+      case NotificationDestination.download:
+        return null;
+    }
+  }
+
+  String _openLabel(
+    NotificationDestination destination,
+    bool isEs, {
+    NotificationUser? notification,
+  }) {
+    if (destination == NotificationDestination.document &&
+        notification != null) {
+      return switch (documentIssuedNotification(notification).documentType) {
+        IssuedDocumentType.invoice => isEs ? 'Ver factura' : 'View invoice',
+        IssuedDocumentType.receipt => isEs ? 'Ver recibo' : 'View receipt',
+        IssuedDocumentType.presupuesto =>
+          isEs ? 'Ver presupuesto' : 'View estimate',
+        IssuedDocumentType.unknown => isEs ? 'Ver documento' : 'View document',
+      };
+    }
+    return switch (destination) {
+      NotificationDestination.document =>
+        isEs ? 'Ver documento' : 'View document',
+      NotificationDestination.invoiceDraft =>
+        isEs ? 'Ver borrador' : 'View draft',
+      NotificationDestination.event => isEs ? 'Ver evento' : 'View event',
+      NotificationDestination.expenses =>
+        isEs ? 'Ver movimientos' : 'View transactions',
+      NotificationDestination.members => isEs ? 'Ver miembros' : 'View members',
+      NotificationDestination.group => isEs ? 'Ver grupo' : 'View group',
+      _ => isEs ? 'Abrir' : 'Open',
+    };
+  }
+
+  Future<void> _openNotification(NotificationUser notification) async {
+    final destination = _openDestination(notification);
+    if (destination == null) return;
+    final documentArgs = _documentRouteArgs(notification);
+    if (destination == NotificationDestination.document &&
+        documentArgs != null) {
+      await Navigator.of(context).pushNamed(
+        AppRoutes.groupInvoices,
+        arguments: documentArgs,
+      );
+      return;
+    }
+    if (destination == NotificationDestination.invoiceDraft) {
+      final invoiceId =
+          (notification.args['invoiceId'] ?? notification.args['documentId'])
+              .toString()
+              .trim();
+      await Navigator.of(context).pushNamed(
+        AppRoutes.groupInvoices,
+        arguments: GroupInvoicesRouteArgs(
+          group: widget.group,
+          initialMenu: 'invoices_drafts',
+          initialInvoiceId: invoiceId,
+        ),
+      );
+      return;
+    }
+    if (destination == NotificationDestination.event) {
+      final eventId = EventArgsHelper(notification.args).eventId!;
+      final event =
+          await context.read<IEventRepository>().getEventById(eventId);
+      if (!mounted) return;
+      await Navigator.of(context).pushNamed(
+        AppRoutes.eventDetail,
+        arguments: event,
+      );
+      return;
+    }
+    await Navigator.of(context).pushNamed(
+      switch (destination) {
+        NotificationDestination.expenses => AppRoutes.enableBanking,
+        NotificationDestination.members => AppRoutes.groupMembers,
+        _ => AppRoutes.groupDashboard,
+      },
+      arguments: widget.group,
+    );
+  }
+
+  Future<void> _handleOpenNotification(NotificationUser notification) async {
+    if (_processing) return;
+    setState(() => _processing = true);
+    try {
+      await _markReadBeforeOpen(notification);
+      if (!mounted) return;
+      await _openNotification(notification);
+    } catch (_) {
+      if (!mounted) return;
+      final isEs = Localizations.localeOf(context).languageCode == 'es';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isEs
+            ? 'No se pudo abrir el contenido. Puede que ya no esté disponible o no tengas acceso.'
+            : 'Could not open this content. It may no longer be available or you may not have access.'),
+      ));
+    } finally {
+      if (mounted) setState(() => _processing = false);
+    }
+  }
+
+  Future<void> _handleMarkRead(NotificationUser notification) async {
+    await _viewModel.markNotificationAsRead(notification);
+    if (!mounted) return;
+    setState(() {
+      notification.isRead = true;
+      _notifications = List<NotificationUser>.of(_notifications);
+    });
+  }
+
+  Future<void> _markReadBeforeOpen(NotificationUser notification) async {
+    if (notification.isRead) return;
+    try {
+      await _handleMarkRead(notification);
+    } catch (_) {
+      // A read-state failure must not block opening the related content.
+    }
+  }
+
+  Future<void> _showNotificationDetail(NotificationUser notification) async {
+    if (_processing) return;
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    final destination = _openDestination(notification);
+    final action = await Navigator.of(context).push<NotificationDetailAction>(
+      MaterialPageRoute(
+        builder: (_) => NotificationDetailPage(
+          notification: notification,
+          openLabel: destination == null
+              ? null
+              : _openLabel(destination, es, notification: notification),
+        ),
+      ),
+    );
+    if (!mounted || action == null) return;
+    setState(() => _processing = true);
+    try {
+      switch (action) {
+        case NotificationDetailAction.open:
+          await _markReadBeforeOpen(notification);
+          if (mounted) await _openNotification(notification);
+          break;
+        case NotificationDetailAction.markRead:
+          await _handleMarkRead(notification);
+          break;
+        case NotificationDetailAction.confirm:
+          await _handleConfirm(notification);
+          break;
+        case NotificationDetailAction.decline:
+          await _handleNegate(notification);
+          break;
+        case NotificationDetailAction.delete:
+          await _handleDelete(notification);
+          break;
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('${AppLocalizations.of(context)!.error}: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _processing = false);
+    }
   }
 
   Future<void> _handleOcrJobSelected(BackgroundJob job) async {
@@ -524,6 +755,9 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                   : (visibleNotifications.isNotEmpty
                       ? visibleNotifications.first
                       : null);
+              final selectedDestination = effectiveSelected == null
+                  ? null
+                  : _openDestination(effectiveSelected);
               final effectiveSelectedDownload = _selectedDownload != null
                   ? downloads
                           .where((d) => d.id == _selectedDownload!.id)
@@ -708,6 +942,24 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                                 : NotificationDetailsPanel(
                                     notification: effectiveSelected,
                                     groupName: widget.group.name,
+                                    onOpen: effectiveSelected != null &&
+                                            selectedDestination != null
+                                        ? () => _handleOpenNotification(
+                                            effectiveSelected)
+                                        : null,
+                                    openLabel: selectedDestination == null
+                                        ? null
+                                        : _openLabel(
+                                            selectedDestination,
+                                            Localizations.localeOf(context)
+                                                    .languageCode ==
+                                                'es',
+                                            notification: effectiveSelected),
+                                    onMarkRead: effectiveSelected != null &&
+                                            !effectiveSelected.isRead
+                                        ? () =>
+                                            _handleMarkRead(effectiveSelected)
+                                        : null,
                                     onConfirm: effectiveSelected == null
                                         ? null
                                         : () =>

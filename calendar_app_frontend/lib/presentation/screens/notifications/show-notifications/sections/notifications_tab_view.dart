@@ -38,7 +38,7 @@ class NotificationsTabView extends StatelessWidget {
   final bool loadingJobNotifications;
   final bool Function(JobNotification notification) isAttentionJobNotification;
   final FutureOr<void> Function(NotificationUser) onConfirm;
-  final ValueChanged<NotificationUser> onOpenDocument;
+  final FutureOr<void> Function(NotificationUser) onOpenDocument;
   final ValueChanged<BackgroundJob> onOpenActiveJob;
   final ValueChanged<JobNotification> onOpenJobNotification;
 
@@ -331,7 +331,7 @@ class _NotificationsList extends StatefulWidget {
   final FutureOr<void> Function(NotificationUser) onConfirm;
   final Future<void> Function(NotificationUser) onNegate;
   final Future<void> Function(NotificationUser) onMarkRead;
-  final ValueChanged<NotificationUser> onOpenDocument;
+  final FutureOr<void> Function(NotificationUser) onOpenDocument;
 
   @override
   State<_NotificationsList> createState() => _NotificationsListState();
@@ -440,9 +440,9 @@ class _NotificationsListState extends State<_NotificationsList> {
             onConfirm: () => _runAction(n, widget.onConfirm),
             onNegate: () => _runAction(n, widget.onNegate),
             onMarkRead: () => _runAction(n, widget.onMarkRead),
-            onOpenEvent: (_, __) => widget.onOpenDocument(n),
-            onTap: () => widget.onOpenDocument(n),
-            onOpenDocument: () => widget.onOpenDocument(n),
+            onOpenEvent: (_, __) => _runAction(n, widget.onOpenDocument),
+            onTap: () => _runAction(n, widget.onOpenDocument),
+            onOpenDocument: () => _runAction(n, widget.onOpenDocument),
           )));
 
   List<_NotifGroup> _collapseConsecutive(

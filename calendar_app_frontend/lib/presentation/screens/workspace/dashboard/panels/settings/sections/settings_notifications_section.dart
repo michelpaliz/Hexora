@@ -459,6 +459,7 @@ class _SettingsNotificationsSectionState
   String _categoryLabel(Category category) {
     switch (category) {
       case Category.eventReminder:
+      case Category.eventStarted:
         return 'Recordatorios';
       case Category.userInvitation:
         return 'Invitaciones';
@@ -494,6 +495,7 @@ class _SettingsNotificationsSectionState
   static IconData _getIconForCategory(Category category) {
     switch (category) {
       case Category.eventReminder:
+      case Category.eventStarted:
         return Icons.alarm;
       case Category.userInvitation:
         return Icons.person_add_rounded;

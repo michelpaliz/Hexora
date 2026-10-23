@@ -451,12 +451,12 @@ class _ShowNotificationsState extends State<ShowNotifications>
         await Navigator.of(context).pushNamed(AppRoutes.groupInvoices,
             arguments: GroupInvoicesRouteArgs(
                 group: group,
-                initialMenu: 'invoices_issued',
+                initialMenu: 'invoices_drafts',
                 initialInvoiceId: invoiceId));
       } else {
         await Navigator.of(context).pushNamed(
             switch (destination) {
-              NotificationDestination.expenses => AppRoutes.groupExpenses,
+              NotificationDestination.expenses => AppRoutes.enableBanking,
               NotificationDestination.members => AppRoutes.groupMembers,
               _ => AppRoutes.groupDashboard,
             },
@@ -702,9 +702,7 @@ class _ShowNotificationsState extends State<ShowNotifications>
           loadingJobNotifications: _loadingJobNotifications,
           isAttentionJobNotification: _isAttentionJobNotification,
           onConfirm: _handleInviteConfirmation,
-          onOpenDocument: (notification) {
-            _handleNotificationOpen(notification);
-          },
+          onOpenDocument: _handleNotificationOpen,
           onOpenActiveJob: (job) =>
               _openJobOnce(job.id, () => _openExpenseJob(job)),
           onOpenJobNotification: (notification) => _openJobOnce(
