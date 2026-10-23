@@ -52,6 +52,7 @@ void main() {
 
   testWidgets('filter header exposes sorting and active state', (tester) async {
     var ascending = false;
+    var cleared = false;
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: HexoraFilterableHeaderCell(
@@ -63,7 +64,7 @@ void main() {
             onSortAscending: () => ascending = true,
             onSortDescending: () {},
             filterActive: true,
-            onClear: () {},
+            onClear: () => cleared = true,
             child: const SizedBox.shrink(),
           ),
         ),
@@ -73,7 +74,16 @@ void main() {
     await tester.tap(find.byTooltip('Filtrar y ordenar Total'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ascendente'));
+    await tester.pumpAndSettle();
 
     expect(ascending, isTrue);
+    expect(find.text('Limpiar'), findsOneWidget);
+
+    await tester.tap(find.text('Limpiar'));
+    await tester.pumpAndSettle();
+
+    expect(cleared, isTrue);
+    expect(find.text('Limpiar'), findsNothing);
+    expect(find.byTooltip('Filtrar y ordenar Total'), findsOneWidget);
   });
 }

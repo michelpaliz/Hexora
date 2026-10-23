@@ -508,7 +508,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
           CompactDocumentTableHeader(
             identityLabel: 'Factura',
             visibleFinancialColumns: _visibleFinancialColumns,
-            actionsWidth: 144,
+            actionsWidth: 128,
             headerBuilder: (context, column, label, width, numeric) =>
                 _buildInvoiceColumnHeader(
               context,

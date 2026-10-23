@@ -189,7 +189,7 @@ extension _InvoiceColumnFilters on _InvoicesTabListState {
                   ? null
                   : () {
                       _clearFilterFor(column);
-                      Navigator.of(context).pop();
+                      closeHexoraColumnFilterMenu(context);
                     },
               icon: const Icon(Icons.filter_alt_off_outlined, size: 15),
               label: const Text('Limpiar'),
@@ -303,6 +303,7 @@ extension _InvoiceColumnFilters on _InvoicesTabListState {
     _updateInvoiceListState(() {
       switch (column) {
         case CompactDocumentColumn.identity:
+          _invoiceSearchDebounce?.cancel();
           _invoiceNumberQuery = '';
         case CompactDocumentColumn.client:
           _selectedClientNames = {};

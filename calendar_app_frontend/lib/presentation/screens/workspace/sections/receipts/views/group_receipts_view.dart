@@ -480,7 +480,7 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
               CompactDocumentTableHeader(
                 identityLabel: 'Recibo',
                 visibleFinancialColumns: _visible,
-                actionsWidth: 144,
+                actionsWidth: 128,
                 headerBuilder: _header,
               ),
             ],

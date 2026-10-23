@@ -66,71 +66,95 @@ class HexoraFilterableHeaderCell extends StatelessWidget {
             : numeric
                 ? AlignmentDirectional.centerEnd
                 : AlignmentDirectional.centerStart,
-        child: PopupMenuButton<void>(
-          tooltip: 'Filtrar y ordenar $label',
-          padding: EdgeInsets.zero,
-          position: PopupMenuPosition.under,
-          constraints: const BoxConstraints(minWidth: 260, maxWidth: 320),
-          itemBuilder: (context) => [
-            PopupMenuItem<void>(
-              enabled: false,
-              padding: EdgeInsets.zero,
-              child: menuBuilder(context),
+        child: MenuAnchor(
+          style: MenuStyle(
+            padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+            backgroundColor: WidgetStatePropertyAll(cs.surface),
+            elevation: const WidgetStatePropertyAll(6),
+            shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(color: cs.outlineVariant),
+              ),
+            ),
+          ),
+          menuChildren: [
+            SizedBox(
+              width: 300,
+              child: Builder(builder: menuBuilder),
             ),
           ],
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 30),
-            padding: const EdgeInsets.symmetric(horizontal: 3),
-            decoration: filterActive
-                ? BoxDecoration(
-                    color: cs.primaryContainer.withValues(alpha: .55),
-                    borderRadius: BorderRadius.circular(6),
-                  )
-                : null,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontFamily: HexoraTypography.fontFamily,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w500,
-                          color:
-                              filterActive ? cs.primary : cs.onSurfaceVariant,
-                        ),
-                  ),
+          builder: (context, controller, child) => Tooltip(
+            message: 'Filtrar y ordenar $label',
+            child: InkWell(
+              borderRadius: BorderRadius.circular(6),
+              onTap: controller.isOpen ? controller.close : controller.open,
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 30),
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                decoration: filterActive
+                    ? BoxDecoration(
+                        color: cs.primaryContainer.withValues(alpha: .55),
+                        borderRadius: BorderRadius.circular(6),
+                      )
+                    : null,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              fontFamily: HexoraTypography.fontFamily,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                              color: filterActive
+                                  ? cs.primary
+                                  : cs.onSurfaceVariant,
+                            ),
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                    Icon(
+                      sortDirection == HexoraHeaderSortDirection.ascending
+                          ? Icons.arrow_upward_rounded
+                          : sortDirection ==
+                                  HexoraHeaderSortDirection.descending
+                              ? Icons.arrow_downward_rounded
+                              : Icons.filter_alt_outlined,
+                      size: 13,
+                      color: filterActive || sortDirection != null
+                          ? cs.primary
+                          : cs.onSurfaceVariant,
+                    ),
+                    if (filterActive)
+                      Container(
+                        margin: const EdgeInsetsDirectional.only(start: 3),
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                            color: cs.primary, shape: BoxShape.circle),
+                      ),
+                  ],
                 ),
-                const SizedBox(width: 3),
-                Icon(
-                  sortDirection == HexoraHeaderSortDirection.ascending
-                      ? Icons.arrow_upward_rounded
-                      : sortDirection == HexoraHeaderSortDirection.descending
-                          ? Icons.arrow_downward_rounded
-                          : Icons.filter_alt_outlined,
-                  size: 13,
-                  color: filterActive || sortDirection != null
-                      ? cs.primary
-                      : cs.onSurfaceVariant,
-                ),
-                if (filterActive)
-                  Container(
-                    margin: const EdgeInsetsDirectional.only(start: 3),
-                    width: 5,
-                    height: 5,
-                    decoration: BoxDecoration(
-                        color: cs.primary, shape: BoxShape.circle),
-                  ),
-              ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
+}
+
+void closeHexoraColumnFilterMenu(BuildContext context) {
+  final controller = MenuController.maybeOf(context);
+  if (controller != null) {
+    controller.close();
+    return;
+  }
+  Navigator.of(context).maybePop();
 }
 
 class HexoraColumnFilterMenu extends StatelessWidget {
@@ -204,7 +228,7 @@ class HexoraColumnFilterMenu extends StatelessWidget {
                 onPressed: filterActive
                     ? () {
                         onClear();
-                        Navigator.of(context).pop();
+                        closeHexoraColumnFilterMenu(context);
                       }
                     : null,
                 icon: const Icon(Icons.filter_alt_off_outlined, size: 15),

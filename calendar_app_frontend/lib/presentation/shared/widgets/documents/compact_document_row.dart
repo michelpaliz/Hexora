@@ -20,6 +20,7 @@ Set<HexoraFinancialColumn> _columnsForWidth(
 }
 
 const _expandedTableWidth = 1080.0;
+const _compactActionSlot = 32.0;
 
 enum CompactDocumentColumn {
   identity,
@@ -152,7 +153,7 @@ class CompactDocumentTableHeader extends StatelessWidget {
     this.statusLabel = 'Estado',
     this.paymentLabel = 'Pago',
     this.actionsLabel = 'Acciones',
-    this.actionsWidth = 144,
+    this.actionsWidth = _compactActionSlot * 4,
     this.headerBuilder,
   });
 
@@ -186,7 +187,8 @@ class CompactDocumentTableHeader extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final split =
         DocumentWorkspaceScope.maybeOf(context)?.mode == DocumentViewMode.split;
-    final effectiveActionsWidth = split ? actionsWidth - 36 : actionsWidth;
+    final effectiveActionsWidth =
+        split ? actionsWidth - _compactActionSlot : actionsWidth;
     return LayoutBuilder(builder: (context, constraints) {
       if (constraints.maxWidth < 560) return const SizedBox.shrink();
       final contentWidth = constraints.maxWidth - 24;
@@ -330,7 +332,7 @@ class CompactDocumentRow extends StatelessWidget {
     // The web target platform may still report Android/iOS. Use the actual
     // viewport so desktop panes do not inherit the stacked mobile row.
     final touch = MediaQuery.sizeOf(context).width < 650;
-    final target = touch ? 48.0 : 36.0;
+    final target = touch ? 48.0 : _compactActionSlot;
     final emptySlots = effectiveQuickActionSlots > visibleQuickActions.length
         ? effectiveQuickActionSlots - visibleQuickActions.length
         : 0;

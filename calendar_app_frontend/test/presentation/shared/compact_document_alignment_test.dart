@@ -72,6 +72,12 @@ void main() {
       expect(find.text('Factura'), findsOneWidget);
       expect(find.text('Cliente'), findsOneWidget);
       expect(find.text('Acciones'), findsOneWidget);
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('document-actions-header')))
+            .width,
+        128,
+      );
       expect(find.text('Pago'), findsOneWidget);
       expect(find.text('Pagada'), findsOneWidget);
       expect(find.text('Parcial'), findsOneWidget);

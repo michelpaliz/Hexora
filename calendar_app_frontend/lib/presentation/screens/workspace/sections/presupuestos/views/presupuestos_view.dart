@@ -2926,7 +2926,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                     CompactDocumentTableHeader(
                       identityLabel: 'Presupuesto',
                       visibleFinancialColumns: _budgetVisibleColumns,
-                      actionsWidth: primaryActionWidth + 144,
+                      actionsWidth: primaryActionWidth + 128,
                       headerBuilder: _budgetHeader,
                     ),
                   Expanded(
