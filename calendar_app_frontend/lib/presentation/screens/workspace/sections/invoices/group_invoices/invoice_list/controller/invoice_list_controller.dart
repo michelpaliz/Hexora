@@ -469,6 +469,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
           : DateTimeRange(start: _fromDate!, end: _toDate!),
       firstDate: DateTime(now.year - 10),
       lastDate: DateTime(now.year + 5),
+      builder: hexoraCompactDateRangePickerBuilder,
     );
     if (picked == null) return;
     setState(() {

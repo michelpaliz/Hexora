@@ -201,6 +201,7 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
       initialDateRange: _fromDate == null || _toDate == null
           ? null
           : DateTimeRange(start: _fromDate!, end: _toDate!),
+      builder: hexoraCompactDateRangePickerBuilder,
     );
     if (value != null) {
       setState(() {

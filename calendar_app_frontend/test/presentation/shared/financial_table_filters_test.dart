@@ -3,6 +3,32 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 
 void main() {
+  testWidgets('desktop date range picker is constrained to a compact surface',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1600, 900);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(
+        builder: (context) => hexoraCompactDateRangePickerBuilder(
+          context,
+          const SizedBox(
+            key: ValueKey('date-range-picker-content'),
+            width: double.infinity,
+            height: double.infinity,
+          ),
+        ),
+      ),
+    ));
+
+    expect(
+      tester.getSize(find.byKey(const ValueKey('date-range-picker-content'))),
+      const Size(520, 620),
+    );
+  });
+
   testWidgets('multi-select filters preserve simultaneous selections',
       (tester) async {
     Set<String> selected = {};

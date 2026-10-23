@@ -33,6 +33,47 @@ abstract final class HexoraFinancialFormat {
 
 enum HexoraHeaderSortDirection { ascending, descending }
 
+/// Keeps Material's date-range picker compact on desktop while allowing it to
+/// use the available viewport on phones and small tablets.
+Widget hexoraCompactDateRangePickerBuilder(
+  BuildContext context,
+  Widget? child,
+) {
+  final viewport = MediaQuery.sizeOf(context);
+  final availableWidth = viewport.width - 32;
+  final availableHeight = viewport.height - 32;
+  final maxWidth = availableWidth < 520 ? availableWidth : 520.0;
+  final maxHeight = availableHeight < 620 ? availableHeight : 620.0;
+  final theme = Theme.of(context);
+  const radius = 14.0;
+
+  return Theme(
+    data: theme.copyWith(
+      datePickerTheme: theme.datePickerTheme.copyWith(
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radius),
+        ),
+      ),
+    ),
+    child: Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: maxWidth,
+          maxHeight: maxHeight,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(radius),
+          child: Material(
+            type: MaterialType.transparency,
+            child: child ?? const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 /// Compact table-header control shared by document workspaces. The popover
 /// keeps filter inputs out of the table until they are needed.
 class HexoraFilterableHeaderCell extends StatelessWidget {

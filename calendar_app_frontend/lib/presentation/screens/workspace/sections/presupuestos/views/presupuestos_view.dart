@@ -2252,6 +2252,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       initialDateRange: _budgetFromDate == null || _budgetToDate == null
           ? null
           : DateTimeRange(start: _budgetFromDate!, end: _budgetToDate!),
+      builder: hexoraCompactDateRangePickerBuilder,
     );
     if (value != null) {
       setState(() {
