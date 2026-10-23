@@ -1451,18 +1451,17 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
       if (isDesktopEmbedded) {
         // The link panel docks beside the chat and results panes; both stay
         // mounted so the conversation and table keep their state.
+        final panelBg = navy ? AppColors.dashboardTopBar : canvas;
         return Container(
           decoration: BoxDecoration(
-            color: canvas,
-            borderRadius: BorderRadius.circular(16),
+            color: panelBg,
           ),
-          clipBehavior: Clip.antiAlias,
           child: SafeArea(
             top: false,
             bottom: false,
             child: HexoraSidePanelLayout(
               panel: inlineSurface,
-              backgroundColor: canvas,
+              backgroundColor: panelBg,
               child: Column(
                 children: [
                   Expanded(
