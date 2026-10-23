@@ -101,7 +101,10 @@ class HexoraFilterableHeaderCell extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Flexible(
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: width > 32 ? width - 32 : width,
+                      ),
                       child: Text(
                         label,
                         maxLines: 1,

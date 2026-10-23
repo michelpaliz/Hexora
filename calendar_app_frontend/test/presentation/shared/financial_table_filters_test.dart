@@ -86,4 +86,40 @@ void main() {
     expect(find.text('Limpiar'), findsNothing);
     expect(find.byTooltip('Filtrar y ordenar Total'), findsOneWidget);
   });
+
+  testWidgets('filter header lays out and opens in a narrow table column',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(360, 640);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Align(
+          alignment: Alignment.topRight,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              HexoraFilterableHeaderCell(
+                label: 'Base imponible',
+                width: 92,
+                menuBuilder: (_) => const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text('Filtro compacto'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ));
+
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byTooltip('Filtrar y ordenar Base imponible'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Filtro compacto'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
