@@ -23,6 +23,8 @@ class NotificationDetailsPanel extends StatefulWidget {
     required this.groupName,
     required this.onConfirm,
     required this.onNegate,
+    this.onOpen,
+    this.openLabel,
     required this.onDelete,
     this.onMarkRead,
   });
@@ -31,8 +33,10 @@ class NotificationDetailsPanel extends StatefulWidget {
   final String groupName;
   final VoidCallback? onConfirm;
   final VoidCallback? onNegate;
-  final VoidCallback? onDelete;
+  final VoidCallback? onOpen;
+  final String? openLabel;
   final VoidCallback? onMarkRead;
+  final VoidCallback? onDelete;
 
   @override
   State<NotificationDetailsPanel> createState() =>
@@ -614,6 +618,12 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
           ],
           const SizedBox(height: 12),
           Wrap(spacing: 8, runSpacing: 8, children: [
+            if (widget.onOpen != null)
+              FilledButton.icon(
+                onPressed: widget.onOpen,
+                icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                label: Text(widget.openLabel ?? (isEs ? 'Abrir' : 'Open')),
+              ),
             if (!n.isRead && widget.onMarkRead != null)
               OutlinedButton.icon(
                 onPressed: widget.onMarkRead,

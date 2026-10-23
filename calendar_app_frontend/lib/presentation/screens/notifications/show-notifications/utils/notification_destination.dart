@@ -48,7 +48,9 @@ NotificationDestination resolveNotificationDestination(NotificationUser n) {
   }
   if ([
     'notification.bankExpensesDetected',
-    'notification.bank.expenses.detected'
+    'notification.bank.expenses.detected',
+    'notification.suspectExpenses.detected',
+    'notification.statement.expenseDetected'
   ].any(key)) {
     return NotificationDestination.expenses;
   }
