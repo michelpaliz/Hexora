@@ -26,8 +26,15 @@ class NarrowLayout extends StatelessWidget {
         break;
       case Sections.invoices:
         child = GroupInvoicesScreen(
+          key: ValueKey(
+            'group-invoices-${state.group.id}-${state.invoicesNavigationRevision}',
+          ),
           group: state.group,
           embedded: true,
+          initialMenu: state.invoicesInitialMenu,
+          initialInvoiceId: state.invoicesInitialInvoiceId,
+          initialReceiptId: state.invoicesInitialReceiptId,
+          initialBudgetId: state.invoicesInitialBudgetId,
         );
         break;
       case Sections.budgets:

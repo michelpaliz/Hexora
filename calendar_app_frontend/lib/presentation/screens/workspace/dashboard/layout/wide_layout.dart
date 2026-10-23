@@ -101,10 +101,14 @@ class WideLayout extends StatelessWidget {
               : showInvoicesInline
                   ? GroupInvoicesScreen(
                       key: ValueKey(
-                        'group-invoices-${state.group.id}-${state.activeSection}',
+                        'group-invoices-${state.group.id}-${state.invoicesNavigationRevision}',
                       ),
                       group: state.group,
                       embedded: true,
+                      initialMenu: state.invoicesInitialMenu,
+                      initialInvoiceId: state.invoicesInitialInvoiceId,
+                      initialReceiptId: state.invoicesInitialReceiptId,
+                      initialBudgetId: state.invoicesInitialBudgetId,
                     )
                   : showBudgetsInline
                       ? PresupuestosModuleScreen(
@@ -302,9 +306,8 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
       destinations: _dashboardDestinations(l, canSeeAdmin: state.canSeeAdmin),
       activeId: state.activeSection,
       onSelected: state.openSection,
-      onBrandTap: state.canSeeAdmin
-          ? () => state.openSection(Sections.settings)
-          : null,
+      onBrandTap:
+          state.canSeeAdmin ? () => state.openSection(Sections.settings) : null,
       brandTooltip: es ? 'Ajustes del espacio' : 'Workspace settings',
       groupSwitcher: _GroupSwitcherChip(
         activeGroup: state.group,
@@ -331,16 +334,18 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
                       : user.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.of(context).bodySmall.copyWith(
-                      color: textColor, fontWeight: FontWeight.w600),
+                  style: AppTypography.of(context)
+                      .bodySmall
+                      .copyWith(color: textColor, fontWeight: FontWeight.w600),
                 ),
                 if (state.role != null)
                   Text(
                     roleLabelOf(context, state.role!),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.of(context).caption.copyWith(
-                        color: textColor.withValues(alpha: 0.7)),
+                    style: AppTypography.of(context)
+                        .caption
+                        .copyWith(color: textColor.withValues(alpha: 0.7)),
                   ),
               ],
             ),

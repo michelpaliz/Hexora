@@ -26,6 +26,8 @@ import 'package:hexora/presentation/screens/notifications/show-notifications/uti
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_destination.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_payload_helper.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_state.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
 import 'package:hexora/presentation/utils/errors/group_membership_error_mapper.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/premium_upgrade_dialog.dart';
 import 'package:hexora/presentation/viewmodels/notifications/notification_view_model.dart';
@@ -485,10 +487,12 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
     final documentArgs = _documentRouteArgs(notification);
     if (destination == NotificationDestination.document &&
         documentArgs != null) {
-      await Navigator.of(context).pushNamed(
-        AppRoutes.groupInvoices,
-        arguments: documentArgs,
-      );
+      context.read<GroupDashboardState>().openInvoicesWorkspace(
+            initialMenu: documentArgs.initialMenu ?? 'invoices_issued',
+            initialInvoiceId: documentArgs.initialInvoiceId,
+            initialReceiptId: documentArgs.initialReceiptId,
+            initialBudgetId: documentArgs.initialBudgetId,
+          );
       return;
     }
     if (destination == NotificationDestination.invoiceDraft) {
@@ -496,14 +500,10 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
           (notification.args['invoiceId'] ?? notification.args['documentId'])
               .toString()
               .trim();
-      await Navigator.of(context).pushNamed(
-        AppRoutes.groupInvoices,
-        arguments: GroupInvoicesRouteArgs(
-          group: widget.group,
-          initialMenu: 'invoices_drafts',
-          initialInvoiceId: invoiceId,
-        ),
-      );
+      context.read<GroupDashboardState>().openInvoicesWorkspace(
+            initialMenu: 'invoices_drafts',
+            initialInvoiceId: invoiceId,
+          );
       return;
     }
     if (destination == NotificationDestination.event) {
@@ -517,14 +517,12 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
       );
       return;
     }
-    await Navigator.of(context).pushNamed(
-      switch (destination) {
-        NotificationDestination.expenses => AppRoutes.enableBanking,
-        NotificationDestination.members => AppRoutes.groupMembers,
-        _ => AppRoutes.groupDashboard,
-      },
-      arguments: widget.group,
-    );
+    final dashboard = context.read<GroupDashboardState>();
+    dashboard.openSection(switch (destination) {
+      NotificationDestination.expenses => Sections.enableBanking,
+      NotificationDestination.members => Sections.members,
+      _ => Sections.calendar,
+    });
   }
 
   Future<void> _handleOpenNotification(NotificationUser notification) async {

@@ -86,12 +86,33 @@ class GroupDashboardState extends ChangeNotifier {
 
   // UI
   String activeSection = Sections.calendar;
+  String? invoicesInitialMenu;
+  String? invoicesInitialInvoiceId;
+  String? invoicesInitialReceiptId;
+  String? invoicesInitialBudgetId;
+  int invoicesNavigationRevision = 0;
 
   void selectSection(String section) {
     if (activeSection == section) return;
     activeSection = section;
     notifyListeners();
   }
+
+  void openInvoicesWorkspace({
+    required String initialMenu,
+    String? initialInvoiceId,
+    String? initialReceiptId,
+    String? initialBudgetId,
+  }) {
+    invoicesInitialMenu = initialMenu;
+    invoicesInitialInvoiceId = initialInvoiceId;
+    invoicesInitialReceiptId = initialReceiptId;
+    invoicesInitialBudgetId = initialBudgetId;
+    invoicesNavigationRevision += 1;
+    activeSection = Sections.invoices;
+    notifyListeners();
+  }
+
   CalendarDashboardActions? calendarActions;
 
   void setCalendarActions(CalendarDashboardActions? actions) {
