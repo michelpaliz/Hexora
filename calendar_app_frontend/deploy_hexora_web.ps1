@@ -26,7 +26,9 @@ Write-Host "Step 1/2: Building Hexora web for base path $BASE_HREF ..."
 Set-Location $LOCAL_PROJECT_PATH
 if (-Not $SkipBuild) {
   $BuildTag = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-  flutter build web --release --base-href $BASE_HREF --no-tree-shake-icons --dart-define="APP_BUILD_TAG=$BuildTag"
+  # Hexora is an online SaaS. Disable Flutter's offline-first service-worker
+  # cache so a successful deployment is visible on the next page load.
+  flutter build web --release --base-href $BASE_HREF --pwa-strategy=none --no-tree-shake-icons --dart-define="APP_BUILD_TAG=$BuildTag"
   if ($LASTEXITCODE -ne 0) {
     throw "Flutter build failed (exit $LASTEXITCODE). Deployment stopped."
   }
