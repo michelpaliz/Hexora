@@ -10,6 +10,7 @@ class StatementsTableTheme {
     required this.rowBgAlt,
     required this.rowHover,
     required this.rowSelected,
+    required this.rowActive,
     required this.border,
     required this.textPrimary,
     required this.textSecondary,
@@ -18,7 +19,13 @@ class StatementsTableTheme {
     required this.chipBg,
     required this.chipText,
   });
-  final Color headerBg, headerText, rowBg, rowBgAlt, rowHover, rowSelected;
+  final Color headerBg,
+      headerText,
+      rowBg,
+      rowBgAlt,
+      rowHover,
+      rowSelected,
+      rowActive;
   final Color border,
       textPrimary,
       textSecondary,
@@ -41,6 +48,7 @@ class StatementsTableTheme {
       rowBgAlt: surface,
       rowHover: Color.alphaBlend(cs.primary.withValues(alpha: .04), surface),
       rowSelected: Color.alphaBlend(cs.primary.withValues(alpha: .10), surface),
+      rowActive: Color.alphaBlend(cs.primary.withValues(alpha: .20), surface),
       border: cs.outlineVariant
           .withValues(alpha: HexoraTableTokens.separatorOpacity),
       textPrimary: cs.onSurface,

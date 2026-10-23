@@ -30,6 +30,11 @@ mixin _ExpenseUploadImportTabsSection on _ExpenseUploadScreenStateBase {
   List<String> get batchDocumentNames;
   Uint8List? get batchArchiveBytes;
   String? get batchArchiveName;
+  bool get batchArchiveInspecting;
+  Map<String, dynamic>? get batchArchiveInspection;
+  String? get batchArchiveInspectionError;
+  bool get batchArchiveFilesExpanded;
+  set batchArchiveFilesExpanded(bool value);
   void clearBatchArchive();
   String? get batchError;
   @override
@@ -48,7 +53,11 @@ mixin _ExpenseUploadImportTabsSection on _ExpenseUploadScreenStateBase {
   @override
   Future<void> pickBatchDocuments();
   @override
+  Future<void> pickBatchZip();
+  @override
   Future<void> submitBatchImport();
+  @override
+  Future<void> inspectSelectedBatchArchive();
   @override
   Future<void> cancelBatchPreviewJob();
   Future<void> confirmBatchPreviewImport();
@@ -124,6 +133,8 @@ mixin _ExpenseUploadImportTabsSection on _ExpenseUploadScreenStateBase {
                 _batchError = null;
               }),
       onDropWebDocuments: jobActive ? null : applyBatchDocumentData,
+      onPickDocuments: jobActive ? null : pickBatchDocuments,
+      onPickZip: jobActive ? null : pickBatchZip,
     );
   }
 

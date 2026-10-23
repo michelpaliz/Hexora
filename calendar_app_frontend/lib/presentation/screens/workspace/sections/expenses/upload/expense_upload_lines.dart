@@ -61,8 +61,8 @@ class ExpenseLinesEditor extends StatelessWidget {
               if (lines.isNotEmpty) ...[
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 7, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
                     color: cs.primaryContainer.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(20),
@@ -186,11 +186,10 @@ class _ExpenseLineCardState extends State<_ExpenseLineCard> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide:
-              BorderSide(color: cs.primary.withValues(alpha: 0.6)),
+          borderSide: BorderSide(color: cs.primary.withValues(alpha: 0.6)),
         ),
         filled: true,
-        fillColor: cs.surface.withValues(alpha: 0.6),
+        fillColor: cs.surfaceContainer,
         isDense: true,
         contentPadding: icon != null
             ? const EdgeInsets.symmetric(horizontal: 4, vertical: 9)
@@ -221,8 +220,8 @@ class _ExpenseLineCardState extends State<_ExpenseLineCard> {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: cs.primaryContainer.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(20),
@@ -381,8 +380,8 @@ class _ExpenseLineCardState extends State<_ExpenseLineCard> {
 
                 // ── Summary strip ──────────────────────────────
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 7),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                   decoration: BoxDecoration(
                     color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
                     borderRadius: BorderRadius.circular(8),

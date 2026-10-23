@@ -123,8 +123,11 @@ class ExpensesApi {
     }
     if (archiveBytes != null && archiveBytes.isNotEmpty) {
       req.files.add(http.MultipartFile.fromBytes(
-        'archive', archiveBytes,
-        filename: (archiveName ?? '').trim().isEmpty ? 'invoices.zip' : archiveName!.trim(),
+        'archive',
+        archiveBytes,
+        filename: (archiveName ?? '').trim().isEmpty
+            ? 'invoices.zip'
+            : archiveName!.trim(),
         contentType: MediaType('application', 'zip'),
       ));
     }
@@ -805,7 +808,8 @@ class ExpensesApi {
     Uint8List? archiveBytes,
     String? archiveName,
   }) async {
-    if ((documentFilesBytes.isEmpty && (archiveBytes == null || archiveBytes.isEmpty)) ||
+    if ((documentFilesBytes.isEmpty &&
+            (archiveBytes == null || archiveBytes.isEmpty)) ||
         documentFilesBytes.length != documentFileNames.length) {
       throw ArgumentError(
         'documentFilesBytes/documentFileNames must be non-empty and have same length',
@@ -820,6 +824,21 @@ class ExpensesApi {
       extraFields: {
         if ((currency ?? '').trim().isNotEmpty) 'currency': currency!.trim(),
       },
+      archiveBytes: archiveBytes,
+      archiveName: archiveName,
+    );
+  }
+
+  Future<Map<String, dynamic>> inspectBatchExpenseZip({
+    required Uint8List archiveBytes,
+    required String archiveName,
+    required String groupId,
+  }) {
+    return _sendBatchMultipartRequest(
+      endpoint: '/import-json-batch/preview/inspect',
+      documentFilesBytes: const [],
+      documentFileNames: const [],
+      groupId: groupId,
       archiveBytes: archiveBytes,
       archiveName: archiveName,
     );
@@ -853,7 +872,8 @@ class ExpensesApi {
     return _getMap(uri);
   }
 
-  Future<Map<String, dynamic>> cancelBatchExpensePreviewJob(String jobId) async {
+  Future<Map<String, dynamic>> cancelBatchExpensePreviewJob(
+      String jobId) async {
     final trimmedJobId = jobId.trim();
     if (trimmedJobId.isEmpty) throw ArgumentError('jobId is required');
     final uri = _u('/import-json-batch/preview/jobs/$trimmedJobId/cancel');
@@ -862,7 +882,8 @@ class ExpensesApi {
       response,
       url: uri,
       method: 'POST',
-      map: (json) => json is Map ? Map<String, dynamic>.from(json) : <String, dynamic>{},
+      map: (json) =>
+          json is Map ? Map<String, dynamic>.from(json) : <String, dynamic>{},
     );
   }
 

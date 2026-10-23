@@ -123,6 +123,9 @@ class ClientClassificationStore {
     final p = normalize(propertyKind);
     if (e != null) payload['entityType'] = e;
     if (p != null) payload['propertyKind'] = p;
+    // Nothing to register: an empty POST is rejected by the backend and used
+    // to surface as a failed client save even though the client was stored.
+    if (payload.isEmpty) return getOptions(groupId);
 
     final r = await AuthenticatedHttpClient.post(
       Uri.parse(_base(groupId)),

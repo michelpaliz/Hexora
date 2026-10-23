@@ -121,7 +121,7 @@ extension _GroupInvoicesBudgetsViewStepContentSection
               ),
               alignLabelWithHint: true,
               filled: true,
-              fillColor: cs.surface.withValues(alpha: 0.45),
+              fillColor: cs.surfaceContainer,
               isDense: true,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -147,283 +147,67 @@ extension _GroupInvoicesBudgetsViewStepContentSection
 
   Widget _buildStepContent(ColorScheme cs, AppLocalizations l) {
     if (_visibleStep == 0) {
-      final isExisting = _clientSource == _ClientSource.existing;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ── Info banner ────────────────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: cs.primary.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.info_outline_rounded, size: 15, color: cs.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    l.budgetClientInfoPrompt,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: cs.onSurface.withValues(alpha: 0.8),
-                      height: 1.45,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // ── Type selector ──────────────────────────────────────────────
-          Row(
-            children: [
-              _clientTypeOption(
-                cs: cs,
-                icon: Icons.group_outlined,
-                label: 'Cliente existente',
-                sublabel: 'De tu base de datos',
-                selected: isExisting,
-                onTap: !_isDraftEditable
-                    ? () {}
-                    : () => setState(() {
-                          _clientSource = _ClientSource.existing;
-                          _selectedClientId = null;
-                          _clientNameCtrl.clear();
-                          _clientAddressCtrl.clear();
-                          _clientCityCtrl.clear();
-                          _clientPostalCodeCtrl.clear();
-                          _markDraftDirty();
-                          _error = null;
-                        }),
-              ),
-              const SizedBox(width: 10),
-              _clientTypeOption(
-                cs: cs,
-                icon: Icons.edit_outlined,
-                label: 'Cliente manual',
-                sublabel: 'Solo nombre, sin ID',
-                selected: !isExisting,
-                onTap: !_isDraftEditable
-                    ? () {}
-                    : () => setState(() {
-                          _clientSource = _ClientSource.manual;
-                          _selectedClientId = null;
-                          _clientNameCtrl.clear();
-                          _clientAddressCtrl.clear();
-                          _clientCityCtrl.clear();
-                          _clientPostalCodeCtrl.clear();
-                          _markDraftDirty();
-                          _error = null;
-                        }),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          // ── Content area ───────────────────────────────────────────────
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            transitionBuilder: (child, animation) => FadeTransition(
-              opacity: animation,
-              child: child,
-            ),
-            child: isExisting
-                ? IgnorePointer(
-                    ignoring: !_isDraftEditable,
-                    child: Opacity(
-                      opacity: _isDraftEditable ? 1 : 0.7,
-                      child: _buildExistingClientLayout(cs),
-                    ),
-                  )
-                : Column(
-                    key: const ValueKey('manual'),
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Input card
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest
-                              .withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: cs.outlineVariant.withValues(alpha: 0.2)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  width: 28,
-                                  height: 28,
-                                  decoration: BoxDecoration(
-                                    color: cs.secondary.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Icon(Icons.person_add_outlined,
-                                      size: 14, color: cs.secondary),
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  'Nombre del cliente',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: cs.onSurface,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _clientNameCtrl,
-                              enabled: _isDraftEditable,
-                              autofocus: true,
-                              style: const TextStyle(fontSize: 13),
-                              onChanged: (_) => setState(() {
-                                _markDraftDirty();
-                                _error = null;
-                              }),
-                              decoration: InputDecoration(
-                                labelText: l.budgetClientNameLabel,
-                                labelStyle: TextStyle(
-                                  fontSize: 12,
-                                  color: cs.onSurfaceVariant,
-                                ),
-                                prefixIcon: Icon(
-                                  Icons.business_outlined,
-                                  size: 16,
-                                  color: cs.onSurfaceVariant
-                                      .withValues(alpha: 0.6),
-                                ),
-                                prefixIconConstraints: const BoxConstraints(
-                                    minWidth: 40, minHeight: 0),
-                                isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 11),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(9),
-                                  borderSide: BorderSide(
-                                      color: cs.outlineVariant
-                                          .withValues(alpha: 0.4)),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(9),
-                                  borderSide: BorderSide(
-                                      color: cs.outlineVariant
-                                          .withValues(alpha: 0.3)),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(9),
-                                  borderSide: BorderSide(
-                                      color:
-                                          cs.secondary.withValues(alpha: 0.7),
-                                      width: 1.5),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: TextField(
-                                    controller: _clientAddressCtrl,
-                                    enabled: _isDraftEditable,
-                                    style: const TextStyle(fontSize: 13),
-                                    onChanged: (_) => setState(() {
-                                      _markDraftDirty();
-                                      _error = null;
-                                    }),
-                                    decoration: _manualClientInputDecoration(
-                                      context: context,
-                                      label: 'Dirección',
-                                      icon: Icons.location_on_outlined,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _clientCityCtrl,
-                                    enabled: _isDraftEditable,
-                                    style: const TextStyle(fontSize: 13),
-                                    onChanged: (_) => setState(() {
-                                      _markDraftDirty();
-                                      _error = null;
-                                    }),
-                                    decoration: _manualClientInputDecoration(
-                                      context: context,
-                                      label: 'Ciudad',
-                                      icon: Icons.location_city_outlined,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                SizedBox(
-                                  width: 150,
-                                  child: TextField(
-                                    controller: _clientPostalCodeCtrl,
-                                    enabled: _isDraftEditable,
-                                    style: const TextStyle(fontSize: 13),
-                                    onChanged: (_) => setState(() {
-                                      _markDraftDirty();
-                                      _error = null;
-                                    }),
-                                    decoration: _manualClientInputDecoration(
-                                      context: context,
-                                      label: 'CP',
-                                      icon: Icons.markunread_mailbox_outlined,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      // Tip row
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 9),
-                        decoration: BoxDecoration(
-                          color:
-                              cs.surfaceContainerHighest.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(9),
-                          border: Border.all(
-                              color: cs.outlineVariant.withValues(alpha: 0.15)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.picture_as_pdf_outlined,
-                                size: 13,
-                                color: cs.onSurfaceVariant
-                                    .withValues(alpha: 0.55)),
-                            const SizedBox(width: 7),
-                            Expanded(
-                              child: Text(
-                                'El PDF mostrará el nombre manual y, si los completas, la dirección y ciudad.',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: cs.onSurfaceVariant,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-        ],
+      final selectedClient = _selectedClientId == null
+          ? null
+          : widget.clients.cast<GroupClient?>().firstWhere(
+                (client) => client?.id == _selectedClientId,
+                orElse: () => null,
+              );
+      return DocumentClientStep(
+        key: ValueKey(
+          _clientSource == _ClientSource.manual ? 'manual' : 'existing',
+        ),
+        clients: widget.clients,
+        selectedClientId: _selectedClientId,
+        onClientChanged: (value) {
+          setState(() {
+            _selectedClientId = value;
+            _markDraftDirty();
+            _error = null;
+          });
+          _loadClientBudgetStats(value);
+        },
+        mode: _clientSource == _ClientSource.manual
+            ? DocumentClientMode.manual
+            : DocumentClientMode.existing,
+        onModeChanged: (mode) {
+          setState(() {
+            _clientSource = mode == DocumentClientMode.manual
+                ? _ClientSource.manual
+                : _ClientSource.existing;
+            _markDraftDirty();
+            _error = null;
+          });
+        },
+        selectedDetails: selectedClient == null
+            ? null
+            : _buildBudgetClientDetails(cs, selectedClient),
+        manual: DocumentManualClientConfig(
+          nameController: _clientNameCtrl,
+          addressController: _clientAddressCtrl,
+          cityController: _clientCityCtrl,
+          postalCodeController: _clientPostalCodeCtrl,
+          nameLabel: l.budgetClientNameLabel,
+          addressLabel: _isSpanishLocale ? 'Dirección' : 'Address',
+          cityLabel: _isSpanishLocale ? 'Ciudad' : 'City',
+          postalCodeLabel: _isSpanishLocale ? 'CP' : 'Postal code',
+          helperText: _isSpanishLocale
+              ? 'La dirección, ciudad y CP son opcionales y solo se usan en este presupuesto.'
+              : 'Address, city, and postal code are optional and only used for this proposal.',
+          onChanged: () => setState(() {
+            _markDraftDirty();
+            _error = null;
+          }),
+        ),
+        enabled: _isDraftEditable,
+        existingLabel:
+            _isSpanishLocale ? 'Cliente existente' : 'Existing client',
+        manualLabel: _isSpanishLocale ? 'Cliente manual' : 'Manual client',
+        selectClientLabel:
+            _isSpanishLocale ? 'Selecciona cliente' : 'Select client',
+        emptySelectionLabel: _isSpanishLocale
+            ? 'Selecciona un cliente para continuar'
+            : 'Select a client to continue',
       );
     }
 
@@ -936,10 +720,10 @@ extension _GroupInvoicesBudgetsViewStepContentSection
                     Text(
                       _isSpanishLocale ? 'Revisión final' : 'Final review',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: cs.onSurface,
-                      ),
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            color: cs.onSurface,
+                          ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -1193,392 +977,91 @@ extension _GroupInvoicesBudgetsViewStepContentSection
     );
   }
 
-  Widget _clientTypeOption({
-    required ColorScheme cs,
-    required IconData icon,
-    required String label,
-    required String sublabel,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          decoration: BoxDecoration(
-            color: selected
-                ? cs.secondary.withValues(alpha: 0.08)
-                : cs.surfaceContainerHighest.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: selected
-                  ? cs.secondary.withValues(alpha: 0.45)
-                  : cs.outlineVariant.withValues(alpha: 0.25),
-              width: selected ? 1.5 : 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: selected
-                      ? cs.secondary.withValues(alpha: 0.14)
-                      : cs.surfaceContainerHighest.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  icon,
-                  size: 15,
-                  color: selected ? cs.secondary : cs.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: selected ? cs.secondary : cs.onSurface,
-                      ),
-                    ),
-                    Text(
-                      sublabel,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: cs.onSurfaceVariant
-                            .withValues(alpha: selected ? 0.8 : 0.6),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (selected)
-                Container(
-                  width: 18,
-                  height: 18,
-                  decoration: BoxDecoration(
-                    color: cs.secondary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.check_rounded,
-                      size: 11, color: cs.onSecondary),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  InputDecoration _manualClientInputDecoration({
-    required BuildContext context,
-    required String label,
-    required IconData icon,
-  }) {
-    final cs = Theme.of(context).colorScheme;
-    return InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(
-        fontSize: 12,
-        color: cs.onSurfaceVariant,
-      ),
-      prefixIcon: Icon(
-        icon,
-        size: 16,
-        color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-      ),
-      prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 0),
-      isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(9),
-        borderSide: BorderSide(
-          color: cs.outlineVariant.withValues(alpha: 0.4),
-        ),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(9),
-        borderSide: BorderSide(
-          color: cs.outlineVariant.withValues(alpha: 0.3),
-        ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(9),
-        borderSide: BorderSide(
-          color: cs.secondary.withValues(alpha: 0.7),
-          width: 1.5,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExistingClientLayout(ColorScheme cs) {
+  Widget _buildBudgetClientDetails(
+    ColorScheme cs,
+    GroupClient selectedClient,
+  ) {
     final t = AppTypography.of(context);
-    final isEs = _isSpanishLocale;
-    final selectedClient = _selectedClientId == null
-        ? null
-        : widget.clients.cast<GroupClient?>().firstWhere(
-              (c) => c?.id == _selectedClientId,
-              orElse: () => null,
-            );
-
-    Widget listCard({required double maxListHeight}) {
-      return Container(
-        key: const ValueKey('existing'),
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-              child: Row(
-                children: [
-                  Text(
-                    isEs ? 'Selecciona cliente' : 'Select client',
-                    style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Column(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  const Spacer(),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '${widget.clients.length}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
+                  child: Text(
+                    selectedClient.name.trim().isEmpty
+                        ? '?'
+                        : selectedClient.name.trim()[0].toUpperCase(),
+                    style: t.titleLarge.copyWith(
+                      color: cs.primary,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                child: ClientSearchSelect(
-                  clients: widget.clients,
-                  selectedClientId: _selectedClientId,
-                  onClientChanged: (value) {
-                    setState(() {
-                      _selectedClientId = value;
-                      _markDraftDirty();
-                      _error = null;
-                    });
-                    _loadClientBudgetStats(value);
-                  },
-                  useDefaultPropertyKind: false,
-                  showAdvancedFilters: false,
-                  maxListHeight: maxListHeight,
                 ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    Widget previewCard() {
-      return AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        decoration: BoxDecoration(
-          color: selectedClient != null
-              ? cs.primary.withValues(alpha: 0.04)
-              : cs.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selectedClient != null
-                ? cs.primary.withValues(alpha: 0.28)
-                : cs.outlineVariant.withValues(alpha: 0.35),
-          ),
-        ),
-        child: selectedClient == null
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color:
-                              cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(Icons.person_search_outlined,
-                            size: 26,
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        isEs
-                            ? 'Selecciona un cliente\npara continuar'
-                            : 'Select a client\nto continue',
-                        style: t.bodyMedium.copyWith(
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            : Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              color: cs.primary.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: Center(
-                              child: Text(
-                                selectedClient.name.trim().isEmpty
-                                    ? '?'
-                                    : selectedClient.name
-                                        .trim()[0]
-                                        .toUpperCase(),
-                                style: t.titleLarge.copyWith(
-                                  color: cs.primary,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            selectedClient.name,
-                            style: t.bodyLarge.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: cs.onSurface,
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      alignment: WrapAlignment.center,
-                      children: [
-                        if ((selectedClient.email ?? '').trim().isNotEmpty)
-                          _BudgetClientChip(
-                              icon: Icons.email_outlined,
-                              label: selectedClient.email!.trim()),
-                        if ((selectedClient.phone ?? '').trim().isNotEmpty)
-                          _BudgetClientChip(
-                              icon: Icons.phone_outlined,
-                              label: selectedClient.phone!.trim()),
-                        if ((selectedClient.entityType ?? '').trim().isNotEmpty)
-                          _BudgetClientChip(
-                              icon: Icons.business_outlined,
-                              label: selectedClient.entityType!.trim()),
-                        if ((selectedClient.propertyKind ?? '')
-                            .trim()
-                            .isNotEmpty)
-                          _BudgetClientChip(
-                              icon: Icons.home_work_outlined,
-                              label: selectedClient.propertyKind!.trim()),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: _BudgetClientStatsBox(
-                        issuedCount: _clientBudgetIssuedCount,
-                        draftCount: _clientBudgetDraftCount,
-                        loading: _loadingClientBudgetStats,
-                        pastBudgets: _clientPastBudgets,
-                        onPreview: _previewHistoricalBudget,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton.icon(
-                      onPressed: () => setState(() {
-                        if (_validateCurrentStep()) _setVisibleStep(1);
-                      }),
-                      icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                      label: Text(
-                        isEs ? 'Continuar → Detalles' : 'Continue → Details',
-                      ),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-      );
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 620;
-        if (!wide) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(
-                height: 430,
-                child: listCard(maxListHeight: 340),
-              ),
-              if (selectedClient != null) ...[
                 const SizedBox(height: 10),
-                FilledButton.icon(
-                  onPressed: () => setState(() {
-                    if (_validateCurrentStep()) _setVisibleStep(1);
-                  }),
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                  label: Text(
-                      isEs ? 'Continuar → Detalles' : 'Continue → Details'),
+                Text(
+                  selectedClient.name,
+                  style: t.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: cs.onSurface,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
-            ],
-          );
-        }
-        return SizedBox(
-          height: 460,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            alignment: WrapAlignment.center,
             children: [
-              Expanded(
-                  flex: 3, child: listCard(maxListHeight: double.infinity)),
-              const SizedBox(width: 12),
-              Expanded(flex: 2, child: previewCard()),
+              if ((selectedClient.email ?? '').trim().isNotEmpty)
+                _BudgetClientChip(
+                  icon: Icons.email_outlined,
+                  label: selectedClient.email!.trim(),
+                ),
+              if ((selectedClient.phone ?? '').trim().isNotEmpty)
+                _BudgetClientChip(
+                  icon: Icons.phone_outlined,
+                  label: selectedClient.phone!.trim(),
+                ),
+              if ((selectedClient.entityType ?? '').trim().isNotEmpty)
+                _BudgetClientChip(
+                  icon: Icons.business_outlined,
+                  label: selectedClient.entityType!.trim(),
+                ),
+              if ((selectedClient.propertyKind ?? '').trim().isNotEmpty)
+                _BudgetClientChip(
+                  icon: Icons.home_work_outlined,
+                  label: selectedClient.propertyKind!.trim(),
+                ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 12),
+          Expanded(
+            child: _BudgetClientStatsBox(
+              issuedCount: _clientBudgetIssuedCount,
+              draftCount: _clientBudgetDraftCount,
+              loading: _loadingClientBudgetStats,
+              pastBudgets: _clientPastBudgets,
+              onPreview: _previewHistoricalBudget,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

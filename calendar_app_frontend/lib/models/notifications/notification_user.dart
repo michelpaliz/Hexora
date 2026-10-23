@@ -75,15 +75,19 @@ class NotificationUser {
         messageKey: json['messageKey'] ?? '',
         fallbackTitle: json['fallbackTitle'] ?? '',
         fallbackMessage: json['fallbackMessage'] ?? '',
-        args:
-            json['args'] != null ? Map<String, dynamic>.from(json['args']) : {},
+        args: _notificationArgs(json),
         timestamp: json['timestamp'] != null
             ? DateTime.parse(json['timestamp'])
             : DateTime.now(),
         questionsAndAnswers: json['questionsAndAnswers'] != null
             ? Map<String, String>.from(json['questionsAndAnswers'])
             : {},
-        groupId: json['groupId']?.toString() ?? '',
+        groupId: (json['groupId'] ??
+                (json['args'] is Map
+                    ? (json['args'] as Map)['groupId']
+                    : null) ??
+                '')
+            .toString(),
         isRead: json['isRead'] ?? false,
 
         // ✅ Robust enum parsing for type
@@ -159,6 +163,24 @@ class NotificationUser {
     map.remove('_id');
     return map;
   }
+}
+
+Map<String, dynamic> _notificationArgs(Map<String, dynamic> json) {
+  final args = json['args'] is Map
+      ? Map<String, dynamic>.from(json['args'] as Map)
+      : <String, dynamic>{};
+  // Invitation payloads have existed in both top-level and args-based forms.
+  // Normalize them so every notification surface uses the same action path.
+  for (final key in const [
+    'invitationId',
+    'inviteId',
+    'invitation_id',
+    'invitation',
+    'groupId',
+  ]) {
+    if (!args.containsKey(key) && json[key] != null) args[key] = json[key];
+  }
+  return args;
 }
 
 T _parseEnum<T>(dynamic value, List<T> enumValues, T fallback) {

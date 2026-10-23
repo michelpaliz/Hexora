@@ -65,9 +65,14 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/recurrin
 import 'package:hexora/presentation/screens/workspace/sections/receipts/recurring/recurring_receipts_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/client_classification_store.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/add_client_sheet.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/client_header.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/client_classification_manager_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_workspace_chrome.dart';
+import 'package:hexora/navigation/shell/hexora_app_shell.dart'
+    show HexoraBreadcrumb;
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -156,6 +161,26 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   BillingProfile? _billingProfile;
   List<GroupClient> _clients = [];
   GroupClient? _selectedClient;
+
+  GroupClient? _defaultClient(
+    List<GroupClient> clients, {
+    String? preferredId,
+  }) {
+    if (preferredId != null) {
+      for (final client in clients) {
+        if (client.id == preferredId) return client;
+      }
+    }
+    for (final client in clients) {
+      if (client.isActive != false) return client;
+    }
+    return clients.isEmpty ? null : clients.first;
+  }
+
+  /// Client form shown in the clients view's right panel instead of a sheet.
+  /// [_inlineClientEditing] is null while creating a new client.
+  bool _inlineClientEditorOpen = false;
+  GroupClient? _inlineClientEditing;
   Invoice? _selectedInvoice;
   Receipt? _selectedReceipt;
   String? _recurringSeriesToOpen;
@@ -178,6 +203,9 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   String? _error;
   final bool _busyProfile = false;
   bool _disableReceiptPreviewInteraction = false;
+  int _receiptListTabIndex = 0;
+  final ValueNotifier<DocumentViewMode?> _receiptSplitModeNotifier =
+      ValueNotifier<DocumentViewMode?>(null);
   final Set<String> _updatingReceiptDeliveryIds = <String>{};
   String _selectedMenu = 'clients';
   bool _businessExpanded = false;
@@ -423,12 +451,10 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           growable: true,
         );
         _billingProfile = results[5] as BillingProfile?;
-        _selectedClient = previousSelectedClientId == null
-            ? (_clients.isNotEmpty ? _clients.first : null)
-            : _clients.cast<GroupClient?>().firstWhere(
-                  (client) => client?.id == previousSelectedClientId,
-                  orElse: () => _clients.isNotEmpty ? _clients.first : null,
-                );
+        _selectedClient = _defaultClient(
+          _clients,
+          preferredId: previousSelectedClientId,
+        );
         if (_selectedInvoice != null) {
           final stillExists =
               _invoices.any((i) => i.id == _selectedInvoice!.id) ||
@@ -578,12 +604,10 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           results[2] as List<Invoice>,
           growable: true,
         );
-        _selectedClient = previousSelectedClientId == null
-            ? (_clients.isNotEmpty ? _clients.first : null)
-            : _clients.cast<GroupClient?>().firstWhere(
-                  (client) => client?.id == previousSelectedClientId,
-                  orElse: () => _clients.isNotEmpty ? _clients.first : null,
-                );
+        _selectedClient = _defaultClient(
+          _clients,
+          preferredId: previousSelectedClientId,
+        );
         if (_selectedInvoice != null) {
           final stillExists =
               _invoices.any((i) => i.id == _selectedInvoice!.id) ||
@@ -1125,7 +1149,48 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     );
   }
 
+  /// The clients list has a right-hand panel on desktop; the form goes there.
+  bool get _clientFormInline =>
+      (_selectedMenu == 'clients' || _selectedMenu == 'clients_flow') &&
+      MediaQuery.sizeOf(context).width >= 900;
+
+  void _openInlineClientEditor(GroupClient? client) {
+    _updateView(() {
+      _inlineClientEditorOpen = true;
+      _inlineClientEditing = client;
+    });
+  }
+
+  void _closeInlineClientEditor() {
+    _updateView(() {
+      _inlineClientEditorOpen = false;
+      _inlineClientEditing = null;
+    });
+  }
+
+  void _handleInlineClientSaved(GroupClient saved) {
+    final l = AppLocalizations.of(context)!;
+    final isEdit = _clients.any((c) => c.id == saved.id);
+    _updateView(() {
+      _clients = isEdit
+          ? [for (final c in _clients) c.id == saved.id ? saved : c]
+          : [saved, ..._clients];
+      _selectedClient = saved;
+      _inlineClientEditorOpen = false;
+      _inlineClientEditing = null;
+    });
+    showSuccessSnack(
+        context,
+        isEdit
+            ? l.clientUpdatedWithName(saved.name)
+            : l.clientCreatedWithName(saved.name));
+  }
+
   Future<void> _openEditClient(GroupClient client) async {
+    if (_clientFormInline) {
+      _openInlineClientEditor(client);
+      return;
+    }
     final updated = await showModalBottomSheet<GroupClient>(
       context: context,
       isScrollControlled: true,
@@ -1150,6 +1215,10 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   }
 
   Future<void> _openCreateClient() async {
+    if (_clientFormInline) {
+      _openInlineClientEditor(null);
+      return;
+    }
     final created = await showModalBottomSheet<GroupClient>(
       context: context,
       isScrollControlled: true,
@@ -1197,7 +1266,9 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     if (mounted) {
       setState(() {
         _clients = _clients.where((c) => c.id != client.id).toList();
-        if (_selectedClient?.id == client.id) _selectedClient = null;
+        if (_selectedClient?.id == client.id) {
+          _selectedClient = _defaultClient(_clients);
+        }
       });
     }
   }
@@ -2121,6 +2192,12 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     );
 
     jsonCtrl.dispose();
+  }
+
+  @override
+  void dispose() {
+    _receiptSplitModeNotifier.dispose();
+    super.dispose();
   }
 
   @override

@@ -6,6 +6,7 @@ import 'package:hexora/presentation/screens/workspace/sections/enable_banking/st
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/statements_controller.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_link_button.dart';
 
 void main() {
   for (final layout in [
@@ -23,6 +24,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(tester.view.resetPhysicalSize);
 
+      final suggested = <String>[];
       final controller = StatementsController(useAggregated: false);
       addTearDown(controller.dispose);
       final entries = List.generate(
@@ -57,8 +59,8 @@ void main() {
                           onToggleAll: (_) {},
                           onToggleRow: (_) {},
                           onShowDetails: (_) {},
-                          onSuggest: (_) {},
-                          onLink: (_) {},
+                          onSuggest: (entry) =>
+                              suggested.add(entry['_id'] as String),
                           onLinkInvoice: (_) {},
                           onMarkNoProcede: (_) {},
                           noProcedeReasonForEntry: (_) => null,
@@ -94,17 +96,25 @@ void main() {
       expect(find.text('Notas'), findsNothing);
       expect(find.text('Contacto'),
           layout.$2 >= 1100 ? findsOneWidget : findsNothing);
-      expect(find.byTooltip('Más acciones'), findsWidgets);
-      await tester.ensureVisible(find.byTooltip('Más acciones').first);
+      // The "Vincular" action now lives inside the row's 3-dot menu.
+      expect(find.byType(HexoraLinkButton), findsNothing);
+      final moreActions = find.byTooltip('Más acciones');
+      expect(moreActions, findsWidgets);
+      await tester.ensureVisible(moreActions.first);
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Más acciones').first);
+      await tester.tap(moreActions.first);
       await tester.pumpAndSettle();
-      expect(find.text('Vincular cliente'), findsOneWidget);
+      expect(find.text('Vincular'), findsOneWidget);
+      expect(find.text('Vincular cliente'), findsNothing);
       expect(find.text('Añadir nota'), findsOneWidget);
+      expect(find.textContaining('manualmente'), findsNothing);
       final firstMenuItem = find
           .byWidgetPredicate((widget) => widget is PopupMenuItem<String>)
           .first;
       expect(tester.getSize(firstMenuItem).width, greaterThanOrEqualTo(112));
+      await tester.tap(find.text('Vincular'));
+      await tester.pumpAndSettle();
+      expect(suggested, ['entry-0']);
       expect(tester.takeException(), isNull);
       final dateLabels = tester
           .widgetList<RichText>(find.byType(RichText))

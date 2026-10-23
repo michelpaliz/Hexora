@@ -15,11 +15,11 @@ class StatementsAllDataTable extends StatelessWidget {
     required this.entries,
     required this.controller,
     required this.selectedIds,
+    this.activeEntryId,
     required this.onToggleAll,
     required this.onToggleRow,
     required this.onShowDetails,
     required this.onSuggest,
-    required this.onLink,
     required this.onLinkInvoice,
     required this.onMarkNoProcede,
     required this.noProcedeReasonForEntry,
@@ -41,11 +41,13 @@ class StatementsAllDataTable extends StatelessWidget {
   final List<Map<String, dynamic>> entries;
   final StatementsController controller;
   final Set<String> selectedIds;
+
+  /// Entry currently shown in the side panel; its row is highlighted.
+  final String? activeEntryId;
   final ValueChanged<bool> onToggleAll;
   final ValueChanged<String> onToggleRow;
   final ValueChanged<Map<String, dynamic>> onShowDetails;
   final ValueChanged<Map<String, dynamic>> onSuggest;
-  final ValueChanged<Map<String, dynamic>> onLink;
   final ValueChanged<Map<String, dynamic>> onLinkInvoice;
   final ValueChanged<Map<String, dynamic>> onMarkNoProcede;
   final String? Function(Map<String, dynamic> entry) noProcedeReasonForEntry;
@@ -126,10 +128,10 @@ class StatementsAllDataTable extends StatelessWidget {
                 isTablet: isTablet,
                 controller: controller,
                 selectedIds: selectedIds,
+                activeEntryId: activeEntryId,
                 onToggleRow: onToggleRow,
                 onShowDetails: onShowDetails,
                 onSuggest: onSuggest,
-                onLink: onLink,
                 onLinkInvoice: onLinkInvoice,
                 onMarkNoProcede: onMarkNoProcede,
                 noProcedeReason: noProcedeReasonForEntry(entry),

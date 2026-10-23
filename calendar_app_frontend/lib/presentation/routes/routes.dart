@@ -51,8 +51,17 @@ final Map<String, WidgetBuilder> routes = {
   AppRoutes.loginRoute: (context) => const LoginView(),
   AppRoutes.registerRoute: (context) => const RegisterView(),
   AppRoutes.forgotPasswordRoute: (context) => const ForgotPasswordScreen(),
-  AppRoutes.resetPasswordRoute: (context) => const ResetPasswordScreen(),
-  AppRoutes.passwordRecoveryRoute: (context) => const ForgotPasswordScreen(),
+  AppRoutes.resetPasswordRoute: (context) => ResetPasswordScreen(
+        initialToken: _routeToken(context),
+      ),
+  // Older reset emails use /password-recovery. Keep it as the forgot form
+  // when opened directly, but show the reset form when a token is present.
+  AppRoutes.passwordRecoveryRoute: (context) {
+    final token = _routeToken(context);
+    return token == null
+        ? const ForgotPasswordScreen()
+        : ResetPasswordScreen(initialToken: token);
+  },
   AppRoutes.verifyEmailRoute: (context) => const VerifyEmailView(),
   AppRoutes.verifyEmailSuccessRoute: (context) =>
       const VerifyEmailSuccessView(),
@@ -271,3 +280,12 @@ final Map<String, WidgetBuilder> routes = {
     return WorkerTimeTrackingScreen(group: group, worker: worker);
   },
 };
+
+String? _routeToken(BuildContext context) {
+  final routeName = ModalRoute.of(context)?.settings.name;
+  final routeUri = routeName == null ? null : Uri.tryParse(routeName);
+  final token =
+      routeUri?.queryParameters['token'] ?? Uri.base.queryParameters['token'];
+  final trimmed = token?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
+}

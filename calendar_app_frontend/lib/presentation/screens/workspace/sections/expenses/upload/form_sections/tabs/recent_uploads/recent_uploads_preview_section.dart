@@ -8,7 +8,6 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
     Map<String, String>? selectedExpense,
   ) {
     final item = selectedExpense;
-    final empty = item == null || item.isEmpty;
     final suspended = _suspendBackgroundPreview;
 
     return Container(
@@ -19,8 +18,8 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Simple header only for empty / suspended states
-          if (empty || suspended)
+          // Header is only needed while the preview is temporarily paused.
+          if (suspended)
             Container(
               padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
               decoration: BoxDecoration(
@@ -64,69 +63,23 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
     ColorScheme cs,
   ) {
     return Center(
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 320),
-        margin: const EdgeInsets.all(20),
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.28)),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              alignment: Alignment.center,
-              child: Icon(Icons.receipt_long_outlined,
-                  size: 22, color: cs.primary),
-            ),
-            const SizedBox(height: 14),
+            Icon(Icons.receipt_long_outlined,
+                size: 24, color: cs.onSurfaceVariant.withValues(alpha: 0.55)),
+            const SizedBox(height: 10),
+            Text('Selecciona una factura',
+                style: t.bodyMedium.copyWith(
+                    color: cs.onSurface, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
             Text(
-              'Selecciona una factura',
-              style: t.bodySmall.copyWith(
-                color: cs.onSurface,
-                fontWeight: FontWeight.w800,
-                fontSize: 14,
-              ),
+              'Su vista previa y detalles aparecerán aquí.',
+              textAlign: TextAlign.center,
+              style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Elige un gasto de la lista para ver su factura, OCR, impuestos y detalles.',
-              style:
-                  t.bodySmall.copyWith(color: cs.onSurfaceVariant, height: 1.4),
-            ),
-            const SizedBox(height: 14),
-            for (final feat in const [
-              'Datos del proveedor',
-              'Imagen o PDF de factura',
-              'Resultado OCR',
-              'Base imponible e IVA',
-              'Categoria y estado',
-            ]) ...[
-              Row(
-                children: [
-                  Icon(Icons.check_circle_outline_rounded,
-                      size: 16, color: cs.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      feat,
-                      style: t.bodySmall.copyWith(
-                          color: cs.onSurface, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-              if (feat != 'Categoria y estado') const SizedBox(height: 8),
-            ],
           ],
         ),
       ),

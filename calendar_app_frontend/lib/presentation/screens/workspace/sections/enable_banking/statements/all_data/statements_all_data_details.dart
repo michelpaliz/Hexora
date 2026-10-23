@@ -70,8 +70,7 @@ class StatementsAllDataDetails {
         final width = MediaQuery.of(dialogContext).size.width;
         final panelWidth = width < 520 ? width : 460.0;
         final cs = Theme.of(dialogContext).colorScheme;
-        final isLight =
-            Theme.of(dialogContext).brightness == Brightness.light;
+        final isLight = Theme.of(dialogContext).brightness == Brightness.light;
         final accentColor = amountIsNegative ? cs.error : cs.primary;
 
         String formatEuro(String raw) {
@@ -102,8 +101,8 @@ class StatementsAllDataDetails {
                 color: cs.surface,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black
-                        .withValues(alpha: isLight ? 0.14 : 0.38),
+                    color:
+                        Colors.black.withValues(alpha: isLight ? 0.14 : 0.38),
                     blurRadius: 48,
                     offset: const Offset(-6, 0),
                   ),
@@ -117,8 +116,8 @@ class StatementsAllDataDetails {
                     Container(
                       padding: const EdgeInsets.fromLTRB(18, 16, 8, 16),
                       decoration: BoxDecoration(
-                        color: accentColor
-                            .withValues(alpha: isLight ? 0.05 : 0.08),
+                        color: accentColor.withValues(
+                            alpha: isLight ? 0.05 : 0.08),
                         border: Border(
                           bottom: BorderSide(
                             color: cs.outlineVariant.withValues(alpha: 0.45),
@@ -158,8 +157,7 @@ class StatementsAllDataDetails {
                                 ),
                                 const SizedBox(height: 2),
                                 Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     Flexible(
                                       child: Text(
@@ -195,10 +193,8 @@ class StatementsAllDataDetails {
                           ),
                           IconButton(
                             tooltip: l.close,
-                            onPressed: () =>
-                                Navigator.of(dialogContext).pop(),
-                            icon: Icon(Icons.close,
-                                color: cs.onSurfaceVariant),
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                            icon: Icon(Icons.close, color: cs.onSurfaceVariant),
                           ),
                         ],
                       ),
@@ -218,8 +214,7 @@ class StatementsAllDataDetails {
                               child: Row(
                                 children: [
                                   Icon(Icons.tag_rounded,
-                                      size: 14,
-                                      color: cs.onSurfaceVariant),
+                                      size: 14, color: cs.onSurfaceVariant),
                                   const SizedBox(width: 6),
                                   Text(
                                     'Lote/ID',
@@ -232,8 +227,7 @@ class StatementsAllDataDetails {
                                     child: Tooltip(
                                       message: batchId ?? '-',
                                       child: Text(
-                                        (batchId == null ||
-                                                batchId.isEmpty)
+                                        (batchId == null || batchId.isEmpty)
                                             ? '-'
                                             : batchId,
                                         maxLines: 1,
@@ -301,10 +295,8 @@ class StatementsAllDataDetails {
                                 children: [
                                   _DetailCell(
                                     item: _DetailItem(
-                                      label:
-                                          l.statementsHeaderDescription,
-                                      value:
-                                          desc.isEmpty ? '-' : desc,
+                                      label: l.statementsHeaderDescription,
+                                      value: desc.isEmpty ? '-' : desc,
                                       icon: Icons.text_snippet_outlined,
                                     ),
                                   ),
@@ -339,8 +331,7 @@ class StatementsAllDataDetails {
                                       item: _DetailItem(
                                         label: l.statementsHeaderClient,
                                         value: clientLabel,
-                                        icon:
-                                            Icons.person_outline_rounded,
+                                        icon: Icons.person_outline_rounded,
                                       ),
                                     ),
                                   ),
@@ -386,6 +377,212 @@ class StatementsAllDataDetails {
       },
     );
   }
+
+  /// Scrollable transaction details body shared by the standalone details
+  /// dialog ([show]) and the merged detail + link panel. It mirrors the body
+  /// rendered by [show]; keep both in sync when the card changes.
+  static Widget buildDetailsBody(
+    BuildContext context,
+    AppLocalizations l,
+    Map<String, dynamic> entry,
+    StatementsController controller,
+  ) {
+    final batchId =
+        (entry['_batchId'] ?? entry['_id'] ?? entry['id'] ?? entry['batchId'])
+            ?.toString()
+            .trim();
+    final date = StatementsShared.entryText(entry, ['date']);
+    final valueDate = StatementsShared.entryText(entry, ['valueDate']);
+    final desc = StatementsShared.entryText(entry, ['description']);
+    final details = StatementsShared.entryText(entry, ['details']);
+    final clientLabel = StatementsShared.clientLabel(l, controller, entry);
+
+    String rawIndex(int index) {
+      final raw = entry['raw'];
+      if (raw is List && raw.length > index) {
+        final value = raw[index];
+        if (value != null) return value.toString();
+      }
+      return '';
+    }
+
+    final rawBalance = rawIndex(5);
+    final balance = rawBalance.isNotEmpty
+        ? rawBalance
+        : StatementsShared.entryText(entry, ['balance']);
+    final rawJson = const JsonEncoder.withIndent('  ').convert(entry);
+
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+
+    String formatEuro(String raw) {
+      if (raw.trim().isEmpty) return '-';
+      final formatted = StatementsFormatters.formatAmount(context, raw);
+      if (formatted.isEmpty) return '-';
+      return '$formatted €';
+    }
+
+    Future<void> copyValue(String value) async {
+      if (value.trim().isEmpty) return;
+      await Clipboard.setData(ClipboardData(text: value));
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Copiado')),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Lote/ID
+          _SectionCard(
+            cs: cs,
+            isLight: isLight,
+            child: Row(
+              children: [
+                Icon(Icons.tag_rounded, size: 14, color: cs.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Text(
+                  'Lote/ID',
+                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Tooltip(
+                    message: batchId ?? '-',
+                    child: Text(
+                      (batchId == null || batchId.isEmpty) ? '-' : batchId,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodySmall.copyWith(
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                  ),
+                ),
+                CopyIconButton(value: batchId ?? ''),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Dates
+          _SectionCard(
+            cs: cs,
+            isLight: isLight,
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _DetailCell(
+                      item: _DetailItem(
+                        label: 'Fecha operación',
+                        value: StatementsFormatters.formatDate(context, date),
+                        icon: Icons.calendar_today_outlined,
+                      ),
+                    ),
+                  ),
+                  VerticalDivider(
+                    width: 24,
+                    color: cs.outlineVariant.withValues(alpha: 0.4),
+                  ),
+                  Expanded(
+                    child: _DetailCell(
+                      item: _DetailItem(
+                        label: 'Fecha valor',
+                        value:
+                            StatementsFormatters.formatDate(context, valueDate),
+                        icon: Icons.event_outlined,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Description + Details
+          _SectionCard(
+            cs: cs,
+            isLight: isLight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _DetailCell(
+                  item: _DetailItem(
+                    label: l.statementsHeaderDescription,
+                    value: desc.isEmpty ? '-' : desc,
+                    icon: Icons.text_snippet_outlined,
+                  ),
+                ),
+                if (details.isNotEmpty) ...[
+                  Divider(
+                    height: 20,
+                    color: cs.outlineVariant.withValues(alpha: 0.4),
+                  ),
+                  _DetailCell(
+                    item: _DetailItem(
+                      label: l.statementsHeaderDetails,
+                      value: details,
+                      icon: Icons.info_outline_rounded,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Client + Balance
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _SectionCard(
+                  cs: cs,
+                  isLight: isLight,
+                  child: _DetailCell(
+                    item: _DetailItem(
+                      label: l.statementsHeaderClient,
+                      value: clientLabel,
+                      icon: Icons.person_outline_rounded,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _SectionCard(
+                  cs: cs,
+                  isLight: isLight,
+                  child: _DetailCell(
+                    item: _DetailItem(
+                      label: l.statementsHeaderBalance,
+                      value: formatEuro(balance),
+                      icon: Icons.account_balance_wallet_outlined,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Datos en bruto
+          _RawDataSection(
+            rawJson: rawJson,
+            entry: entry,
+            copyValue: copyValue,
+            cs: cs,
+            t: t,
+            isLight: isLight,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ── Section card ──────────────────────────────────────────────────────────────
@@ -411,8 +608,7 @@ class _SectionCard extends StatelessWidget {
             ? cs.surfaceContainerHighest.withValues(alpha: 0.32)
             : cs.surfaceContainerHighest.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.4)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: child,
     );
@@ -449,8 +645,7 @@ class _DetailCell extends StatelessWidget {
           children: [
             if (item.icon != null) ...[
               Icon(item.icon,
-                  size: 11,
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.65)),
+                  size: 11, color: cs.onSurfaceVariant.withValues(alpha: 0.65)),
               const SizedBox(width: 4),
             ],
             Text(
@@ -539,14 +734,11 @@ class _RawDataSection extends StatelessWidget {
               ? cs.surfaceContainerHighest.withValues(alpha: 0.32)
               : cs.surfaceContainerHighest.withValues(alpha: 0.18),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.4)),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
         ),
         child: ExpansionTile(
-          tilePadding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-          childrenPadding:
-              const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
           shape: const Border(),
           collapsedShape: const Border(),
           leading: Icon(Icons.data_object_rounded,
@@ -571,20 +763,18 @@ class _RawDataSection extends StatelessWidget {
                 _CopyChip(
                   label: 'ID',
                   icon: Icons.fingerprint_rounded,
-                  onTap: () =>
-                      copyValue(entry['_id']?.toString() ?? ''),
+                  onTap: () => copyValue(entry['_id']?.toString() ?? ''),
                 ),
                 _CopyChip(
                   label: 'Signature',
                   icon: Icons.key_rounded,
-                  onTap: () =>
-                      copyValue(entry['signature']?.toString() ?? ''),
+                  onTap: () => copyValue(entry['signature']?.toString() ?? ''),
                 ),
                 _CopyChip(
                   label: 'Merchant',
                   icon: Icons.store_outlined,
-                  onTap: () => copyValue(
-                      entry['merchantNormalized']?.toString() ?? ''),
+                  onTap: () =>
+                      copyValue(entry['merchantNormalized']?.toString() ?? ''),
                 ),
               ],
             ),
@@ -604,9 +794,7 @@ class _RawDataSection extends StatelessWidget {
                   fontFamily: 'monospace',
                   height: 1.4,
                   fontSize: 11,
-                  color: isLight
-                      ? const Color(0xFFCDD6F4)
-                      : cs.onSurface,
+                  color: isLight ? const Color(0xFFCDD6F4) : cs.onSurface,
                 ),
               ),
             ),
@@ -638,13 +826,11 @@ class _CopyChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: cs.primaryContainer.withValues(alpha: 0.35),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-              color: cs.primary.withValues(alpha: 0.28)),
+          border: Border.all(color: cs.primary.withValues(alpha: 0.28)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

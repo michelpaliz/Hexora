@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:hexora/theme/colors/app_colors.dart';
-import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/service_catalog/service.dart';
@@ -725,27 +723,6 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
           },
         );
 
-        final navigation = navigationTheme(Theme.of(context));
-        final editorTheme = navigation.copyWith(
-          canvasColor: const Color(0xFF1C3047),
-          cardColor: const Color(0xFF1C3047),
-          colorScheme: navigation.colorScheme.copyWith(
-            onPrimary: Colors.white,
-            surfaceContainerLowest: AppColors.dashboardTopBar,
-            surfaceContainerLow: const Color(0xFF1C3047),
-            surfaceContainer: const Color(0xFF223750),
-            surfaceContainerHigh: const Color(0xFF293F59),
-          ),
-          filledButtonTheme: FilledButtonThemeData(
-              style: FilledButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-          )),
-          popupMenuTheme: navigation.popupMenuTheme.copyWith(
-            color: const Color(0xFF1C3047),
-            surfaceTintColor: Colors.transparent,
-          ),
-        );
         return Padding(
           padding: const EdgeInsets.all(12),
           child: FolderPanel(
@@ -755,19 +732,15 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
             child: Row(
               children: [
                 if (kIsWeb) ...[
+                  Expanded(child: left),
+                  const SizedBox(width: 12),
                   SizedBox(
                     width: panelWidth,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Theme(
-                        data: editorTheme,
-                        child: ColoredBox(
-                            color: AppColors.dashboardTopBar, child: right),
-                      ),
+                      child: ColoredBox(color: cs.surface, child: right),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(child: left),
                 ] else ...[
                   Expanded(child: left),
                   Container(

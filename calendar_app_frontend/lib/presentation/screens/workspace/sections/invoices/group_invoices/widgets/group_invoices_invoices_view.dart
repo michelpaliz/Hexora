@@ -1,6 +1,7 @@
 import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_compact_financial_summary.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
@@ -37,6 +38,7 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
   final Group group;
   final Invoice? selectedInvoice;
   final ValueChanged<Invoice> onSelectInvoice;
+  final VoidCallback? onClearSelection;
   final ValueChanged<Invoice> onDeleteInvoice;
   final ValueChanged<Invoice> onEditDraft;
   final ValueChanged<Invoice> onIssueDraft;
@@ -53,6 +55,7 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
   final Future<void> Function(List<Invoice>)? onDownloadFiltered;
   final Future<void> Function(List<Invoice>)? onDownloadExcelFiltered;
   final bool canEditIssued;
+  final bool showHeaderTabs;
 
   const GroupInvoicesInvoicesView({
     super.key,
@@ -63,6 +66,7 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
     required this.group,
     required this.selectedInvoice,
     required this.onSelectInvoice,
+    this.onClearSelection,
     required this.onDeleteInvoice,
     required this.onEditDraft,
     required this.onIssueDraft,
@@ -79,6 +83,7 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
     this.onDownloadFiltered,
     this.onDownloadExcelFiltered,
     this.canEditIssued = false,
+    this.showHeaderTabs = true,
   });
 
   @override
@@ -87,6 +92,21 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
 }
 
 class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
+  final _splitModeNotifier = ValueNotifier<DocumentViewMode?>(null);
+
+  @override
+  void dispose() {
+    _splitModeNotifier.dispose();
+    super.dispose();
+  }
+
+  void _toggleExpand() {
+    _splitModeNotifier.value =
+        _splitModeNotifier.value == DocumentViewMode.document
+            ? null
+            : DocumentViewMode.document;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -95,121 +115,135 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
 
     return Padding(
       padding: const EdgeInsets.all(5),
-      child: DocumentSplitView(
-        storageKey: 'invoices',
-        selectionKey: widget.selectedInvoice?.id,
-        list: DefaultTabController(
-          length: 2,
-          initialIndex: widget.initialTabIndex.clamp(0, 1),
-          child: Card(
-            color: Colors.transparent,
-            elevation: 0,
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
-                  child: HexoraSectionTabs(
-                    compact: true,
-                    tabs: [
-                      Tab(
-                        text: l.groupInvoicesTabDrafts(
-                          widget.drafts.length,
-                        ),
-                      ),
-                      Tab(
-                        text: l.groupInvoicesTabInvoices(
-                          widget.invoices.length,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      _InvoicesTabList(
-                        emptyTitle: l.groupInvoicesDraftInvoicesTitle,
-                        emptySubtitle: l.noInvoicesYetSubtitle,
-                        icon: Icons.drafts_outlined,
-                        invoices: widget.drafts,
-                        clients: widget.clients,
-                        onTap: widget.onSelectInvoice,
-                        onDelete: widget.onDeleteInvoice,
-                        onEdit: widget.onEditDraft,
-                        onIssue: widget.onIssueDraft,
-                        onIssueAll: widget.onIssueAllDrafts,
-                        sortState: widget.sortState,
-                        onSortBySelected: widget.onSortBySelected,
-                        sortLoading: widget.sortLoading,
-                        issueAllLoading: widget.issueAllDraftsLoading,
-                        selectedInvoiceId: widget.selectedInvoice?.id,
-                        showSummaryTotals: false,
-                        groupId: widget.group.id,
-                        onDownloadFiltered: widget.onDownloadFiltered,
-                        onDownloadExcelFiltered: widget.onDownloadExcelFiltered,
-                        onOpenRecurringSeries: widget.onOpenRecurringSeries,
-                        onDateFilterChanged: null,
-                        allowClientNameSort: true,
-                      ),
-                      _InvoicesTabList(
-                        emptyTitle: l.noInvoicesYet,
-                        emptySubtitle: l.noInvoicesYetSubtitle,
-                        icon: Icons.receipt_long_outlined,
-                        invoices: widget.invoices,
-                        clients: widget.clients,
-                        onTap: widget.onSelectInvoice,
-                        onDelete: null,
-                        onEdit:
-                            widget.canEditIssued ? widget.onEditDraft : null,
-                        onIssue: null,
-                        onIssueAll: null,
-                        sortState: widget.sortState,
-                        onSortBySelected: widget.onSortBySelected,
-                        sortLoading: widget.sortLoading,
-                        issueAllLoading: false,
-                        selectedInvoiceId: widget.selectedInvoice?.id,
-                        showSummaryTotals: true,
-                        groupId: widget.group.id,
-                        onDownloadFiltered: widget.onDownloadFiltered,
-                        onDownloadExcelFiltered: widget.onDownloadExcelFiltered,
-                        onOpenRecurringSeries: widget.onOpenRecurringSeries,
-                        onDateFilterChanged: widget.onIssuedDateFilterChanged,
-                        allowClientNameSort: false,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+      child: ValueListenableBuilder<DocumentViewMode?>(
+        valueListenable: _splitModeNotifier,
+        builder: (context, splitMode, _) => DocumentSplitView(
+          storageKey: 'invoices',
+          modeNotifier: _splitModeNotifier,
+          selectionKey: widget.selectedInvoice?.id,
+          list: DefaultTabController(
+            key: ValueKey(
+              'invoice-tabs-${widget.initialTabIndex}-${widget.showHeaderTabs}',
             ),
-          ),
-        ),
-        preview: Card(
-          clipBehavior: Clip.antiAlias,
-          color: Colors.transparent,
-          elevation: 0,
-          child: widget.selectedInvoice == null
-              ? Center(
-                  child: Text(
-                    l.groupInvoicesSelectInvoiceHint,
-                    style: t.bodyMedium.copyWith(
-                      color: cs.onSurfaceVariant,
+            length: 2,
+            initialIndex: widget.initialTabIndex.clamp(0, 1),
+            child: Card(
+              color: Colors.transparent,
+              elevation: 0,
+              child: Column(
+                children: [
+                  if (widget.showHeaderTabs) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+                      child: HexoraSectionTabs(
+                        compact: true,
+                        tabs: [
+                          Tab(
+                            text: l.groupInvoicesTabDrafts(
+                              widget.drafts.length,
+                            ),
+                          ),
+                          Tab(
+                            text: l.groupInvoicesTabInvoices(
+                              widget.invoices.length,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _InvoicesTabList(
+                          emptyTitle: l.groupInvoicesDraftInvoicesTitle,
+                          emptySubtitle: l.noInvoicesYetSubtitle,
+                          icon: Icons.drafts_outlined,
+                          invoices: widget.drafts,
+                          clients: widget.clients,
+                          onTap: widget.onSelectInvoice,
+                          onDelete: widget.onDeleteInvoice,
+                          onEdit: widget.onEditDraft,
+                          onIssue: widget.onIssueDraft,
+                          onIssueAll: widget.onIssueAllDrafts,
+                          sortState: widget.sortState,
+                          onSortBySelected: widget.onSortBySelected,
+                          sortLoading: widget.sortLoading,
+                          issueAllLoading: widget.issueAllDraftsLoading,
+                          selectedInvoiceId: widget.selectedInvoice?.id,
+                          showSummaryTotals: false,
+                          groupId: widget.group.id,
+                          onDownloadFiltered: widget.onDownloadFiltered,
+                          onDownloadExcelFiltered:
+                              widget.onDownloadExcelFiltered,
+                          onOpenRecurringSeries: widget.onOpenRecurringSeries,
+                          onDateFilterChanged: null,
+                          allowClientNameSort: true,
+                        ),
+                        _InvoicesTabList(
+                          emptyTitle: l.noInvoicesYet,
+                          emptySubtitle: l.noInvoicesYetSubtitle,
+                          icon: Icons.receipt_long_outlined,
+                          invoices: widget.invoices,
+                          clients: widget.clients,
+                          onTap: widget.onSelectInvoice,
+                          onDelete: null,
+                          onEdit:
+                              widget.canEditIssued ? widget.onEditDraft : null,
+                          onIssue: null,
+                          onIssueAll: null,
+                          sortState: widget.sortState,
+                          onSortBySelected: widget.onSortBySelected,
+                          sortLoading: widget.sortLoading,
+                          issueAllLoading: false,
+                          selectedInvoiceId: widget.selectedInvoice?.id,
+                          showSummaryTotals: true,
+                          groupId: widget.group.id,
+                          onDownloadFiltered: widget.onDownloadFiltered,
+                          onDownloadExcelFiltered:
+                              widget.onDownloadExcelFiltered,
+                          onOpenRecurringSeries: widget.onOpenRecurringSeries,
+                          onDateFilterChanged: widget.onIssuedDateFilterChanged,
+                          allowClientNameSort: false,
+                        ),
+                      ],
                     ),
                   ),
-                )
-              : InvoiceDetailSheet(
-                  key: ValueKey(widget.selectedInvoice!.id),
-                  invoice: widget.selectedInvoice!,
-                  client: _resolveInvoiceClient(
-                    widget.selectedInvoice!,
-                    widget.clients,
-                    l,
+                ],
+              ),
+            ),
+          ),
+          preview: Card(
+            clipBehavior: Clip.antiAlias,
+            color: Colors.transparent,
+            elevation: 0,
+            child: widget.selectedInvoice == null
+                ? Center(
+                    child: Text(
+                      l.groupInvoicesSelectInvoiceHint,
+                      style: t.bodyMedium.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  )
+                : InvoiceDetailSheet(
+                    key: ValueKey(widget.selectedInvoice!.id),
+                    invoice: widget.selectedInvoice!,
+                    client: _resolveInvoiceClient(
+                      widget.selectedInvoice!,
+                      widget.clients,
+                      l,
+                    ),
+                    billingProfile: widget.billingProfile,
+                    group: widget.group,
+                    onOpenRecurringSeries: widget.onOpenRecurringSeries,
+                    onInvoiceChanged: widget.onRefresh,
+                    onClose: widget.onClearSelection,
+                    onExpand: _toggleExpand,
+                    isExpanded: splitMode == DocumentViewMode.document,
                   ),
-                  billingProfile: widget.billingProfile,
-                  group: widget.group,
-                  onOpenRecurringSeries: widget.onOpenRecurringSeries,
-                  onInvoiceChanged: widget.onRefresh,
-                ),
+          ),
         ),
       ),
     );

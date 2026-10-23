@@ -215,6 +215,16 @@ class NotificationApiClient {
     }
   }
 
+  /// Marks a user notification as read without replacing its full payload.
+  Future<void> markNotificationRead(String id) async {
+    final trimmed = id.trim();
+    if (trimmed.isEmpty) throw Exception('Notification id is required');
+    final response = await AuthenticatedHttpClient.patch(
+      _u('/$trimmed/read'),
+    );
+    _ensureOk(response, fallback: 'Failed to mark notification as read');
+  }
+
   /// DELETE /notifications  -> removes all notifications for the authenticated user
   Future<void> deleteAllMine() async {
     final url = Uri.parse(baseUrl); // no trailing slash needed

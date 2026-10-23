@@ -3,6 +3,7 @@ part of '../../widgets/group_invoices_invoices_view.dart';
 class _InvoiceSummaryTotalsBar extends StatelessWidget {
   const _InvoiceSummaryTotalsBar({
     required this.count,
+    required this.totalCount,
     required this.summary,
     required this.loading,
     required this.error,
@@ -12,14 +13,18 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
     required this.sortActions,
     required this.unlinkedOnly,
     required this.paymentSuggestionsLoading,
+    required this.searchQuery,
+    required this.onSearchChanged,
     required this.onDateRangeSelected,
     required this.onHeaderAction,
+    this.onMismatchTap,
     this.onDownloadFiltered,
     this.onDownloadExcelFiltered,
     this.downloadingFiltered = false,
   });
 
   final int count;
+  final int totalCount;
   final Map<String, dynamic>? summary;
   final bool loading;
   final String? error;
@@ -29,8 +34,11 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
   final List<Widget> sortActions;
   final bool unlinkedOnly;
   final bool paymentSuggestionsLoading;
+  final String searchQuery;
+  final ValueChanged<String> onSearchChanged;
   final ValueChanged<DateQuickRange> onDateRangeSelected;
   final ValueChanged<_InvoiceHeaderAction> onHeaderAction;
+  final VoidCallback? onMismatchTap;
   final VoidCallback? onDownloadFiltered;
   final VoidCallback? onDownloadExcelFiltered;
   final bool downloadingFiltered;
@@ -44,68 +52,121 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isEs = Localizations.localeOf(context).languageCode == 'es';
     final money = NumberFormat.currency(
-        locale: isEs ? 'es_ES' : 'en_US', symbol: '', decimalDigits: 2);
-    final displayedCount =
-        summary == null ? count : _num(summary?['count']).toInt();
+      locale: isEs ? 'es_ES' : 'en_US',
+      symbol: '€',
+      decimalDigits: 2,
+    );
+    final displayedCount = count;
     final mismatches = _num(summary?['mismatchCount']).toInt();
-    final totalColor = Theme.of(context).brightness == Brightness.light
-        ? const Color(0xFFB45309)
-        : cs.secondary;
+    final isLight = Theme.of(context).brightness == Brightness.light;
 
-    Widget metric(String label, num value, Color color,
-            {bool emphasis = false}) =>
-        Semantics(
-          label: '$label: ${money.format(value).trim()}',
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label.toUpperCase(),
-                style: t.caption.copyWith(
-                  fontSize: 11,
-                  height: 1.05,
-                  letterSpacing: .35,
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                money.format(value).trim(),
-                style: t.bodySmall.copyWith(
-                  fontSize: emphasis ? 15 : 14,
-                  height: 1.1,
-                  color: color,
-                  fontWeight: emphasis ? FontWeight.w800 : FontWeight.w600,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
-            ],
-          ),
-        );
+    final periodParts = <String>[];
+    if (fromDate != null && toDate != null) {
+      final sameMonth =
+          fromDate!.year == toDate!.year && fromDate!.month == toDate!.month;
+      periodParts.add(sameMonth
+          ? DateFormat('MMMM yyyy', isEs ? 'es_ES' : 'en_US').format(fromDate!)
+          : '${DateFormat('d MMM', isEs ? 'es_ES' : 'en_US').format(fromDate!)} – ${DateFormat('d MMM yyyy', isEs ? 'es_ES' : 'en_US').format(toDate!)}');
+    }
+    final countText = displayedCount == totalCount
+        ? (isEs ? '$displayedCount facturas' : '$displayedCount invoices')
+        : (isEs
+            ? 'Mostrando $displayedCount de $totalCount facturas'
+            : 'Showing $displayedCount of $totalCount invoices');
+    final subtitle = ([countText, ...periodParts]).join(' · ');
 
     final leading = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.receipt_long, size: 16, color: cs.onSurfaceVariant),
-        const SizedBox(width: 8),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(
-              '$displayedCount ${isEs ? (displayedCount == 1 ? 'factura' : 'facturas') : (displayedCount == 1 ? 'invoice' : 'invoices')}',
-              style: t.bodySmall.copyWith(
-                  color: cs.onSurface,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13)),
-          Text(
-            isEs
-                ? 'Importes de las facturas mostradas'
-                : 'Displayed invoice totals',
-            style: t.caption.copyWith(
-                color: cs.onSurfaceVariant, fontSize: 10.5, height: 1.1),
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: cs.primaryContainer.withValues(alpha: isLight ? 0.45 : 0.18),
+            borderRadius: BorderRadius.circular(9),
           ),
-        ]),
-        const SizedBox(width: 8),
+          child: Icon(Icons.receipt_long_outlined, size: 21, color: cs.primary),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              isEs ? 'Facturas' : 'Invoices',
+              style: t.titleLarge.copyWith(
+                color: cs.onSurface,
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.caption.copyWith(
+                color: cs.onSurfaceVariant,
+                fontSize: 11,
+                height: 1.1,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final search = SizedBox(
+      width: 320,
+      height: 38,
+      child: TextFormField(
+        initialValue: searchQuery,
+        onChanged: onSearchChanged,
+        textInputAction: TextInputAction.search,
+        style: t.bodySmall.copyWith(fontSize: 12.5),
+        decoration: InputDecoration(
+          hintText: isEs
+              ? 'Buscar facturas, clientes o importes…'
+              : 'Search invoices, clients or amounts…',
+          prefixIcon: const Icon(Icons.search_rounded, size: 18),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        ),
+      ),
+    );
+    final totals = HexoraCompactFinancialSummary(
+      loading: loading,
+      loadingLabel: isEs ? 'Calculando totales…' : 'Calculating totals…',
+      metrics: [
+        HexoraFinancialMetric(
+          label: isEs ? 'Base imponible' : 'Taxable base',
+          value: money.format(_num(summary?['subtotal'])),
+        ),
+        HexoraFinancialMetric(
+          label: isEs ? 'IVA' : 'VAT',
+          value: money.format(_num(summary?['taxTotal'])),
+        ),
+        HexoraFinancialMetric(
+          label: isEs ? 'Total facturado' : 'Total invoiced',
+          value: money.format(_num(summary?['total'])),
+          emphasized: true,
+        ),
+      ],
+      alert: mismatches <= 0
+          ? null
+          : HexoraFinancialAlert(
+              label: isEs
+                  ? '$mismatches ${mismatches == 1 ? 'desajuste' : 'desajustes'}'
+                  : '$mismatches ${mismatches == 1 ? 'mismatch' : 'mismatches'}',
+              tooltip: isEs
+                  ? 'Abrir una factura cuyos importes no cuadran'
+                  : 'Open an invoice whose amounts do not add up',
+              onPressed: onMismatchTap,
+            ),
+    );
+    final actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
         _InvoiceFiltersMenu(
           sortActions: sortActions,
           quickRange: quickRange,
@@ -113,48 +174,7 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
           toDate: toDate,
           onSelected: onDateRangeSelected,
         ),
-      ],
-    );
-    final totals = Semantics(
-      label: isEs
-          ? 'Totales de las facturas mostradas'
-          : 'Totals for the displayed invoices',
-      child: Wrap(spacing: 18, runSpacing: 6, children: [
-        if (loading)
-          const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2))
-        else ...[
-          metric('Base imponible', _num(summary?['subtotal']), cs.onSurface),
-          metric('IVA', _num(summary?['taxTotal']), cs.onSurface),
-          metric('Total facturado', _num(summary?['total']), totalColor,
-              emphasis: true),
-          if (mismatches > 0) ...[
-            Tooltip(
-              message: isEs
-                  ? '$mismatches desajustes en los totales mostrados'
-                  : '$mismatches mismatches in the displayed totals',
-              child: Semantics(
-                label: isEs
-                    ? '$mismatches desajustes en los totales'
-                    : '$mismatches total mismatches',
-                child: Icon(Icons.warning_amber_rounded,
-                    size: 16, color: cs.error),
-              ),
-            ),
-          ],
-        ],
-        if (!loading && (error ?? '').trim().isNotEmpty) ...[
-          Tooltip(
-              message: error!,
-              child: Icon(Icons.error_outline, size: 16, color: cs.error)),
-        ],
-      ]),
-    );
-    final actions = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
+        const SizedBox(width: 8),
         _InvoiceDownloadMenu(
           count: count,
           loading: downloadingFiltered,
@@ -210,35 +230,66 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
       ],
     );
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-      ),
-      child: LayoutBuilder(builder: (context, constraints) {
-        // Keep document actions visible at the right even when totals must scroll.
-        final compact = constraints.maxWidth < 680 ||
-            MediaQuery.textScalerOf(context).scale(14) > 20;
-        if (compact) {
-          return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Wrap(spacing: 12, runSpacing: 6, children: [leading, actions]),
-                const SizedBox(height: 6),
-                totals,
-              ]);
-        }
-        return Row(children: [
-          leading,
-          const SizedBox(width: 12),
-          Expanded(
-              child: Align(alignment: Alignment.centerRight, child: totals)),
-          const SizedBox(width: 12),
-          actions,
-        ]);
-      }),
+    final toolbar = LayoutBuilder(builder: (context, constraints) {
+      final compact = constraints.maxWidth < 760 ||
+          MediaQuery.textScalerOf(context).scale(14) > 20;
+      if (compact) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            leading,
+            const SizedBox(height: 10),
+            if (constraints.maxWidth < 560) ...[
+              SizedBox(width: double.infinity, child: search),
+              const SizedBox(height: 8),
+              Align(alignment: Alignment.centerRight, child: actions),
+            ] else
+              Row(
+                children: [
+                  Expanded(child: search),
+                  const SizedBox(width: 8),
+                  actions,
+                ],
+              ),
+          ],
+        );
+      }
+      return Row(children: [
+        Expanded(child: Align(alignment: Alignment.centerLeft, child: leading)),
+        const SizedBox(width: 18),
+        Flexible(child: search),
+        const SizedBox(width: 10),
+        actions,
+      ]);
+    });
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.45),
+            ),
+          ),
+          child: toolbar,
+        ),
+        const SizedBox(height: 10),
+        totals,
+        if (!loading && (error ?? '').trim().isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Tooltip(
+            message: error!,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Icon(Icons.error_outline, size: 16, color: cs.error),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

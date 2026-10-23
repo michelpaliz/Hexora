@@ -95,7 +95,10 @@ void main() {
     await tester.pump();
 
     expect(find.text('Este cliente ya existe.'), findsOneWidget);
-    expect(find.text('CLIENTE EXISTENTE'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextFormField, 'CLIENTE EXISTENTE'),
+      findsOneWidget,
+    );
     tester.widget<SnackBarAction>(find.byType(SnackBarAction)).onPressed();
     await tester.pump();
     expect(opened?.id, 'client-1');
@@ -163,7 +166,8 @@ void main() {
       find.text('Ya existe un cliente con este nombre en el grupo.'),
       findsOneWidget,
     );
-    expect(find.text('Cliente Duplicado'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Cliente Duplicado'),
+        findsOneWidget);
     expect(
       tester.widgetList<FilledButton>(filledButtons).last.onPressed,
       isNotNull,

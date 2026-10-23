@@ -236,6 +236,11 @@ class GroupReceiptsView extends StatelessWidget {
   final ValueChanged<Receipt> onImportJson;
   final Future<Uint8List?> Function(Receipt) onLoadInlinePdf;
   final bool disableDetailPreviewInteraction;
+  final int initialTabIndex;
+  final bool showHeaderTabs;
+  final ValueChanged<int>? onTabChanged;
+  final VoidCallback? onClearSelection;
+  final ValueNotifier<DocumentViewMode?> modeNotifier;
 
   const GroupReceiptsView({
     super.key,
@@ -256,6 +261,11 @@ class GroupReceiptsView extends StatelessWidget {
     required this.onImportJson,
     required this.onLoadInlinePdf,
     this.disableDetailPreviewInteraction = false,
+    this.initialTabIndex = 0,
+    this.showHeaderTabs = true,
+    this.onTabChanged,
+    this.onClearSelection,
+    required this.modeNotifier,
   });
 
   @override
@@ -266,14 +276,21 @@ class GroupReceiptsView extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isEs = l.localeName.toLowerCase().startsWith('es');
     final totalCount = drafts.length + receipts.length;
+    final activeReceipts = initialTabIndex == 0 ? drafts : receipts;
+    final selectedIndex = selectedReceipt == null
+        ? -1
+        : activeReceipts.indexWhere((item) => item.id == selectedReceipt!.id);
 
     return Padding(
       padding: const EdgeInsets.all(16),
       child: DocumentSplitView(
         storageKey: 'receipts',
+        modeNotifier: modeNotifier,
         selectionKey: selectedReceipt?.id,
         list: DefaultTabController(
+          key: ValueKey('receipt-tabs-$initialTabIndex-$showHeaderTabs'),
           length: 2,
+          initialIndex: initialTabIndex.clamp(0, 1),
           child: Container(
             decoration: BoxDecoration(
               color: isDark
@@ -289,128 +306,131 @@ class GroupReceiptsView extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
-                // Header row
-                Container(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 10, 10),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? cs.surfaceContainerHighest.withValues(alpha: 0.30)
-                        : cs.surfaceContainerLow.withValues(alpha: 0.60),
-                    border: Border(
-                      bottom: BorderSide(
-                        color: cs.outlineVariant.withValues(
-                          alpha: isDark ? 0.20 : 0.25,
+                if (showHeaderTabs) ...[
+                  // Header row
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 10, 10),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? cs.surfaceContainerHighest.withValues(alpha: 0.30)
+                          : cs.surfaceContainerLow.withValues(alpha: 0.60),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: cs.outlineVariant.withValues(
+                            alpha: isDark ? 0.20 : 0.25,
+                          ),
                         ),
                       ),
                     ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                cs.primary.withValues(alpha: 0.22),
+                                cs.primary.withValues(alpha: 0.08),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.receipt_long_rounded,
+                            size: 15,
+                            color: cs.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            isEs ? 'Documentos' : 'Documents',
+                            style: t.bodySmall.copyWith(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13.5,
+                              color: cs.onSurface,
+                            ),
+                          ),
+                        ),
+                        if (totalCount > 0)
+                          Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: cs.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              '$totalCount',
+                              style: t.bodySmall.copyWith(
+                                color: cs.primary,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        Tooltip(
+                          message: isEs ? 'Nuevo documento' : 'New document',
+                          child: IconButton(
+                            onPressed: onCreateReceipt,
+                            icon: const Icon(Icons.add_rounded, size: 18),
+                            style: IconButton.styleFrom(
+                              foregroundColor: cs.primary,
+                              backgroundColor:
+                                  cs.primary.withValues(alpha: 0.10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(9),
+                              ),
+                              padding: const EdgeInsets.all(6),
+                              minimumSize: const Size(32, 32),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              cs.primary.withValues(alpha: 0.22),
-                              cs.primary.withValues(alpha: 0.08),
+                  // Tab bar
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+                    child: HexoraSectionTabs(
+                      tabs: [
+                        Tab(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.edit_note_rounded, size: 14),
+                              const SizedBox(width: 5),
+                              Text(l.groupReceiptsTabDrafts(drafts.length)),
                             ],
                           ),
-                          borderRadius: BorderRadius.circular(9),
                         ),
-                        alignment: Alignment.center,
-                        child: Icon(
-                          Icons.receipt_long_rounded,
-                          size: 15,
-                          color: cs.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          isEs ? 'Documentos' : 'Documents',
-                          style: t.bodySmall.copyWith(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13.5,
-                            color: cs.onSurface,
+                        Tab(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.task_alt_rounded, size: 14),
+                              const SizedBox(width: 5),
+                              Text(l.groupReceiptsTabReceipts(receipts.length)),
+                            ],
                           ),
                         ),
-                      ),
-                      if (totalCount > 0)
-                        Container(
-                          margin: const EdgeInsets.only(right: 6),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: cs.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            '$totalCount',
-                            style: t.bodySmall.copyWith(
-                              color: cs.primary,
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      Tooltip(
-                        message: isEs ? 'Nuevo documento' : 'New document',
-                        child: IconButton(
-                          onPressed: onCreateReceipt,
-                          icon: const Icon(Icons.add_rounded, size: 18),
-                          style: IconButton.styleFrom(
-                            foregroundColor: cs.primary,
-                            backgroundColor: cs.primary.withValues(alpha: 0.10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(9),
-                            ),
-                            padding: const EdgeInsets.all(6),
-                            minimumSize: const Size(32, 32),
-                          ),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                // Tab bar
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
-                  child: HexoraSectionTabs(
-                    tabs: [
-                      Tab(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.edit_note_rounded, size: 14),
-                            const SizedBox(width: 5),
-                            Text(l.groupReceiptsTabDrafts(drafts.length)),
-                          ],
-                        ),
-                      ),
-                      Tab(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.task_alt_rounded, size: 14),
-                            const SizedBox(width: 5),
-                            Text(l.groupReceiptsTabReceipts(receipts.length)),
-                          ],
-                        ),
-                      ),
-                    ],
+                  Divider(
+                    height: 1,
+                    color: cs.outlineVariant.withValues(
+                      alpha: isDark ? 0.20 : 0.25,
+                    ),
                   ),
-                ),
-                Divider(
-                  height: 1,
-                  color: cs.outlineVariant.withValues(
-                    alpha: isDark ? 0.20 : 0.25,
-                  ),
-                ),
+                ],
                 Expanded(
                   child: TabBarView(
                     children: [
@@ -524,25 +544,44 @@ class GroupReceiptsView extends StatelessWidget {
                     ),
                   ),
                 )
-              : ReceiptDetailCard(
-                  key: ValueKey(selectedReceipt!.id),
-                  receipt: selectedReceipt!,
-                  client: _receiptClientFor(
-                    selectedReceipt!,
-                    clients,
-                    l.unknownClient,
+              : ValueListenableBuilder<DocumentViewMode?>(
+                  valueListenable: modeNotifier,
+                  builder: (context, mode, _) => ReceiptDetailCard(
+                    key: ValueKey(selectedReceipt!.id),
+                    receipt: selectedReceipt!,
+                    client: _receiptClientFor(
+                      selectedReceipt!,
+                      clients,
+                      l.unknownClient,
+                    ),
+                    billingProfile: billingProfile,
+                    onEdit: () => onEditReceipt(selectedReceipt!),
+                    onPreviewPdf: () => onPreviewPdf(selectedReceipt!),
+                    onDownloadPdf: () => onDownloadPdf(selectedReceipt!),
+                    onIssue: () => onIssueReceipt(selectedReceipt!),
+                    onMarkSent: () => onMarkReceiptSent(selectedReceipt!),
+                    onMarkUnsent: () => onMarkReceiptUnsent(selectedReceipt!),
+                    onDeleteDraft: () => onDeleteReceipt(selectedReceipt!),
+                    onImportJson: () => onImportJson(selectedReceipt!),
+                    onLoadInlinePdf: () => onLoadInlinePdf(selectedReceipt!),
+                    previewInteractive: !disableDetailPreviewInteraction,
+                    onPrevious: selectedIndex > 0
+                        ? () =>
+                            onSelectReceipt(activeReceipts[selectedIndex - 1])
+                        : null,
+                    onNext: selectedIndex >= 0 &&
+                            selectedIndex + 1 < activeReceipts.length
+                        ? () =>
+                            onSelectReceipt(activeReceipts[selectedIndex + 1])
+                        : null,
+                    onClose: onClearSelection,
+                    onExpand: () {
+                      modeNotifier.value = mode == DocumentViewMode.document
+                          ? DocumentViewMode.split
+                          : DocumentViewMode.document;
+                    },
+                    isExpanded: mode == DocumentViewMode.document,
                   ),
-                  billingProfile: billingProfile,
-                  onEdit: () => onEditReceipt(selectedReceipt!),
-                  onPreviewPdf: () => onPreviewPdf(selectedReceipt!),
-                  onDownloadPdf: () => onDownloadPdf(selectedReceipt!),
-                  onIssue: () => onIssueReceipt(selectedReceipt!),
-                  onMarkSent: () => onMarkReceiptSent(selectedReceipt!),
-                  onMarkUnsent: () => onMarkReceiptUnsent(selectedReceipt!),
-                  onDeleteDraft: () => onDeleteReceipt(selectedReceipt!),
-                  onImportJson: () => onImportJson(selectedReceipt!),
-                  onLoadInlinePdf: () => onLoadInlinePdf(selectedReceipt!),
-                  previewInteractive: !disableDetailPreviewInteraction,
                 ),
         ),
       ),

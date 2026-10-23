@@ -140,6 +140,7 @@ class Receipt {
         if (issueDate != null)
           'issueDate': issueDate!.toUtc().toIso8601String(),
         if (notes != null && notes!.trim().isNotEmpty) 'notes': notes!.trim(),
+        if (clientSnapshot != null) 'clientSnapshot': clientSnapshot!.toJson(),
         'lines': lines.map((l) => l.toJson()).toList(),
       };
 
@@ -153,6 +154,7 @@ class Receipt {
         if (issueDate != null)
           'issueDate': issueDate!.toUtc().toIso8601String(),
         if (notes != null) 'notes': notes!.trim(),
+        if (clientSnapshot != null) 'clientSnapshot': clientSnapshot!.toJson(),
         'lines': lines.map((l) => l.toJson()).toList(),
       };
 }

@@ -75,6 +75,9 @@ class _AppShell extends StatelessWidget {
           ],
           supportedLocales: L10n.all,
           routes: routes,
+          // Flutter otherwise starts at `/` and AuthGate masks browser deep
+          // links such as `/hexora/reset-password?token=...`.
+          initialRoute: _browserInitialRoute(),
           // Allow deep links (e.g., /verify-email) to become the initial route.
           onGenerateRoute: (settings) {
             final name = settings.name;
@@ -104,4 +107,16 @@ class _AppShell extends StatelessWidget {
       },
     );
   }
+}
+
+String _browserInitialRoute() {
+  final uri = Uri.base;
+  var path = uri.path;
+  if (path == '/hexora' || path == '/hexora/') path = '/';
+  if (path.startsWith('/hexora/')) {
+    path = path.substring('/hexora'.length);
+  }
+  if (path.isEmpty) path = '/';
+  final query = uri.hasQuery ? '?${uri.query}' : '';
+  return '$path$query';
 }

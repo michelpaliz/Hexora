@@ -26,10 +26,10 @@ class StatementsAllDataTableRow extends StatelessWidget {
     required this.isTablet,
     required this.controller,
     required this.selectedIds,
+    this.activeEntryId,
     required this.onToggleRow,
     required this.onShowDetails,
     required this.onSuggest,
-    required this.onLink,
     required this.onLinkInvoice,
     required this.onMarkNoProcede,
     required this.noProcedeReason,
@@ -42,10 +42,10 @@ class StatementsAllDataTableRow extends StatelessWidget {
   final bool isTablet;
   final StatementsController controller;
   final Set<String> selectedIds;
+  final String? activeEntryId;
   final ValueChanged<String> onToggleRow;
   final ValueChanged<Map<String, dynamic>> onShowDetails;
   final ValueChanged<Map<String, dynamic>> onSuggest;
-  final ValueChanged<Map<String, dynamic>> onLink;
   final ValueChanged<Map<String, dynamic>> onLinkInvoice;
   final ValueChanged<Map<String, dynamic>> onMarkNoProcede;
   final String? noProcedeReason;
@@ -204,23 +204,32 @@ class StatementsAllDataTableRow extends StatelessWidget {
     final notes = StatementsShared.entryText(entry, ['notes']).trim();
     final hasNotes = notes.isNotEmpty;
     final savingNotes = controller.savingEntryNotes[entryId] == true;
-    final linking = controller.linkingClient[entryId] == true;
     final suggestLoading = controller.loadingSuggestions[entryId] == true ||
         controller.loadingInvoiceSuggestions[entryId] == true;
     final isSelected = entryId.isNotEmpty && selectedIds.contains(entryId);
     final isUnlinked = entry['clientId'] == null ||
         entry['clientId'].toString().trim().isEmpty;
-    final rowColor = isSelected ? tableTheme.rowSelected : tableTheme.rowBg;
+    final isActive = entryId.isNotEmpty && entryId == activeEntryId;
+    final rowColor = isActive
+        ? tableTheme.rowActive
+        : isSelected
+            ? tableTheme.rowSelected
+            : tableTheme.rowBg;
     final rowAccent =
         isNegative ? tableTheme.amountNegative : tableTheme.amountPositive;
     final amountAbs = (amountValue ?? 0).abs();
     final canLinkInvoice = amountAbs > 0;
     final canSuggest = (amountValue ?? 0) != 0;
-    final aiSuggestActionLabel =
-        isEs ? 'Sugerir coincidencias IA' : 'Suggest AI matches';
-    final manualLinkActionLabel = isNegative
-        ? (isEs ? 'Vincular gasto' : 'Link expense')
-        : (isEs ? 'Vincular factura' : 'Link invoice');
+    // A single link action, shared with the insights chat: unlinked rows open
+    // the suggested matches (which also offer "Vincular manualmente"); linked
+    // rows edit the existing link in the manual wizard.
+    final linkActionLabel = hasLinkedDocument
+        ? (isEs ? 'Editar vínculo' : 'Edit link')
+        : (isEs ? 'Vincular' : 'Link');
+    final linkActionEnabled = entryId.isNotEmpty &&
+        (hasLinkedDocument ? canLinkInvoice : (canSuggest && !suggestLoading));
+    void openLinkAction() =>
+        hasLinkedDocument ? onLinkInvoice(entry) : onSuggest(entry);
     final previewActionLabel = isNegative
         ? (isEs ? 'Ver gasto vinculado' : 'View linked expense')
         : (isEs ? 'Ver factura vinculada' : 'View linked invoice');
@@ -283,22 +292,14 @@ class StatementsAllDataTableRow extends StatelessWidget {
       );
     }
 
-    List<PopupMenuEntry<String>> rowMenuItems({
-      bool includePrimaryActions = true,
-    }) {
+    List<PopupMenuEntry<String>> rowMenuItems() {
       return [
-        if (includePrimaryActions)
-          NavigationPopupMenuItem(
-            value: 'suggest',
-            enabled: entryId.isNotEmpty && !suggestLoading && canSuggest,
-            child: menuLabel(Icons.auto_awesome, aiSuggestActionLabel),
-          ),
         NavigationPopupMenuItem(
-          value: 'link_client',
-          enabled: entryId.isNotEmpty && !linking,
+          value: 'link',
+          enabled: linkActionEnabled,
           child: menuLabel(
-            Icons.person_add_alt_1_outlined,
-            isEs ? 'Vincular cliente' : 'Link client',
+            Icons.link_rounded,
+            linkActionLabel,
           ),
         ),
         NavigationPopupMenuItem(
@@ -306,12 +307,6 @@ class StatementsAllDataTableRow extends StatelessWidget {
           enabled: hasLinkedDocument,
           child: menuLabel(Icons.visibility_outlined, previewActionLabel),
         ),
-        if (includePrimaryActions)
-          NavigationPopupMenuItem(
-            value: 'link_invoice',
-            enabled: entryId.isNotEmpty && canLinkInvoice,
-            child: menuLabel(Icons.receipt_long, manualLinkActionLabel),
-          ),
         NavigationPopupMenuItem(
           value: 'notes',
           enabled: entryId.isNotEmpty && !savingNotes,
@@ -340,16 +335,10 @@ class StatementsAllDataTableRow extends StatelessWidget {
     }
 
     void handleRowMenuSelection(String result) {
-      if (result == 'suggest') {
-        if (entryId.isNotEmpty && !suggestLoading && canSuggest) {
-          onSuggest(entry);
-        }
-      } else if (result == 'link_client') {
-        if (entryId.isNotEmpty && !linking) onLink(entry);
+      if (result == 'link') {
+        openLinkAction();
       } else if (result == 'preview') {
         if (hasLinkedDocument) previewLinkedInvoice();
-      } else if (result == 'link_invoice') {
-        if (entryId.isNotEmpty && canLinkInvoice) onLinkInvoice(entry);
       } else if (result == 'notes') {
         if (entryId.isNotEmpty && !savingNotes) {
           StatementEntryNotesDialog.show(context, controller, entry);
@@ -379,9 +368,11 @@ class StatementsAllDataTableRow extends StatelessWidget {
         isNegative ? tableTheme.amountNegative : tableTheme.amountPositive;
 
     return _StatementRowSurface(
-      borderColor: isSelected
-          ? rowAccent.withValues(alpha: 0.65)
-          : tableTheme.border.withValues(alpha: 0.82),
+      borderColor: isActive
+          ? cs.primary
+          : isSelected
+              ? rowAccent.withValues(alpha: 0.65)
+              : tableTheme.border.withValues(alpha: 0.82),
       child: Material(
         color: rowColor,
         borderRadius: BorderRadius.zero,
@@ -914,27 +905,6 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
                                     if (!isDesktop) ...[
-                                      _actionButton(
-                                        tooltip: aiSuggestActionLabel,
-                                        onPressed: (!canSuggest ||
-                                                suggestLoading ||
-                                                entryId.isEmpty)
-                                            ? null
-                                            : () => onSuggest(entry),
-                                        icon: Icons.auto_awesome,
-                                        activeColor: cs.primary,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      _actionButton(
-                                        tooltip: manualLinkActionLabel,
-                                        onPressed:
-                                            (!canLinkInvoice || entryId.isEmpty)
-                                                ? null
-                                                : () => onLinkInvoice(entry),
-                                        icon: Icons.receipt_long,
-                                        activeColor: cs.primary,
-                                      ),
-                                      const SizedBox(width: 4),
                                       PopupMenuButton<String>(
                                         tooltip: isEs
                                             ? 'Más acciones'
@@ -962,40 +932,17 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                           Icons.more_horiz_rounded,
                                           size: 17,
                                         ),
-                                        itemBuilder: (_) => rowMenuItems(
-                                          includePrimaryActions: false,
-                                        ),
+                                        itemBuilder: (_) => rowMenuItems(),
                                         onSelected: handleRowMenuSelection,
                                       ),
                                     ],
                                     if (isDesktop) ...[
-                                      _actionButton(
-                                        tooltip: aiSuggestActionLabel,
-                                        onPressed: (!canSuggest ||
-                                                suggestLoading ||
-                                                entryId.isEmpty)
-                                            ? null
-                                            : () => onSuggest(entry),
-                                        icon: Icons.auto_awesome,
-                                        activeColor: cs.primary,
-                                      ),
-                                      const SizedBox(width: 4),
                                       _actionButton(
                                         tooltip: previewActionLabel,
                                         onPressed: hasLinkedDocument
                                             ? previewLinkedInvoice
                                             : null,
                                         icon: Icons.visibility_outlined,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      _actionButton(
-                                        tooltip: manualLinkActionLabel,
-                                        onPressed:
-                                            (!canLinkInvoice || entryId.isEmpty)
-                                                ? null
-                                                : () => onLinkInvoice(entry),
-                                        icon: Icons.receipt_long,
-                                        activeColor: cs.primary,
                                       ),
                                       const SizedBox(width: 4),
                                       _actionButton(
@@ -1035,8 +982,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                         icon: const Icon(
                                             Icons.more_horiz_rounded,
                                             size: 17),
-                                        itemBuilder: (_) => rowMenuItems(
-                                            includePrimaryActions: false),
+                                        itemBuilder: (_) => rowMenuItems(),
                                         onSelected: handleRowMenuSelection,
                                       ),
                                     ],

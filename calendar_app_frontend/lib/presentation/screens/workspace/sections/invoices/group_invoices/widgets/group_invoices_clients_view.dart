@@ -20,6 +20,10 @@ class GroupInvoicesClientsView extends StatefulWidget {
   final ValueChanged<Invoice> onDeleteInvoice;
   final Future<void> Function(List<Invoice> invoices) onDownloadVisibleInvoices;
   final int initialDetailTabIndex;
+  final VoidCallback? onAddClient;
+
+  /// Replaces the client detail panel, e.g. with the inline client form.
+  final Widget? detailOverride;
   final Future<void> Function(
     GroupClient client, {
     String? entityType,
@@ -41,6 +45,8 @@ class GroupInvoicesClientsView extends StatefulWidget {
     required this.onDeleteInvoice,
     required this.onDownloadVisibleInvoices,
     this.initialDetailTabIndex = 0,
+    this.detailOverride,
+    this.onAddClient,
     required this.onUpdateClientClassification,
   });
 
@@ -213,32 +219,35 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
                 onClearPropertyFilter: () =>
                     setState(() => _propertyFilter = null),
                 onSelectClient: widget.onSelectClient,
+                onAddClient: widget.onAddClient,
               ),
-              end: ClientDetailPanel(
-                groupId: widget.groupId,
-                clients: widget.clients,
-                selectedClient: widget.selectedClient,
-                issuedInvoices: widget.issuedInvoices,
-                draftInvoices: widget.draftInvoices,
-                entityOptions: entityOptions,
-                propertyOptions: propertyOptions,
-                assignBusy: _assignBusy,
-                initialTabIndex: widget.initialDetailTabIndex,
-                onEditSelectedClient: widget.onEditSelectedClient,
-                onCreateInvoice: widget.onCreateInvoice,
-                onCreateReceipt: widget.onCreateReceipt,
-                onOpenInvoiceDetail: widget.onOpenInvoiceDetail,
-                onDeleteInvoice: widget.onDeleteInvoice,
-                onDownloadVisibleInvoices: widget.onDownloadVisibleInvoices,
-                onApplyClassification: ({
-                  String? entityType,
-                  String? propertyKind,
-                }) =>
-                    _applyToSelected(
-                  entityType: entityType,
-                  propertyKind: propertyKind,
-                ),
-              ),
+              end: widget.detailOverride ??
+                  ClientDetailPanel(
+                    groupId: widget.groupId,
+                    clients: widget.clients,
+                    selectedClient: widget.selectedClient,
+                    issuedInvoices: widget.issuedInvoices,
+                    draftInvoices: widget.draftInvoices,
+                    entityOptions: entityOptions,
+                    propertyOptions: propertyOptions,
+                    assignBusy: _assignBusy,
+                    initialTabIndex: widget.initialDetailTabIndex,
+                    onEditSelectedClient: widget.onEditSelectedClient,
+                    onCreateInvoice: widget.onCreateInvoice,
+                    onCreateReceipt: widget.onCreateReceipt,
+                    onOpenInvoiceDetail: widget.onOpenInvoiceDetail,
+                    onDeleteInvoice: widget.onDeleteInvoice,
+                    onDownloadVisibleInvoices: widget.onDownloadVisibleInvoices,
+                    onAddClient: widget.onAddClient,
+                    onApplyClassification: ({
+                      String? entityType,
+                      String? propertyKind,
+                    }) =>
+                        _applyToSelected(
+                      entityType: entityType,
+                      propertyKind: propertyKind,
+                    ),
+                  ),
             ),
           ),
         ),

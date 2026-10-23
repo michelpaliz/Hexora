@@ -8,6 +8,7 @@ import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/groups/invite/repository/invite_repository.dart';
+import 'package:hexora/services/groups/invite/domain/invite_domain.dart';
 import 'package:hexora/services/invoicing/billing_profile_api.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/notification/notification_api_client.dart';
@@ -34,7 +35,7 @@ class SettingsInlinePanel extends StatefulWidget {
 }
 
 class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
-  String _selectedSection = 'info';
+  String _selectedSection = 'sysconfig';
   late NotificationViewModel _notificationViewModel;
   late MembersVM _membersVM;
   final BillingProfileApi _billingApi = BillingProfileApi();
@@ -57,6 +58,7 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
       groupDomain: context.read<GroupDomain>(),
       notificationDomain: context.read<NotificationDomain>(),
       notificationService: NotificationApiClient(),
+      invitationDomain: context.read<InvitationDomain>(),
     );
     _membersVM = MembersVM(
       group: widget.group,
@@ -303,7 +305,6 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
     required String label,
   }) {
     final cs = Theme.of(context).colorScheme;
-
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 2),

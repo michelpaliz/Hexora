@@ -47,10 +47,11 @@ class InvoiceLinkDialogSteps {
 
     final filtered = state.providers.where((p) {
       final q = state.providerQuery.trim().toLowerCase();
+      final name = p['name']?.toString().trim() ?? '';
+      if (name.isEmpty) return false;
       if (q.isEmpty) return true;
-      final name = p['name']?.toString().toLowerCase() ?? '';
       final tax = p['taxId']?.toString().toLowerCase() ?? '';
-      return name.contains(q) || tax.contains(q);
+      return name.toLowerCase().contains(q) || tax.contains(q);
     }).toList(growable: false);
 
     if (filtered.isEmpty) {
@@ -68,18 +69,44 @@ class InvoiceLinkDialogSteps {
               state.providerQuery = value;
               onStateChanged();
             },
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: 'Buscar proveedor...',
-              border: OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.search_rounded, size: 18),
+              filled: true,
+              fillColor:
+                  cs.surfaceContainerHighest.withValues(alpha: 0.24),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: cs.outlineVariant.withValues(alpha: 0.45),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: cs.outlineVariant.withValues(alpha: 0.45),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: cs.primary, width: 1.4),
+              ),
               isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 13,
+              ),
             ),
           ),
           const SizedBox(height: 8),
-          SizedBox(
-            height: stacked ? 130 : 190,
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: stacked ? 200 : 280,
+            ),
             child: ListView.separated(
+              shrinkWrap: true,
               itemCount: filtered.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 6),
+              separatorBuilder: (_, __) => const SizedBox(height: 4),
               itemBuilder: (_, index) {
                 final provider = filtered[index];
                 final id = (provider['id'] ??
@@ -87,25 +114,68 @@ class InvoiceLinkDialogSteps {
                             provider['providerId'])
                         ?.toString() ??
                     '';
-                final name = provider['name']?.toString() ?? '-';
+                final name = provider['name']?.toString().trim() ?? '';
+                final taxId = provider['taxId']?.toString().trim() ?? '';
                 final selected =
                     id.isNotEmpty && id == state.selectedProviderId;
-                return ListTile(
-                  dense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    side: BorderSide(
+                return InkWell(
+                  onTap: () => state.selectProvider(id, onStateChanged),
+                  borderRadius: BorderRadius.circular(10),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
                       color: selected
-                          ? cs.primary
-                          : cs.outlineVariant.withValues(alpha: 0.45),
+                          ? cs.primary.withValues(alpha: 0.14)
+                          : cs.surfaceContainerHighest.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: selected
+                            ? cs.primary.withValues(alpha: 0.56)
+                            : cs.outlineVariant.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          selected
+                              ? Icons.check_circle_rounded
+                              : Icons.storefront_outlined,
+                          size: 18,
+                          color: selected ? cs.primary : cs.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: cs.onSurface,
+                                ),
+                              ),
+                              if (taxId.isNotEmpty)
+                                Text(
+                                  taxId,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  title:
-                      Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text(id.isEmpty ? '-' : id,
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  onTap: () => state.selectProvider(id, onStateChanged),
                 );
               },
             ),
@@ -442,6 +512,26 @@ class InvoiceLinkDialogSteps {
     return _formatInvoiceAmount(total, currency);
   }
 
+  String _expenseAmountLabel(Map<String, dynamic> doc) {
+    final raw = doc['totalAmount'] ?? doc['total'] ?? doc['amount'];
+    if (raw == null) return '';
+    final total = raw is num ? raw : num.tryParse(raw.toString());
+    if (total == null) return '';
+    final currency =
+        (doc['currency']?.toString().trim().isNotEmpty ?? false)
+            ? doc['currency'].toString().trim()
+            : 'EUR';
+    return _formatInvoiceAmount(total, currency);
+  }
+
+  String _expenseDateLabel(Map<String, dynamic> doc) {
+    final raw = doc['issueDate'] ?? doc['date'] ?? doc['createdAt'];
+    if (raw == null) return '';
+    final dt = DateTime.tryParse(raw.toString());
+    if (dt == null) return '';
+    return '${dt.day}/${dt.month}/${dt.year}';
+  }
+
   String _formatInvoiceAmount(num total, String currency) {
     final parts = total.toStringAsFixed(2).split('.');
     final whole = parts.first;
@@ -684,19 +774,40 @@ class InvoiceLinkDialogSteps {
         TextField(
           controller: state.idController,
           onChanged: (value) => state.updateTextField(value, onStateChanged),
-          decoration: const InputDecoration(
-            hintText: 'ID de gasto',
-            prefixIcon: Icon(Icons.search_rounded, size: 18),
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: 'Buscar gasto...',
+            prefixIcon: const Icon(Icons.search_rounded, size: 18),
+            filled: true,
+            fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.24),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color: cs.outlineVariant.withValues(alpha: 0.45),
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color: cs.outlineVariant.withValues(alpha: 0.45),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: cs.primary, width: 1.4),
+            ),
             isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 13,
+            ),
           ),
         ),
         const SizedBox(height: 8),
         if (docs.isEmpty)
           _buildInfoContainer('No hay gastos para este proveedor.')
         else
-          Container(
-            constraints: BoxConstraints(maxHeight: stacked ? 160 : 220),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: stacked ? 220 : 300),
             child: ListView.separated(
               shrinkWrap: true,
               itemCount: docs.length,
@@ -707,42 +818,118 @@ class InvoiceLinkDialogSteps {
                     (doc['id'] ?? doc['_id'] ?? doc['expenseId'])?.toString() ??
                         '';
                 final number = doc['invoiceNumber']?.toString().trim() ?? '';
-                final title = number.isEmpty ? id : number;
-                final subtitle =
-                    '${doc['vendorName'] ?? doc['vendor'] ?? 'gasto'} · $id';
+                final vendor =
+                    (doc['vendorName'] ?? doc['vendor'])?.toString().trim() ??
+                        '';
+                final displayTitle =
+                    number.isNotEmpty ? number : (vendor.isNotEmpty ? vendor : 'Gasto');
+                final amount = _expenseAmountLabel(doc);
+                final dateLabel = _expenseDateLabel(doc);
                 final selected = state.idController.text.trim() == id;
-                return ListTile(
-                  dense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: BorderSide(
+                return InkWell(
+                  onTap: () => state.selectDocument(id, onStateChanged),
+                  borderRadius: BorderRadius.circular(10),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
+                    decoration: BoxDecoration(
                       color: selected
-                          ? cs.primary
-                          : cs.outlineVariant.withValues(alpha: 0.45),
+                          ? cs.primary.withValues(alpha: 0.14)
+                          : cs.surfaceContainerHighest
+                              .withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: selected
+                            ? cs.primary.withValues(alpha: 0.56)
+                            : cs.outlineVariant.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          selected
+                              ? Icons.check_circle_rounded
+                              : Icons.receipt_long_outlined,
+                          size: 18,
+                          color: selected
+                              ? cs.primary
+                              : cs.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      displayTitle,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: cs.onSurface,
+                                      ),
+                                    ),
+                                  ),
+                                  if (amount.isNotEmpty) ...[
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      amount,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: selected
+                                            ? cs.primary
+                                            : cs.onSurface,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              if (vendor.isNotEmpty ||
+                                  dateLabel.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  [
+                                    if (vendor.isNotEmpty &&
+                                        displayTitle != vendor)
+                                      vendor,
+                                    if (dateLabel.isNotEmpty) dateLabel,
+                                  ].join(' · '),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                              minWidth: 28, minHeight: 28),
+                          tooltip: l.preview,
+                          style: IconButton.styleFrom(
+                            backgroundColor: cs.surfaceContainerHighest
+                                .withValues(alpha: 0.26),
+                            foregroundColor: selected
+                                ? cs.primary
+                                : cs.onSurfaceVariant,
+                          ),
+                          icon: const Icon(Icons.visibility_outlined,
+                              size: 16),
+                          onPressed: () => _previewExpense(doc),
+                        ),
+                      ],
                     ),
                   ),
-                  title:
-                      Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text(subtitle,
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  leading: Icon(
-                    selected
-                        ? Icons.check_circle_rounded
-                        : Icons.radio_button_unchecked,
-                    size: 18,
-                    color: selected ? cs.primary : cs.outlineVariant,
-                  ),
-                  trailing: IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(minWidth: 28, minHeight: 28),
-                    tooltip: l.preview,
-                    icon: Icon(Icons.visibility_outlined,
-                        size: 16, color: cs.onSurfaceVariant),
-                    onPressed: () => _previewExpense(doc),
-                  ),
-                  onTap: () => state.selectDocument(id, onStateChanged),
                 );
               },
             ),

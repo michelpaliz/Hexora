@@ -4,10 +4,12 @@ import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/services/expenses/expenses_api.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/providers/providers_api.dart';
+import 'package:hexora/presentation/shared/widgets/panels/hexora_side_panel.dart';
 import 'package:hexora/presentation/shared/widgets/wizard_steps_header.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import '../../statements_controller.dart';
+import '../bank_transaction_summary.dart';
 import '../statements_expense_upload_dialog.dart';
 import 'invoice_link_confirmation.dart';
 import 'invoice_link_dialog_state.dart';
@@ -114,33 +116,7 @@ class InvoiceLinkDialog {
             }
 
             final currentStep = state.visibleStep;
-            final steps = <Step>[
-              Step(
-                title: Text(expenseOnly ? 'Proveedor' : 'Facturar a'),
-                subtitle: const SizedBox.shrink(),
-                content: const SizedBox.shrink(),
-                isActive: currentStep == 0,
-                state: currentStep > 0 ? StepState.complete : StepState.editing,
-              ),
-              Step(
-                title: Text(expenseOnly ? 'Gasto' : 'IDs de factura'),
-                subtitle: const SizedBox.shrink(),
-                content: const SizedBox.shrink(),
-                isActive: currentStep == 1,
-                state: currentStep > 1
-                    ? StepState.complete
-                    : (currentStep == 1
-                        ? StepState.editing
-                        : StepState.indexed),
-              ),
-              Step(
-                title: const Text('Vista previa'),
-                subtitle: const SizedBox.shrink(),
-                content: const SizedBox.shrink(),
-                isActive: currentStep == 2,
-                state: currentStep == 2 ? StepState.editing : StepState.indexed,
-              ),
-            ];
+            final steps = _buildWizardSteps(currentStep, expenseOnly);
 
             // Load data as needed
             _loadDataAsNeeded(
@@ -207,6 +183,70 @@ class InvoiceLinkDialog {
         );
       },
     ).then((_) => state.dispose());
+  }
+
+  static List<Step> _buildWizardSteps(int currentStep, bool expenseOnly) {
+    return <Step>[
+      Step(
+        title: Text(expenseOnly ? 'Proveedor' : 'Facturar a'),
+        subtitle: const SizedBox.shrink(),
+        content: const SizedBox.shrink(),
+        isActive: currentStep == 0,
+        state: currentStep > 0 ? StepState.complete : StepState.editing,
+      ),
+      Step(
+        title: Text(expenseOnly ? 'Gasto' : 'IDs de factura'),
+        subtitle: const SizedBox.shrink(),
+        content: const SizedBox.shrink(),
+        isActive: currentStep == 1,
+        state: currentStep > 1
+            ? StepState.complete
+            : (currentStep == 1 ? StepState.editing : StepState.indexed),
+      ),
+      Step(
+        title: const Text('Vista previa'),
+        subtitle: const SizedBox.shrink(),
+        content: const SizedBox.shrink(),
+        isActive: currentStep == 2,
+        state: currentStep == 2 ? StepState.editing : StepState.indexed,
+      ),
+    ];
+  }
+
+  /// Embeds the linking wizard inside a [HexoraSidePanel].
+  ///
+  /// The caller owns the panel host (route overlay or the chat right column)
+  /// and receives [onClose] when the wizard finishes or is dismissed.
+  static Widget buildInline({
+    required BuildContext context,
+    required StatementsController s,
+    required Map<String, dynamic> entry,
+    required bool expenseOnly,
+    required VoidCallback onClose,
+    VoidCallback? onBack,
+    String? notApplicableReason,
+    bool embedded = false,
+    bool handleBack = true,
+    bool showHeader = true,
+  }) {
+    final surface = _InvoiceLinkInlineSurface(
+      controller: s,
+      entry: entry,
+      expenseOnly: expenseOnly,
+      onClose: onClose,
+      onBack: onBack,
+      notApplicableReason: notApplicableReason,
+      embedded: embedded,
+      showHeader: showHeader,
+    );
+    if (!handleBack) return surface;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) onClose();
+      },
+      child: surface,
+    );
   }
 
   static Widget _buildStackedLayout(
@@ -358,10 +398,21 @@ class InvoiceLinkDialog {
     String? currentClientId,
     bool expenseOnly,
     AppLocalizations l,
-    StateSetter setState,
-  ) {
+    StateSetter setState, {
+    VoidCallback? onClose,
+    bool panelMode = false,
+  }) {
     final currentStep = state.visibleStep;
     final maxAllowedStep = state.getMaxAllowedStep(expenseOnly);
+
+    void closeSurface() {
+      final close = onClose;
+      if (close != null) {
+        close();
+      } else {
+        Navigator.of(dialogContext).pop();
+      }
+    }
 
     String? selectedCounterpartyName() {
       if (expenseOnly) {
@@ -418,12 +469,16 @@ class InvoiceLinkDialog {
     }
 
     // ── Left action ─────────────────────────────────────────────────────────
-    final Widget leftAction;
-    if (currentStep == 0) {
+    // In the side panel the header already has back and close, so the footer
+    // only keeps actions that do something else (uploading an expense).
+    final Widget? leftAction;
+    if (panelMode && (currentStep > 0 || !expenseOnly)) {
+      leftAction = null;
+    } else if (currentStep == 0) {
       if (expenseOnly) {
         leftAction = TextButton.icon(
           onPressed: () async {
-            Navigator.of(dialogContext).pop();
+            closeSurface();
             await StatementsExpenseUploadDialog.show(
               dialogContext,
               s,
@@ -435,7 +490,7 @@ class InvoiceLinkDialog {
         );
       } else {
         leftAction = TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(),
+          onPressed: closeSurface,
           child: Text(l.close),
         );
       }
@@ -537,7 +592,7 @@ class InvoiceLinkDialog {
                     ),
                   );
                 }
-                Navigator.of(dialogContext).pop();
+                closeSurface();
               }
             : null,
         child: const Text('Vincular'),
@@ -547,7 +602,7 @@ class InvoiceLinkDialog {
     // On the confirmation step expose a secondary Desvincular option
     if (currentStep == 2) {
       return [
-        leftAction,
+        if (leftAction != null) leftAction,
         TextButton(
           onPressed: () async {
             if (!expenseOnly && state.selectedClientId != currentClientId) {
@@ -557,7 +612,7 @@ class InvoiceLinkDialog {
             await s.linkInvoice(
                 entryId: entryId, invoiceId: null, expenseOnly: expenseOnly);
             if (!dialogContext.mounted) return;
-            Navigator.of(dialogContext).pop();
+            closeSurface();
           },
           child: Text(l.statementsClearLink),
         ),
@@ -565,7 +620,7 @@ class InvoiceLinkDialog {
       ];
     }
 
-    return [leftAction, rightAction];
+    return [if (leftAction != null) leftAction, rightAction];
   }
 
   static void _loadDataAsNeeded(
@@ -728,5 +783,239 @@ class InvoiceLinkDialog {
         setState(() => state.loadingExpenses = false);
       }
     }
+  }
+}
+
+/// Stateful inline version of the invoice-link wizard used by side panels.
+class _InvoiceLinkInlineSurface extends StatefulWidget {
+  const _InvoiceLinkInlineSurface({
+    required this.controller,
+    required this.entry,
+    required this.expenseOnly,
+    required this.onClose,
+    required this.embedded,
+    this.onBack,
+    this.notApplicableReason,
+    this.showHeader = true,
+  });
+
+  final StatementsController controller;
+  final Map<String, dynamic> entry;
+  final bool expenseOnly;
+  final bool showHeader;
+  final VoidCallback onClose;
+  final bool embedded;
+
+  /// Returns to the previous panel (suggested matches) from the first step.
+  final VoidCallback? onBack;
+  final String? notApplicableReason;
+
+  @override
+  State<_InvoiceLinkInlineSurface> createState() =>
+      _InvoiceLinkInlineSurfaceState();
+}
+
+class _InvoiceLinkInlineSurfaceState extends State<_InvoiceLinkInlineSurface> {
+  final InvoicesApi _invoicesApi = InvoicesApi();
+  final ProvidersApi _providersApi = ProvidersApi();
+  final ExpensesApi _expensesApi = ExpensesApi();
+
+  late final InvoiceLinkDialogState _state;
+  late final String _entryId;
+  late final String? _currentClientId;
+  late final String? _currentProviderId;
+  late final List<String> _currentInvoiceIds;
+  late final List<GroupClient> _pickerClients;
+
+  @override
+  void initState() {
+    super.initState();
+    final entry = widget.entry;
+    _entryId =
+        (entry['id'] ?? entry['_id'] ?? entry['statementId'] ?? '').toString();
+    _currentInvoiceIds = () {
+      final raw = entry['invoiceIds'] ?? entry['invoice_ids'];
+      if (raw is List) {
+        final ids = raw
+            .map((e) => e?.toString().trim() ?? '')
+            .where((e) => e.isNotEmpty)
+            .toList(growable: false);
+        if (ids.isNotEmpty) return ids;
+      }
+      final single =
+          (entry['invoiceId'] ?? entry['invoice_id'] ?? entry['invoice'])
+              ?.toString()
+              .trim();
+      return (single != null && single.isNotEmpty)
+          ? <String>[single]
+          : const <String>[];
+    }();
+    _currentClientId = entry['clientId']?.toString();
+    _currentProviderId =
+        (entry['providerId'] ?? entry['provider_id'] ?? entry['provider'])
+            ?.toString();
+    _pickerClients = widget.controller.clients
+        .map((raw) => GroupClient.fromJson(Map<String, dynamic>.from(raw)))
+        .where((c) => c.id.trim().isNotEmpty)
+        .toList(growable: false);
+    _state = InvoiceLinkDialogState(
+      currentInvoiceId:
+          _currentInvoiceIds.isNotEmpty ? _currentInvoiceIds.first : null,
+      currentInvoiceIds: _currentInvoiceIds,
+      currentClientId: _currentClientId,
+      currentProviderId: _currentProviderId,
+      expenseOnly: widget.expenseOnly,
+    );
+  }
+
+  @override
+  void dispose() {
+    _state.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final s = widget.controller;
+    final expenseOnly = widget.expenseOnly;
+
+    final maxAllowedStep = _state.getMaxAllowedStep(expenseOnly);
+    if (_state.visibleStep > maxAllowedStep) {
+      _state.visibleStep = maxAllowedStep;
+    }
+    final currentStep = _state.visibleStep;
+
+    InvoiceLinkDialog._loadDataAsNeeded(
+      context,
+      _state,
+      s,
+      expenseOnly,
+      _providersApi,
+      _invoicesApi,
+      _expensesApi,
+      setState,
+    );
+
+    final stepsBuilder = InvoiceLinkDialogSteps(
+      state: _state,
+      context: context,
+      cs: cs,
+      l: l,
+      stacked: true,
+      groupId: s.groupId,
+      pickerClients: _pickerClients,
+      invoicesApi: _invoicesApi,
+      expensesApi: _expensesApi,
+    );
+
+    final actions = InvoiceLinkDialog._buildActions(
+      context,
+      _state,
+      s,
+      _entryId,
+      _currentClientId,
+      expenseOnly,
+      l,
+      setState,
+      onClose: widget.onClose,
+      panelMode: true,
+    );
+
+    final isEs = Localizations.localeOf(context)
+        .languageCode
+        .toLowerCase()
+        .startsWith('es');
+    final subtitle = expenseOnly
+        ? (isEs ? 'Vincular gasto manualmente' : 'Link expense manually')
+        : (isEs ? 'Vincular factura manualmente' : 'Link invoice manually');
+    // Header back walks the wizard backwards, then returns to the suggested
+    // matches when the panel was opened from them. Without a header (the
+    // unified transaction panel hosts this inline), stepping back between
+    // wizard steps instead relies on tapping an earlier step bubble, and a
+    // compact link below takes the place of the back arrow for returning to
+    // the suggested matches.
+    final VoidCallback? onBack = currentStep > 0
+        ? () => setState(() => _state.visibleStep = currentStep - 1)
+        : widget.onBack;
+    final backToSuggestions =
+        !widget.showHeader && currentStep == 0 ? widget.onBack : null;
+
+    return HexoraSidePanel(
+      embedded: widget.embedded,
+      onDismiss: widget.onClose,
+      header: !widget.showHeader
+          ? null
+          : HexoraSidePanelHeader(
+              title: isEs ? 'Vincular movimiento' : 'Link transaction',
+              subtitle: subtitle,
+              onBack: onBack,
+              backTooltip: isEs ? 'Volver' : 'Back',
+              onClose: widget.onClose,
+              closeTooltip: l.close,
+            ),
+      footer: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: actions,
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (widget.showHeader) ...[
+              BankTransactionSummary(
+                entry: widget.entry,
+                notApplicableReason: widget.notApplicableReason,
+              ),
+              const SizedBox(height: 12),
+            ] else if (backToSuggestions != null) ...[
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: backToSuggestions,
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    minimumSize: const Size(0, 28),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  icon: const Icon(Icons.arrow_back_rounded, size: 15),
+                  label: Text(
+                    isEs ? 'Volver a sugerencias' : 'Back to suggestions',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+            ],
+            WizardStepsHeader(
+              steps: InvoiceLinkDialog._buildWizardSteps(
+                currentStep,
+                expenseOnly,
+              ),
+              currentStep: currentStep,
+              isWide: true,
+              maxWidth: double.infinity,
+              onStepTapped: (target) {
+                setState(() {
+                  if (target <= maxAllowedStep) _state.visibleStep = target;
+                });
+              },
+            ),
+            const SizedBox(height: 8),
+            InvoiceLinkDialog._buildStepContent(
+              currentStep,
+              stepsBuilder,
+              expenseOnly,
+              () => setState(() {}),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

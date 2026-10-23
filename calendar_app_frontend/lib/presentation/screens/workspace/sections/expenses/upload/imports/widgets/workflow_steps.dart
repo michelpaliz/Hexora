@@ -216,7 +216,7 @@ class _ManualCompactWorkflowIndicator extends StatelessWidget {
         fileBytes != null &&
         fileBytes!.isNotEmpty;
     return _CompactImportWorkflowShell(
-      steps: const ['Documento', 'Datos', 'Revision', 'Guardado'],
+      steps: const ['Documento', 'Datos', 'Revisión', 'Guardado'],
       activeStep: selected ? 1 : 0,
       readyCount: selected ? 1 : 0,
       reviewCount: selected ? 1 : 0,
@@ -434,6 +434,8 @@ class _BatchCompactWorkflowIndicator extends StatelessWidget {
   final bool jobActive;
   final bool jobCompleted;
   final bool jobFailed;
+  final bool inspecting;
+  final bool selectionReady;
   final int readyCount;
   final int reviewCount;
   final int duplicateCount;
@@ -451,6 +453,8 @@ class _BatchCompactWorkflowIndicator extends StatelessWidget {
     required this.jobActive,
     required this.jobCompleted,
     required this.jobFailed,
+    required this.inspecting,
+    required this.selectionReady,
     required this.readyCount,
     required this.reviewCount,
     required this.duplicateCount,
@@ -460,10 +464,11 @@ class _BatchCompactWorkflowIndicator extends StatelessWidget {
   });
 
   int get _activeStep {
-    if (jobActive) return 1;
+    if (jobActive) return 2;
     if (jobCompleted || jobFailed) {
-      return reviewCount > 0 || duplicateCount > 0 ? 2 : 3;
+      return reviewCount > 0 || duplicateCount > 0 ? 3 : 4;
     }
+    if (inspecting || selectionReady) return 1;
     return 0;
   }
 
@@ -475,6 +480,7 @@ class _BatchCompactWorkflowIndicator extends StatelessWidget {
     final activeStep = _activeStep;
     final steps = [
       isEs ? 'Documentos' : 'Documents',
+      isEs ? 'Confirmar' : 'Confirm',
       'OCR',
       isEs ? 'Revisi\u00f3n' : 'Review',
       isEs ? 'Importaci\u00f3n' : 'Import',
@@ -520,7 +526,7 @@ class _BatchCompactWorkflowIndicator extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               _BatchStatusChip(
-                label: '$readyCount gastos listos',
+                label: '$readyCount listos',
                 color: Colors.green.shade600,
               ),
               _BatchStatusChip(
@@ -600,7 +606,11 @@ class _BatchCompactWorkflowIndicator extends StatelessWidget {
                       ? (isEs ? 'Lote completado' : 'Batch complete')
                       : jobActive
                           ? (isEs ? 'Procesando...' : 'Processing...')
-                          : (isEs ? 'Analizar documentos' : 'Analyze'),
+                          : inspecting
+                              ? (isEs ? 'Inspeccionando...' : 'Inspecting...')
+                              : (isEs
+                                  ? 'Confirmar y analizar'
+                                  : 'Confirm and analyze'),
                   style: ts.bodySmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
@@ -631,7 +641,7 @@ class _BatchCompactWorkflowIndicator extends StatelessWidget {
 
           return Row(
             children: [
-              Expanded(flex: 5, child: stepper),
+              Expanded(flex: 7, child: stepper),
               const SizedBox(width: 12),
               Expanded(flex: 4, child: summary),
               const SizedBox(width: 12),
@@ -664,45 +674,48 @@ class _CompactWorkflowStep extends StatelessWidget {
     final completed = !failed && index < activeIndex;
     final active = index == activeIndex;
     final pending = index > activeIndex;
-    final color = active
-        ? cs.primary
-        : completed
-            ? Colors.green.shade600
-            : cs.onSurfaceVariant;
-    final icon = completed
-        ? Icons.check_rounded
-        : active
-            ? Icons.play_arrow_rounded
-            : Icons.circle_outlined;
+    final color = active || completed ? cs.primary : cs.onSurfaceVariant;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 160),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        color: active
-            ? cs.primaryContainer.withValues(alpha: 0.22)
-            : Colors.transparent,
-        border: Border.all(
-          color:
-              active ? cs.primary.withValues(alpha: 0.28) : Colors.transparent,
-        ),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: active ? 16 : 14,
-            color: pending ? color.withValues(alpha: 0.55) : color,
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            width: 28,
+            height: 28,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: active
+                  ? cs.primary
+                  : completed
+                      ? cs.primaryContainer
+                      : cs.surfaceContainerHighest,
+            ),
+            child: completed
+                ? Icon(Icons.check_rounded, size: 15, color: cs.primary)
+                : Text(
+                    '${index + 1}',
+                    style: ts.bodySmall?.copyWith(
+                      color: active
+                          ? cs.onPrimary
+                          : pending
+                              ? color.withValues(alpha: 0.68)
+                              : color,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
           ),
-          const SizedBox(width: 5),
+          const SizedBox(width: 8),
           Text(
             label,
             style: ts.bodySmall?.copyWith(
               color: pending ? color.withValues(alpha: 0.64) : color,
-              fontWeight: active ? FontWeight.w900 : FontWeight.w700,
-              fontSize: 12,
+              fontWeight: active ? FontWeight.w800 : FontWeight.w700,
+              fontSize: 13,
             ),
           ),
         ],

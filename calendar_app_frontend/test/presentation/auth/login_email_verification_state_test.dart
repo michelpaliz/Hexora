@@ -29,9 +29,10 @@ const _typography = AppTypography(
 );
 
 class _FakeAuthApi implements IAuthApiClient {
-  _FakeAuthApi(this.loginResponse);
+  _FakeAuthApi(this.loginResponse, {this.profileResponse});
 
   final Map<String, dynamic> loginResponse;
+  final Map<String, dynamic>? profileResponse;
   String? submittedEmail;
   int profileCalls = 0;
 
@@ -47,7 +48,7 @@ class _FakeAuthApi implements IAuthApiClient {
   @override
   Future<Map<String, dynamic>> profile({required String accessToken}) async {
     profileCalls++;
-    return {..._user().toJson(), '_status': 200};
+    return profileResponse ?? {..._user().toJson(), '_status': 200};
   }
 
   @override
@@ -241,6 +242,48 @@ void main() {
     expect(auth.currentUser, isNull);
   });
 
+  test('login accepts nested tokens and user response fields', () async {
+    final auth = _authService({
+      '_status': 200,
+      'tokens': {
+        'accessToken': 'nested-access',
+        'refreshToken': 'nested-refresh',
+      },
+      'user': {'id': 'user-1'},
+    });
+
+    final loggedIn = await auth.logIn(
+      email: 'michelpaliz@hotmail.com',
+      password: 'secret',
+    );
+
+    expect(loggedIn?.id, 'user-1');
+  });
+
+  test('login keeps the submitted email when profile omits it', () async {
+    final response = {
+      '_status': 200,
+      'accessToken': 'access',
+      'refreshToken': 'refresh',
+      'userId': 'user-1',
+    };
+    final api = _FakeAuthApi(
+      response,
+      profileResponse: {
+        ..._user().copyWith(email: '').toJson(),
+        '_status': 200,
+      },
+    );
+    final auth = _authService(response, api: api);
+
+    final loggedIn = await auth.logIn(
+      email: '  MICHELPALIZ@HOTMAIL.COM ',
+      password: 'secret',
+    );
+
+    expect(loggedIn?.email, 'michelpaliz@hotmail.com');
+  });
+
   testWidgets('HTTP 403 Email not verified opens verification UI',
       (tester) async {
     final auth = _authService({
@@ -268,6 +311,33 @@ void main() {
     expect(find.byKey(const Key('email_verification_prompt')), findsNothing);
   });
 
+  testWidgets('HTTP 404 shows the localized user-not-found error',
+      (tester) async {
+    final auth = _authService({
+      '_status': 404,
+      'message': 'No user found with the provided email.',
+    });
+    await tester.pumpWidget(_loginApp(auth));
+
+    await _submitLogin(tester);
+
+    expect(find.text('User not found'), findsOneWidget);
+  });
+
+  testWidgets('unexpected login response shows a safe authentication error',
+      (tester) async {
+    final auth = _authService({
+      '_status': 200,
+      // Missing tokens causes a FormatException in AuthProvider.
+    });
+    await tester.pumpWidget(_loginApp(auth));
+
+    await _submitLogin(tester);
+
+    expect(find.text('Authentication error'), findsOneWidget);
+    expect(find.textContaining('FormatException'), findsNothing);
+  });
+
   testWidgets('unrelated HTTP 403 does not open verification UI',
       (tester) async {
     final auth = _authService({
@@ -278,8 +348,7 @@ void main() {
 
     await _submitLogin(tester);
 
-    expect(
-        find.text('Login failed: Account access is disabled'), findsOneWidget);
+    expect(find.text('Account access is disabled'), findsOneWidget);
     expect(find.byKey(const Key('email_verification_prompt')), findsNothing);
   });
 

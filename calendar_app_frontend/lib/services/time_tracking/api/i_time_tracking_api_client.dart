@@ -271,6 +271,11 @@ abstract class ITimeTrackingApiClient {
     String token,
   );
 
+  Future<List<WorkerLiveLocation>> getActiveWorkerLocations(
+    String groupId,
+    String token,
+  );
+
   Future<List<WorkerVisit>> getWorkerVisits(
     String groupId,
     String token, {

@@ -13,6 +13,7 @@ import 'package:hexora/presentation/screens/workspace/sections/presupuestos/docu
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/templates/presupuesto_image_library_view.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/widgets/presupuesto_pdf_preview_dialog.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_editor_components.dart';
 import 'package:intl/intl.dart';
 
 part 'editor/sections/editor_layout.dart';

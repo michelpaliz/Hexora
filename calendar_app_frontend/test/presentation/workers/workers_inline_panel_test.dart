@@ -4,6 +4,7 @@ import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/time_tracking/time_entry.dart';
 import 'package:hexora/models/time_tracking/working_time_history.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/right_panel_workers_inline.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/widgets/worker_monthly_overview_inline.dart';
@@ -20,6 +21,16 @@ import 'package:hexora/theme/themes/app_theme.dart';
 import 'package:provider/provider.dart';
 
 class _User extends ChangeNotifier implements UserDomain {
+  @override
+  User? get user => User(
+        id: 'owner',
+        name: 'Owner',
+        email: 'owner@example.com',
+        userName: 'owner',
+        groupIds: const ['group'],
+        emailVerified: true,
+      );
+
   @override
   Future<String> getAuthToken({bool forceRefresh = false}) async => 'test';
   @override

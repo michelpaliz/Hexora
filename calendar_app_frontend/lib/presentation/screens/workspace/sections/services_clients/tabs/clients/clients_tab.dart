@@ -1,11 +1,12 @@
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/client_filter_controls.dart';
-import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/clients_search_filters.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 
 import 'client_list_item.dart';
 
@@ -233,14 +234,28 @@ class _ClientsTabState extends State<ClientsTab> {
                   })),
           activeCountLabel: l.activeClientsSection,
           inactiveCountLabel: l.statusInactive,
-          additionalFilters: ClientMissingInvoiceFilter(
-            selected: widget.missingCurrentMonthInvoiceOnly,
-            count: hasInvoiceFlagData ? missingInvoiceCount : null,
-            onTap: widget.onToggleMissingCurrentMonthInvoiceOnly == null
-                ? null
-                : () => widget.onToggleMissingCurrentMonthInvoiceOnly!(
-                      !widget.missingCurrentMonthInvoiceOnly,
-                    ),
+          additionalFilters: Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _SortChip(
+                ascending: _ascending,
+                onChanged: (v) => setState(() {
+                  _ascending = v;
+                  _page = 0;
+                }),
+              ),
+              ClientMissingInvoiceFilter(
+                selected: widget.missingCurrentMonthInvoiceOnly,
+                count: hasInvoiceFlagData ? missingInvoiceCount : null,
+                onTap: widget.onToggleMissingCurrentMonthInvoiceOnly == null
+                    ? null
+                    : () => widget.onToggleMissingCurrentMonthInvoiceOnly!(
+                          !widget.missingCurrentMonthInvoiceOnly,
+                        ),
+              ),
+            ],
           ),
           extraActiveFilterCount:
               (widget.missingCurrentMonthInvoiceOnly ? 1 : 0) +
@@ -283,34 +298,8 @@ class _ClientsTabState extends State<ClientsTab> {
             _page = 0;
           }),
         ),
-        Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                PopupMenuButton<bool>(
-                  tooltip: 'Ordenar por nombre',
-                  onSelected: (v) => setState(() {
-                    _ascending = v;
-                    _page = 0;
-                  }),
-                  itemBuilder: (_) => const [
-                    NavigationPopupMenuItem(
-                        value: true, child: Text('Nombre (A–Z)')),
-                    NavigationPopupMenuItem(
-                        value: false, child: Text('Nombre (Z–A)'))
-                  ],
-                  child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Text(
-                          _ascending ? 'Nombre (A–Z) ▾' : 'Nombre (Z–A) ▾')),
-                ),
-              ],
-            )),
         Expanded(child: content),
-        if (!widget.loading && widget.error == null)
+        if (!widget.loading && widget.error == null && pages > 1)
           Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Row(children: [
@@ -352,6 +341,42 @@ class _ClientsTabState extends State<ClientsTab> {
                     icon: const Icon(Icons.chevron_right, size: 18)),
               ])),
       ],
+    );
+  }
+}
+
+class _SortChip extends StatelessWidget {
+  const _SortChip({required this.ascending, required this.onChanged});
+
+  final bool ascending;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final typo = AppTypography.of(context);
+    return PopupMenuButton<bool>(
+      tooltip: 'Ordenar por nombre',
+      onSelected: onChanged,
+      itemBuilder: (_) => const [
+        NavigationPopupMenuItem(value: true, child: Text('Nombre (A–Z)')),
+        NavigationPopupMenuItem(value: false, child: Text('Nombre (Z–A)')),
+      ],
+      child: Container(
+        constraints: BoxConstraints(
+          minHeight:
+              MediaQuery.sizeOf(context).width >= 760 ? 32.0 : 48.0,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.swap_vert_rounded, size: 14, color: cs.onSurfaceVariant),
+          const SizedBox(width: 5),
+          Text(
+            ascending ? 'Nombre (A–Z)' : 'Nombre (Z–A)',
+            style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ]),
+      ),
     );
   }
 }

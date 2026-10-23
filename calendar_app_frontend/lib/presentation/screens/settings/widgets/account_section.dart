@@ -8,6 +8,7 @@ class AccountSection extends StatelessWidget {
   final String? userSubtitle;
   final VoidCallback onEditUsername;
   final VoidCallback onChangePassword;
+  final VoidCallback? onEditProfile;
   final VoidCallback? onLogout;
 
   const AccountSection({
@@ -16,6 +17,7 @@ class AccountSection extends StatelessWidget {
     this.userSubtitle,
     required this.onEditUsername,
     required this.onChangePassword,
+    this.onEditProfile,
     this.onLogout,
   });
 
@@ -23,6 +25,7 @@ class AccountSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
+    final isEs = l.localeName.startsWith('es');
 
     return Column(
       children: [
@@ -34,6 +37,19 @@ class AccountSection extends StatelessWidget {
           subtitle: userSubtitle,
           onTap: onEditUsername,
         ),
+        if (onEditProfile != null) ...[
+          Divider(
+              height: 0,
+              indent: 63,
+              color: cs.outlineVariant.withValues(alpha: 0.4)),
+          NavTile(
+            leading:
+                Icon(Icons.edit_outlined, size: 18, color: cs.primary),
+            iconBgColor: cs.primary.withValues(alpha: 0.12),
+            title: isEs ? 'Editar perfil' : 'Edit profile',
+            onTap: onEditProfile,
+          ),
+        ],
         Divider(
             height: 0,
             indent: 63,

@@ -1046,12 +1046,15 @@ class StatementsController extends ChangeNotifier {
       );
     }
 
+    // When a full date range is set, omit the year param so the backend does
+    // not treat it as an override that shadows the more-specific date range.
+    final hasDateRange = allEntriesDateFrom != null && allEntriesDateTo != null;
     final payload = await _api.fetchStatementEntries(
       groupId: gid,
       page: page,
       size: size,
       cursor: cursorToUse,
-      year: allEntriesYear,
+      year: hasDateRange ? null : allEntriesYear,
       dateFrom: allEntriesDateFrom == null
           ? null
           : DateTime.tryParse(allEntriesDateFrom!),

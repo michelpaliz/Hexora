@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 
 /// Desktop density without scaling content or reducing mobile hit targets.
 ThemeData compactComponentTheme(ThemeData base) {
   final text = base.textTheme;
+  final isLight = base.brightness == Brightness.light;
+  final inputBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.circular(HexoraDimensions.radius),
+    borderSide: BorderSide(
+      color: isLight ? AppColors.inputBorder : base.colorScheme.outlineVariant,
+    ),
+  );
   final button = ButtonStyle(
     textStyle: WidgetStatePropertyAll(text.labelLarge),
     minimumSize:
@@ -16,6 +24,7 @@ ThemeData compactComponentTheme(ThemeData base) {
   );
   return base.copyWith(
     cardTheme: base.cardTheme.copyWith(
+      color: isLight ? AppColors.formSection : base.cardTheme.color,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
@@ -68,6 +77,20 @@ ThemeData compactComponentTheme(ThemeData base) {
       textStyle: WidgetStatePropertyAll(text.labelMedium),
       padding: const WidgetStatePropertyAll(
           EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
+      backgroundColor: isLight
+          ? WidgetStateProperty.resolveWith((states) =>
+              states.contains(WidgetState.selected)
+                  ? AppColors.selectedControl
+                  : Colors.transparent)
+          : null,
+      foregroundColor: isLight
+          ? WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.disabled)
+                  ? base.colorScheme.onSurface.withValues(alpha: 0.38)
+                  : states.contains(WidgetState.selected)
+                      ? AppColors.inputFocus
+                      : base.colorScheme.onSurface)
+          : null,
     )),
     elevatedButtonTheme: ElevatedButtonThemeData(
         style: base.elevatedButtonTheme.style?.merge(button) ?? button),
@@ -80,14 +103,62 @@ ThemeData compactComponentTheme(ThemeData base) {
     appBarTheme:
         base.appBarTheme.copyWith(toolbarHeight: HexoraDimensions.toolbar),
     inputDecorationTheme: base.inputDecorationTheme.copyWith(
+        filled: true,
+        fillColor: isLight
+            ? WidgetStateColor.resolveWith((states) =>
+                states.contains(WidgetState.disabled)
+                    ? const Color(0xFFE7EDF6)
+                    : AppColors.inputBackground)
+            : base.inputDecorationTheme.fillColor,
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(
             horizontal: HexoraTableTokens.cellPadding,
             vertical: HexoraTableTokens.gap),
-        labelStyle: text.labelMedium,
-        floatingLabelStyle: text.labelMedium,
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        labelStyle: text.labelMedium?.copyWith(
+          color: base.colorScheme.onSurfaceVariant,
+        ),
+        floatingLabelStyle: text.labelMedium?.copyWith(
+          color: isLight ? AppColors.inputFocus : base.colorScheme.primary,
+        ),
         hintStyle:
-            text.bodySmall?.copyWith(color: base.colorScheme.onSurfaceVariant)),
+            text.bodySmall?.copyWith(color: base.colorScheme.onSurfaceVariant),
+        border: isLight ? inputBorder : base.inputDecorationTheme.border,
+        enabledBorder:
+            isLight ? inputBorder : base.inputDecorationTheme.enabledBorder,
+        disabledBorder: isLight
+            ? inputBorder.copyWith(
+                borderSide: BorderSide(
+                  color: AppColors.inputBorder.withValues(alpha: 0.65),
+                ),
+              )
+            : base.inputDecorationTheme.disabledBorder,
+        focusedBorder: isLight
+            ? inputBorder.copyWith(
+                borderSide: const BorderSide(
+                  color: AppColors.inputFocus,
+                  width: 1.5,
+                ),
+              )
+            : base.inputDecorationTheme.focusedBorder,
+        errorBorder: isLight
+            ? inputBorder.copyWith(
+                borderSide: BorderSide(color: base.colorScheme.error),
+              )
+            : base.inputDecorationTheme.errorBorder,
+        focusedErrorBorder: isLight
+            ? inputBorder.copyWith(
+                borderSide:
+                    BorderSide(color: base.colorScheme.error, width: 1.5),
+              )
+            : base.inputDecorationTheme.focusedErrorBorder),
+    chipTheme: isLight
+        ? base.chipTheme.copyWith(
+            backgroundColor: AppColors.inputBackground,
+            selectedColor: AppColors.selectedControl,
+            side: const BorderSide(color: AppColors.inputBorder),
+          )
+        : base.chipTheme,
     dataTableTheme: base.dataTableTheme.copyWith(
         headingTextStyle: text.labelMedium,
         dataTextStyle: text.bodyMedium,
@@ -99,6 +170,23 @@ ThemeData compactComponentTheme(ThemeData base) {
         dividerThickness: HexoraTableTokens.separatorWidth),
     dialogTheme: base.dialogTheme.copyWith(
         titleTextStyle: text.titleLarge, contentTextStyle: text.bodyMedium),
+    // Raw SnackBars across the app get the same floating card as the typed
+    // helpers in snack_helper.dart (showErrorSnack/showFailureSnack/...).
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: base.colorScheme.surface,
+      elevation: 10,
+      width: 480,
+      contentTextStyle: text.bodyMedium?.copyWith(
+          color: base.colorScheme.onSurface, fontWeight: FontWeight.w500),
+      actionTextColor: base.colorScheme.primary,
+      closeIconColor: base.colorScheme.onSurfaceVariant,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(
+            color: base.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+    ),
     // One quiet scrollbar style for every list: thin and muted until hovered
     // or dragged, so nested panes don't show competing heavy thumbs.
     scrollbarTheme: ScrollbarThemeData(

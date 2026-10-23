@@ -2,12 +2,12 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/client_classification_store.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_active_switch.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/client_classification_manager_dialog.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 
 import 'add_client_controller.dart';
 import 'widgets/billing_section/billing_section.dart';
@@ -16,7 +16,7 @@ import 'widgets/client_header.dart';
 import 'widgets/client_editor_theme.dart';
 import 'widgets/save_button.dart';
 import 'widgets/service_location_section.dart';
-import 'widgets/client_image_field.dart';
+import 'widgets/client_identity_header.dart';
 
 /// Opens the client form as a page with persistent navigation and save controls.
 Future<GroupClient?> showClientEditor({
@@ -92,6 +92,7 @@ class _AddClientSheetState extends State<AddClientSheet> {
   Uint8List? _imageBytes;
   String? _imageName;
   bool _removeImage = false;
+  bool _uploadingImage = false;
 
   @override
   void initState() {
@@ -138,7 +139,6 @@ class _AddClientSheetState extends State<AddClientSheet> {
 
   Future<void> _onSave() async {
     if (c.saving) return;
-    final typo = AppTypography.of(context);
 
     setState(() => _showValidation = true);
     final trimmedName = c.name.text.trim();
@@ -176,14 +176,32 @@ class _AddClientSheetState extends State<AddClientSheet> {
       return;
     }
 
+    final wasEdit = c.isEdit;
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    final saveFailedTitle = wasEdit
+        ? (es ? 'No se pudieron guardar los cambios' : 'Could not save changes')
+        : (es ? 'No se pudo crear el cliente' : 'Could not create the client');
     setState(() => c.saving = true);
     try {
       var result = await c.save();
       // Retain the new ID so retries after a secondary upload failure update
       // the existing client rather than creating a duplicate.
       c.client = result;
-      result = await c.saveServiceLocation(result);
+      // The client itself is stored from here on; later steps report their
+      // own failure instead of claiming the whole save failed.
+      try {
+        result = await c.saveServiceLocation(result);
+      } catch (e) {
+        if (mounted) {
+          showFailureSnack(context, e,
+              title: es
+                  ? 'Cliente guardado, pero no la ubicación del servicio'
+                  : 'Client saved, but not its service location');
+        }
+        return;
+      }
       if (_imageBytes != null || _removeImage) {
+        setState(() => _uploadingImage = true);
         try {
           result = _imageBytes != null
               ? await widget.api
@@ -192,24 +210,30 @@ class _AddClientSheetState extends State<AddClientSheet> {
           _imageBytes = null;
           _imageName = null;
           _removeImage = false;
-        } catch (_) {
+        } catch (e) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content:
-                  Text(AppLocalizations.of(context)!.clientImageSaveFailed),
-            ));
+            showFailureSnack(context, e,
+                title: AppLocalizations.of(context)!.clientImageSaveFailed);
           }
           return;
+        } finally {
+          if (mounted) setState(() => _uploadingImage = false);
         }
       }
       c.client = result;
       if (!mounted) return;
-      // Ensure options stay in sync with values actually used.
-      await ClientClassificationStore.merge(
-        groupId: widget.groupId,
-        entityType: result.entityType,
-        propertyKind: result.propertyKind,
-      );
+      // Keep the classification suggestions in sync. Best effort only: the
+      // client is already saved, so a failure here must not be reported as
+      // a failed save.
+      try {
+        await ClientClassificationStore.merge(
+          groupId: widget.groupId,
+          entityType: result.entityType,
+          propertyKind: result.propertyKind,
+        );
+      } catch (e) {
+        debugPrint('Client classification sync failed: $e');
+      }
       if (!mounted) return;
       widget.onSaved?.call(result);
       if (widget.closeOnSave) {
@@ -226,19 +250,10 @@ class _AddClientSheetState extends State<AddClientSheet> {
         );
         return;
       }
-      final message = e.message.trim().isNotEmpty
-          ? e.message.trim()
-          : 'No se pudo crear el cliente.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message, style: typo.bodySmall)),
-      );
-    } catch (_) {
+      showFailureSnack(context, e, title: saveFailedTitle);
+    } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No se pudo crear el cliente.', style: typo.bodySmall),
-        ),
-      );
+      showFailureSnack(context, e, title: saveFailedTitle);
     } finally {
       if (mounted) setState(() => c.saving = false);
     }
@@ -301,18 +316,16 @@ class _AddClientSheetState extends State<AddClientSheet> {
     required String message,
     required GroupClient? existingClient,
   }) {
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        action: existingClient == null
-            ? null
-            : SnackBarAction(
-                label: 'Abrir cliente existente',
-                onPressed: () => _openExistingClient(existingClient),
-              ),
-      ),
+    showErrorSnack(
+      context,
+      message,
+      title: 'Cliente duplicado',
+      action: existingClient == null
+          ? null
+          : SnackBarAction(
+              label: 'Abrir cliente existente',
+              onPressed: () => _openExistingClient(existingClient),
+            ),
     );
   }
 
@@ -330,6 +343,32 @@ class _AddClientSheetState extends State<AddClientSheet> {
       existingClients: widget.existingClients,
     );
     if (updated != null) widget.onSaved?.call(updated);
+  }
+
+  Widget _identityHeader() {
+    final liveName = c.name.text.trim();
+    final displayName = liveName.isEmpty ? (c.client?.name ?? '') : liveName;
+    final imageClient = (c.client ?? GroupClient(id: '', name: displayName))
+        .copyWith(name: displayName);
+    return ClientIdentityHeader(
+      client: imageClient,
+      name: displayName,
+      email: c.email.text,
+      bytes: _imageBytes,
+      removed: _removeImage,
+      disabled: c.saving,
+      uploading: _uploadingImage,
+      onChanged: (bytes, name) => setState(() {
+        _imageBytes = bytes;
+        _imageName = name;
+        _removeImage = false;
+      }),
+      onRemove: () => setState(() {
+        _imageBytes = null;
+        _imageName = null;
+        _removeImage = c.client?.imageVersion != null;
+      }),
+    );
   }
 
   @override
@@ -358,6 +397,10 @@ class _AddClientSheetState extends State<AddClientSheet> {
                 const BillingDivider(),
                 const SizedBox(height: 8),
               ],
+              if (!inline) ...[
+                _identityHeader(),
+                const SizedBox(height: 12),
+              ],
               ClientContactForm(
                 c: c,
                 entityTypeOptions: _entityTypeOptions,
@@ -367,23 +410,6 @@ class _AddClientSheetState extends State<AddClientSheet> {
                 showValidation: _showValidation,
                 onFieldChanged: () => setState(() {}),
                 onFieldBlur: (key) => setState(() => c.markTouched(key)),
-              ),
-              ClientImageField(
-                client: c.client?.copyWith(name: c.name.text) ??
-                    GroupClient(id: '', name: c.name.text),
-                bytes: _imageBytes,
-                removed: _removeImage,
-                disabled: c.saving,
-                onChanged: (bytes, name) => setState(() {
-                  _imageBytes = bytes;
-                  _imageName = name;
-                  _removeImage = false;
-                }),
-                onRemove: () => setState(() {
-                  _imageBytes = null;
-                  _imageName = null;
-                  _removeImage = c.client?.imageVersion != null;
-                }),
               ),
               const SizedBox(height: 8),
               BillingSection(
@@ -425,33 +451,9 @@ class _AddClientSheetState extends State<AddClientSheet> {
         Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: ClientHeader(isEdit: c.isEdit)),
-        if (widget.client != null)
-          Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Row(children: [
-                CircleAvatar(
-                    backgroundColor: cs.primary.withValues(alpha: .1),
-                    child: Text(
-                        widget.client!.name.trim().isEmpty
-                            ? '?'
-                            : widget.client!.name.characters.first
-                                .toUpperCase(),
-                        style: TextStyle(color: cs.primary))),
-                const SizedBox(width: 12),
-                Expanded(
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                      Text(widget.client!.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleSmall),
-                      Text(widget.client!.email ?? '',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall),
-                    ])),
-              ])),
+        Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: _identityHeader()),
         Expanded(child: form),
         Container(
             padding: const EdgeInsets.all(12),

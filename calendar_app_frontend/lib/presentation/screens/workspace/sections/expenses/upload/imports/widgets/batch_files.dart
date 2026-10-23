@@ -13,6 +13,8 @@ class _BatchFileListView extends StatelessWidget {
     List<({String fileName, Uint8List fileBytes})> files, {
     required int selectedCount,
   })? onDropWebDocuments;
+  final VoidCallback? onPickDocuments;
+  final VoidCallback? onPickZip;
 
   const _BatchFileListView({
     required this.items,
@@ -24,6 +26,8 @@ class _BatchFileListView extends StatelessWidget {
     required this.onRemoveWarnings,
     required this.onRemoveFile,
     required this.onDropWebDocuments,
+    required this.onPickDocuments,
+    required this.onPickZip,
   });
 
   @override
@@ -42,73 +46,76 @@ class _BatchFileListView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        l.expenseBatchListTitle,
-                        style: ts.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w700,
+                Expanded(
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _FilterTab(
+                          label: l.expenseBatchListFilterAll,
+                          selected: filterIndex == 0,
+                          onTap: () => onFilterChanged(0),
+                          cs: cs,
+                          ts: ts),
+                      const SizedBox(width: 4),
+                      _FilterTab(
+                          label: l.expenseBatchListFilterReady,
+                          selected: filterIndex == 1,
+                          onTap: () => onFilterChanged(1),
+                          cs: cs,
+                          ts: ts),
+                      const SizedBox(width: 4),
+                      _FilterTab(
+                          label: l.expenseBatchListFilterIssues,
+                          selected: filterIndex == 2,
+                          onTap: () => onFilterChanged(2),
+                          cs: cs,
+                          ts: ts),
+                      if (onRemoveWarnings != null)
+                        TextButton.icon(
+                          onPressed: onRemoveWarnings,
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            foregroundColor: cs.error,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                          ),
+                          icon:
+                              const Icon(Icons.remove_circle_outline, size: 16),
+                          label: Text(
+                            l.expenseBatchListRemoveWarnings(warningCount),
+                            style: ts.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    Text(
-                      l.expenseBatchListCount(totalCount),
-                      style: ts.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 4,
-                  runSpacing: 6,
-                  children: [
-                    _FilterTab(
-                        label: l.expenseBatchListFilterAll,
-                        selected: filterIndex == 0,
-                        onTap: () => onFilterChanged(0),
-                        cs: cs,
-                        ts: ts),
-                    const SizedBox(width: 4),
-                    _FilterTab(
-                        label: l.expenseBatchListFilterReady,
-                        selected: filterIndex == 1,
-                        onTap: () => onFilterChanged(1),
-                        cs: cs,
-                        ts: ts),
-                    const SizedBox(width: 4),
-                    _FilterTab(
-                        label: l.expenseBatchListFilterIssues,
-                        selected: filterIndex == 2,
-                        onTap: () => onFilterChanged(2),
-                        cs: cs,
-                        ts: ts),
-                    if (onRemoveWarnings != null)
-                      TextButton.icon(
-                        onPressed: onRemoveWarnings,
-                        style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          foregroundColor: cs.error,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                        ),
-                        icon: const Icon(Icons.remove_circle_outline, size: 16),
-                        label: Text(
-                          l.expenseBatchListRemoveWarnings(warningCount),
-                          style: ts.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                  ],
+                const SizedBox(width: 12),
+                Text(
+                  l.expenseBatchListCount(totalCount),
+                  style: ts.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  width: 34,
+                  height: 34,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer.withValues(alpha: 0.32),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: cs.primary.withValues(alpha: 0.45),
+                    ),
+                  ),
+                  child: Icon(Icons.view_list_rounded,
+                      size: 19, color: cs.primary),
                 ),
               ],
             ),
@@ -136,6 +143,8 @@ class _BatchFileListView extends StatelessWidget {
                         cs: cs,
                         ts: ts,
                         onDropWebDocuments: onDropWebDocuments,
+                        onPickDocuments: onPickDocuments,
+                        onPickZip: onPickZip,
                       ))
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -149,8 +158,10 @@ class _BatchFileListView extends StatelessWidget {
                     itemBuilder: (context, index) => _BatchFileListItem(
                       item: items[index],
                       onRemove: onRemoveFile != null &&
-                              items[index].status ==
-                                  _BatchExecutionFileStatus.warning
+                              items[index].status !=
+                                  _BatchExecutionFileStatus.processing &&
+                              items[index].status !=
+                                  _BatchExecutionFileStatus.completed
                           ? () => onRemoveFile!(items[index].originalIndex)
                           : null,
                     ),
@@ -232,16 +243,20 @@ class _BatchFileListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final ts = Theme.of(context).textTheme;
-    final statusColor = item.status == _BatchExecutionFileStatus.success
-        ? Colors.green.shade500
-        : item.status == _BatchExecutionFileStatus.error
-            ? cs.error
-            : Colors.amber.shade600;
-    final statusIcon = item.status == _BatchExecutionFileStatus.success
-        ? Icons.check_circle_rounded
-        : item.status == _BatchExecutionFileStatus.error
-            ? Icons.error_outline_rounded
-            : Icons.warning_amber_rounded;
+    final statusColor = switch (item.status) {
+      _BatchExecutionFileStatus.completed => Colors.green.shade600,
+      _BatchExecutionFileStatus.review => Colors.amber.shade700,
+      _BatchExecutionFileStatus.error => cs.error,
+      _BatchExecutionFileStatus.processing => cs.primary,
+      _BatchExecutionFileStatus.pending => cs.onSurfaceVariant,
+    };
+    final statusIcon = switch (item.status) {
+      _BatchExecutionFileStatus.completed => Icons.check_circle_rounded,
+      _BatchExecutionFileStatus.review => Icons.warning_amber_rounded,
+      _BatchExecutionFileStatus.error => Icons.error_outline_rounded,
+      _BatchExecutionFileStatus.processing => Icons.autorenew_rounded,
+      _BatchExecutionFileStatus.pending => Icons.schedule_rounded,
+    };
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

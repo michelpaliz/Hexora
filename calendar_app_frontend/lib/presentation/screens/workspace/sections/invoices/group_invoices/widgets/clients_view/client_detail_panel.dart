@@ -34,6 +34,7 @@ class ClientDetailPanel extends StatefulWidget {
   final ValueChanged<Invoice> onOpenInvoiceDetail;
   final ValueChanged<Invoice> onDeleteInvoice;
   final Future<void> Function(List<Invoice> invoices) onDownloadVisibleInvoices;
+  final VoidCallback? onAddClient;
 
   final Future<void> Function({String? entityType, String? propertyKind})
       onApplyClassification;
@@ -55,6 +56,7 @@ class ClientDetailPanel extends StatefulWidget {
     required this.onOpenInvoiceDetail,
     required this.onDeleteInvoice,
     required this.onDownloadVisibleInvoices,
+    this.onAddClient,
     required this.onApplyClassification,
   });
 
@@ -137,12 +139,44 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
       color: Colors.transparent,
       elevation: 0,
       child: widget.selectedClient == null
-          ? Padding(
-              padding: const EdgeInsets.all(12),
-              child: Center(
-                child: Text(
-                  l.selectClientFirst,
-                  style: t.bodyMedium.copyWith(color: cs.onSurfaceVariant),
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.people_outline, size: 36, color: cs.primary),
+                    const SizedBox(height: 10),
+                    Text(
+                      widget.clients.isEmpty
+                          ? l.noClientsYet
+                          : l.selectClientFirst,
+                      textAlign: TextAlign.center,
+                      style: t.bodyLarge.copyWith(
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (widget.clients.isEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        l.noClientsYet,
+                        textAlign: TextAlign.center,
+                        style: t.bodyMedium.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      if (widget.onAddClient != null) ...[
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          key: const Key('client-detail-add-client'),
+                          onPressed: widget.onAddClient,
+                          icon: const Icon(Icons.person_add_alt_1),
+                          label: Text(l.addClient),
+                        ),
+                      ],
+                    ],
+                  ],
                 ),
               ),
             )

@@ -16,6 +16,7 @@ import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/e
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/operations/form_helpers.dart';
 import 'package:hexora/presentation/shared/utils/formatting/money_format_utils.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_resizable_split.dart';
 import 'package:hexora/presentation/shared/jobs/vat_ocr_reprocess_job_store.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -809,29 +810,6 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
               orElse: () => null,
             );
 
-    if (widget.recentUploads.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.receipt_long_outlined,
-              size: 36,
-              color: cs.onSurfaceVariant.withValues(alpha: 0.4),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l.expenseUploadEmptyList,
-              style: t.bodySmall.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 760) {
@@ -864,28 +842,24 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         final isWide = constraints.maxWidth >= 1100;
         final base = _editingExpense == null
             ? (isWide
-                ? Row(
-                    children: [
-                      Expanded(
-                        flex: 14,
-                        child: _buildListSection(
-                          l,
-                          t,
-                          cs,
-                          visibleUploads,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        flex: 8,
-                        child: _buildPreviewPanel(
-                          l,
-                          t,
-                          cs,
-                          selectedVisibleExpense,
-                        ),
-                      ),
-                    ],
+                ? HexoraResizableSplit(
+                    preferenceKey: 'expenses_invoice_split_fraction_v1',
+                    initialFraction: 0.60,
+                    minStartWidth: 520,
+                    minEndWidth: 340,
+                    handleWidth: 10,
+                    start: _buildListSection(
+                      l,
+                      t,
+                      cs,
+                      visibleUploads,
+                    ),
+                    end: _buildPreviewPanel(
+                      l,
+                      t,
+                      cs,
+                      selectedVisibleExpense,
+                    ),
                   )
                 : Column(
                     children: [
@@ -1494,6 +1468,29 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
 
   // ── List Section ──
 
+  bool get _hasActiveExpenseFilters =>
+      _searchQuery.isNotEmpty ||
+      _selectedQuarterFilter != null ||
+      _selectedYearFilter != null ||
+      _selectedFileType != _ExpenseFileTypeFilter.all ||
+      _showOnlyDuplicateInvoiceIds ||
+      _showOnlyPotentialDuplicates ||
+      _showOnlyZeroVat;
+
+  void _resetExpenseFilters() {
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
+      _selectedQuarterFilter = null;
+      _selectedYearFilter = null;
+      _selectedFileType = _ExpenseFileTypeFilter.all;
+      _showOnlyDuplicateInvoiceIds = false;
+      _showOnlyPotentialDuplicates = false;
+      _showOnlyZeroVat = false;
+    });
+    _ensureLoaded(0);
+  }
+
   Widget _buildListSection(
     AppLocalizations l,
     AppTypography t,
@@ -1516,25 +1513,22 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        Icons.filter_alt_off_outlined,
+                        widget.recentUploads.isEmpty
+                            ? Icons.receipt_long_outlined
+                            : Icons.filter_alt_off_outlined,
                         size: 28,
                         color: cs.onSurfaceVariant.withValues(alpha: 0.4),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        (_selectedQuarterFilter != null ||
-                                _selectedYearFilter != null ||
-                                _selectedFileType !=
-                                    _ExpenseFileTypeFilter.all ||
-                                _showOnlyDuplicateInvoiceIds ||
-                                _showOnlyPotentialDuplicates ||
-                                _showOnlyZeroVat)
+                        widget.recentUploads.isNotEmpty &&
+                                _hasActiveExpenseFilters
                             ? (isSpanish
                                 ? 'No hay gastos que coincidan con los filtros'
                                 : 'No expenses match the current filters')
                             : (isSpanish
-                                ? 'No hay gastos en este trimestre'
-                                : 'No expenses in this quarter'),
+                                ? 'Todavía no hay gastos'
+                                : 'No expenses yet'),
                         style: t.bodySmall.copyWith(
                           fontWeight: FontWeight.w700,
                           color: cs.onSurface,
@@ -1542,24 +1536,31 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        (_selectedQuarterFilter != null ||
-                                _selectedYearFilter != null ||
-                                _selectedFileType !=
-                                    _ExpenseFileTypeFilter.all ||
-                                _showOnlyDuplicateInvoiceIds ||
-                                _showOnlyPotentialDuplicates ||
-                                _showOnlyZeroVat)
+                        widget.recentUploads.isNotEmpty &&
+                                _hasActiveExpenseFilters
                             ? (isSpanish
                                 ? 'Prueba con otros filtros o vuelve a Todos.'
                                 : 'Try other filters or switch back to All.')
                             : (isSpanish
-                                ? 'Prueba con otro trimestre o vuelve a Todos.'
-                                : 'Try another quarter or switch back to All.'),
+                                ? 'Los gastos registrados aparecerán aquí.'
+                                : 'Registered expenses will appear here.'),
                         style: t.bodySmall.copyWith(
                           color: cs.onSurfaceVariant,
                         ),
                         textAlign: TextAlign.center,
                       ),
+                      if (widget.recentUploads.isNotEmpty &&
+                          _hasActiveExpenseFilters) ...[
+                        const SizedBox(height: 10),
+                        TextButton.icon(
+                          onPressed: _resetExpenseFilters,
+                          icon: const Icon(Icons.filter_alt_off_outlined,
+                              size: 16),
+                          label: Text(isSpanish
+                              ? 'Restablecer filtros'
+                              : 'Reset filters'),
+                        ),
+                      ],
                     ],
                   ),
                 )
@@ -1822,11 +1823,10 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.26)),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

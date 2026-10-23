@@ -15,6 +15,109 @@ dynamic _read(Map<String, dynamic> row, List<String> keys) {
   return null;
 }
 
+class _QuarterlyComparisonValues extends StatelessWidget {
+  const _QuarterlyComparisonValues({
+    required this.current,
+    required this.previous,
+    required this.previousLabel,
+    this.change,
+  });
+
+  final num current;
+  final num previous;
+  final String previousLabel;
+  final String? change;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    Widget amount(String label, num value) => Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label,
+                style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+            const SizedBox(height: 2),
+            Text(formatTaxEur(value),
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: [FontFeature.tabularFigures()])),
+          ]),
+        );
+    return Semantics(
+      label:
+          'Comparación: trimestre actual ${formatTaxEur(current)}, $previousLabel ${formatTaxEur(previous)}',
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          amount('Trimestre actual', current),
+          amount(previousLabel, previous),
+          if (change != null)
+            Text('$change %',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: cs.primary)),
+        ]),
+        const SizedBox(height: 10),
+        _ComparisonBars(current: current, previous: previous),
+      ]),
+    );
+  }
+}
+
+class _ComparisonBars extends StatelessWidget {
+  const _ComparisonBars({required this.current, required this.previous});
+
+  final num current;
+  final num previous;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final maxValue =
+        [current.abs(), previous.abs()].reduce((a, b) => a > b ? a : b);
+    final denominator = maxValue == 0 ? 1 : maxValue;
+    Widget bar(String label, num value, Color color) => Tooltip(
+          message: '$label: ${formatTaxEur(value)}',
+          child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+            Expanded(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: FractionallySizedBox(
+                  heightFactor: value.abs() / denominator,
+                  widthFactor: .42,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(4)),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(label,
+                style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+            const SizedBox(height: 2),
+            Text(formatTaxEur(value),
+                style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: [FontFeature.tabularFigures()])),
+          ]),
+        );
+    return SizedBox(
+      height: 170,
+      child: Row(children: [
+        Expanded(child: bar('Trimestre actual', current, cs.primary)),
+        Container(width: 1, color: cs.outlineVariant),
+        Expanded(child: bar('Trimestre anterior', previous, cs.outline)),
+      ]),
+    );
+  }
+}
+
 String _text(dynamic value) =>
     value == null || value is Map || value is List ? '—' : value.toString();
 String _party(Map<String, dynamic> row, String type) => _text(
@@ -898,6 +1001,7 @@ class _TaxReportContentState extends State<_TaxReportContent> {
   final selectedValues = <int, Set<String>>{};
   int? sortColumn;
   bool sortAscending = false;
+  String _quarterlyComparisonMetric = 'netVat';
 
   int? get _defaultSortColumn => section == TaxReportSection.charged ? 0 : null;
 
@@ -1721,6 +1825,119 @@ class _TaxReportContentState extends State<_TaxReportContent> {
     ]);
   }
 
+  Widget _quarterlyCounts(Map<String, dynamic> totals) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 4,
+        children: [
+          Text('${_text(totals['totalInvoices'])} facturas emitidas',
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+          Text('${_text(totals['totalExpenses'])} gastos',
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+          Text('Resultado estimado; sujeto a revisión fiscal.',
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+        ],
+      ),
+    );
+  }
+
+  Widget _deductibleVatReview(Map<String, dynamic> totals) {
+    final expenses = parseFlexibleMoney(totals['totalExpenses']) ?? 0;
+    final deductibleVat = parseFlexibleMoney(totals['purchaseVat']);
+    if (expenses <= 0 || deductibleVat == null || deductibleVat != 0) {
+      return const SizedBox.shrink();
+    }
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      key: const ValueKey('tax-deductible-vat-review'),
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: cs.tertiaryContainer.withValues(alpha: .45),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(children: [
+        Icon(Icons.info_outline_rounded,
+            size: 17, color: cs.onTertiaryContainer),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'Hay gastos en este trimestre, pero el IVA deducible es 0,00 EUR. Revisa los documentos que incluyan IVA.',
+            style: TextStyle(fontSize: 12, color: cs.onTertiaryContainer),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _quarterlyComparison(
+      Map<String, dynamic> totals, Map<String, dynamic> comparison) {
+    final cs = Theme.of(context).colorScheme;
+    final previous = _map(comparison['previousQuarter']);
+    final available =
+        data['comparisonAvailable'] == true && previous.isNotEmpty;
+    const labels = {
+      'salesVat': 'IVA repercutido',
+      'purchaseVat': 'IVA deducible',
+      'netVat': 'Resultado neto',
+    };
+    final metric = labels.containsKey(_quarterlyComparisonMetric)
+        ? _quarterlyComparisonMetric
+        : 'netVat';
+    final currentValue = parseFlexibleMoney(totals[metric]);
+    final previousValue = parseFlexibleMoney(previous[metric]);
+    final variations =
+        _map(comparison['variations'] ?? comparison['percentageChanges']);
+    final change = comparison['${metric}ChangePercent'] ?? variations[metric];
+    final comparable =
+        available && currentValue != null && previousValue != null;
+
+    return Container(
+      key: const ValueKey('tax-quarterly-comparison'),
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Comparación trimestral',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        SegmentedButton<String>(
+          key: const ValueKey('tax-quarterly-comparison-selector'),
+          showSelectedIcon: false,
+          style: const ButtonStyle(visualDensity: VisualDensity.compact),
+          segments: [
+            for (final entry in labels.entries)
+              ButtonSegment(value: entry.key, label: Text(entry.value)),
+          ],
+          selected: {metric},
+          onSelectionChanged: (selected) =>
+              setState(() => _quarterlyComparisonMetric = selected.first),
+        ),
+        const SizedBox(height: 10),
+        if (!available)
+          Text('No hay datos comparables del trimestre anterior.',
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant))
+        else if (!comparable)
+          Text('No hay datos válidos para comparar esta métrica.',
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant))
+        else
+          _QuarterlyComparisonValues(
+            current: currentValue,
+            previous: previousValue,
+            previousLabel:
+                '${_text(previous['year'])} · ${_text(previous['quarter'])}',
+            change: change == null ? null : _text(change),
+          ),
+      ]),
+    );
+  }
+
   Widget _quarterly() {
     final totals = {..._map(data['totals']), ...data};
     final net = parseFlexibleMoney(totals['netVat']);
@@ -1732,62 +1949,17 @@ class _TaxReportContentState extends State<_TaxReportContent> {
                 ? 'IVA estimado a compensar'
                 : 'Resultado equilibrado';
     final comparison = _map(data['comparison']);
-    final previous = comparison['previousQuarter'];
-    final previousMap = _map(previous);
-    final previousLabel = previous is Map
-        ? '${_text(previousMap['year'])} · ${_text(previousMap['quarter'])}'
-        : _text(previous);
-    final variations = {
-      for (final key in const [
-        'salesVat',
-        'purchaseVat',
-        'netVat',
-        'salesBase',
-        'purchaseBase',
-        'totalInvoices',
-        'totalExpenses'
-      ])
-        if (comparison['${key}ChangePercent'] != null)
-          key: comparison['${key}ChangePercent'],
-      ..._map(comparison['variations'] ?? comparison['percentageChanges']),
-    };
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       _cards([
         ('IVA repercutido', totals['salesVat'], true),
-        ('IVA soportado', totals['purchaseVat'], true),
+        ('IVA deducible', totals['purchaseVat'], true),
         (result, totals['netVat'], true),
-        ('Base de ventas', totals['salesBase'], true),
-        ('Base de compras', totals['purchaseBase'], true),
-        ('Facturas emitidas', totals['totalInvoices'], false),
-        ('Gastos', totals['totalExpenses'], false),
       ]),
+      _quarterlyCounts(totals),
       if (totals['totalInvoices'] == 0 && totals['totalExpenses'] == 0)
         _empty(),
-      const SizedBox(height: 16),
-      RoundedSectionCard(
-        margin: EdgeInsets.zero,
-        title: 'Comparación trimestral',
-        child: data['comparisonAvailable'] != true
-            ? const Text('No hay datos comparables del trimestre anterior.')
-            : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Trimestre anterior: $previousLabel'),
-                for (final metric in const {
-                  'salesVat': 'IVA repercutido',
-                  'purchaseVat': 'IVA soportado',
-                  'netVat': 'Resultado',
-                  'salesBase': 'Base de ventas',
-                  'purchaseBase': 'Base de compras',
-                  'totalInvoices': 'Facturas emitidas',
-                  'totalExpenses': 'Gastos',
-                }.entries) ...[
-                  if (previousMap[metric.key] != null)
-                    Text(
-                        '${metric.value}: ${metric.key.startsWith('total') ? _text(previousMap[metric.key]) : formatTaxEur(previousMap[metric.key])}'),
-                  if (variations[metric.key] != null)
-                    Text('${metric.value}: ${_text(variations[metric.key])} %'),
-                ],
-              ]),
-      ),
+      _deductibleVatReview(totals),
+      _quarterlyComparison(totals, comparison),
       if (data['insights'] is List)
         for (final insight in data['insights'])
           ListTile(

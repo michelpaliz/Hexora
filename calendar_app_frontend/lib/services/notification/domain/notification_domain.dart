@@ -148,8 +148,8 @@ class NotificationDomain extends ChangeNotifier {
 
       for (final notification in _notifications) {
         if (!notification.isRead) {
-          notification.isRead = true; // Mark as read directly
-          await notificationService.updateNotification(notification);
+          await _markNotificationRead(notification);
+          notification.isRead = true;
         }
         updatedNotificationIds.add(notification.id);
       }
@@ -165,6 +165,16 @@ class NotificationDomain extends ChangeNotifier {
     } catch (e) {
       devtools.log('Failed to mark notifications as read: $e');
       return _notificationIds;
+    }
+  }
+
+  Future<void> _markNotificationRead(NotificationUser notification) async {
+    try {
+      await notificationService.markNotificationRead(notification.id);
+    } catch (_) {
+      // Compatibility with older backend versions that only support the full
+      // notification update endpoint.
+      await notificationService.updateNotification(notification);
     }
   }
 

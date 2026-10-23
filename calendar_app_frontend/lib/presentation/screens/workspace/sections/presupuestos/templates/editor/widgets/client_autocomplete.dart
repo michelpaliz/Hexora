@@ -217,9 +217,9 @@ class _ClientAutocompleteFieldState extends State<_ClientAutocompleteField> {
           MenuItemButton(
             onPressed: () => _select(client),
             style: const ButtonStyle(
-              minimumSize: WidgetStatePropertyAll(Size(0, 56)),
+              minimumSize: WidgetStatePropertyAll(Size(0, 52)),
               padding: WidgetStatePropertyAll(
-                  EdgeInsets.symmetric(horizontal: 16, vertical: 10)),
+                  EdgeInsets.symmetric(horizontal: 14, vertical: 8)),
             ),
             leadingIcon: const Icon(Icons.business_outlined, size: 18),
             child: SizedBox(
@@ -347,8 +347,8 @@ class _ClientAutocompleteFieldState extends State<_ClientAutocompleteField> {
                               ),
                 filled: true,
                 fillColor: widget.selectedClientId == null
-                    ? cs.surfaceContainerLowest
-                    : cs.primary.withValues(alpha: 0.05),
+                    ? cs.surfaceContainer
+                    : cs.primaryContainer,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: BorderSide(color: cs.outlineVariant),

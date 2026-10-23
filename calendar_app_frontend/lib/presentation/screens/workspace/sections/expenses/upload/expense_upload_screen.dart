@@ -44,6 +44,7 @@ part 'imports/widgets/batch_onboarding.dart';
 part 'imports/utils/preview_formatters.dart';
 part 'imports/widgets/json_import_controls.dart';
 part 'imports/widgets/batch_documents.dart';
+part 'imports/widgets/batch_archive_confirmation.dart';
 
 class ExpenseUploadScreen extends StatefulWidget {
   const ExpenseUploadScreen({
@@ -51,6 +52,8 @@ class ExpenseUploadScreen extends StatefulWidget {
     this.embedded = false,
     this.onUploaded,
     this.initialTabIndex = 0,
+    this.initialImportTabIndex = 0,
+    this.hideImportTabs = false,
     this.providersOnly = false,
     this.providerFormOnly = false,
     this.listOnly = false,
@@ -62,6 +65,8 @@ class ExpenseUploadScreen extends StatefulWidget {
   final bool embedded;
   final VoidCallback? onUploaded;
   final int initialTabIndex;
+  final int initialImportTabIndex;
+  final bool hideImportTabs;
   final bool providersOnly;
   final bool providerFormOnly;
   final bool listOnly;
@@ -144,7 +149,13 @@ class _ExpenseBatchPreviewItem {
       id: tempId.isNotEmpty ? tempId : '${fileName}_$index',
       tempId: tempId,
       fileName: fileName,
-      originalPath: _batchJobFirstText([raw['originalPath'], raw['sourceDocument'] is Map ? (raw['sourceDocument'] as Map)['originalPath'] : null, fileName]),
+      originalPath: _batchJobFirstText([
+        raw['originalPath'],
+        raw['sourceDocument'] is Map
+            ? (raw['sourceDocument'] as Map)['originalPath']
+            : null,
+        fileName
+      ]),
       status: status.isEmpty ? 'needs_review' : status,
       prediction: raw['prediction'] is Map
           ? Map<String, dynamic>.from(raw['prediction'] as Map)
@@ -488,6 +499,11 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   List<String> _batchDocumentNames = [];
   Uint8List? _batchArchiveBytes;
   String? _batchArchiveName;
+  bool _batchArchiveInspecting = false;
+  Map<String, dynamic>? _batchArchiveInspection;
+  String? _batchArchiveInspectionError;
+  int _batchArchiveInspectionToken = 0;
+  bool _batchArchiveFilesExpanded = false;
   bool _batchSubmitting = false;
   bool _batchGeneratingJson = false;
   bool _batchStartingJob = false;
@@ -612,7 +628,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
             ? 1
             : widget.initialTabIndex.clamp(0, 1);
     _createTabsController(initialIndex: idx);
-    _createImportTabsController(initialIndex: 0);
+    _createImportTabsController(initialIndex: widget.initialImportTabIndex);
     loadProviders();
     loadRecentUploads();
   }
@@ -864,6 +880,10 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
             : widget.initialTabIndex.clamp(0, 1);
     if (_tabs.index != desiredTabIndex) {
       _tabs.index = desiredTabIndex;
+    }
+    if (oldWidget.initialImportTabIndex != widget.initialImportTabIndex &&
+        widget.uploadOnly) {
+      _importTabs.index = widget.initialImportTabIndex.clamp(0, 2);
     }
   }
 
@@ -1806,11 +1826,13 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   Future<void> copyPromptToClipboard();
   Future<void> submitExpenseJsonImport();
   Future<void> pickBatchDocuments();
+  Future<void> pickBatchZip();
   Future<void> applyBatchDocumentData(
     List<({String fileName, Uint8List fileBytes})> files, {
     required int selectedCount,
   });
   Future<void> submitBatchImport();
+  Future<void> inspectSelectedBatchArchive();
   Future<void> cancelBatchPreviewJob();
 
   @override
@@ -1818,16 +1840,16 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
 
-    final filePicker = ExpenseFilePickerCard(
-      fileName: _fileName,
-      fileBytes: _fileBytes,
-      submitting: _submitting,
-      onPick: _pickFile,
-      dropZoneHeight: 240,
-      onPreviewPdf: (_fileName?.toLowerCase().endsWith('.pdf') ?? false)
-          ? _previewSelectedPdf
-          : null,
-    );
+    Widget filePicker({required double height}) => ExpenseFilePickerCard(
+          fileName: _fileName,
+          fileBytes: _fileBytes,
+          submitting: _submitting,
+          onPick: _pickFile,
+          dropZoneHeight: height,
+          onPreviewPdf: (_fileName?.toLowerCase().endsWith('.pdf') ?? false)
+              ? _previewSelectedPdf
+              : null,
+        );
     final providerPicker = ExpenseProviderPicker(
       providers: _providers,
       selectedProviderId: _selectedProviderId,
@@ -2005,7 +2027,6 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
       totalsFields: manualTotalsFields,
       linesEditor: linesEditor,
       vatBreakdown: vatBreakdown,
-      summaryBar: summaryBar,
       hasLines: hasLines,
       submitting: _submitting,
       onPickDate: _pickDate,
@@ -2020,6 +2041,178 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                   .trim()
                   .isEmpty),
     );
+
+    String? manualPreviewLabel() {
+      final fileName = _fileName?.toLowerCase();
+      if (fileName == null) return null;
+      if (fileName.endsWith('.pdf')) return 'Abrir vista previa';
+      if (fileName.endsWith('.png') ||
+          fileName.endsWith('.jpg') ||
+          fileName.endsWith('.jpeg') ||
+          fileName.endsWith('.jpe') ||
+          fileName.endsWith('.webp')) {
+        return 'Ampliar imagen';
+      }
+      return null;
+    }
+
+    Widget manualWorkflowIndicator() => _ManualCompactWorkflowIndicator(
+          fileName: _fileName,
+          fileBytes: _fileBytes,
+          submitting: _submitting,
+          hasGroupSelected: hasGroupSelected,
+          onPickFile: _pickFile,
+          onPreviewFile: (_fileName != null && _fileBytes != null)
+              ? _previewSelectedUploadedFile
+              : null,
+          previewCtaLabel: manualPreviewLabel(),
+        );
+
+    Widget railHeading(String label, IconData icon) => Padding(
+          padding: const EdgeInsets.fromLTRB(2, 0, 2, 6),
+          child: Row(
+            children: [
+              Icon(icon, size: 15, color: cs.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
+              ),
+            ],
+          ),
+        );
+
+    Widget railCard({
+      required String title,
+      required IconData icon,
+      required Widget child,
+    }) =>
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.38),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              railHeading(title, icon),
+              const SizedBox(height: 2),
+              child,
+            ],
+          ),
+        );
+
+    Widget manualSidePanel({required double previewHeight}) =>
+        SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              railCard(
+                title: l.localeName.startsWith('es') ? 'Documento' : 'Document',
+                icon: Icons.description_outlined,
+                child: filePicker(height: previewHeight),
+              ),
+              const SizedBox(height: 10),
+              railCard(
+                title:
+                    l.localeName.startsWith('es') ? 'Vista previa' : 'Preview',
+                icon: Icons.visibility_outlined,
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 116),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest.withValues(alpha: 0.20),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.description_outlined,
+                          size: 34,
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.65)),
+                      const SizedBox(height: 7),
+                      Text(
+                        _fileName == null
+                            ? (l.localeName.startsWith('es')
+                                ? 'Aquí se mostrará una vista previa del documento cuando lo subas.'
+                                : 'A preview will appear here after you upload a document.')
+                            : _fileName!,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                      ),
+                      if (_fileName != null && _fileBytes != null) ...[
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: _previewSelectedUploadedFile,
+                          icon: const Icon(Icons.open_in_new_rounded, size: 15),
+                          label: Text(manualPreviewLabel() ??
+                              (l.localeName.startsWith('es')
+                                  ? 'Abrir documento'
+                                  : 'Open document')),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              railCard(
+                title: l.localeName.startsWith('es')
+                    ? 'Resumen financiero'
+                    : 'Financial summary',
+                icon: Icons.calculate_outlined,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    summaryBar,
+                    if ((manualSummaryValidationError ?? '')
+                        .trim()
+                        .isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: cs.errorContainer.withValues(alpha: 0.35),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: cs.error.withValues(alpha: 0.30),
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.error_outline,
+                                size: 16, color: cs.error),
+                            const SizedBox(width: 7),
+                            Expanded(
+                              child: Text(
+                                manualSummaryValidationError!,
+                                style: TextStyle(color: cs.error, fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+
     final uploadWorkspace = AnimatedBuilder(
       animation: _importTabs,
       builder: (context, _) => LayoutBuilder(
@@ -2051,31 +2244,52 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                 ],
               );
 
-          final importTabsHeader = buildImportTabsHeader();
+          final importTabsHeader = widget.hideImportTabs
+              ? const SizedBox.shrink()
+              : buildImportTabsHeader();
           final manualWideTab = Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: formFields),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(flex: 13, child: formFields),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 7,
+                      child: manualSidePanel(previewHeight: 250),
+                    ),
+                  ],
+                ),
+              ),
               errorsAndSubmit,
             ],
           );
-          final manualCompactTab = SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                filePicker,
-                const SizedBox(height: 8),
-                formFields,
-                errorsAndSubmit,
-              ],
-            ),
+          final manualCompactTab = Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              manualWorkflowIndicator(),
+              const SizedBox(height: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 180),
+                child: filePicker(height: 130),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: summaryBar,
+              ),
+              const SizedBox(height: 6),
+              Expanded(child: formFields),
+              errorsAndSubmit,
+            ],
           );
           if (!isWide) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 importTabsHeader,
-                const SizedBox(height: 8),
+                if (!widget.hideImportTabs) const SizedBox(height: 8),
                 Expanded(
                   child: TabBarView(
                     controller: _importTabs,
@@ -2107,58 +2321,81 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                buildImportTabsHeader(),
+                importTabsHeader,
                 if (!batchJobCompleted) ...[
-                  const SizedBox(height: 8),
+                  if (!widget.hideImportTabs) const SizedBox(height: 8),
                   _BatchCompactWorkflowIndicator(
                     selectedCount: (() {
                       final jobTotal =
                           _batchJobInt(_batchJobStatus?['totalFiles']);
                       if (jobTotal > 0) return jobTotal;
-                      return _batchArchiveName == null ? _batchDocumentNames.length : 1;
+                      if (_batchArchiveName == null) {
+                        return _batchDocumentNames.length;
+                      }
+                      final inspected =
+                          (_batchArchiveInspection?['files'] as List? ??
+                                  const [])
+                              .length;
+                      return inspected > 0 ? inspected : 1;
                     })(),
                     maxDocuments:
                         _ExpenseUploadScreenStateBase._maxBatchDocuments,
-                    totalBytes: _batchArchiveBytes?.length ?? _batchDocumentBytes.fold<int>(
-                      0,
-                      (sum, bytes) => sum + bytes.length,
-                    ),
+                    totalBytes: _batchArchiveBytes?.length ??
+                        _batchDocumentBytes.fold<int>(
+                          0,
+                          (sum, bytes) => sum + bytes.length,
+                        ),
                     submitting: _batchSubmitting ||
                         _batchGeneratingJson ||
+                        _batchArchiveInspecting ||
                         batchJobActive,
                     hasGroupSelected: hasGroupSelected,
                     canImport: !batchJobActive &&
                         !_batchSubmitting &&
                         !_batchGeneratingJson &&
+                        !_batchArchiveInspecting &&
                         !batchJobCompleted &&
                         hasGroupSelected &&
-                        (_batchDocumentNames.isNotEmpty || _batchArchiveBytes != null),
+                        (_batchDocumentNames.isNotEmpty ||
+                            (_batchArchiveInspection?['blocked'] != true &&
+                                ((_batchArchiveInspection?['files'] as List? ??
+                                        const [])
+                                    .isNotEmpty))),
                     jobActive: batchJobActive,
                     jobCompleted: batchJobCompleted,
                     jobFailed: batchJobStatus == 'failed',
+                    inspecting: _batchArchiveInspecting,
+                    selectionReady: _batchDocumentNames.isNotEmpty ||
+                        _batchArchiveInspection != null,
                     readyCount: _batchJobInt(_batchJobStatus?['readyCount']),
                     reviewCount: _batchJobInt(_batchJobStatus?['warningCount']),
                     duplicateCount:
                         _batchJobInt(_batchJobStatus?['duplicateCount']),
                     onPickDocuments: pickBatchDocuments,
                     onImport: submitBatchImport,
-                    onClearSelection: _batchDocumentNames.isEmpty && _batchArchiveName == null
-                        ? null
-                        : () => setState(() {
-                              _resetBatchJobTracking(
-                                clearResult: true,
-                                clearCache: true,
-                              );
-                              _batchDocumentBytes.clear();
-                              _batchDocumentNames.clear();
-                              _batchArchiveBytes = null;
-                              _batchArchiveName = null;
-                              _batchSkippedDetails.clear();
-                              _batchVerifyMessage = null;
-                              _batchError = null;
-                              _batchDetectedInvoices = 0;
-                              _batchFileFilterIndex = 0;
-                            }),
+                    onClearSelection:
+                        _batchDocumentNames.isEmpty && _batchArchiveName == null
+                            ? null
+                            : () => setState(() {
+                                  _resetBatchJobTracking(
+                                    clearResult: true,
+                                    clearCache: true,
+                                  );
+                                  _batchDocumentBytes.clear();
+                                  _batchDocumentNames.clear();
+                                  _batchArchiveInspectionToken++;
+                                  _batchArchiveBytes = null;
+                                  _batchArchiveName = null;
+                                  _batchArchiveInspecting = false;
+                                  _batchArchiveInspection = null;
+                                  _batchArchiveInspectionError = null;
+                                  _batchArchiveFilesExpanded = false;
+                                  _batchSkippedDetails.clear();
+                                  _batchVerifyMessage = null;
+                                  _batchError = null;
+                                  _batchDetectedInvoices = 0;
+                                  _batchFileFilterIndex = 0;
+                                }),
                   ),
                 ],
                 SizedBox(height: batchJobCompleted ? 6 : 10),
@@ -2176,8 +2413,8 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                buildImportTabsHeader(),
-                const SizedBox(height: 8),
+                importTabsHeader,
+                if (!widget.hideImportTabs) const SizedBox(height: 8),
                 _JsonCompactWorkflowIndicator(
                   submitting: _jsonSubmitting || _jsonPromptLoading,
                   hasGroupSelected: hasGroupSelected,
@@ -2200,31 +2437,9 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              buildImportTabsHeader(),
-              const SizedBox(height: 8),
-              _ManualCompactWorkflowIndicator(
-                fileName: _fileName,
-                fileBytes: _fileBytes,
-                submitting: _submitting,
-                hasGroupSelected: hasGroupSelected,
-                onPickFile: _pickFile,
-                onPreviewFile: (_fileName != null && _fileBytes != null)
-                    ? _previewSelectedUploadedFile
-                    : null,
-                previewCtaLabel: (() {
-                  final fileName = _fileName?.toLowerCase();
-                  if (fileName == null) return null;
-                  if (fileName.endsWith('.pdf')) return 'Abrir vista previa';
-                  if (fileName.endsWith('.png') ||
-                      fileName.endsWith('.jpg') ||
-                      fileName.endsWith('.jpeg') ||
-                      fileName.endsWith('.jpe') ||
-                      fileName.endsWith('.webp')) {
-                    return 'Ampliar imagen';
-                  }
-                  return null;
-                })(),
-              ),
+              importTabsHeader,
+              if (!widget.hideImportTabs) const SizedBox(height: 8),
+              manualWorkflowIndicator(),
               const SizedBox(height: 10),
               Expanded(
                 child: manualWideTab,
@@ -2471,7 +2686,27 @@ class ExpenseUploadScreenState extends _ExpenseUploadScreenStateBase
   @override
   String? get batchArchiveName => _batchArchiveName;
   @override
-  void clearBatchArchive() { _batchArchiveBytes = null; _batchArchiveName = null; }
+  bool get batchArchiveInspecting => _batchArchiveInspecting;
+  @override
+  Map<String, dynamic>? get batchArchiveInspection => _batchArchiveInspection;
+  @override
+  String? get batchArchiveInspectionError => _batchArchiveInspectionError;
+  @override
+  bool get batchArchiveFilesExpanded => _batchArchiveFilesExpanded;
+  @override
+  set batchArchiveFilesExpanded(bool value) =>
+      _batchArchiveFilesExpanded = value;
+  @override
+  void clearBatchArchive() {
+    _batchArchiveInspectionToken++;
+    _batchArchiveBytes = null;
+    _batchArchiveName = null;
+    _batchArchiveInspecting = false;
+    _batchArchiveInspection = null;
+    _batchArchiveInspectionError = null;
+    _batchArchiveFilesExpanded = false;
+  }
+
   @override
   String? get batchError => _batchError;
   @override
@@ -2491,6 +2726,8 @@ class ExpenseUploadScreenState extends _ExpenseUploadScreenStateBase
   @override
   Future<void> pickBatchDocuments() => _pickBatchDocuments();
   @override
+  Future<void> pickBatchZip() => _pickBatchZip();
+  @override
   Future<void> applyBatchDocumentData(
     List<({String fileName, Uint8List fileBytes})> files, {
     required int selectedCount,
@@ -2500,6 +2737,8 @@ class ExpenseUploadScreenState extends _ExpenseUploadScreenStateBase
   Future<void> generateBatchJsonWithAi() => _generateBatchJsonWithAi();
   @override
   Future<void> submitBatchImport() => _submitBatchImport();
+  @override
+  Future<void> inspectSelectedBatchArchive() => _inspectSelectedBatchArchive();
   @override
   Future<void> cancelBatchPreviewJob() => _cancelBatchPreviewJob();
   @override

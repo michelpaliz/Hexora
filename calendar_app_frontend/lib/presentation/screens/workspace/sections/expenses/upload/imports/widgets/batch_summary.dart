@@ -153,19 +153,36 @@ class _BatchCollapsibleSummary extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             onTap: onToggle,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(10, 7, 8, 7),
+              padding: EdgeInsets.fromLTRB(
+                hasTrackedJob ? 10 : 16,
+                hasTrackedJob ? 7 : 12,
+                10,
+                hasTrackedJob ? 7 : 12,
+              ),
               child: Row(
                 children: [
-                  Icon(
-                    isCompleted
-                        ? Icons.check_circle_rounded
-                        : isFailed
-                            ? Icons.error_outline
-                            : Icons.layers_outlined,
-                    size: isCompleted ? 18 : 16,
-                    color: accent,
+                  Container(
+                    width: hasTrackedJob ? 28 : 40,
+                    height: hasTrackedJob ? 28 : 40,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: accent.withValues(alpha: 0.15),
+                      ),
+                    ),
+                    child: Icon(
+                      isCompleted
+                          ? Icons.check_circle_rounded
+                          : isFailed
+                              ? Icons.error_outline
+                              : Icons.layers_outlined,
+                      size: isCompleted ? 18 : 19,
+                      color: accent,
+                    ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,6 +195,15 @@ class _BatchCollapsibleSummary extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                           ),
                         ),
+                        if (!hasTrackedJob) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'Sube tus facturas o un ZIP para que Hexora las analice automaticamente.',
+                            style: ts.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                         if (isCompleted && hasTrackedJob) ...[
                           const SizedBox(height: 1),
                           Text(
@@ -198,31 +224,44 @@ class _BatchCollapsibleSummary extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      _BatchStatusChip(
-                        label: '$loadedCount / $maxCount',
+                  if (hasTrackedJob)
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        _BatchStatusChip(
+                          label: '$loadedCount / $maxCount',
+                          color: cs.primary,
+                        ),
+                        if (hasTrackedJob)
+                          _BatchStatusChip(
+                            label: '$processedFiles procesados',
+                            color: accent,
+                          ),
+                        if (importedCount > 0)
+                          _BatchStatusChip(
+                            label: '$importedCount listos',
+                            color: Colors.green.shade600,
+                          ),
+                        if (skippedCount > 0)
+                          _BatchStatusChip(
+                            label: '$skippedCount incidencias',
+                            color: Colors.amber.shade700,
+                          ),
+                      ],
+                    ),
+                  if (!hasTrackedJob) ...[
+                    Icon(Icons.info_outline_rounded,
+                        size: 16, color: cs.primary),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Ver limites y formatos',
+                      style: ts.bodySmall?.copyWith(
                         color: cs.primary,
+                        fontWeight: FontWeight.w700,
                       ),
-                      if (hasTrackedJob)
-                        _BatchStatusChip(
-                          label: '$processedFiles procesados',
-                          color: accent,
-                        ),
-                      if (importedCount > 0)
-                        _BatchStatusChip(
-                          label: '$importedCount listos',
-                          color: Colors.green.shade600,
-                        ),
-                      if (skippedCount > 0)
-                        _BatchStatusChip(
-                          label: '$skippedCount incidencias',
-                          color: Colors.amber.shade700,
-                        ),
-                    ],
-                  ),
+                    ),
+                  ],
                   const SizedBox(width: 8),
                   Icon(
                     collapsed

@@ -57,7 +57,8 @@
             "request": "launch",
             "type": "dart",
             "deviceId": "chrome",
-            "args": [
+            "program": "lib/main.dart",
+            "toolArgs": [
                 "--web-port=34367",
                 "--web-hostname=localhost",
                 "--dart-define=API_BASE_URL=https://hexora.dev/api"

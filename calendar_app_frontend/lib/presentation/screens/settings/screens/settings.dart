@@ -215,6 +215,8 @@ class _SettingsState extends State<Settings> {
                   final err = await _changeUsername(newName);
                   _snack(err ?? successMessage);
                 },
+                onEditProfile: () =>
+                    Navigator.pushNamed(context, AppRoutes.profile),
                 onChangePassword: () async {
                   final result = await showChangePasswordDialog(context);
                   if (result == null) return;

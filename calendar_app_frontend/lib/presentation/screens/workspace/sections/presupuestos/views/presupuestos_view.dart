@@ -20,13 +20,14 @@ import 'package:hexora/presentation/screens/workspace/sections/presupuestos/conv
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/documents/presupuesto_document_workspace.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/json_import_service.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/prompt_clipboard_helper.dart';
-import 'package:hexora/presentation/shared/widgets/client_search_select.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_workspace_chrome.dart';
 import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
-import 'package:hexora/presentation/shared/widgets/wizard_steps_header.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_editor_components.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_client_step.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -123,6 +124,8 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   List<Map<String, dynamic>> _budgets = const [];
   String? _selectedBudgetId;
   int _budgetsTabIndex = 0;
+  final ValueNotifier<DocumentViewMode?> _budgetSplitModeNotifier =
+      ValueNotifier<DocumentViewMode?>(null);
   String? _selectedClientId;
   int _clientBudgetIssuedCount = 0;
   int _clientBudgetDraftCount = 0;
@@ -735,6 +738,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   void dispose() {
     _releaseCreatePreviewSurface();
     _releaseDetailPreviewSurface();
+    _budgetSplitModeNotifier.dispose();
     _clientNameCtrl.dispose();
     _clientAddressCtrl.dispose();
     _clientCityCtrl.dispose();
@@ -795,38 +799,22 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       _visibleStep = _maxAllowedStep;
     }
 
-    final steps = <Step>[
-      Step(
-        title: Text(l.budgetStepClient),
-        subtitle: const SizedBox.shrink(),
-        content: const SizedBox.shrink(),
-        isActive: _visibleStep == 0,
-        state: _visibleStep > 0 ? StepState.complete : StepState.editing,
+    final editorSteps = <HexoraDocumentStep>[
+      HexoraDocumentStep(
+        label: l.budgetStepClient,
+        icon: Icons.person_outline_rounded,
       ),
-      Step(
-        title: Text(_isSpanishLocale ? 'Detalles' : 'Details'),
-        subtitle: const SizedBox.shrink(),
-        content: const SizedBox.shrink(),
-        isActive: _visibleStep == 1,
-        state: _visibleStep > 1
-            ? StepState.complete
-            : (_visibleStep == 1 ? StepState.editing : StepState.indexed),
+      HexoraDocumentStep(
+        label: _isSpanishLocale ? 'Detalles' : 'Details',
+        icon: Icons.edit_note_outlined,
       ),
-      Step(
-        title: Text(l.budgetStepLines),
-        subtitle: const SizedBox.shrink(),
-        content: const SizedBox.shrink(),
-        isActive: _visibleStep == 2,
-        state: _visibleStep > 2
-            ? StepState.complete
-            : (_visibleStep == 2 ? StepState.editing : StepState.indexed),
+      HexoraDocumentStep(
+        label: l.budgetStepLines,
+        icon: Icons.format_list_bulleted_rounded,
       ),
-      Step(
-        title: Text(l.budgetStepPreview),
-        subtitle: const SizedBox.shrink(),
-        content: const SizedBox.shrink(),
-        isActive: _visibleStep == 3,
-        state: _visibleStep == 3 ? StepState.editing : StepState.indexed,
+      HexoraDocumentStep(
+        label: l.budgetStepPreview,
+        icon: Icons.picture_as_pdf_outlined,
       ),
     ];
 
@@ -970,87 +958,125 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Padding(
         key: const ValueKey('budget_wizard_header'),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
         child:
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          LayoutBuilder(
-              builder: (context, constraints) => SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: SizedBox(
-                      width: constraints.maxWidth < 600
-                          ? 600
-                          : constraints.maxWidth,
-                      child: WizardStepsHeader(
-                        steps: steps,
-                        currentStep: _visibleStep,
-                        isWide: true,
-                        maxWidth: double.infinity,
-                        onStepTapped: (target) {
-                          if (target >= _minVisibleStep &&
-                              target <= _maxAllowedStep) {
-                            if (target > _visibleStep &&
-                                !_validateCurrentStep()) {
-                              return;
-                            }
-                            setState(() => _setVisibleStep(target));
-                            if (target == 3) _createDraftAndPreparePreview();
-                          }
-                        },
-                      ),
-                    ),
-                  )),
-          const SizedBox(height: 8),
-          Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              spacing: 16,
-              runSpacing: 4,
-              children: [
-                if (selectedClientName.isNotEmpty)
-                  Text(l.budgetConfirmClientValue(selectedClientName),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.w600)),
-                _budgetDraftStatusChip(cs, t),
-              ]),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: cs.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.65),
+              ),
+            ),
+            child: HexoraDocumentStepper(
+              steps: editorSteps,
+              currentStep: _visibleStep,
+              onStepTapped: (target) {
+                if (target >= _minVisibleStep && target <= _maxAllowedStep) {
+                  if (target > _visibleStep && !_validateCurrentStep()) return;
+                  setState(() => _setVisibleStep(target));
+                  if (target == 3) _createDraftAndPreparePreview();
+                }
+              },
+              itemKeyBuilder: (index, _) =>
+                  ValueKey('budget-editor-step-$index'),
+            ),
+          ),
+          if (selectedClientName.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              l.budgetConfirmClientValue(selectedClientName),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ]),
       ),
       Expanded(
-          child: ListView(
-        key: const ValueKey('budget_wizard_content'),
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-        children: [
-          _buildStepContent(cs, l),
-          if (_error != null) ...[
-            const SizedBox(height: 12),
-            _BudgetInlineErrorCard(
-                message: _error!,
-                visibleStep: _visibleStep,
-                isSpanishLocale: _isSpanishLocale),
-          ],
-        ],
-      )),
+        child: _visibleStep == 0
+            ? Padding(
+                key: const ValueKey('budget_wizard_content'),
+                padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+                child: Column(
+                  children: [
+                    Expanded(child: _buildStepContent(cs, l)),
+                    if (_error != null) ...[
+                      const SizedBox(height: 8),
+                      _BudgetInlineErrorCard(
+                        message: _error!,
+                        visibleStep: _visibleStep,
+                        isSpanishLocale: _isSpanishLocale,
+                      ),
+                    ],
+                  ],
+                ),
+              )
+            : ListView(
+                key: const ValueKey('budget_wizard_content'),
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                children: [
+                  _buildStepContent(cs, l),
+                  if (_error != null) ...[
+                    const SizedBox(height: 8),
+                    _BudgetInlineErrorCard(
+                      message: _error!,
+                      visibleStep: _visibleStep,
+                      isSpanishLocale: _isSpanishLocale,
+                    ),
+                  ],
+                ],
+              ),
+      ),
       SafeArea(
           top: false,
           child: Container(
             key: const ValueKey('budget_wizard_actions'),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            constraints: const BoxConstraints(minHeight: 58),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
                 color: cs.surface,
+                boxShadow: [
+                  BoxShadow(
+                    color: cs.shadow.withValues(alpha: 0.10),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
                 border: Border(
                     top: BorderSide(
                         color: cs.outlineVariant.withValues(alpha: 0.25)))),
             child: LayoutBuilder(
                 builder: (context, constraints) => constraints.maxWidth < 650
-                    ? OverflowBar(
-                        alignment: MainAxisAlignment.end,
-                        spacing: 12,
-                        overflowSpacing: 8,
-                        children: actions.children
-                            .where((child) => child is! Spacer)
-                            .toList())
-                    : actions),
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _budgetDraftStatusChip(cs, t),
+                          const SizedBox(height: 6),
+                          OverflowBar(
+                            alignment: MainAxisAlignment.end,
+                            spacing: 8,
+                            overflowSpacing: 6,
+                            children: actions.children
+                                .where((child) => child is! Spacer)
+                                .toList(),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          _budgetDraftStatusChip(cs, t),
+                          const SizedBox(width: 12),
+                          Expanded(child: actions),
+                        ],
+                      )),
           )),
     ]);
   }
@@ -2135,38 +2161,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
           orElse: () => activeList.isNotEmpty ? activeList.first : null,
         );
 
-    Widget statusTab(int index, String label) {
-      final selected = _budgetsTabIndex == index;
-      return Semantics(
-        selected: selected,
-        button: true,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(6),
-          onTap: () => setState(() => _budgetsTabIndex = index),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            height: 28,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(6),
-              color: selected
-                  ? cs.primary.withValues(alpha: 0.14)
-                  : Colors.transparent,
-            ),
-            child: Text(
-              label,
-              style: t.bodySmall?.copyWith(
-                fontSize: 12,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                color: selected ? cs.primary : cs.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     // 18px icons with 36px targets, matching the document row actions.
     Widget toolbarIconButton({
       required String tooltip,
@@ -2325,25 +2319,84 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       final dateLabel = date == null
           ? '-'
           : DateFormat.yMMMd(l.localeName).format(date.toLocal());
-      return Padding(
-        padding: const EdgeInsets.all(10),
-        child: Column(
+      final selectedIndex = activeList.indexWhere(
+        (item) => _budgetId(item).trim() == budgetId.trim(),
+      );
+      final isDraft = _isDraftBudget(selected);
+      final statusLabel = isDraft
+          ? (_isSpanishLocale ? 'Borrador' : 'Draft')
+          : (_isSpanishLocale ? 'Emitido' : 'Issued');
+      final statusColor = isDraft ? cs.secondary : Colors.green.shade700;
+
+      void selectAt(int index) {
+        if (index < 0 || index >= activeList.length) return;
+        final id = _budgetId(activeList[index]);
+        setState(() => _selectedBudgetId = id);
+        _loadDetailPreviewPdf(id);
+      }
+
+      return ValueListenableBuilder<DocumentViewMode?>(
+        valueListenable: _budgetSplitModeNotifier,
+        builder: (context, mode, _) => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              _budgetClientName(selected, l),
-              style: t.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              dateLabel,
-              style: t.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
+            HexoraDocumentDetailHeader(
+              title: _budgetNumber(selected).trim().isEmpty
+                  ? (_isSpanishLocale ? 'Presupuesto' : 'Budget')
+                  : _budgetNumber(selected),
+              clientName: _budgetClientName(selected, l),
+              statusLabel: statusLabel,
+              statusColor: statusColor,
+              statusIcon: isDraft
+                  ? Icons.edit_note_rounded
+                  : Icons.check_circle_outline,
+              dateLabel: dateLabel,
+              onPrevious:
+                  selectedIndex > 0 ? () => selectAt(selectedIndex - 1) : null,
+              onNext:
+                  selectedIndex >= 0 && selectedIndex + 1 < activeList.length
+                      ? () => selectAt(selectedIndex + 1)
+                      : null,
+              onExpand: () {
+                _budgetSplitModeNotifier.value =
+                    mode == DocumentViewMode.document
+                        ? DocumentViewMode.split
+                        : DocumentViewMode.document;
+              },
+              isExpanded: mode == DocumentViewMode.document,
+              onClose: () => setState(() => _selectedBudgetId = null),
+              moreActions: PopupMenuButton<String>(
+                tooltip: _isSpanishLocale ? 'Más acciones' : 'More actions',
+                icon: const Icon(Icons.more_horiz_rounded, size: 18),
+                padding: EdgeInsets.zero,
+                onSelected: (value) {
+                  switch (value) {
+                    case 'download':
+                      _downloadBudgetPdf(selected);
+                    case 'history':
+                      _showBudgetHistoryDialog(selected);
+                    case 'edit':
+                      widget.onEditDraftBudget?.call(budgetId);
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'download',
+                    child: Text(l.download),
+                  ),
+                  PopupMenuItem(
+                    value: 'history',
+                    child: Text(_isSpanishLocale ? 'Historial' : 'History'),
+                  ),
+                  if (widget.onEditDraftBudget != null)
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Text(_isSpanishLocale ? 'Editar' : 'Edit'),
+                    ),
+                ],
               ),
             ),
-            const SizedBox(height: 10),
             const Divider(height: 1),
-            const SizedBox(height: 10),
             if (_loadingDetailPreview)
               const Expanded(
                 child: Center(
@@ -2450,6 +2503,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
           height: contentHeight,
           child: DocumentSplitView(
             storageKey: 'quotes',
+            modeNotifier: _budgetSplitModeNotifier,
             // The explicit choice, not the first-row fallback, so a tab switch
             // doesn't pop the preview open on narrow screens.
             selectionKey: _selectedBudgetId,
@@ -2459,34 +2513,27 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                 children: [
                   Row(
                     children: [
-                      // Content-sized segmented filters.
-                      Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color:
-                              cs.surfaceContainerHighest.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: cs.outlineVariant.withValues(alpha: 0.35),
+                      HexoraDocumentStatusTabs(
+                        selectedIndex: _budgetsTabIndex,
+                        onSelected: (index) =>
+                            setState(() => _budgetsTabIndex = index),
+                        tabs: [
+                          HexoraDocumentStatusTab(
+                            label: _isSpanishLocale ? 'Todos' : 'All',
+                            count: _budgets.length,
+                            icon: Icons.description_outlined,
                           ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            statusTab(
-                              0,
-                              '${_isSpanishLocale ? 'Todos' : 'All'} (${_budgets.length})',
-                            ),
-                            statusTab(
-                              1,
-                              '${_isSpanishLocale ? 'Borradores' : 'Drafts'} (${drafts.length})',
-                            ),
-                            statusTab(
-                              2,
-                              '${_isSpanishLocale ? 'Emitidos' : 'Issued'} (${issuedBudgets.length})',
-                            ),
-                          ],
-                        ),
+                          HexoraDocumentStatusTab(
+                            label: _isSpanishLocale ? 'Borradores' : 'Drafts',
+                            count: drafts.length,
+                            icon: Icons.edit_note_outlined,
+                          ),
+                          HexoraDocumentStatusTab(
+                            label: _isSpanishLocale ? 'Emitidos' : 'Issued',
+                            count: issuedBudgets.length,
+                            icon: Icons.task_alt_outlined,
+                          ),
+                        ],
                       ),
                       const SizedBox(width: 12),
                       Expanded(

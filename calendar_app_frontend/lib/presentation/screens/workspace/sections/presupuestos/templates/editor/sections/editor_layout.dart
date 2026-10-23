@@ -18,52 +18,48 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
                   _buildLivePreviewCard(),
                   if (!widget.templateOnly) _buildDocumentActionsCard(),
                 ];
-
                 final leftPane = ListView(
-                  padding: wide
-                      ? EdgeInsets.zero
-                      : const EdgeInsets.fromLTRB(24, 24, 24, 32),
+                  padding: EdgeInsets.zero,
                   children: [
                     _buildHero(theme),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 10),
                     _buildStepSelector(steps, activeStep),
                     if (steps.isNotEmpty) ...steps[activeStep].children,
                     if (!wide) ...previewColumn,
-                    _buildStepFooter(theme, steps, activeStep),
                   ],
                 );
-
-                if (wide) {
-                  return Align(
-                    alignment: Alignment.topLeft,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1800),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(flex: 7, child: leftPane),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              flex: 5,
-                              child: ListView(
-                                padding: EdgeInsets.zero,
-                                children: previewColumn,
-                              ),
+                final workspace = wide
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(flex: 7, child: leftPane),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            flex: 5,
+                            child: ListView(
+                              padding: EdgeInsets.zero,
+                              children: previewColumn,
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
+                          ),
+                        ],
+                      )
+                    : leftPane;
                 return Align(
                   alignment: Alignment.topCenter,
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1480),
-                    child: leftPane,
+                    constraints: BoxConstraints(maxWidth: wide ? 1800 : 1480),
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        wide ? 24 : 12,
+                        wide ? 16 : 12,
+                        wide ? 24 : 12,
+                        0,
+                      ),
+                      child: Column(children: [
+                        Expanded(child: workspace),
+                        _buildStepFooter(theme, steps, activeStep),
+                      ]),
+                    ),
                   ),
                 );
               },
@@ -122,96 +118,18 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
     List<_EditorStep> steps,
     int activeStep,
   ) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return HexoraDocumentStepper(
+      steps: [
         for (var i = 0; i < steps.length; i++)
-          Expanded(
-            child: _stepBlock(theme, steps, i, activeStep),
+          HexoraDocumentStep(
+            label: steps[i].title,
+            icon: steps[i].icon,
+            enabled: !(_mustSelectDefaultTemplate && i > 0),
           ),
       ],
-    );
-  }
-
-  Widget _stepBlock(
-    ThemeData theme,
-    List<_EditorStep> steps,
-    int index,
-    int activeStep,
-  ) {
-    final cs = theme.colorScheme;
-    final done = index < activeStep;
-    final current = index == activeStep;
-    final blocked = _mustSelectDefaultTemplate && index > 0;
-    final leadColor =
-        index <= activeStep ? cs.primary : _editorBorder(theme, alpha: 0.7);
-    final trailColor =
-        index < activeStep ? cs.primary : _editorBorder(theme, alpha: 0.7);
-
-    return InkWell(
-      key: ValueKey('editor_step_${steps[index].title}'),
-      borderRadius: BorderRadius.circular(16),
-      onTap:
-          blocked ? null : () => _updateEditorState(() => _activeStep = index),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: index == 0
-                    ? const SizedBox.shrink()
-                    : Container(height: 2, color: leadColor),
-              ),
-              Container(
-                width: 28,
-                height: 28,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: done
-                      ? cs.primary
-                      : current
-                          ? cs.primary.withValues(alpha: 0.14)
-                          : Colors.transparent,
-                  border: Border.all(
-                    color: done || current ? cs.primary : _editorBorder(theme),
-                    width: current ? 2 : 1.4,
-                  ),
-                ),
-                child: done
-                    ? Icon(Icons.check_rounded, size: 16, color: cs.onPrimary)
-                    : Text(
-                        '${index + 1}',
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: current ? cs.primary : cs.onSurfaceVariant,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-              ),
-              Expanded(
-                child: index == steps.length - 1
-                    ? const SizedBox.shrink()
-                    : Container(height: 2, color: trailColor),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            steps[index].title,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: current
-                  ? cs.primary
-                  : done
-                      ? cs.onSurface
-                      : cs.onSurfaceVariant,
-              fontWeight: current ? FontWeight.w800 : FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
+      currentStep: activeStep,
+      onStepTapped: (index) => _updateEditorState(() => _activeStep = index),
+      itemKeyBuilder: (_, step) => ValueKey('editor_step_${step.label}'),
     );
   }
 
@@ -322,53 +240,13 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
             ),
           ),
         );
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: _editorPanelBg(theme),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: _editorBorder(theme, alpha: 0.78),
-        ),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth < 1100) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                info,
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    backButton,
-                    if (createFromTemplateButton != null) ...[
-                      const SizedBox(width: 8),
-                      createFromTemplateButton,
-                    ],
-                    const SizedBox(width: 8),
-                    Flexible(child: primaryButton(compact: true)),
-                  ],
-                ),
-              ],
-            );
-          }
-          return Row(
-            children: [
-              Expanded(child: info),
-              const SizedBox(width: 16),
-              backButton,
-              if (createFromTemplateButton != null) ...[
-                const SizedBox(width: 10),
-                createFromTemplateButton,
-              ],
-              const SizedBox(width: 10),
-              primaryButton(),
-            ],
-          );
-        },
-      ),
+    return HexoraDocumentFooter(
+      status: info,
+      back: backButton,
+      secondaryActions: [
+        if (createFromTemplateButton != null) createFromTemplateButton,
+      ],
+      primary: primaryButton(compact: true),
     );
   }
 

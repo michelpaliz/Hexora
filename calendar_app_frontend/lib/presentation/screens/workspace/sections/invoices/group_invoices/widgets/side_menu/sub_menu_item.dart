@@ -11,7 +11,9 @@ class GroupInvoicesSubMenuItem extends StatelessWidget {
       required this.onPressed,
       this.count,
       this.primaryAction = false,
-      this.indent = 0});
+      this.indent = 0,
+      this.hasChildren = false,
+      this.compact = false});
   final IconData icon;
   final String label;
   final bool selected;
@@ -19,6 +21,8 @@ class GroupInvoicesSubMenuItem extends StatelessWidget {
   final int? count;
   final bool primaryAction;
   final double indent;
+  final bool hasChildren;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -31,6 +35,11 @@ class GroupInvoicesSubMenuItem extends StatelessWidget {
             collapsed: false,
             onTap: onPressed,
             count: count,
+            rowHeight: compact ? 34 : null,
+            iconSize: compact ? 16 : null,
+            trailing: hasChildren
+                ? const Icon(Icons.keyboard_arrow_down_rounded, size: 16)
+                : null,
             primaryAction: primaryAction),
       );
 }

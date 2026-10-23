@@ -1,4 +1,5 @@
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
+import 'package:hexora/presentation/shared/widgets/panels/hexora_side_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
@@ -12,8 +13,9 @@ import '../../widgets/folder_section_card.dart';
 import '../statements_controller.dart';
 import '../statements_formatters.dart';
 import '../statements_shared.dart';
+import '../shared/bank_transaction_link_panel.dart';
 import 'statements_all_data_bulk.dart';
-import 'statements_all_data_details.dart';
+import 'statements_transaction_detail_link_panel.dart';
 import 'statements_all_data_skeleton.dart';
 import 'table/statements_all_data_table.dart';
 import 'table/statements_all_data_table_theme.dart';
@@ -1457,6 +1459,52 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     return best;
   }
 
+  /// Link panel docked beside the table; `null` while closed. Kept in state
+  /// (not rebuilt from the controller) so the panel survives table rebuilds.
+  Widget? _linkPanel;
+
+  /// Id of the transaction the panel is showing; its table row is highlighted.
+  String? _linkPanelEntryId;
+
+  /// Opens the unified transaction panel (Detalles / Vincular tabs) for
+  /// [entry], defaulting to [initialTab] and, when opening on the Vincular
+  /// tab, [initialLinkMode].
+  void _openTransactionPanel(
+    StatementsController s,
+    Map<String, dynamic> entry, {
+    required StatementsTransactionPanelTab initialTab,
+    BankTransactionLinkMode initialLinkMode = BankTransactionLinkMode.suggestions,
+  }) {
+    final entryId = (entry['_id'] ?? entry['id'])?.toString() ?? '';
+    setState(() {
+      _linkPanelEntryId = entryId;
+      _linkPanel = StatementsTransactionDetailLinkPanel(
+        key: ValueKey('transaction-panel-$entryId'),
+        controller: s,
+        entry: entry,
+        initialTab: initialTab,
+        initialLinkMode: initialLinkMode,
+        onClose: _closeLinkPanel,
+        notApplicableReason: _noProcedeReasonsByEntryId[entryId],
+        // Transactions that are not invoice payments are categorized with
+        // the existing "No procede" flow instead of being linked.
+        onMarkNotApplicable: () async {
+          await _showNoProcedeDialog(entry);
+          final reason = _noProcedeReasonsByEntryId[entryId]?.trim() ?? '';
+          if (reason.isNotEmpty) _closeLinkPanel();
+        },
+      );
+    });
+  }
+
+  void _closeLinkPanel() {
+    if (!mounted || _linkPanel == null) return;
+    setState(() {
+      _linkPanel = null;
+      _linkPanelEntryId = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     _repairHotReloadState();
@@ -1469,9 +1517,10 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         ? StatementsTableTheme.softDark(cs)
         : StatementsTableTheme.light(cs);
 
-    final dateFilteredEntries = s.isUsingAggregatedEntriesPath
-        ? s.allEntries
-        : s.allEntries.where(_entryMatchesDateFilters).toList(growable: false);
+    // Always apply client-side date filtering as a safety net — the aggregated
+    // API path may ignore date_from/date_to when year is also sent.
+    final dateFilteredEntries =
+        s.allEntries.where(_entryMatchesDateFilters).toList(growable: false);
     final descriptionFilteredEntries = s.isUsingAggregatedEntriesPath
         ? dateFilteredEntries
         : dateFilteredEntries
@@ -1698,7 +1747,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
       ),
     ];
 
-    return ListView(
+    final content = ListView(
       padding: const EdgeInsets.all(16),
       children: [
         FolderSectionCard(
@@ -1877,6 +1926,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                         entries: sortedEntries,
                         controller: s,
                         selectedIds: _selectedIds,
+                        activeEntryId: _linkPanelEntryId,
                         tableTheme: tableTheme,
                         onMarkNoProcede: _showNoProcedeDialog,
                         noProcedeReasonForEntry: (entry) {
@@ -1936,17 +1986,18 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                             }
                           });
                         },
-                        onShowDetails: (entry) =>
-                            StatementsAllDataDetails.show(context, l, entry, s),
-                        onSuggest: (entry) async {
-                          await StatementsShared.showInvoiceSuggestionsDialog(
-                              context, s, entry);
-                        },
-                        onLink: (entry) async {
-                          await StatementsShared.showClientPickerDialog(
-                              context, s, entry);
-                        },
-                        onLinkInvoice: (entry) async {
+                        onShowDetails: (entry) => _openTransactionPanel(
+                          s,
+                          entry,
+                          initialTab: StatementsTransactionPanelTab.details,
+                        ),
+                        onSuggest: (entry) => _openTransactionPanel(
+                          s,
+                          entry,
+                          initialTab: StatementsTransactionPanelTab.link,
+                          initialLinkMode: BankTransactionLinkMode.suggestions,
+                        ),
+                        onLinkInvoice: (entry) {
                           final id =
                               (entry['_id'] ?? entry['id'])?.toString() ?? '';
                           if (id.isNotEmpty) {
@@ -1954,16 +2005,11 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                               _noProcedeReasonsByEntryId.remove(id);
                             });
                           }
-                          final amountText =
-                              StatementsShared.entryText(entry, ['amount']);
-                          final amountValue =
-                              StatementsFormatters.parseAmount(amountText) ?? 0;
-                          final expenseOnly = amountValue < 0;
-                          await StatementsShared.showInvoiceLinkDialog(
-                            context,
+                          _openTransactionPanel(
                             s,
                             entry,
-                            expenseOnly: expenseOnly,
+                            initialTab: StatementsTransactionPanelTab.link,
+                            initialLinkMode: BankTransactionLinkMode.manual,
                           );
                         },
                       ),
@@ -1990,6 +2036,8 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         ),
       ],
     );
+
+    return HexoraSidePanelLayout(panel: _linkPanel, child: content);
   }
 }
 

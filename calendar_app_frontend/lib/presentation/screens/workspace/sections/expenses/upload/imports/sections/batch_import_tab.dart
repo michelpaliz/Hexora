@@ -9,7 +9,11 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
     {
       final cs = Theme.of(context).colorScheme;
       final hasGroup = resolveGroupId().trim().isNotEmpty;
-      final selectedCount = batchArchiveName == null ? batchDocumentNames.length : 1;
+      final inspectedArchiveCount =
+          (batchArchiveInspection?['files'] as List? ?? const []).length;
+      final selectedCount = batchArchiveName == null
+          ? batchDocumentNames.length
+          : (inspectedArchiveCount > 0 ? inspectedArchiveCount : 1);
       const maxBatchDocs = _ExpenseUploadScreenStateBase._maxBatchDocuments;
       final jobStatusName = _expenseBatchJobStatusFromPayload(_batchJobStatus);
       final hasTrackedJob = (_batchJobId ?? '').trim().isNotEmpty;
@@ -25,6 +29,16 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
           _batchJobInt(_batchJobStatus?['duplicateCount']) +
           _batchJobInt(_batchJobStatus?['failedCount']);
       final hasPreviewItems = _batchPreviewItems.isNotEmpty;
+      final archiveFiles =
+          (batchArchiveInspection?['files'] as List? ?? const [])
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList(growable: false);
+      final archiveSkipped =
+          (batchArchiveInspection?['skipped'] as List? ?? const [])
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList(growable: false);
       final selectedPreviewCount =
           _batchPreviewItems.where((item) => item.selected).length;
       final useCompletedPreviewFocus = jobCompleted && hasPreviewItems;
@@ -42,10 +56,11 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
           hasTrackedJob && jobTotalFiles > 0 ? jobTotalFiles : selectedCount;
       final remainingSlots =
           (maxBatchDocs - headerLoadedCount).clamp(0, maxBatchDocs);
-      final totalBytes = batchArchiveBytes?.length ?? batchDocumentBytes.fold<int>(
-        0,
-        (sum, bytes) => sum + bytes.length,
-      );
+      final totalBytes = batchArchiveBytes?.length ??
+          batchDocumentBytes.fold<int>(
+            0,
+            (sum, bytes) => sum + bytes.length,
+          );
       final backendProgress = _batchJobDouble(_batchJobStatus?['progress']);
       final uploadRatio = hasTrackedJob
           ? (backendProgress > 0
@@ -104,9 +119,18 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
                 return _BatchExecutionFileStatus.error;
               }
               if (warningKeys.contains(key)) {
-                return _BatchExecutionFileStatus.warning;
+                return _BatchExecutionFileStatus.review;
               }
-              return _BatchExecutionFileStatus.success;
+              if (jobCompleted) return _BatchExecutionFileStatus.completed;
+              if (jobActive) {
+                if (index < jobProcessedFiles) {
+                  return _BatchExecutionFileStatus.completed;
+                }
+                if (index == jobProcessedFiles) {
+                  return _BatchExecutionFileStatus.processing;
+                }
+              }
+              return _BatchExecutionFileStatus.pending;
             })(),
             detail: (() {
               final key = batchDocumentNames[index].toLowerCase().trim();
@@ -134,15 +158,16 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
           ),
       ];
       final warningIndexes = files
-          .where((file) => file.status == _BatchExecutionFileStatus.warning)
+          .where((file) => file.status == _BatchExecutionFileStatus.review)
           .map((file) => file.originalIndex)
           .toSet();
       final filteredFiles = files.where((file) {
         switch (_batchFileFilterIndex) {
           case 1:
-            return file.status == _BatchExecutionFileStatus.success;
+            return file.status == _BatchExecutionFileStatus.completed;
           case 2:
-            return file.status != _BatchExecutionFileStatus.success;
+            return file.status == _BatchExecutionFileStatus.review ||
+                file.status == _BatchExecutionFileStatus.error;
           default:
             return true;
         }
@@ -160,7 +185,8 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (_batchStartingJob && batchArchiveName != null) ...[
-            Text('Subiendo y extrayendo facturas del ZIP…', style: Theme.of(context).textTheme.bodySmall),
+            Text('Subiendo y extrayendo facturas del ZIP…',
+                style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 4),
             const LinearProgressIndicator(minHeight: 3),
             const SizedBox(height: 6),
@@ -217,7 +243,8 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
           ],
           if (batchArchiveName != null) ...[
             const SizedBox(height: 6),
-            Text('ZIP: $batchArchiveName', style: Theme.of(context).textTheme.bodySmall),
+            Text('ZIP: $batchArchiveName',
+                style: Theme.of(context).textTheme.bodySmall),
           ],
           if (jobActive && !batchSubmitting) ...[
             Align(
@@ -231,88 +258,118 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
           ],
           const SizedBox(height: 6),
           Expanded(
-            child: useCompletedPreviewFocus
-                ? _BatchExpensePreviewReviewPanel(
-                    items: _batchPreviewItems,
-                    selectedCount: selectedPreviewCount,
-                    confirming: batchSubmitting,
-                    confirmResult: _batchConfirmResult,
-                    canExportIncidents: hasIncidentExport,
-                    exportingIncidents: _batchExportingIncidents,
-                    onExportIncidents: exportBatchIncidentExcel,
-                    onToggle: (item, selected) => _updateImportState(() {
-                      if (!item.canSelect) return;
-                      item.selected = selected;
+            child: batchArchiveName != null && !hasTrackedJob
+                ? _BatchArchiveConfirmation(
+                    archiveName: batchArchiveName!,
+                    archiveSizeBytes: batchArchiveBytes?.length ?? 0,
+                    inspecting: batchArchiveInspecting,
+                    files: archiveFiles,
+                    skipped: archiveSkipped,
+                    warnings: batchSkippedDetails,
+                    inspectionError: batchArchiveInspectionError,
+                    blocked: batchArchiveInspection?['blocked'] == true,
+                    expanded: batchArchiveFilesExpanded,
+                    canAnalyze: hasGroup &&
+                        !batchArchiveInspecting &&
+                        batchArchiveInspection?['blocked'] != true &&
+                        archiveFiles.isNotEmpty,
+                    analyzing: batchSubmitting || _batchStartingJob,
+                    onToggleExpanded: () => _updateImportState(() {
+                      batchArchiveFilesExpanded = !batchArchiveFilesExpanded;
                     }),
-                    onEdit: (item) => _showBatchPreviewEditDialog(item),
-                    onConfirm: confirmBatchPreviewImport,
+                    onCancel: () => _updateImportState(() {
+                      clearBatchArchive();
+                      _batchSkippedDetails.clear();
+                      _batchVerifyMessage = null;
+                      _batchError = null;
+                    }),
+                    onReplace: pickBatchDocuments,
+                    onConfirm: submitBatchImport,
+                    onRetry: inspectSelectedBatchArchive,
                   )
-                : hasPreviewItems
-                    ? DefaultTabController(
-                        length: 3,
-                        initialIndex: 1,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _BatchReviewTabHeader(
-                              fileCount: files.length,
-                              selectedCount: selectedPreviewCount,
-                              hasIssue: verifyHasIssue,
-                              looksOk: verifyLooksOk,
-                            ),
-                            const SizedBox(height: 8),
-                            Expanded(
-                              child: TabBarView(
-                                children: [
-                                  _buildBatchFileListView(
-                                    filteredFiles: filteredFiles,
-                                    totalCount: files.length,
-                                    warningCount: warningIndexes.length,
-                                    warningIndexes: warningIndexes,
-                                    selectedCount: selectedCount,
-                                    hasTrackedJob: hasTrackedJob,
-                                    jobActive: jobActive,
-                                  ),
-                                  _BatchExpensePreviewReviewPanel(
-                                    items: _batchPreviewItems,
-                                    selectedCount: selectedPreviewCount,
-                                    confirming: batchSubmitting,
-                                    confirmResult: _batchConfirmResult,
-                                    canExportIncidents: hasIncidentExport,
-                                    exportingIncidents:
-                                        _batchExportingIncidents,
-                                    onExportIncidents: exportBatchIncidentExcel,
-                                    onToggle: (item, selected) =>
-                                        _updateImportState(() {
-                                      if (!item.canSelect) return;
-                                      item.selected = selected;
-                                    }),
-                                    onEdit: (item) =>
-                                        _showBatchPreviewEditDialog(item),
-                                    onConfirm: confirmBatchPreviewImport,
-                                  ),
-                                  _BatchVerificationTabPanel(
-                                    title:
-                                        l.expenseUploadBatchVerificationTitle,
-                                    message: verifyText,
-                                    hasIssue: verifyHasIssue,
-                                    looksOk: verifyLooksOk,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                : useCompletedPreviewFocus
+                    ? _BatchExpensePreviewReviewPanel(
+                        items: _batchPreviewItems,
+                        selectedCount: selectedPreviewCount,
+                        confirming: batchSubmitting,
+                        confirmResult: _batchConfirmResult,
+                        canExportIncidents: hasIncidentExport,
+                        exportingIncidents: _batchExportingIncidents,
+                        onExportIncidents: exportBatchIncidentExcel,
+                        onToggle: (item, selected) => _updateImportState(() {
+                          if (!item.canSelect) return;
+                          item.selected = selected;
+                        }),
+                        onEdit: (item) => _showBatchPreviewEditDialog(item),
+                        onConfirm: confirmBatchPreviewImport,
                       )
-                    : _buildBatchFileListView(
-                        filteredFiles: filteredFiles,
-                        totalCount: files.length,
-                        warningCount: warningIndexes.length,
-                        warningIndexes: warningIndexes,
-                        selectedCount: selectedCount,
-                        hasTrackedJob: hasTrackedJob,
-                        jobActive: jobActive,
-                      ),
+                    : hasPreviewItems
+                        ? DefaultTabController(
+                            length: 3,
+                            initialIndex: 1,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _BatchReviewTabHeader(
+                                  fileCount: files.length,
+                                  selectedCount: selectedPreviewCount,
+                                  hasIssue: verifyHasIssue,
+                                  looksOk: verifyLooksOk,
+                                ),
+                                const SizedBox(height: 8),
+                                Expanded(
+                                  child: TabBarView(
+                                    children: [
+                                      _buildBatchFileListView(
+                                        filteredFiles: filteredFiles,
+                                        totalCount: files.length,
+                                        warningCount: warningIndexes.length,
+                                        warningIndexes: warningIndexes,
+                                        selectedCount: selectedCount,
+                                        hasTrackedJob: hasTrackedJob,
+                                        jobActive: jobActive,
+                                      ),
+                                      _BatchExpensePreviewReviewPanel(
+                                        items: _batchPreviewItems,
+                                        selectedCount: selectedPreviewCount,
+                                        confirming: batchSubmitting,
+                                        confirmResult: _batchConfirmResult,
+                                        canExportIncidents: hasIncidentExport,
+                                        exportingIncidents:
+                                            _batchExportingIncidents,
+                                        onExportIncidents:
+                                            exportBatchIncidentExcel,
+                                        onToggle: (item, selected) =>
+                                            _updateImportState(() {
+                                          if (!item.canSelect) return;
+                                          item.selected = selected;
+                                        }),
+                                        onEdit: (item) =>
+                                            _showBatchPreviewEditDialog(item),
+                                        onConfirm: confirmBatchPreviewImport,
+                                      ),
+                                      _BatchVerificationTabPanel(
+                                        title: l
+                                            .expenseUploadBatchVerificationTitle,
+                                        message: verifyText,
+                                        hasIssue: verifyHasIssue,
+                                        looksOk: verifyLooksOk,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : _buildBatchFileListView(
+                            filteredFiles: filteredFiles,
+                            totalCount: files.length,
+                            warningCount: warningIndexes.length,
+                            warningIndexes: warningIndexes,
+                            selectedCount: selectedCount,
+                            hasTrackedJob: hasTrackedJob,
+                            jobActive: jobActive,
+                          ),
           ),
           if (!hasGroup) ...[
             const SizedBox(height: 10),
@@ -337,16 +394,18 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
             totalBytes: totalBytes,
             submitting: batchSubmitting ||
                 batchGeneratingJson ||
+                batchArchiveInspecting ||
                 jobActive ||
                 _batchStartingJob,
             hasGroupSelected: hasGroup,
             canImport: !jobActive &&
                 !batchSubmitting &&
                 !batchGeneratingJson &&
+                !batchArchiveInspecting &&
                 !jobCompleted &&
                 !hasPreviewItems &&
                 hasGroup &&
-                (batchDocumentNames.isNotEmpty || batchArchiveBytes != null),
+                (batchDocumentNames.isNotEmpty || archiveFiles.isNotEmpty),
             jobActive: jobActive,
             jobCompleted: jobCompleted,
             jobFailed: jobFailed,
@@ -356,22 +415,23 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
             skippedCount: jobSkippedCount,
             onPickDocuments: pickBatchDocuments,
             onImport: submitBatchImport,
-            onClearSelection: batchDocumentNames.isEmpty && batchArchiveName == null
-                ? null
-                : () => _updateImportState(() {
-                      _resetBatchJobTracking(
-                        clearResult: true,
-                        clearCache: true,
-                      );
-                      batchDocumentBytes.clear();
-                      batchDocumentNames.clear();
-                      clearBatchArchive();
-                      _batchSkippedDetails.clear();
-                      _batchVerifyMessage = null;
-                      _batchError = null;
-                      _batchDetectedInvoices = 0;
-                      _batchFileFilterIndex = 0;
-                    }),
+            onClearSelection:
+                batchDocumentNames.isEmpty && batchArchiveName == null
+                    ? null
+                    : () => _updateImportState(() {
+                          _resetBatchJobTracking(
+                            clearResult: true,
+                            clearCache: true,
+                          );
+                          batchDocumentBytes.clear();
+                          batchDocumentNames.clear();
+                          clearBatchArchive();
+                          _batchSkippedDetails.clear();
+                          _batchVerifyMessage = null;
+                          _batchError = null;
+                          _batchDetectedInvoices = 0;
+                          _batchFileFilterIndex = 0;
+                        }),
           ),
           const SizedBox(height: 16),
           Expanded(child: executionPanel),
@@ -430,7 +490,9 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
                   ? null
                   : pickBatchDocuments,
               icon: Icons.picture_as_pdf_outlined,
-              label: Localizations.localeOf(context).languageCode == 'es' ? 'Elegir facturas o ZIP' : 'Choose invoices or ZIP',
+              label: Localizations.localeOf(context).languageCode == 'es'
+                  ? 'Elegir facturas o ZIP'
+                  : 'Choose invoices or ZIP',
             ),
             const SizedBox(height: 6),
           ],

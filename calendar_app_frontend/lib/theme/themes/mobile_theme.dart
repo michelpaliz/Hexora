@@ -12,18 +12,18 @@ class MobileTheme {
 
   static ThemeData build(ThemeData base) {
     final dark = base.brightness == Brightness.dark;
-    final background =
-        dark ? AppDarkColors.background : const Color(0xFFF6F8FB);
+    final background = dark ? AppDarkColors.background : AppColors.background;
     final card = dark ? AppDarkColors.surface : const Color(0xFFFFFFFF);
-    final raised = dark ? AppDarkColors.surfaceHover : const Color(0xFFEDF2F7);
-    final border = dark ? AppDarkColors.border : const Color(0xFFDCE3EB);
+    final raised =
+        dark ? AppDarkColors.surfaceHover : AppColors.inputBackground;
+    final border = dark ? AppDarkColors.border : AppColors.inputBorder;
     final text = dark ? AppDarkColors.textPrimary : const Color(0xFF182230);
     final secondaryText =
         dark ? AppDarkColors.textSecondary : const Color(0xFF526173);
-    final primary = dark ? AppDarkColors.primary : const Color(0xFF1565C0);
+    final primary = dark ? AppDarkColors.primary : AppColors.primary;
     final onPrimary = dark ? AppDarkColors.background : const Color(0xFFFFFFFF);
     final selected =
-        dark ? AppDarkColors.surfaceHover : const Color(0xFFDCEBFB);
+        dark ? AppDarkColors.surfaceHover : AppColors.selectedControl;
     final onSelected =
         dark ? AppDarkColors.primaryLight : const Color(0xFF124F91);
     final error = Color(dark ? 0xFFFFB4AB : 0xFFB3261E);
@@ -201,12 +201,13 @@ class MobileTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: card,
+        fillColor: dark ? card : AppColors.inputBackground,
         contentPadding: const EdgeInsets.all(16),
         border: inputBorder,
         enabledBorder: inputBorder,
         focusedBorder: inputBorder.copyWith(
-            borderSide: BorderSide(color: primary, width: 2)),
+            borderSide: BorderSide(
+                color: dark ? primary : AppColors.inputFocus, width: 2)),
         errorBorder: inputBorder.copyWith(borderSide: BorderSide(color: error)),
         focusedErrorBorder: inputBorder.copyWith(
             borderSide: BorderSide(color: error, width: 2)),

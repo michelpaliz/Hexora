@@ -50,7 +50,7 @@ class ExpenseDocumentDiscountFields extends StatelessWidget {
         ),
       ),
       filled: true,
-      fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.18),
+      fillColor: cs.surfaceContainer,
       isDense: true,
       contentPadding: icon != null
           ? const EdgeInsets.symmetric(horizontal: 4, vertical: 10)

@@ -47,8 +47,11 @@ class InvoiceDetailSheet extends StatefulWidget {
   final Group group;
   final ValueChanged<String>? onOpenRecurringSeries;
   final VoidCallback? onInvoiceChanged;
+  final VoidCallback? onClose;
 
   final bool fullPage;
+  final VoidCallback? onExpand;
+  final bool isExpanded;
 
   const InvoiceDetailSheet({
     super.key,
@@ -59,6 +62,9 @@ class InvoiceDetailSheet extends StatefulWidget {
     required this.group,
     this.onOpenRecurringSeries,
     this.onInvoiceChanged,
+    this.onClose,
+    this.onExpand,
+    this.isExpanded = false,
   });
 
   @override
@@ -68,6 +74,7 @@ class InvoiceDetailSheet extends StatefulWidget {
 class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     with InvoiceDetailSheetLogic {
   bool _previewMenuOpen = false;
+  int _inlineTabIndex = 0;
 
   String get _pdfLink {
     final url = _invoice.pdfUrl?.trim();
@@ -462,15 +469,66 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         : DateFormat.yMMMd(l.localeName)
             .add_Hm()
             .format(invoice.occurrenceDate!);
-    final issuedByName = invoice.issuedByDisplayName;
-    final issuedByLabel = issuedByName == null
-        ? (isEs ? 'Emisor no registrado' : 'Issuer not recorded')
-        : (isEs ? 'Emitida por $issuedByName' : 'Issued by $issuedByName');
-    final issuedAtLabel = invoice.issuedAtResolved == null
-        ? null
-        : DateFormat.yMMMd(l.localeName)
-            .add_Hm()
-            .format(invoice.issuedAtResolved!.toLocal());
+    final issueDate = invoice.issueDate ?? invoice.registeredAt;
+    final issueDateLabel = issueDate == null
+        ? ''
+        : '${isEs ? 'Emitida el' : 'Issued'} ${DateFormat.yMMMd(l.localeName).format(issueDate.toLocal())}';
+
+    final headerMenu = PopupMenuButton<String>(
+      tooltip: isEs ? 'Más acciones' : 'More actions',
+      position: PopupMenuPosition.under,
+      onOpened: () => setState(() => _previewMenuOpen = true),
+      onCanceled: () => setState(() => _previewMenuOpen = false),
+      onSelected: (value) {
+        setState(() => _previewMenuOpen = false);
+        switch (value) {
+          case 'preview':
+            _previewPdf();
+          case 'copy':
+            _copyPdfLink();
+          case 'recurrence':
+            widget.onOpenRecurringSeries?.call(invoice.recurringSeriesId!);
+        }
+      },
+      itemBuilder: (_) => [
+        NavigationPopupMenuItem(
+          value: 'preview',
+          enabled: !_previewing,
+          child: ListTile(
+            leading: const Icon(Icons.open_in_full_rounded),
+            title: Text(l.invoicePreviewCta),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        NavigationPopupMenuItem(
+          value: 'copy',
+          child: ListTile(
+            leading: const Icon(Icons.copy_outlined),
+            title: Text(isEs ? 'Copiar enlace PDF' : 'Copy PDF link'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        if (hasRecurrence)
+          NavigationPopupMenuItem(
+            value: 'recurrence',
+            enabled: widget.onOpenRecurringSeries != null,
+            child: ListTile(
+              leading: const Icon(Icons.repeat_rounded),
+              title: Text(recurrenceLabel),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+      ],
+      style: IconButton.styleFrom(
+        fixedSize: const Size(32, 32),
+        minimumSize: const Size(32, 32),
+        padding: EdgeInsets.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      icon: const Icon(Icons.more_horiz_rounded, size: 19),
+    );
 
     return ColoredBox(
       color: Theme.of(context).canvasColor,
@@ -486,49 +544,39 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // ── Header ──────────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-                  child: InvoiceDetailHeader(
-                    clientName: widget.client.name,
-                    invoiceNumber:
-                        invoice.displayNumber(draftLabel: l.statusDraft),
-                    hasRecurrence: hasRecurrence,
-                    recurrenceLabel: recurrenceLabel,
-                    occurrenceLabel: occurrenceLabel,
-                    recurrenceButtonLabel: l.invoiceRecurringLabel,
-                    onOpenRecurringSeries: widget.onOpenRecurringSeries,
-                    recurringSeriesId: invoice.recurringSeriesId,
-                    statusLabel: _resolveStatus(status),
-                    statusColor: _statusColor(cs, status),
-                    statusIcon: _statusIcon(status),
-                    total: (invoice.total ?? _total).toDouble(),
-                    currency: invoice.currency ?? 'EUR',
-                    invoiceType: invoice.invoiceType,
-                    issuedByLabel:
-                        status.contains('issue') ? issuedByLabel : null,
-                    issuedAtLabel:
-                        status.contains('issue') ? issuedAtLabel : null,
-                  ),
+                InvoiceDetailHeader(
+                  clientName: widget.client.name,
+                  invoiceNumber:
+                      invoice.displayNumber(draftLabel: l.statusDraft),
+                  statusLabel: _resolveStatus(status),
+                  statusColor: _statusColor(cs, status),
+                  statusIcon: _statusIcon(status),
+                  issueDateLabel: issueDateLabel,
+                  invoiceType: invoice.invoiceType,
+                  moreActions: headerMenu,
+                  onBack: widget.onClose,
+                  onClose: widget.onClose,
+                  onExpand: widget.onExpand,
+                  isExpanded: widget.isExpanded,
+                ),
+                _InvoiceDetailTabs(
+                  selectedIndex: _inlineTabIndex,
+                  isEs: isEs,
+                  onSelected: (index) =>
+                      setState(() => _inlineTabIndex = index),
+                ),
+                Divider(
+                  height: 1,
+                  color: cs.outlineVariant.withValues(alpha: .45),
                 ),
 
                 // ── PDF Preview ──────────────────────────────────────────────
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color:
-                              cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: cs.outlineVariant.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: _buildPdfArea(cs, l),
-                      ),
-                    ),
+                  child: _buildInlineTabContent(
+                    cs,
+                    l,
+                    selectedIndex: _inlineTabIndex,
+                    isEs: isEs,
                   ),
                 ),
 
@@ -559,6 +607,126 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
   }
 
   // ── PDF area widget ─────────────────────────────────────────────────────────
+
+  Widget _buildInlineTabContent(
+    ColorScheme cs,
+    AppLocalizations l, {
+    required int selectedIndex,
+    required bool isEs,
+  }) {
+    if (selectedIndex == 1) return _buildDetailsContent();
+    if (selectedIndex == 2) {
+      return ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          InvoiceDetailLines(
+            loading: _loading,
+            error: _error,
+            lines: _lines,
+            onRefresh: _fetchLines,
+            subtotal: _invoice.subtotal,
+            taxTotal: _invoice.taxTotal,
+            total: _invoice.total,
+            discountAmount: _invoice.discountAmount,
+            discountPercent: _invoice.discountPercent,
+          ),
+        ],
+      );
+    }
+    if (selectedIndex == 3) {
+      return ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          InvoiceDetailHistoryCard(
+            title: l.invoiceChangeHistoryTitle,
+            history: _invoiceHistory,
+            localeName: l.localeName,
+            currency: _invoice.currency ?? 'EUR',
+            loading: _historyLoading,
+            error: _historyError,
+            onRetry: _loadInvoiceHistory,
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            border: Border(
+              bottom: BorderSide(
+                color: cs.outlineVariant.withValues(alpha: .4),
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Text(
+                isEs ? 'Vista previa PDF' : 'PDF preview',
+                style: AppTypography.of(context).bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: _downloadingPdf ? null : _downloadPdf,
+                tooltip: l.download,
+                icon: _downloadingPdf
+                    ? const SizedBox(
+                        width: 15,
+                        height: 15,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.download_outlined, size: 18),
+                style: IconButton.styleFrom(
+                  fixedSize: const Size(32, 32),
+                  minimumSize: const Size(32, 32),
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                onPressed: _previewing ? null : _previewPdf,
+                tooltip: l.invoicePreviewCta,
+                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                style: IconButton.styleFrom(
+                  fixedSize: const Size(32, 32),
+                  minimumSize: const Size(32, 32),
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: _buildPdfArea(cs, l),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildPdfArea(ColorScheme cs, AppLocalizations l) {
     if (_inlinePdfLoading) {
@@ -1090,8 +1258,10 @@ class _DeliverySection extends StatelessWidget {
                       enabled: !updatingDelivery,
                       onSelected: (value) => onMarkSent(channel: value),
                       itemBuilder: (_) => const [
-                        NavigationPopupMenuItem(value: 'manual', child: Text('Manual')),
-                        NavigationPopupMenuItem(value: 'email', child: Text('Email')),
+                        NavigationPopupMenuItem(
+                            value: 'manual', child: Text('Manual')),
+                        NavigationPopupMenuItem(
+                            value: 'email', child: Text('Email')),
                         NavigationPopupMenuItem(
                             value: 'whatsapp', child: Text('WhatsApp')),
                       ],
@@ -1187,6 +1357,69 @@ class _MetaChip extends StatelessWidget {
               .copyWith(color: cs.onSurfaceVariant),
         ),
       ],
+    );
+  }
+}
+
+class _InvoiceDetailTabs extends StatelessWidget {
+  const _InvoiceDetailTabs({
+    required this.selectedIndex,
+    required this.isEs,
+    required this.onSelected,
+  });
+
+  final int selectedIndex;
+  final bool isEs;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final labels = isEs
+        ? const ['Vista previa', 'Datos', 'Líneas', 'Historial']
+        : const ['Preview', 'Details', 'Lines', 'History'];
+
+    return SizedBox(
+      height: 34,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        scrollDirection: Axis.horizontal,
+        itemCount: labels.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 14),
+        itemBuilder: (context, index) {
+          final selected = selectedIndex == index;
+          return Semantics(
+            selected: selected,
+            button: true,
+            label: labels[index],
+            child: InkWell(
+              onTap: () => onSelected(index),
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      width: 2,
+                      color: selected ? cs.primary : Colors.transparent,
+                    ),
+                  ),
+                ),
+                child: Text(
+                  labels[index],
+                  style: t.bodySmall.copyWith(
+                    color: selected ? cs.primary : cs.onSurfaceVariant,
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

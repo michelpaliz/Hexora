@@ -137,13 +137,13 @@ class _AzureMapsViewState extends State<AzureMapsView> {
           _ready = true;
           _syncState();
           if (widget.cameraTarget != null) _postCamera(widget.cameraTarget!);
+          widget.onReady?.call();
           break;
         case 'hexora-map-pin':
           final id = (data['id'] ?? '').toString();
           if (id.isNotEmpty) widget.onPinTapped(id);
           break;
         case 'hexora-map-loaded':
-          widget.onReady?.call();
           break;
         case 'hexora-map-selection':
           final latitude = _number(data['latitude']);
@@ -213,7 +213,8 @@ class _AzureMapsViewState extends State<AzureMapsView> {
       if (a[i].id != b[i].id ||
           a[i].latitude != b[i].latitude ||
           a[i].longitude != b[i].longitude ||
-          a[i].radiusMeters != b[i].radiusMeters) {
+          a[i].radiusMeters != b[i].radiusMeters ||
+          a[i].type != b[i].type) {
         return false;
       }
     }

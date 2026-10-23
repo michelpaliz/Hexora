@@ -5,7 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:hexora/navigation/shell/hexora_app_shell.dart';
 import 'package:hexora/navigation/shell/hexora_global_nav_bar.dart';
 import 'package:hexora/navigation/shell/hexora_nav_components.dart';
+import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/layout/group_dashboard_content.dart';
@@ -302,12 +306,19 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
           ? () => state.openSection(Sections.settings)
           : null,
       brandTooltip: es ? 'Ajustes del espacio' : 'Workspace settings',
+      groupSwitcher: _GroupSwitcherChip(
+        activeGroup: state.group,
+        userId: user?.id ?? '',
+      ),
       compact: _compact,
       onToggleCompact: _toggleCompact,
       notificationCount: unreadNotifications,
       notificationsSelected: state.activeSection == Sections.notifications,
       onOpenNotifications: () => state.openSection(Sections.notifications),
-      profile: UserProfilePopup(user: user),
+      profile: UserProfilePopup(
+        user: user,
+        onSettings: () => state.openSection('settings'),
+      ),
       profileDetails: user == null
           ? null
           : Column(
@@ -335,6 +346,163 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
             ),
       onBack: () => Navigator.of(context).maybePop(),
       backTooltip: l.groupSectionTitle,
+    );
+  }
+}
+
+// ── Group / workspace switcher ────────────────────────────────────────────────
+
+class _GroupSwitcherChip extends StatelessWidget {
+  const _GroupSwitcherChip({
+    required this.activeGroup,
+    required this.userId,
+  });
+
+  final Group activeGroup;
+  final String userId;
+
+  static const double _nameBreakpoint = 1100;
+  static const double _chipMaxNameWidth = 140.0;
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return '?';
+    return parts.length == 1
+        ? parts.first[0].toUpperCase()
+        : (parts.first[0] + parts.last[0]).toUpperCase();
+  }
+
+  Widget _avatar(Group group, double size) {
+    final photoUrl = group.computedPhotoUrl ?? group.photoUrl;
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      return ClipOval(
+        child: Image.network(
+          photoUrl,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _initialsAvatar(group, size),
+        ),
+      );
+    }
+    return _initialsAvatar(group, size);
+  }
+
+  Widget _initialsAvatar(Group group, double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color(0x26FFFFFF), // foreground @ 15 % alpha
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        _initials(group.name),
+        style: TextStyle(
+          fontSize: size * 0.38,
+          fontWeight: FontWeight.w700,
+          color: HexoraGlobalNavColors.foreground,
+          fontFamily: 'Inter',
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final showName = MediaQuery.sizeOf(context).width >= _nameBreakpoint;
+    final groupDomain = context.watch<GroupDomain>();
+    final es = Localizations.localeOf(context).languageCode == 'es';
+
+    return StreamBuilder<List<Group>>(
+      stream: userId.isNotEmpty
+          ? groupDomain.watchGroupsForUser(userId)
+          : const Stream.empty(),
+      builder: (context, snap) {
+        final groups = snap.data ?? [activeGroup];
+
+        return MenuAnchor(
+          alignmentOffset: const Offset(0, 6),
+          menuChildren: [
+            for (final g in groups)
+              MenuItemButton(
+                leadingIcon: _avatar(g, 20),
+                trailingIcon: g.id == activeGroup.id
+                    ? Icon(
+                        Icons.check_rounded,
+                        size: NavigationTokens.iconSize,
+                        color: Theme.of(context).colorScheme.primary,
+                      )
+                    : null,
+                onPressed: g.id == activeGroup.id
+                    ? null
+                    : () {
+                        groupDomain.currentGroup = g;
+                        Navigator.of(context).pushNamed(
+                          AppRoutes.groupDashboard,
+                          arguments: g,
+                        );
+                      },
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 220),
+                  child: Text(
+                    g.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: NavigationTokens.label(context),
+                  ),
+                ),
+              ),
+          ],
+          builder: (context, controller, _) {
+            final tooltipMsg = showName
+                ? (es ? 'Cambiar espacio de trabajo' : 'Switch workspace')
+                : activeGroup.name;
+            return Tooltip(
+              message: tooltipMsg,
+              waitDuration: const Duration(milliseconds: 350),
+              child: HexoraNavTile(
+                selected: false,
+                semanticLabel: activeGroup.name,
+                tooltip: null,
+                padding: showName
+                    ? const EdgeInsets.symmetric(
+                        horizontal: NavigationTokens.globalItemPadding,
+                      )
+                    : const EdgeInsets.symmetric(horizontal: 4),
+                onTap: () =>
+                    controller.isOpen ? controller.close() : controller.open(),
+                builder: (context, fg) => Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _avatar(activeGroup, 24),
+                    if (showName) ...[
+                      const SizedBox(width: 8),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxWidth: _chipMaxNameWidth,
+                        ),
+                        child: Text(
+                          activeGroup.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: NavigationTokens.label(context).copyWith(
+                            color: fg,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.expand_more_rounded, size: 14, color: fg),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

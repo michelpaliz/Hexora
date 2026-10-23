@@ -35,6 +35,7 @@ class DocumentSplitView extends StatefulWidget {
     this.splitBreakpoint = 1280,
     this.drawerBreakpoint = 960,
     this.gap = 8,
+    this.modeNotifier,
   });
 
   final String storageKey;
@@ -54,6 +55,12 @@ class DocumentSplitView extends StatefulWidget {
   final double splitBreakpoint;
   final double drawerBreakpoint;
   final double gap;
+
+  /// Optional external mode controller. When provided the split view syncs
+  /// its active mode with this notifier bidirectionally: external changes
+  /// update the layout, and user interactions (divider, rail) update the
+  /// notifier so callers can react (e.g. to reflect expand state in a header).
+  final ValueNotifier<DocumentViewMode?>? modeNotifier;
 
   @override
   State<DocumentSplitView> createState() => _DocumentSplitViewState();
@@ -80,6 +87,12 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
   void initState() {
     super.initState();
     _restore();
+    widget.modeNotifier?.addListener(_onExternalMode);
+  }
+
+  void _onExternalMode() {
+    final m = widget.modeNotifier!.value;
+    if (m != _userMode) setState(() => _userMode = m);
   }
 
   Future<void> _restore() async {
@@ -121,6 +134,10 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
   @override
   void didUpdateWidget(covariant DocumentSplitView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.modeNotifier != oldWidget.modeNotifier) {
+      oldWidget.modeNotifier?.removeListener(_onExternalMode);
+      widget.modeNotifier?.addListener(_onExternalMode);
+    }
     if (widget.selectionKey != null &&
         widget.selectionKey != oldWidget.selectionKey) {
       _overlayOpen = true;
@@ -133,12 +150,14 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
 
   @override
   void dispose() {
+    widget.modeNotifier?.removeListener(_onExternalMode);
     if (_dragging) documentSplitDragging.value = false;
     super.dispose();
   }
 
   void _setMode(DocumentViewMode? mode) {
     setState(() => _userMode = mode);
+    widget.modeNotifier?.value = mode;
     _persist();
   }
 

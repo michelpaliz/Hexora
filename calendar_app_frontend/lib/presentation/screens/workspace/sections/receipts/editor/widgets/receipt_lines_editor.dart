@@ -65,7 +65,7 @@ class _ReceiptLinesEditorState extends State<ReceiptLinesEditor> {
         focusedBorder: focusedBorder,
         isDense: true,
         filled: true,
-        fillColor: cs.surface.withValues(alpha: 0.82),
+        fillColor: cs.surfaceContainer,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       );

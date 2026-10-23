@@ -44,6 +44,35 @@ abstract class InsightsChatSheetStateBase extends State<InsightsChatSheet> {
   int bulkUnlinkingLinkedIncomeProgress = 0;
   int bulkUnlinkingLinkedIncomeTotal = 0;
   bool desktopChatPaneCollapsed = false;
+  Widget? inlineSurface;
+  Completer<void>? _inlineSurfaceCompleter;
+
+  /// Replaces the chat body with [surface] inside the current host page.
+  ///
+  /// Used by the insights invoice flow so suggested matches never push a
+  /// route or open a dialog: they take over the same right-column surface and
+  /// return through the surface's back action.
+  void showInlineSurface(
+    Widget surface, {
+    Completer<void>? closeCompleter,
+  }) {
+    final previous = _inlineSurfaceCompleter;
+    _inlineSurfaceCompleter = closeCompleter;
+    setState(() => inlineSurface = surface);
+    if (previous != null && !previous.isCompleted) previous.complete();
+  }
+
+  /// Clears the inline surface and lets any awaiting caller continue.
+  void closeInlineSurface({bool notify = true}) {
+    final completer = _inlineSurfaceCompleter;
+    _inlineSurfaceCompleter = null;
+    if (notify && mounted) {
+      setState(() => inlineSurface = null);
+    } else {
+      inlineSurface = null;
+    }
+    if (completer != null && !completer.isCompleted) completer.complete();
+  }
 
   void scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {

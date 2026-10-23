@@ -30,6 +30,7 @@ class ClientsListPanel extends StatefulWidget {
   final VoidCallback onClearEntityFilter;
   final VoidCallback onClearPropertyFilter;
   final ValueChanged<GroupClient> onSelectClient;
+  final VoidCallback? onAddClient;
 
   const ClientsListPanel({
     super.key,
@@ -53,6 +54,7 @@ class ClientsListPanel extends StatefulWidget {
     required this.onClearEntityFilter,
     required this.onClearPropertyFilter,
     required this.onSelectClient,
+    this.onAddClient,
   });
 
   @override
@@ -148,6 +150,8 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                     icon: Icons.person_outline,
                     title: l.noClientsYet,
                     subtitle: l.noClientsYet,
+                    cta: widget.onAddClient != null ? l.addClient : null,
+                    onPressed: widget.onAddClient,
                   )
                 : visibleClients.isEmpty
                     ? EmptyView(

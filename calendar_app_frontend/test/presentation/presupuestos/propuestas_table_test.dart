@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:hexora/services/presupuestos/presupuestos_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/documents/presupuesto_document_actions_view.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_workspace_chrome.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/templates/presupuesto_template_editor_screen.dart';
 
 class _Api extends PresupuestosApi {
@@ -127,7 +128,7 @@ void main() {
         ));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-        expect(find.byType(SegmentedButton<String>), findsOneWidget);
+        expect(find.byType(HexoraDocumentStatusTabs), findsOneWidget);
       });
     }
   }
@@ -202,7 +203,7 @@ void main() {
         ))));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(find.byType(SegmentedButton<String>), findsOneWidget);
+    expect(find.byType(HexoraDocumentStatusTabs), findsOneWidget);
     final rows = find.byWidgetPredicate((w) =>
         w is Container &&
         w.constraints?.minHeight == HexoraTableTokens.rowMinHeight);
@@ -223,9 +224,9 @@ void main() {
     await tester.tap(find.byTooltip('Página siguiente'));
     await tester.pumpAndSettle();
     expect(find.text('Mostrando 11–12 de 12 propuestas'), findsOneWidget);
-    await tester.ensureVisible(find.text('Borradores  6'));
+    await tester.ensureVisible(find.text('Borradores'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Borradores  6'));
+    await tester.tap(find.text('Borradores'));
     await tester.pumpAndSettle();
     expect(find.text('Mostrando 1–6 de 6 propuestas'), findsOneWidget);
     await tester.ensureVisible(find.text('Nueva propuesta'));

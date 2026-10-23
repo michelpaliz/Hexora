@@ -8,6 +8,7 @@ import 'package:hexora/presentation/screens/workspace/sections/enable_banking/st
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/statements_formatters.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/event_args_helper.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_category_meta.dart';
+import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_destination.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_formatting.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -230,7 +231,8 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
     final n = widget.notification!;
     final isBankExpenseNotification = _isBankExpenseNotification(n);
     final bankExpenseRows = _bankExpenseRows(n);
-    final hasActions = n.category == Category.groupInvitation ||
+    final hasActions = resolveNotificationDestination(n) ==
+            NotificationDestination.invitation ||
         n.questionsAndAnswers.isNotEmpty;
 
     final documentKey = '${n.titleKey} ${n.fallbackTitle}'.toLowerCase();

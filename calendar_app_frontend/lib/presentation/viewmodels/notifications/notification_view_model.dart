@@ -4,6 +4,7 @@ import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/groups/errors/group_limit_exception.dart';
+import 'package:hexora/services/groups/invite/domain/invite_domain.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 // ⛔ remove: import 'package:hexora/services/api/user/user_services.dart';
 import 'package:hexora/services/notification/notification_api_client.dart';
@@ -16,13 +17,27 @@ class NotificationViewModel {
 
   // If your notification layer was also split, prefer NotificationRepository.
   final NotificationApiClient notificationService;
+  final InvitationDomain? invitationDomain;
 
   NotificationViewModel({
     required this.userDomain,
     required this.groupDomain,
     required this.notificationDomain,
     required this.notificationService,
+    this.invitationDomain,
   });
+
+  String _invitationId(NotificationUser notification) {
+    for (final key in const ['invitationId', 'inviteId', 'invitation_id']) {
+      final value = notification.args[key]?.toString().trim() ?? '';
+      if (value.isNotEmpty) return value;
+    }
+    final invitation = notification.args['invitation'];
+    if (invitation is Map) {
+      return (invitation['id'] ?? invitation['_id'])?.toString().trim() ?? '';
+    }
+    return '';
+  }
 
   /// ✅ Fetch notifications for a user and update stream
   Future<void> fetchAndUpdateNotifications(User user,
@@ -46,6 +61,13 @@ class NotificationViewModel {
   /// ✅ Handle "Accept" response to a group invite/// ✅ Handle "Accept" response to a group invite
   Future<void> handleConfirmation(NotificationUser notification) async {
     try {
+      final invitationId = _invitationId(notification);
+      if (invitationId.isNotEmpty && invitationDomain != null) {
+        await invitationDomain!.acceptOrThrow(invitationId);
+        await groupDomain.refreshGroupsForCurrentUser(userDomain);
+        await _removeResolvedInvitation(notification);
+        return;
+      }
       // Use ids directly; user might not have access to group details yet.
       final user = await userDomain.getUserById(notification.recipientId);
 
@@ -69,6 +91,13 @@ class NotificationViewModel {
   /// ✅ Handle "Decline" response to a group invite
   Future<void> handleNegation(NotificationUser notification) async {
     try {
+      final invitationId = _invitationId(notification);
+      if (invitationId.isNotEmpty && invitationDomain != null) {
+        await invitationDomain!.declineOrThrow(invitationId);
+        await groupDomain.refreshGroupsForCurrentUser(userDomain);
+        await _removeResolvedInvitation(notification);
+        return;
+      }
       final user = await userDomain.getUserById(notification.recipientId);
 
       await groupDomain.respondToInviteAndRefresh(
@@ -139,7 +168,12 @@ class NotificationViewModel {
     if (notification.isRead) return;
     final request = NotificationUser.fromJson(notification.toJson())
       ..isRead = true;
-    await notificationService.updateNotification(request);
+    try {
+      await notificationService.markNotificationRead(notification.id);
+    } catch (_) {
+      // Compatibility with deployments that predate the dedicated read route.
+      await notificationService.updateNotification(request);
+    }
     notification.isRead = true;
 
     final updated = notificationDomain.notifications.map((n) {

@@ -60,9 +60,7 @@ class ExpenseDocumentTotalsFields extends StatelessWidget {
         ),
       ),
       filled: true,
-      fillColor: readOnly
-          ? cs.surfaceContainerHighest.withValues(alpha: 0.10)
-          : cs.surfaceContainerHighest.withValues(alpha: 0.18),
+      fillColor: readOnly ? cs.surfaceContainerHigh : cs.surfaceContainer,
       isDense: true,
       contentPadding: icon != null
           ? const EdgeInsets.symmetric(horizontal: 4, vertical: 10)
@@ -115,41 +113,47 @@ class ExpenseDocumentTotalsFields extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l10n.expenseTotalsUseSummaryLabel,
-                          style: ts.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: cs.onSurface,
-                            fontSize: _ExpenseTotalsTypeScale.title,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          useSummaryTotals
-                              ? l10n.expenseTotalsSummaryMode
-                              : l10n.expenseTotalsCalculateMode,
-                          style: ts.bodySmall?.copyWith(
-                            color: useSummaryTotals
-                                ? cs.primary
-                                : cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                            fontSize: _ExpenseTotalsTypeScale.helper,
-                          ),
-                        ),
-                      ],
+              Text(
+                l10n.expenseTotalsUseSummaryLabel,
+                style: ts.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: cs.onSurface,
+                  fontSize: _ExpenseTotalsTypeScale.title,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: SegmentedButton<bool>(
+                  showSelectedIcon: false,
+                  style: const ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                    textStyle: WidgetStatePropertyAll(
+                      TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                     ),
                   ),
-                  Switch.adaptive(
-                    value: useSummaryTotals,
-                    onChanged: enabled ? onSummaryModeChanged : null,
-                  ),
-                ],
+                  segments: [
+                    ButtonSegment<bool>(
+                      value: false,
+                      icon: const Icon(Icons.format_list_numbered, size: 15),
+                      label: Text(l10n.expenseTotalsCalculateMode),
+                    ),
+                    ButtonSegment<bool>(
+                      value: true,
+                      icon: const Icon(Icons.receipt_long_outlined, size: 15),
+                      label: Text(l10n.expenseTotalsSummaryMode),
+                    ),
+                  ],
+                  selected: {useSummaryTotals},
+                  onSelectionChanged: enabled
+                      ? (selection) {
+                          final next = selection.first;
+                          if (next != useSummaryTotals) {
+                            onSummaryModeChanged(next);
+                          }
+                        }
+                      : null,
+                ),
               ),
               const SizedBox(height: 8),
               Text(

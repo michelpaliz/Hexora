@@ -6,8 +6,8 @@ import 'package:hexora/presentation/shared/utils/formatting/money_format_utils.d
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/vat_summary/vat_summary_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/common/empty_hint.dart';
 import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
-import 'package:hexora/theme/shapes/rounded/rounded_section_card.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:intl/intl.dart';
 
 part 'tax_report_content.dart';
@@ -21,10 +21,19 @@ const double _summaryBarItemHeight = 66;
 
 class TaxReportingView extends StatefulWidget {
   const TaxReportingView(
-      {super.key, required this.groupId, this.api, this.header});
+      {super.key,
+      required this.groupId,
+      this.api,
+      this.header,
+      this.initialSection = TaxReportSection.supported,
+      this.onSectionChanged,
+      this.showMenu = true});
   final String groupId;
   final TaxReportingApi? api;
   final Widget? header;
+  final TaxReportSection initialSection;
+  final ValueChanged<TaxReportSection>? onSectionChanged;
+  final bool showMenu;
 
   @override
   State<TaxReportingView> createState() => _TaxReportingViewState();
@@ -32,7 +41,7 @@ class TaxReportingView extends StatefulWidget {
 
 class _TaxReportingViewState extends State<TaxReportingView> {
   late TaxReportingApi _api;
-  TaxReportSection _section = TaxReportSection.supported;
+  late TaxReportSection _section;
   bool _collapsed = false;
   bool _loading = true;
   bool _datesExpanded = false;
@@ -49,6 +58,7 @@ class _TaxReportingViewState extends State<TaxReportingView> {
   @override
   void initState() {
     super.initState();
+    _section = widget.initialSection;
     _api = widget.api ?? TaxReportingApi();
     final range = quarterRangeDates(_year, _quarter);
     _from = range.$1;
@@ -108,6 +118,7 @@ class _TaxReportingViewState extends State<TaxReportingView> {
   void _select(TaxReportSection section) {
     if (_section == section) return;
     setState(() => _section = section);
+    widget.onSectionChanged?.call(section);
     _load();
   }
 
@@ -168,7 +179,7 @@ class _TaxReportingViewState extends State<TaxReportingView> {
     return CollapsibleSidebar(
       title: 'Impuestos',
       titleTextStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: Theme.of(context).colorScheme.onSurface,
+            color: AppColors.navigationForeground,
             fontWeight: FontWeight.w900,
           ),
       itemTextStyle: itemStyle,
@@ -443,6 +454,12 @@ class _TaxReportingViewState extends State<TaxReportingView> {
                             drawer: true,
                             close: () => Scaffold.of(context).closeDrawer())))),
             body: Builder(builder: (_) => content()),
+          );
+        }
+        if (!widget.showMenu) {
+          return Material(
+            color: Colors.transparent,
+            child: content(),
           );
         }
         return Material(

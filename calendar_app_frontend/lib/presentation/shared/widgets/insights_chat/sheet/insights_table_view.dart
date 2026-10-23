@@ -155,8 +155,7 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
           .toList(growable: false);
     }
     final filter = tableDateFilterFor(message);
-    final dateColumnKey =
-        tableDateColumnKey(tableColumnsFromMessage(message));
+    final dateColumnKey = tableDateColumnKey(tableColumnsFromMessage(message));
     return tableRowsFromMessage(message)
         .where((row) => row['isSummaryRow'] != true)
         .where((row) => tableRowMatchesDateFilter(row, filter, dateColumnKey))
@@ -251,8 +250,7 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
         .toLowerCase()
         .startsWith('es');
     final current = tableDateFilterFor(message);
-    final dateColumnKey =
-        tableDateColumnKey(tableColumnsFromMessage(message));
+    final dateColumnKey = tableDateColumnKey(tableColumnsFromMessage(message));
     final rowDates = tableRowsFromMessage(message)
         .where((row) => row['isSummaryRow'] != true)
         .map((row) => tableRowDate(row, dateColumnKey: dateColumnKey))
@@ -461,7 +459,7 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
           orElse: () => const <String, dynamic>{},
         )['key']
         ?.toString();
-    final rawSummaryAmount =
+    final rawSummaryAmountValue =
         summary?['amountFormatted']?.toString().trim().isNotEmpty == true
             ? summary!['amountFormatted'].toString().trim()
             : ((rightAlignedColumnKey != null &&
@@ -473,6 +471,8 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
                         true)
                 ? summaryRow![rightAlignedColumnKey].toString().trim()
                 : '');
+    final rawSummaryAmount =
+        rawSummaryAmountValue.replaceFirst(RegExp(r'\s*EUR$'), ' €');
     final filteredTotal = tableFilterActive && !usesRemoteTable
         ? dataRows
             .map((row) => tableRowAmount(
@@ -861,288 +861,292 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
             loading: tableLoading,
           )
         else
-          Stack(
-            children: [
-              Scrollbar(
-                controller: tableScrollController,
-                thumbVisibility: true,
-                notificationPredicate: (notification) =>
-                    notification.metrics.axis == Axis.horizontal,
-                child: SingleChildScrollView(
+          LayoutBuilder(
+            builder: (context, tableConstraints) => Stack(
+              children: [
+                Scrollbar(
                   controller: tableScrollController,
-                  scrollDirection: Axis.horizontal,
-                  primary: false,
-                  child: Container(
-                    constraints: const BoxConstraints(minWidth: 620),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? cs.surfaceContainerHighest.withValues(alpha: 0.16)
-                          : lightRowEven,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
+                  thumbVisibility: true,
+                  notificationPredicate: (notification) =>
+                      notification.metrics.axis == Axis.horizontal,
+                  child: SingleChildScrollView(
+                    controller: tableScrollController,
+                    scrollDirection: Axis.horizontal,
+                    primary: false,
+                    child: Container(
+                      key: const ValueKey('insights-results-table'),
+                      constraints: BoxConstraints(
+                        minWidth: tableConstraints.maxWidth > 760
+                            ? tableConstraints.maxWidth
+                            : 760,
+                      ),
+                      decoration: BoxDecoration(
                         color: isDark
-                            ? cs.outlineVariant.withValues(alpha: 0.28)
-                            : lightTableBorder,
+                            ? cs.surfaceContainerHighest.withValues(alpha: 0.16)
+                            : lightRowEven,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark
+                              ? cs.outlineVariant.withValues(alpha: 0.28)
+                              : lightTableBorder,
+                        ),
+                        boxShadow: isDark
+                            ? null
+                            : [
+                                BoxShadow(
+                                  color: const Color(0xFF274060)
+                                      .withValues(alpha: 0.06),
+                                  blurRadius: 18,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
                       ),
-                      boxShadow: isDark
-                          ? null
-                          : [
-                              BoxShadow(
-                                color: const Color(0xFF274060)
-                                    .withValues(alpha: 0.06),
-                                blurRadius: 18,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: DataTable(
-                      headingRowHeight: 32,
-                      dataRowMinHeight: linkedIncomeReview
-                          ? 62
-                          : (hasManualLinking || hasUnlinkedIncomeLinkActions)
-                              ? 34
-                              : 30,
-                      dataRowMaxHeight: linkedIncomeReview
-                          ? double.infinity
-                          : (hasManualLinking || hasUnlinkedIncomeLinkActions)
-                              ? 48
-                              : 34,
-                      horizontalMargin: 10,
-                      columnSpacing: 14,
-                      dividerThickness: 0.5,
-                      headingRowColor: WidgetStateProperty.all(
-                        isDark
-                            ? cs.surfaceContainerHighest.withValues(alpha: 0.55)
-                            : lightHeaderBackground,
-                      ),
-                      headingTextStyle: headerStyle,
-                      dataTextStyle: cellStyle,
-                      columns: [
-                        for (final column in displayedColumns)
-                          DataColumn(
-                            numeric: column['align']?.toString() == 'right',
-                            label: Text(column['label']?.toString() ?? ''),
-                          ),
-                      ],
-                      rows: [
-                        for (final entry in dataRows.asMap().entries)
-                          DataRow(
-                            color: WidgetStateProperty.resolveWith((states) {
-                              if (states.contains(WidgetState.hovered)) {
-                                return isDark
-                                    ? cs.primary.withValues(alpha: 0.08)
-                                    : lightRowHover;
-                              }
-                              if (rowIsUnlinkedInvoice(entry.value)) {
-                                return isDark
-                                    ? const Color(0xFFFFB020)
-                                        .withValues(alpha: 0.075)
-                                    : lightUnlinkedRow;
-                              }
-                              if (isDark) return null;
-                              return entry.key.isEven
-                                  ? lightRowEven
-                                  : lightRowOdd;
-                            }),
-                            cells: [
-                              for (final column in displayedColumns)
-                                DataCell(
-                                  linkedIncomeReview
-                                      ? buildLinkedIncomeReviewTableCell(
-                                          message,
-                                          entry.value,
-                                          column,
-                                          cs: cs,
-                                          t: t,
-                                          isDark: isDark,
-                                          isEs: isEs,
-                                          cellStyle: cellStyle,
-                                        )
-                                      : Tooltip(
-                                          message: tableCellValue(
-                                              entry.value, column),
-                                          waitDuration:
-                                              const Duration(milliseconds: 350),
-                                          child: column['key']?.toString() ==
-                                                  '__bankIncomeSearchAction'
-                                              ? buildBankIncomeSearchCell(
-                                                  context,
-                                                  message: message,
-                                                  row: entry.value,
-                                                  cs: cs,
-                                                  t: t,
-                                                  isEs: isEs,
-                                                )
-                                              : column['key']?.toString() ==
-                                                      '__unlinkedIncomeLinkAction'
-                                                  ? buildUnlinkedIncomeLinkActionCell(
-                                                      context,
-                                                      message: message,
-                                                      row: entry.value,
-                                                      cs: cs,
-                                                      t: t,
-                                                    )
-                                                  : column['key']?.toString() ==
-                                                          'linkStatusLabel'
-                                                      ? buildInvoiceLinkStatusCell(
-                                                          context,
-                                                          message: message,
-                                                          row: entry.value,
-                                                          value:
-                                                              tableCellValue(
-                                                            entry.value,
-                                                            column,
-                                                          ),
-                                                          cs: cs,
-                                                          t: t,
-                                                        )
-                                                      : column['key']
-                                                                  ?.toString() ==
-                                                              'transactionLinkedStateLabel'
-                                                          ? buildTransactionLinkedStateCell(
+                      clipBehavior: Clip.antiAlias,
+                      child: DataTable(
+                        headingRowHeight: 48,
+                        dataRowMinHeight: linkedIncomeReview
+                            ? 62
+                            : (hasManualLinking || hasUnlinkedIncomeLinkActions)
+                                ? 52
+                                : 48,
+                        dataRowMaxHeight: linkedIncomeReview
+                            ? double.infinity
+                            : (hasManualLinking || hasUnlinkedIncomeLinkActions)
+                                ? 58
+                                : 54,
+                        horizontalMargin: 16,
+                        columnSpacing: 24,
+                        dividerThickness: 0.5,
+                        headingRowColor: WidgetStateProperty.all(
+                          isDark
+                              ? cs.surfaceContainerHighest
+                                  .withValues(alpha: 0.55)
+                              : lightHeaderBackground,
+                        ),
+                        headingTextStyle: headerStyle,
+                        dataTextStyle: cellStyle,
+                        columns: [
+                          for (final column in displayedColumns)
+                            DataColumn(
+                              numeric: column['align']?.toString() == 'right',
+                              label: Text(column['label']?.toString() ?? ''),
+                            ),
+                        ],
+                        rows: [
+                          for (final entry in dataRows.asMap().entries)
+                            DataRow(
+                              color: WidgetStateProperty.resolveWith((states) {
+                                if (states.contains(WidgetState.hovered)) {
+                                  return isDark
+                                      ? cs.primary.withValues(alpha: 0.08)
+                                      : lightRowHover;
+                                }
+                                if (rowIsUnlinkedInvoice(entry.value)) {
+                                  return isDark
+                                      ? const Color(0xFFFFB020)
+                                          .withValues(alpha: 0.075)
+                                      : lightUnlinkedRow;
+                                }
+                                if (isDark) return null;
+                                return entry.key.isEven
+                                    ? lightRowEven
+                                    : lightRowOdd;
+                              }),
+                              cells: [
+                                for (final column in displayedColumns)
+                                  DataCell(
+                                    linkedIncomeReview
+                                        ? buildLinkedIncomeReviewTableCell(
+                                            message,
+                                            entry.value,
+                                            column,
+                                            cs: cs,
+                                            t: t,
+                                            isDark: isDark,
+                                            isEs: isEs,
+                                            cellStyle: cellStyle,
+                                          )
+                                        : Tooltip(
+                                            message: tableCellValue(
+                                                entry.value, column),
+                                            waitDuration: const Duration(
+                                                milliseconds: 350),
+                                            child: column['key']?.toString() ==
+                                                    '__bankIncomeSearchAction'
+                                                ? buildBankIncomeSearchCell(
+                                                    context,
+                                                    message: message,
+                                                    row: entry.value,
+                                                    cs: cs,
+                                                    t: t,
+                                                    isEs: isEs,
+                                                  )
+                                                : column['key']?.toString() ==
+                                                        '__unlinkedIncomeLinkAction'
+                                                    ? buildUnlinkedIncomeLinkActionCell(
+                                                        context,
+                                                        message: message,
+                                                        row: entry.value,
+                                                        cs: cs,
+                                                        t: t,
+                                                      )
+                                                    : column['key']
+                                                                ?.toString() ==
+                                                            'linkStatusLabel'
+                                                        ? buildInvoiceLinkStatusCell(
+                                                            context,
+                                                            message: message,
+                                                            row: entry.value,
+                                                            value:
+                                                                tableCellValue(
                                                               entry.value,
-                                                              cs: cs,
-                                                              t: t,
-                                                              isEs: isEs,
-                                                            )
-                                                          : Align(
-                                                              alignment: column[
-                                                                              'align']
-                                                                          ?.toString() ==
-                                                                      'right'
-                                                                  ? Alignment
-                                                                      .centerRight
-                                                                  : Alignment
-                                                                      .centerLeft,
-                                                              child:
-                                                                  ConstrainedBox(
-                                                                constraints:
-                                                                    BoxConstraints(
-                                                                  maxWidth: (column['key']?.toString() ==
-                                                                              'description' ||
-                                                                          column['key']?.toString() ==
-                                                                              'concept')
-                                                                      ? 360
-                                                                      : 180,
-                                                                ),
-                                                                child: isInvoiceStatusColumn(
-                                                                  column,
-                                                                )
-                                                                    ? (rowHasExistingInvoiceLink(
-                                                                        entry
-                                                                            .value,
-                                                                      )
-                                                                        ? buildLinkedInvoiceStatusCell(
-                                                                            value:
-                                                                                tableCellValue(
-                                                                              entry.value,
-                                                                              column,
-                                                                            ),
-                                                                            cs: cs,
-                                                                            t: t,
-                                                                            isDark:
-                                                                                isDark,
-                                                                          )
-                                                                        : rowIsUnlinkedInvoice(
-                                                                            entry.value,
-                                                                          )
-                                                                            ? buildUnlinkedInvoiceStatusCell(
-                                                                                value: tableCellValue(
-                                                                                  entry.value,
-                                                                                  column,
-                                                                                ),
-                                                                                cs: cs,
-                                                                                t: t,
-                                                                                isDark: isDark,
-                                                                              )
-                                                                            : Text(
-                                                                                tableCellValue(
-                                                                                  entry.value,
-                                                                                  column,
-                                                                                ),
-                                                                                maxLines: 1,
-                                                                                overflow: TextOverflow.ellipsis,
-                                                                                textAlign: column['align']?.toString() == 'right' ? TextAlign.right : TextAlign.left,
-                                                                                style: cellStyle,
-                                                                              ))
-                                                                    : Text(
-                                                                        tableCellValue(
+                                                              column,
+                                                            ),
+                                                            cs: cs,
+                                                            t: t,
+                                                          )
+                                                        : column['key']
+                                                                    ?.toString() ==
+                                                                'transactionLinkedStateLabel'
+                                                            ? buildTransactionLinkedStateCell(
+                                                                entry.value,
+                                                                cs: cs,
+                                                                t: t,
+                                                                isEs: isEs,
+                                                              )
+                                                            : Align(
+                                                                alignment: column['align']
+                                                                            ?.toString() ==
+                                                                        'right'
+                                                                    ? Alignment
+                                                                        .centerRight
+                                                                    : Alignment
+                                                                        .centerLeft,
+                                                                child:
+                                                                    ConstrainedBox(
+                                                                  constraints:
+                                                                      BoxConstraints(
+                                                                    maxWidth: (column['key']?.toString() ==
+                                                                                'description' ||
+                                                                            column['key']?.toString() ==
+                                                                                'concept')
+                                                                        ? 360
+                                                                        : 180,
+                                                                  ),
+                                                                  child: isInvoiceStatusColumn(
+                                                                    column,
+                                                                  )
+                                                                      ? (rowHasExistingInvoiceLink(
                                                                           entry
                                                                               .value,
-                                                                          column,
+                                                                        )
+                                                                          ? buildLinkedInvoiceStatusCell(
+                                                                              value: tableCellValue(
+                                                                                entry.value,
+                                                                                column,
+                                                                              ),
+                                                                              cs: cs,
+                                                                              t: t,
+                                                                              isDark: isDark,
+                                                                            )
+                                                                          : rowIsUnlinkedInvoice(
+                                                                              entry.value,
+                                                                            )
+                                                                              ? buildUnlinkedInvoiceStatusCell(
+                                                                                  value: tableCellValue(
+                                                                                    entry.value,
+                                                                                    column,
+                                                                                  ),
+                                                                                  cs: cs,
+                                                                                  t: t,
+                                                                                  isDark: isDark,
+                                                                                )
+                                                                              : Text(
+                                                                                  tableCellValue(
+                                                                                    entry.value,
+                                                                                    column,
+                                                                                  ),
+                                                                                  maxLines: 1,
+                                                                                  overflow: TextOverflow.ellipsis,
+                                                                                  textAlign: column['align']?.toString() == 'right' ? TextAlign.right : TextAlign.left,
+                                                                                  style: cellStyle,
+                                                                                ))
+                                                                      : Text(
+                                                                          tableCellValue(
+                                                                            entry.value,
+                                                                            column,
+                                                                          ),
+                                                                          maxLines:
+                                                                              1,
+                                                                          overflow:
+                                                                              TextOverflow.ellipsis,
+                                                                          textAlign: column['align']?.toString() == 'right'
+                                                                              ? TextAlign.right
+                                                                              : TextAlign.left,
+                                                                          style:
+                                                                              cellStyle,
                                                                         ),
-                                                                        maxLines:
-                                                                            1,
-                                                                        overflow:
-                                                                            TextOverflow.ellipsis,
-                                                                        textAlign: column['align']?.toString() ==
-                                                                                'right'
-                                                                            ? TextAlign.right
-                                                                            : TextAlign.left,
-                                                                        style:
-                                                                            cellStyle,
-                                                                      ),
+                                                                ),
                                                               ),
-                                                            ),
-                                        ),
+                                          ),
+                                  ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                if (tableLoading)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: cs.surface
+                              .withValues(alpha: isDark ? 0.34 : 0.52),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: cs.surface,
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: cs.outlineVariant.withValues(alpha: 0.42),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: cs.primary,
                                 ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                isEs ? 'Cargando tabla...' : 'Loading table...',
+                                style: t.bodySmall.copyWith(
+                                  color: cs.onSurface,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ],
                           ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              if (tableLoading)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color:
-                            cs.surface.withValues(alpha: isDark ? 0.34 : 0.52),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      alignment: Alignment.center,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: cs.surface,
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: cs.outlineVariant.withValues(alpha: 0.42),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: cs.primary,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              isEs ? 'Cargando tabla...' : 'Loading table...',
-                              style: t.bodySmall.copyWith(
-                                color: cs.onSurface,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
                         ),
                       ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         if (hasSummaryBar) ...[
           const SizedBox(height: 10),
@@ -1156,25 +1160,59 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    tableFilterActive
-                        ? (isEs ? 'Total filtrado' : 'Filtered total')
-                        : summaryLabel ??
-                            (hasMore
-                                ? (isEs ? 'Total mostrado' : 'Displayed total')
-                                : (isEs ? 'Total periodo' : 'Period total')),
-                    style: t.bodySmall.copyWith(
-                      color: cs.onSurface,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12.5,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        tableFilterActive
+                            ? (isEs ? 'Total filtrado' : 'Filtered total')
+                            : summaryLabel ??
+                                (hasMore
+                                    ? (isEs
+                                        ? 'Total mostrado'
+                                        : 'Displayed total')
+                                    : (isEs
+                                        ? 'Total periodo'
+                                        : 'Period total')),
+                        style: t.bodySmall.copyWith(
+                          color: cs.onSurface,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${tableFilterActive ? dataRows.length : remoteTotalRows} ${isEs ? 'movimientos' : 'movements'}',
+                        style: t.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 12),
                 Flexible(
                   child: Align(
                     alignment: Alignment.centerRight,
-                    child: buildSummaryTrailing(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        buildSummaryTrailing(),
+                        if (summaryAmount.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            isEs ? 'Importe total' : 'Total amount',
+                            style: t.bodySmall.copyWith(
+                              color: cs.onSurfaceVariant,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -1264,5 +1302,4 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
       ],
     );
   }
-
 }

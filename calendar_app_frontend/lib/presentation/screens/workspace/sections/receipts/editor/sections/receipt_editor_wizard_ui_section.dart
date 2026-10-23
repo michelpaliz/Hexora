@@ -5,197 +5,35 @@ part of '../receipt_editor_wizard_screen.dart';
 extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
   Widget _buildStepIndicator(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    final selectedClientName = _resolvedClientName;
-    final labels = [
-      l.invoiceBillToLabel,
-      l.receiptLinesTitle,
-      l.preview,
-    ];
-    final icons = [
-      Icons.person_outline,
-      Icons.format_list_bulleted_outlined,
-      Icons.picture_as_pdf_outlined,
-    ];
-    final totalSteps = labels.length;
-
-    return Row(
-      children: [
-        // ── Connected stepper ──────────────────────────────────────────────
-        Expanded(
-          child: Container(
-            height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.25),
-              ),
-            ),
-            child: Row(
-              children: List.generate(totalSteps * 2 - 1, (i) {
-                // Odd indices → connector lines between steps
-                if (i.isOdd) {
-                  final stepIndex = i ~/ 2;
-                  final filled = stepIndex < _step;
-                  return Expanded(
-                    child: Container(
-                      height: 2,
-                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                      decoration: BoxDecoration(
-                        color: filled
-                            ? cs.primary.withValues(alpha: 0.5)
-                            : cs.outlineVariant.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
-                  );
-                }
-
-                // Even indices → step node
-                final index = i ~/ 2;
-                final active = index == _step;
-                final complete = index < _step;
-                final canTap = index <= _step || index == _step + 1;
-
-                return GestureDetector(
-                  onTap: canTap ? () => _tryGoToStep(index) : null,
-                  child: MouseRegion(
-                    cursor: canTap
-                        ? SystemMouseCursors.click
-                        : SystemMouseCursors.basic,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Step circle
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            curve: Curves.easeOut,
-                            width: 26,
-                            height: 26,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: complete
-                                  ? cs.primary
-                                  : active
-                                      ? cs.primary
-                                      : cs.surfaceContainerHighest
-                                          .withValues(alpha: 0.8),
-                              border: Border.all(
-                                color: active || complete
-                                    ? cs.primary
-                                    : cs.outlineVariant.withValues(alpha: 0.4),
-                                width: active ? 2 : 1.5,
-                              ),
-                            ),
-                            child: Center(
-                              child: complete
-                                  ? Icon(
-                                      Icons.check_rounded,
-                                      size: 14,
-                                      color: cs.onPrimary,
-                                    )
-                                  : active
-                                      ? Icon(
-                                          icons[index],
-                                          size: 13,
-                                          color: cs.onPrimary,
-                                        )
-                                      : Text(
-                                          '${index + 1}',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w800,
-                                            color: cs.onSurfaceVariant,
-                                          ),
-                                        ),
-                            ),
-                          ),
-                          // Label (only for active / complete)
-                          AnimatedSize(
-                            duration: const Duration(milliseconds: 220),
-                            curve: Curves.easeOut,
-                            child: active
-                                ? Padding(
-                                    padding: const EdgeInsets.only(left: 7),
-                                    child: Text(
-                                      labels[index],
-                                      style: t.bodySmall.copyWith(
-                                        fontWeight: FontWeight.w800,
-                                        color: cs.onSurface,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  )
-                                : const SizedBox.shrink(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ),
-          ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.65),
         ),
-
-        // ── Client badge ───────────────────────────────────────────────────
-        if (selectedClientName.isNotEmpty) ...[
-          const SizedBox(width: 10),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: cs.tertiary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: cs.tertiary.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: cs.tertiary.withValues(alpha: 0.20),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      selectedClientName[0].toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        color: cs.tertiary,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 7),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 130),
-                  child: Text(
-                    selectedClientName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: t.bodySmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: cs.tertiary,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+      ),
+      child: HexoraDocumentStepper(
+        steps: [
+          HexoraDocumentStep(
+            label: l.invoiceBillToLabel,
+            icon: Icons.person_outline_rounded,
+          ),
+          HexoraDocumentStep(
+            label: l.receiptLinesTitle,
+            icon: Icons.format_list_bulleted_rounded,
+          ),
+          HexoraDocumentStep(
+            label: l.preview,
+            icon: Icons.picture_as_pdf_outlined,
           ),
         ],
-      ],
+        currentStep: _step,
+        onStepTapped: _tryGoToStep,
+        itemKeyBuilder: (index, _) => ValueKey('receipt-editor-step-$index'),
+      ),
     );
   }
 
@@ -206,405 +44,142 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
     final client = _selectedClient;
     final isEs = l.localeName.toLowerCase().startsWith('es');
 
-    Widget sourceSelector() {
-      return SegmentedButton<bool>(
-        showSelectedIcon: false,
-        segments: [
-          ButtonSegment<bool>(
-            value: false,
-            icon: const Icon(Icons.people_alt_outlined, size: 16),
-            label: Text(isEs ? 'Cliente existente' : 'Existing client'),
-          ),
-          ButtonSegment<bool>(
-            value: true,
-            icon: const Icon(Icons.edit_note_outlined, size: 16),
-            label: Text(isEs ? 'Cliente manual' : 'Manual client'),
-          ),
-        ],
-        selected: {_useManualClient},
-        onSelectionChanged: (values) {
-          final manual = values.first;
-          setState(() {
-            _useManualClient = manual;
-            if (manual) {
-              _clientId = null;
-              _clientIssuedCount = 0;
-              _clientDraftCount = 0;
-              _clientPastReceipts = [];
-            } else {
-              _clientNameCtrl.clear();
-            }
-            _markDraftDirty();
-          });
-        },
-      );
-    }
-
-    // ── Left: search + list card ───────────────────────────────────────────
-    Widget listCard({required double listHeight}) {
-      return Container(
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-        ),
+    Widget? selectedDetails;
+    if (client != null) {
+      selectedDetails = Padding(
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Card header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: cs.primary.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
+              ),
               child: Row(
                 children: [
-                  Text(
-                    l.receiptSelectClientLabel,
-                    style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
-                  ),
-                  const Spacer(),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    width: 42,
+                    height: 42,
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(999),
+                      color: cs.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '${widget.clients.length}',
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11,
+                      client.name.trim().isEmpty
+                          ? '?'
+                          : client.name.trim()[0].toUpperCase(),
+                      style: t.bodyLarge.copyWith(
+                        color: cs.primary,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                child: ClientSearchSelect(
-                  clients: widget.clients,
-                  selectedClientId: _clientId,
-                  onClientChanged: (value) {
-                    setState(() {
-                      _useManualClient = false;
-                      _clientId = value;
-                      _clientNameCtrl.clear();
-                      _markDraftDirty();
-                    });
-                    _loadClientReceiptStats(value);
-                  },
-                  useDefaultPropertyKind: false,
-                  showAdvancedFilters: false,
-                  maxListHeight: listHeight,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    Widget manualCard() {
-      return Container(
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              isEs ? 'Cliente manual' : 'Manual client',
-              style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              isEs
-                  ? 'Crea un recibo sin guardar el cliente en la base de datos.'
-                  : 'Create a receipt without saving a client record.',
-              style: t.bodySmall.copyWith(
-                color: cs.onSurfaceVariant,
-                height: 1.35,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _clientNameCtrl,
-              decoration: InputDecoration(
-                labelText: isEs ? 'Nombre del cliente' : 'Client name',
-                hintText: isEs
-                    ? 'Nombre que aparecerá en el recibo'
-                    : 'Name shown on the receipt',
-                prefixIcon: const Icon(Icons.person_outline_rounded),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              onChanged: (_) {
-                setState(() => _markDraftDirty());
-              },
-            ),
-            const Spacer(),
-            FilledButton.icon(
-              onPressed: _clientNameCtrl.text.trim().isEmpty
-                  ? null
-                  : () => _tryGoToStep(1),
-              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-              label: Text(
-                isEs
-                    ? 'Continuar → Líneas de recibo'
-                    : 'Continue → Receipt lines',
-              ),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // ── Right: preview panel ───────────────────────────────────────────────
-    Widget previewCard() {
-      final manualName = _clientNameCtrl.text.trim();
-      final hasManualClient = _useManualClient && manualName.isNotEmpty;
-      final hasDisplayClient = client != null || hasManualClient;
-      final displayName = hasManualClient ? manualName : client?.name ?? '';
-      return AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        decoration: BoxDecoration(
-          color: hasDisplayClient
-              ? cs.primary.withValues(alpha: 0.04)
-              : cs.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: hasDisplayClient
-                ? cs.primary.withValues(alpha: 0.28)
-                : cs.outlineVariant.withValues(alpha: 0.35),
-          ),
-        ),
-        child: !hasDisplayClient
-            // ── Empty state
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color:
-                              cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(
-                          Icons.person_search_outlined,
-                          size: 26,
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.4),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        isEs
-                            ? 'Selecciona un cliente\npara continuar'
-                            : 'Select a client\nto continue',
-                        style: t.bodyMedium.copyWith(
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            // ── Selected client
-            : Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Avatar + name
-                    Center(
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              color: cs.primary.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: Center(
-                              child: Text(
-                                displayName.trim().isEmpty
-                                    ? '?'
-                                    : displayName.trim()[0].toUpperCase(),
-                                style: t.titleLarge.copyWith(
-                                  color: cs.primary,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            displayName,
-                            style: t.bodyLarge.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: cs.onSurface,
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Meta chips
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      alignment: WrapAlignment.center,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (client != null &&
-                            (client.email ?? '').trim().isNotEmpty)
-                          _WizardClientChip(
-                            icon: Icons.email_outlined,
-                            label: client.email!.trim(),
+                        Text(
+                          client.name,
+                          style: t.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: cs.onSurface,
                           ),
-                        if (client != null &&
-                            (client.phone ?? '').trim().isNotEmpty)
-                          _WizardClientChip(
-                            icon: Icons.phone_outlined,
-                            label: client.phone!.trim(),
-                          ),
-                        if (client != null &&
-                            (client.entityType ?? '').trim().isNotEmpty)
-                          _WizardClientChip(
-                            icon: Icons.business_outlined,
-                            label: client.entityType!.trim(),
-                          ),
-                        if (client != null &&
-                            (client.propertyKind ?? '').trim().isNotEmpty)
-                          _WizardClientChip(
-                            icon: Icons.home_work_outlined,
-                            label: client.propertyKind!.trim(),
-                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 5),
+                        Wrap(
+                          spacing: 5,
+                          runSpacing: 5,
+                          children: [
+                            if ((client.email ?? '').trim().isNotEmpty)
+                              _WizardClientChip(
+                                icon: Icons.email_outlined,
+                                label: client.email!.trim(),
+                              ),
+                            if ((client.phone ?? '').trim().isNotEmpty)
+                              _WizardClientChip(
+                                icon: Icons.phone_outlined,
+                                label: client.phone!.trim(),
+                              ),
+                            if ((client.entityType ?? '').trim().isNotEmpty)
+                              _WizardClientChip(
+                                icon: Icons.business_outlined,
+                                label: client.entityType!.trim(),
+                              ),
+                            if ((client.propertyKind ?? '').trim().isNotEmpty)
+                              _WizardClientChip(
+                                icon: Icons.home_work_outlined,
+                                label: client.propertyKind!.trim(),
+                              ),
+                          ],
+                        ),
                       ],
                     ),
-
-                    const SizedBox(height: 16),
-
-                    // ── Client receipt stats this month ──────────────────
-                    if (client != null)
-                      Expanded(
-                        child: _ClientReceiptStatsBox(
-                          issuedCount: _clientIssuedCount,
-                          draftCount: _clientDraftCount,
-                          loading: _loadingReceiptStats,
-                          pastReceipts: _clientPastReceipts,
-                          onPreview: _previewHistoricalReceipt,
-                        ),
-                      )
-                    else
-                      const Spacer(),
-
-                    const SizedBox(height: 12),
-
-                    // CTA
-                    FilledButton.icon(
-                      onPressed: () => _tryGoToStep(1),
-                      icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                      label: Text(
-                        isEs
-                            ? 'Continuar → Líneas de recibo'
-                            : 'Continue → Receipt lines',
-                      ),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-      );
-    }
-
-    // ── Responsive layout ──────────────────────────────────────────────────
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 620;
-        const panelHeight = 560.0;
-
-        if (!wide) {
-          // Narrow: single column, list + inline CTA
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              sourceSelector(),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: panelHeight,
-                child:
-                    _useManualClient ? manualCard() : listCard(listHeight: 430),
-              ),
-              if (_hasClient) ...[
-                const SizedBox(height: 10),
-                FilledButton.icon(
-                  onPressed: () => _tryGoToStep(1),
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                  label: Text(
-                    isEs
-                        ? 'Continuar → Líneas de recibo'
-                        : 'Continue → Receipt lines',
-                  ),
-                ),
-              ],
-            ],
-          );
-        }
-
-        // Wide: 2-column
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: sourceSelector(),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: panelHeight,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: _useManualClient
-                        ? manualCard()
-                        : listCard(listHeight: 430),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: previewCard(),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: _ClientReceiptStatsBox(
+                issuedCount: _clientIssuedCount,
+                draftCount: _clientDraftCount,
+                loading: _loadingReceiptStats,
+                pastReceipts: _clientPastReceipts,
+                onPreview: _previewHistoricalReceipt,
+              ),
+            ),
           ],
-        );
+        ),
+      );
+    }
+
+    return DocumentClientStep(
+      clients: widget.clients,
+      selectedClientId: _clientId,
+      onClientChanged: (value) {
+        setState(() {
+          _clientId = value;
+          _markDraftDirty();
+        });
+        _loadClientReceiptStats(value);
       },
+      mode: _useManualClient
+          ? DocumentClientMode.manual
+          : DocumentClientMode.existing,
+      onModeChanged: (mode) {
+        setState(() {
+          _useManualClient = mode == DocumentClientMode.manual;
+          _markDraftDirty();
+        });
+      },
+      selectedDetails: selectedDetails,
+      manual: DocumentManualClientConfig(
+        nameController: _clientNameCtrl,
+        addressController: _clientAddressCtrl,
+        cityController: _clientCityCtrl,
+        postalCodeController: _clientPostalCodeCtrl,
+        nameLabel: isEs ? 'Nombre del cliente' : 'Client name',
+        addressLabel: isEs ? 'Dirección' : 'Address',
+        cityLabel: isEs ? 'Ciudad' : 'City',
+        postalCodeLabel: isEs ? 'CP' : 'Postal code',
+        helperText: isEs
+            ? 'La dirección, ciudad y CP son opcionales y solo se usan en este recibo.'
+            : 'Address, city, and postal code are optional and only used for this receipt.',
+        onChanged: () => setState(_markDraftDirty),
+      ),
+      existingLabel: isEs ? 'Cliente existente' : 'Existing client',
+      manualLabel: isEs ? 'Cliente manual' : 'Manual client',
+      selectClientLabel: l.receiptSelectClientLabel,
+      emptySelectionLabel: isEs
+          ? 'Selecciona un cliente para continuar'
+          : 'Select a client to continue',
     );
   }
 
@@ -1118,18 +693,6 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
                       icon: const Icon(Icons.refresh_rounded),
                       label: Text(l.preview),
                     ),
-                    const SizedBox(height: 8),
-                    FilledButton.icon(
-                      onPressed: _savingDraft ? null : _saveDraft,
-                      icon: _savingDraft
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.save_outlined),
-                      label: Text(l.saveDraft),
-                    ),
                   ],
                 ),
               ),
@@ -1223,19 +786,72 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
   }
 
   Widget _buildContent(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final hasExistingDraft = (_existingUnnumberedReceiptId != null ||
+            _existingUnnumberedReceipt != null) &&
+        _draftReceipt?.id != _existingUnnumberedReceiptId &&
+        _draftReceipt?.id != _existingUnnumberedReceipt?.id;
+    final statusText = _draftSaveFailed
+        ? (l.localeName.startsWith('es')
+            ? 'No se pudo guardar el borrador'
+            : 'Draft could not be saved')
+        : _draftDirty
+            ? (l.localeName.startsWith('es')
+                ? 'Cambios sin guardar'
+                : 'Unsaved changes')
+            : (l.localeName.startsWith('es')
+                ? 'Borrador actualizado'
+                : 'Draft up to date');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 14),
-        _buildExistingDraftBanner(context),
-        if ((_existingUnnumberedReceiptId != null ||
-                _existingUnnumberedReceipt != null) &&
-            _draftReceipt?.id != _existingUnnumberedReceiptId &&
-            _draftReceipt?.id != _existingUnnumberedReceipt?.id)
-          const SizedBox(height: 14),
         _buildStepIndicator(context),
-        const SizedBox(height: 14),
-        _buildStepBody(context),
+        if (hasExistingDraft) ...[
+          const SizedBox(height: 8),
+          _buildExistingDraftBanner(context),
+        ],
+        const SizedBox(height: 8),
+        Expanded(
+          child: _step == 0
+              ? _buildClientStep(context)
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildStepBody(context),
+                ),
+        ),
+        HexoraDocumentFooter(
+          status: Text(statusText, style: const TextStyle(fontSize: 12)),
+          back: OutlinedButton.icon(
+            onPressed:
+                _step == 0 ? _requestClose : () => _tryGoToStep(_step - 1),
+            icon: const Icon(Icons.arrow_back_rounded, size: 17),
+            label: Text(_step == 0 ? l.close : l.back),
+          ),
+          primary: FilledButton.icon(
+            onPressed: _savingDraft
+                ? null
+                : _step < 2
+                    ? () => _tryGoToStep(_step + 1)
+                    : _saveDraft,
+            icon: _savingDraft
+                ? const SizedBox(
+                    width: 15,
+                    height: 15,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    _step < 2
+                        ? Icons.arrow_forward_rounded
+                        : Icons.save_outlined,
+                    size: 17,
+                  ),
+            label: Text(
+              _step < 2
+                  ? (l.localeName.startsWith('es') ? 'Continuar' : 'Continue')
+                  : l.saveDraft,
+            ),
+          ),
+        ),
       ],
     );
   }

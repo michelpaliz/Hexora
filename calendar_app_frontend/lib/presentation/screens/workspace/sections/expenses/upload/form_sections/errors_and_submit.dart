@@ -19,38 +19,64 @@ class ExpenseErrorsAndSubmit extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (error != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              error!,
-              style: TextStyle(color: cs.error, fontSize: 12),
-            ),
-          ],
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton(
-              onPressed: (submitting || !canSubmit) ? null : onSubmit,
-              style: FilledButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                textStyle: const TextStyle(fontSize: 13),
-              ),
-              child: submitting
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(l.expenseUploadSubmitCta),
+    return Material(
+      color: cs.surface,
+      elevation: 4,
+      shadowColor: cs.shadow.withValues(alpha: 0.10),
+      child: SafeArea(
+        top: false,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 56),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(color: cs.outlineVariant.withValues(alpha: .5)),
             ),
           ),
-        ],
+          child: Row(
+            children: [
+              Expanded(
+                child: error == null
+                    ? Text(
+                        submitting
+                            ? (l.localeName.startsWith('es')
+                                ? 'Guardando gasto…'
+                                : 'Saving expense…')
+                            : (l.localeName.startsWith('es')
+                                ? 'Revisa los datos antes de guardar.'
+                                : 'Review the details before saving.'),
+                        style: TextStyle(
+                          color: cs.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      )
+                    : Text(
+                        error!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: cs.error, fontSize: 12),
+                      ),
+              ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                onPressed: (submitting || !canSubmit) ? null : onSubmit,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 38),
+                  visualDensity: VisualDensity.compact,
+                  textStyle: const TextStyle(fontSize: 13),
+                ),
+                icon: submitting
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save_outlined, size: 16),
+                label: Text(l.expenseUploadSubmitCta),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

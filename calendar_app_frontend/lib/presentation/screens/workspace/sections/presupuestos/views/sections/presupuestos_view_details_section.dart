@@ -8,9 +8,8 @@ extension _GroupInvoicesBudgetsViewDetailsSection
     final es = _isSpanishLocale;
     final valid = _isBudgetAdvancePercentValid;
     final total = _budgetTotalAfterDiscount;
-    final advance = valid
-        ? (total * _budgetAdvancePercent!).round() / 100
-        : null;
+    final advance =
+        valid ? (total * _budgetAdvancePercent!).round() / 100 : null;
     final currency = _budgetCurrencyCtrl.text.trim().toUpperCase();
     final money = NumberFormat.currency(
         locale: l.localeName,
@@ -21,7 +20,7 @@ extension _GroupInvoicesBudgetsViewDetailsSection
           labelText: label,
           prefixIcon: Icon(icon, size: 20),
           filled: true,
-          fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.22),
+          fillColor: cs.surfaceContainer,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),

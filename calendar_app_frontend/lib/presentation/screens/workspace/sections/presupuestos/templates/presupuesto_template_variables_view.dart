@@ -426,7 +426,7 @@ class _PresupuestoTemplateVariablesViewState
                 ),
                 inputDecorationTheme: InputDecorationTheme(
                   filled: true,
-                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.34),
+                  fillColor: cs.surfaceContainer,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 15,
@@ -978,7 +978,7 @@ class _PresupuestoTemplateVariablesViewState
                 color: unresolved ? cs.error : cs.onSurfaceVariant,
               ),
               filled: true,
-              fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.16),
+              fillColor: cs.surfaceContainer,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),

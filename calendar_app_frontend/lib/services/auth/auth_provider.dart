@@ -117,7 +117,7 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
     } else if (status == 404) {
       _logLoginDiagnostic(status, message, 'userNotFound');
       throw UserNotFoundAuthException();
-    } else if (status != 200) {
+    } else if (status < 200 || status >= 300) {
       _logLoginDiagnostic(status, message, 'genericLoginError');
       throw LoginRequestFailedAuthException(
         message.isNotEmpty ? message : 'Login failed',
@@ -127,11 +127,32 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
 
     await _clearVerificationState();
 
-    final accessToken =
-        (data['accessToken'] ?? data['access_token'])?.toString().trim();
-    final refreshToken =
-        (data['refreshToken'] ?? data['refresh_token'])?.toString().trim();
-    final userId = (data['userId'] ?? data['id'])?.toString().trim();
+    // Support both flat and newer nested token/user response shapes.
+    final tokens = data['tokens'] is Map
+        ? Map<String, dynamic>.from(data['tokens'] as Map)
+        : const <String, dynamic>{};
+    final responseUser = data['user'] is Map
+        ? Map<String, dynamic>.from(data['user'] as Map)
+        : const <String, dynamic>{};
+    final accessToken = _firstString([
+      data['accessToken'],
+      data['access_token'],
+      tokens['accessToken'],
+      tokens['access_token'],
+    ]);
+    final refreshToken = _firstString([
+      data['refreshToken'],
+      data['refresh_token'],
+      tokens['refreshToken'],
+      tokens['refresh_token'],
+    ]);
+    final userId = _firstString([
+      data['userId'],
+      data['id'],
+      responseUser['userId'],
+      responseUser['id'],
+      responseUser['_id'],
+    ]);
 
     if (accessToken == null ||
         accessToken.isEmpty ||
@@ -162,7 +183,13 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
           statusCode: profile['_status'] as int? ?? 500,
         );
       }
-      final user = User.fromJson(profile, fallbackId: userId);
+      final fetchedUser = User.fromJson(profile, fallbackId: userId);
+      // Some privacy-filtered profile responses omit the owner's email. The
+      // authenticated login identifier is authoritative for this session, so
+      // retain it for the profile popup and other account UI.
+      final user = fetchedUser.email.trim().isEmpty
+          ? fetchedUser.copyWith(email: normalizedEmail)
+          : fetchedUser;
       _setCurrentUser(user);
       _logLoginDiagnostic(status, message, 'authenticated');
       return _user;
@@ -220,6 +247,14 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
       if (value != null && value.isNotEmpty && value != 'true') return value;
     }
     return '';
+  }
+
+  String? _firstString(Iterable<Object?> values) {
+    for (final value in values) {
+      final text = value?.toString().trim();
+      if (text != null && text.isNotEmpty && text != 'null') return text;
+    }
+    return null;
   }
 
   bool _containsEmailNotVerifiedMessage(Map<String, dynamic> data) {
@@ -374,7 +409,7 @@ class AuthProvider extends ChangeNotifier implements AuthRepository {
 
     final data = await _authApi.refresh(refreshToken: refreshToken);
     final status = data['_status'] as int? ?? 200;
-    if (status != 200) return false;
+    if (status < 200 || status >= 300) return false;
 
     _authToken = ((data['accessToken'] ?? data['access_token']) as String?);
     if (_authToken == null) return false;

@@ -112,10 +112,13 @@ class _InvoiceFlowTopBar extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
 
-    final stepper = _InvoiceFlowSteps(
-      steps: steps,
+    final stepper = HexoraDocumentStepper(
+      steps: [
+        for (final label in steps) HexoraDocumentStep(label: label),
+      ],
       currentStep: currentStep,
       onStepTapped: onStepTapped,
+      itemKeyBuilder: (index, _) => Key('invoice-flow-step-$index'),
     );
     final contextChips = Row(
       mainAxisSize: MainAxisSize.min,
@@ -193,163 +196,6 @@ class _InvoiceFlowTopBar extends StatelessWidget {
                 ),
         );
       },
-    );
-  }
-}
-
-class _InvoiceFlowSteps extends StatelessWidget {
-  const _InvoiceFlowSteps({
-    required this.steps,
-    required this.currentStep,
-    required this.onStepTapped,
-  });
-
-  final List<String> steps;
-  final int currentStep;
-  final ValueChanged<int> onStepTapped;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 820),
-        child: Row(
-          children: [
-            for (var index = 0; index < steps.length; index++) ...[
-              if (index > 0)
-                Expanded(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    height: 2,
-                    margin: const EdgeInsets.symmetric(horizontal: 5),
-                    color: index <= currentStep
-                        ? cs.primary.withValues(alpha: 0.55)
-                        : cs.outlineVariant.withValues(alpha: 0.65),
-                  ),
-                ),
-              _InvoiceFlowStep(
-                key: Key('invoice-flow-step-$index'),
-                index: index,
-                totalSteps: steps.length,
-                label: steps[index],
-                isCurrent: index == currentStep,
-                isCompleted: index < currentStep,
-                onTap: () => onStepTapped(index),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InvoiceFlowStep extends StatelessWidget {
-  const _InvoiceFlowStep({
-    super.key,
-    required this.index,
-    required this.totalSteps,
-    required this.label,
-    required this.isCurrent,
-    required this.isCompleted,
-    required this.onTap,
-  });
-
-  final int index;
-  final int totalSteps;
-  final String label;
-  final bool isCurrent;
-  final bool isCompleted;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final l = AppLocalizations.of(context)!;
-    final isSpanish = l.localeName.toLowerCase().startsWith('es');
-    final foreground = isCurrent
-        ? cs.primary
-        : isCompleted
-            ? cs.primary
-            : cs.onSurfaceVariant;
-
-    return Semantics(
-      button: true,
-      selected: isCurrent,
-      label: isSpanish
-          ? 'Paso ${index + 1} de $totalSteps: $label'
-          : 'Step ${index + 1} of $totalSteps: $label',
-      child: Tooltip(
-        message: label,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            constraints: const BoxConstraints(minHeight: 38),
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-            decoration: BoxDecoration(
-              color: isCurrent
-                  ? cs.primary.withValues(alpha: 0.10)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isCurrent
-                    ? cs.primary.withValues(alpha: 0.28)
-                    : Colors.transparent,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  width: 22,
-                  height: 22,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: isCurrent
-                        ? cs.primary
-                        : isCompleted
-                            ? cs.primaryContainer
-                            : cs.surfaceContainerHighest,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isCurrent || isCompleted
-                          ? cs.primary.withValues(alpha: 0.4)
-                          : cs.outlineVariant,
-                    ),
-                  ),
-                  child: isCompleted
-                      ? Icon(Icons.check_rounded, size: 14, color: cs.primary)
-                      : Text(
-                          '${index + 1}',
-                          style: t.bodySmall.copyWith(
-                            color: isCurrent ? cs.onPrimary : foreground,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: t.bodySmall.copyWith(
-                    color: foreground,
-                    fontSize: 11,
-                    fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

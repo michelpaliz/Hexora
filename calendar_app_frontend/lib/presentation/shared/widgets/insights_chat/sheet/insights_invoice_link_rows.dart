@@ -1,8 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/shared/bank_transaction_link_panel.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/statements_controller.dart';
-import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/statements_shared.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_link_button.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 import '../insights_chat_message.dart';
@@ -16,8 +17,13 @@ mixin InsightsInvoiceLinkRows on InsightsChatSheetStateBase {
     Map<String, dynamic> column,
   ) {
     final key = column['key']?.toString() ?? '';
+    String formatted(dynamic raw) {
+      final value = raw?.toString() ?? '';
+      return value.replaceFirst(RegExp(r'\s*EUR$'), ' €');
+    }
+
     if (!rowHasExistingInvoiceLink(row)) {
-      return row[key]?.toString() ?? '';
+      return formatted(row[key]);
     }
 
     final label = (column['label']?.toString() ?? '').trim().toLowerCase();
@@ -42,14 +48,14 @@ mixin InsightsInvoiceLinkRows on InsightsChatSheetStateBase {
         key == 'invoiceAmountFormatted' ||
         key == 'invoiceAmount' ||
         normalizedLabel == 'importe factura') {
-      return row['matchedInvoiceAmountFormatted']?.toString() ?? '';
+      return formatted(row['matchedInvoiceAmountFormatted']);
     }
 
     if (key == 'linkStatusLabel') {
       return row['linkStatusLabel']?.toString() ?? '';
     }
 
-    return row[key]?.toString() ?? '';
+    return formatted(row[key]);
   }
 
   @override
@@ -386,20 +392,23 @@ mixin InsightsInvoiceLinkRows on InsightsChatSheetStateBase {
       controller.dispose();
       return;
     }
-    if (showSuggestions) {
-      await StatementsShared.showInvoiceSuggestionsDialog(
-        context,
-        controller,
-        entry,
-      );
-    } else {
-      await StatementsShared.showInvoiceLinkDialog(
-        context,
-        controller,
-        entry,
+    // Docked beside the chat by the shell; suggestions switch to the manual
+    // wizard inside the same panel.
+    final closed = Completer<void>();
+    showInlineSurface(
+      BankTransactionLinkPanel(
+        key: ValueKey('chat-link-panel-$stateKey'),
+        controller: controller,
+        entry: entry,
         expenseOnly: false,
-      );
-    }
+        initialMode: showSuggestions
+            ? BankTransactionLinkMode.suggestions
+            : BankTransactionLinkMode.manual,
+        onClose: closeInlineSurface,
+      ),
+      closeCompleter: closed,
+    );
+    await closed.future;
     final updated = (controller.entries.isNotEmpty
             ? controller.entries.first
             : controller.allEntries.isNotEmpty
@@ -432,23 +441,19 @@ mixin InsightsInvoiceLinkRows on InsightsChatSheetStateBase {
     final entryId = rowEntryId(row);
     final canEdit = entryId != null;
     final messageKey = messageKeyFor(message);
-    final stateKey =
-        entryId == null ? '' : invoiceLinkKey(messageKey, entryId);
+    final stateKey = entryId == null ? '' : invoiceLinkKey(messageKey, entryId);
     final pending = entryId == null ? null : pendingInvoiceLinkEdits[stateKey];
     final bulkError = entryId == null ? null : bulkLinkErrors[entryId];
     final isEs = Localizations.localeOf(context)
         .languageCode
         .toLowerCase()
         .startsWith('es');
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final actionBackground =
-        isDark ? cs.primary.withValues(alpha: 0.08) : const Color(0xFFEAF3FF);
-    final actionBorder =
-        isDark ? cs.primary.withValues(alpha: 0.18) : const Color(0xFFBDD3F0);
-    final actionForeground = isDark ? cs.primary : const Color(0xFF245C99);
-    final suggestLabel = isEs ? 'Sugerir' : 'Suggest';
-    final editLabel = (row['hasExistingInvoiceLink'] == true ||
-            (row['linkStatus']?.toString() == 'linked'))
+    // A single link action. Unlinked rows open the suggested matches inline in
+    // the chat's right column (which also offer "Vincular manualmente"); linked
+    // rows edit the existing link.
+    final isLinked = row['hasExistingInvoiceLink'] == true ||
+        row['linkStatus']?.toString() == 'linked';
+    final editLabel = isLinked
         ? (isEs ? 'Editar vínculo' : 'Edit link')
         : (isEs ? 'Vincular' : 'Link');
 
@@ -462,63 +467,46 @@ mixin InsightsInvoiceLinkRows on InsightsChatSheetStateBase {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (canEdit) ...[
-            Tooltip(
-              message: isEs
-                  ? 'Buscar coincidencias sugeridas'
-                  : 'Find suggested matches',
-              child: InkWell(
-                onTap: () => pickInvoiceLinkForRow(
-                  message,
-                  row,
-                  showSuggestions: true,
-                ),
-                borderRadius: BorderRadius.circular(999),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: actionBackground,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: actionBorder),
-                  ),
-                  child: Text(
-                    suggestLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: t.caption.copyWith(
-                      color: actionForeground,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
+            HexoraLinkButton(
+              label: editLabel,
+              tooltip: isLinked
+                  ? (tooltipText.isEmpty ? editLabel : tooltipText)
+                  : (isEs
+                      ? 'Ver coincidencias sugeridas y vincular'
+                      : 'See suggested matches and link'),
+              onPressed: () => pickInvoiceLinkForRow(
+                message,
+                row,
+                showSuggestions: !isLinked,
               ),
             ),
-            const SizedBox(width: 6),
-            Tooltip(
-              message: tooltipText.isEmpty ? editLabel : tooltipText,
-              child: InkWell(
-                onTap: () => pickInvoiceLinkForRow(message, row),
-                borderRadius: BorderRadius.circular(999),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: actionBackground,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: actionBorder,
-                    ),
-                  ),
+            const SizedBox(width: 4),
+            PopupMenuButton<bool>(
+              tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+              onSelected: (showSuggestions) => pickInvoiceLinkForRow(
+                message,
+                row,
+                showSuggestions: showSuggestions,
+              ),
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: true,
                   child: Text(
-                    editLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: t.caption.copyWith(
-                      color: actionForeground,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    isEs ? 'Ver coincidencias' : 'View matches',
                   ),
                 ),
+                PopupMenuItem(
+                  value: false,
+                  child: Text(
+                    isEs ? 'Vincular manualmente' : 'Link manually',
+                  ),
+                ),
+              ],
+              icon: const Icon(Icons.more_horiz_rounded, size: 18),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(
+                width: 32,
+                height: 32,
               ),
             ),
           ],
@@ -619,5 +607,4 @@ mixin InsightsInvoiceLinkRows on InsightsChatSheetStateBase {
       ),
     );
   }
-
 }

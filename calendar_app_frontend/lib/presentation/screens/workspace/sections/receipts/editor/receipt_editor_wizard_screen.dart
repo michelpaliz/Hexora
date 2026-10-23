@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/invoice/client_billing.dart';
 import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/models/receipt/receipt_line.dart';
 import 'package:hexora/services/receipts/receipts_api.dart';
@@ -16,10 +17,11 @@ import 'package:hexora/presentation/screens/workspace/sections/receipts/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/json_import_service.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/prompt_clipboard_helper.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/widgets/lines_json_import_panel.dart';
-import 'package:hexora/presentation/shared/widgets/client_search_select.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_editor_components.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_client_step.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -57,6 +59,9 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
   final _receiptsApi = ReceiptsApi();
   final _notesCtrl = TextEditingController();
   final _clientNameCtrl = TextEditingController();
+  final _clientAddressCtrl = TextEditingController();
+  final _clientCityCtrl = TextEditingController();
+  final _clientPostalCodeCtrl = TextEditingController();
   final List<ReceiptLineDraft> _lines = [];
 
   String? _clientId;
@@ -163,8 +168,13 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
   }
 
   void _applyReceiptDraft(Receipt receipt) {
+    final clientSnapshot = receipt.clientSnapshot;
     _clientId = receipt.clientId.trim().isEmpty ? null : receipt.clientId;
-    _clientNameCtrl.text = receipt.clientName ?? '';
+    _clientNameCtrl.text =
+        receipt.clientName ?? clientSnapshot?.legalName ?? '';
+    _clientAddressCtrl.text = clientSnapshot?.addressStreet ?? '';
+    _clientCityCtrl.text = clientSnapshot?.addressCity ?? '';
+    _clientPostalCodeCtrl.text = clientSnapshot?.addressPostalCode ?? '';
     _useManualClient = (_clientId == null || _clientId!.trim().isEmpty) &&
         _clientNameCtrl.text.trim().isNotEmpty;
     _issueDate = receipt.issueDate ?? DateTime.now();
@@ -232,6 +242,9 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
   void dispose() {
     _notesCtrl.dispose();
     _clientNameCtrl.dispose();
+    _clientAddressCtrl.dispose();
+    _clientCityCtrl.dispose();
+    _clientPostalCodeCtrl.dispose();
     for (final line in _lines) {
       line.dispose();
     }
@@ -241,12 +254,23 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
   bool get _hasClient => _useManualClient
       ? _clientNameCtrl.text.trim().isNotEmpty
       : _clientId != null && _clientId!.trim().isNotEmpty;
-  String get _resolvedClientName {
-    if (_useManualClient) return _clientNameCtrl.text.trim();
-    return _selectedClient?.name.trim() ?? '';
-  }
-
   bool get _hasLines => _lines.any((line) => line.hasAnyValue);
+
+  ClientBilling? get _manualClientSnapshot {
+    if (!_useManualClient) return null;
+    String? optionalText(TextEditingController controller) {
+      final value = controller.text.trim();
+      return value.isEmpty ? null : value;
+    }
+
+    return ClientBilling(
+      legalName: optionalText(_clientNameCtrl),
+      addressStreet: optionalText(_clientAddressCtrl),
+      addressCity: optionalText(_clientCityCtrl),
+      addressPostalCode: optionalText(_clientPostalCodeCtrl),
+      documentType: 'receipt',
+    );
+  }
 
   GroupClient? get _selectedClient {
     final id = _clientId;
@@ -278,25 +302,15 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
     if (isEmbedded) {
       final l = AppLocalizations.of(context)!;
       return Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
         child: FolderPanel(
           title: l.receiptEditorTitle(_receiptNumber(l)),
           onBack: _requestClose,
           showTab: true,
-          contentTopPadding: 10,
+          contentTopPadding: 0,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints:
-                        BoxConstraints(minHeight: constraints.maxHeight),
-                    child: _buildContent(context),
-                  ),
-                );
-              },
-            ),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: _buildContent(context),
           ),
         ),
       );
@@ -318,8 +332,8 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
           child: _buildContent(context),
         ),
       ),

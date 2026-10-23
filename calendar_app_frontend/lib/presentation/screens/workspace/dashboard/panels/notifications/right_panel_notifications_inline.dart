@@ -7,6 +7,7 @@ import 'package:hexora/models/jobs/job_notification.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/services/downloads/downloads_api.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/services/groups/invite/domain/invite_domain.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/notification/notification_api_client.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
@@ -222,6 +223,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
       groupDomain: context.read<GroupDomain>(),
       notificationDomain: context.read<NotificationDomain>(),
       notificationService: NotificationApiClient(),
+      invitationDomain: context.read<InvitationDomain>(),
     );
     DownloadJobsStore.instance.bindGroup(widget.group.id);
     _load();

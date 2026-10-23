@@ -7,7 +7,22 @@ extension _InvoiceListLayout on _InvoicesTabListState {
     final sourceInvoices = _unlinkedOnly
         ? (_unlinkedInvoices ?? const <Invoice>[])
         : widget.invoices;
+    final searchQuery = _searchText.trim().toLowerCase();
     final filtered = sourceInvoices.where((inv) {
+      if (searchQuery.isNotEmpty) {
+        final clientName = _invoiceFallbackClientName(inv, l).toLowerCase();
+        final amount = inv.total?.toString() ?? '';
+        final searchable = [
+          inv.invoiceNumber,
+          clientName,
+          inv.billingName ?? '',
+          inv.clientName ?? '',
+          inv.totalFormatted ?? '',
+          amount,
+          amount.replaceAll('.', ','),
+        ].join(' ').toLowerCase();
+        if (!searchable.contains(searchQuery)) return false;
+      }
       final date = _invoiceDate(inv);
       if (!hasFilter) return true;
       if (date == null) return false;
@@ -31,8 +46,22 @@ extension _InvoiceListLayout on _InvoicesTabListState {
         return _compareInvoiceFallback(a, b);
       });
     }
-    final summaryTotals =
-        _unlinkedOnly ? _summaryFromInvoices(visible) : _summaryTotals;
+    Invoice? firstMismatch;
+    for (final invoice in visible) {
+      final subtotal = invoice.subtotal;
+      final tax = invoice.taxTotal;
+      final total = invoice.total;
+      if (subtotal != null &&
+          tax != null &&
+          total != null &&
+          (subtotal + tax - total).abs() > 0.02) {
+        firstMismatch = invoice;
+        break;
+      }
+    }
+    final summaryTotals = _unlinkedOnly || searchQuery.isNotEmpty
+        ? _summaryFromInvoices(visible)
+        : _summaryTotals;
 
     Future<void> downloadFiltered({required bool excel}) async {
       final action =
@@ -261,6 +290,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
               if (widget.showSummaryTotals) {
                 return _InvoiceSummaryTotalsBar(
                   count: visible.length,
+                  totalCount: sourceInvoices.length,
                   summary: summaryTotals,
                   loading: _unlinkedOnly ? _unlinkedLoading : _summaryLoading,
                   error: _unlinkedOnly ? _unlinkedError : _summaryError,
@@ -270,6 +300,10 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                   sortActions: labelActions,
                   unlinkedOnly: _unlinkedOnly,
                   paymentSuggestionsLoading: _paymentSuggestionsLoading,
+                  searchQuery: _searchText,
+                  onSearchChanged: (value) {
+                    _updateInvoiceListState(() => _searchText = value);
+                  },
                   onDateRangeSelected: (value) {
                     if (value == DateQuickRange.month) {
                       _setRangeDays(30);
@@ -295,6 +329,9 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                         _openPaymentSuggestionsDialog();
                     }
                   },
+                  onMismatchTap: firstMismatch == null
+                      ? null
+                      : () => widget.onTap(firstMismatch!),
                   downloadingFiltered: _downloadingFiltered,
                   onDownloadFiltered: widget.onDownloadFiltered == null
                       ? null

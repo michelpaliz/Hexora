@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
+import 'package:hexora/theme/themes/navigation_theme.dart';
 
 class NavigationMenuHeader extends StatelessWidget {
   const NavigationMenuHeader(
@@ -45,7 +46,7 @@ class NavigationMenuHeader extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: NavigationTokens.title(context).copyWith(
                       fontSize: NavigationTokens.titleSize,
-                      color: cs.onSurface,
+                      color: NavigationColors(cs).foreground,
                       fontWeight: FontWeight.w600))),
         ],
         if (onToggle != null)

@@ -75,7 +75,8 @@ class _LinesTableEditorState extends State<LinesTableEditor> {
         errorBorder: errorBorder,
         focusedErrorBorder: errorBorder,
         isDense: true,
-        filled: false,
+        filled: true,
+        fillColor: cs.surfaceContainer,
         contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
       );
     }
@@ -132,8 +133,8 @@ class _LinesTableEditorState extends State<LinesTableEditor> {
                       widget.onChanged();
                       if (mounted) setState(() {});
                     },
-                    canAttachEvidence: widget.canAttachEvidence?.call(line) ??
-                        false,
+                    canAttachEvidence:
+                        widget.canAttachEvidence?.call(line) ?? false,
                     hasEvidence:
                         (widget.evidenceBlobNameOf?.call(line)?.trim() ?? '')
                             .isNotEmpty,
@@ -192,7 +193,8 @@ class _HeaderRow extends StatelessWidget {
         const SizedBox(width: LinesTableEditor._gap),
         SizedBox(
           width: LinesTableEditor._qtyWidth,
-          child: Text(l.lineQuantity, style: style, textAlign: TextAlign.center),
+          child:
+              Text(l.lineQuantity, style: style, textAlign: TextAlign.center),
         ),
         const SizedBox(width: LinesTableEditor._gap),
         SizedBox(
@@ -209,7 +211,8 @@ class _HeaderRow extends StatelessWidget {
         const SizedBox(width: LinesTableEditor._gap),
         SizedBox(
           width: LinesTableEditor._totalWidth,
-          child: Text(l.invoiceTotalLabel, style: style, textAlign: TextAlign.right),
+          child: Text(l.invoiceTotalLabel,
+              style: style, textAlign: TextAlign.right),
         ),
         const SizedBox(width: 8),
         const SizedBox(width: LinesTableEditor._evidenceActionsWidth),
@@ -314,174 +317,174 @@ class _LineRowState extends State<_LineRow> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-            Expanded(
-              flex: 3,
-              child: Focus(
-                onKeyEvent: (_, event) {
-                  if (event is KeyDownEvent &&
-                      event.logicalKey == LogicalKeyboardKey.backspace &&
-                      widget.line.description.text.trim().isEmpty) {
-                    widget.onDelete();
-                    return KeyEventResult.handled;
-                  }
-                  return KeyEventResult.ignored;
-                },
-                child: TextFormField(
-                  controller: widget.line.description,
-                  focusNode: _descFocus,
-                  autofocus: widget.autoFocus,
-                  textInputAction: TextInputAction.next,
-                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-                  decoration: widget.fieldDec(hint: l.lineDescription),
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                  onChanged: (_) => widget.onChanged(),
-                  onFieldSubmitted: (_) => _focusNext(_qtyFocus),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null,
-                ),
-              ),
-            ),
-            const SizedBox(width: LinesTableEditor._gap),
-            SizedBox(
-              width: LinesTableEditor._qtyWidth,
+          Expanded(
+            flex: 3,
+            child: Focus(
+              onKeyEvent: (_, event) {
+                if (event is KeyDownEvent &&
+                    event.logicalKey == LogicalKeyboardKey.backspace &&
+                    widget.line.description.text.trim().isEmpty) {
+                  widget.onDelete();
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
+              },
               child: TextFormField(
-                controller: widget.line.quantityCtrl,
-                focusNode: _qtyFocus,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                textAlign: TextAlign.center,
+                controller: widget.line.description,
+                focusNode: _descFocus,
+                autofocus: widget.autoFocus,
                 textInputAction: TextInputAction.next,
-                style: t.bodySmall,
-                decoration: widget.fieldDec(hint: l.lineQuantity),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                  ],
-                onChanged: (_) => widget.onChanged(),
-                onFieldSubmitted: (_) => _focusNext(_unitFocus),
-              ),
-            ),
-            const SizedBox(width: LinesTableEditor._gap),
-            SizedBox(
-              width: LinesTableEditor._unitWidth,
-              child: TextFormField(
-                controller: widget.line.unitPriceCtrl,
-                focusNode: _unitFocus,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                textAlign: TextAlign.center,
-                textInputAction: TextInputAction.next,
-                style: t.bodySmall,
-                decoration: widget.fieldDec(hint: l.lineUnitPrice),
+                style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                decoration: widget.fieldDec(hint: l.lineDescription),
                 autovalidateMode: AutovalidateMode.onUserInteraction,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                  ],
                 onChanged: (_) => widget.onChanged(),
-                onFieldSubmitted: (_) => _focusNext(_vatFocus),
-                validator: priceValidator,
+                onFieldSubmitted: (_) => _focusNext(_qtyFocus),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null,
               ),
             ),
-            const SizedBox(width: LinesTableEditor._gap),
-            SizedBox(
-              width: LinesTableEditor._vatWidth,
-              child: TextFormField(
-                controller: widget.line.taxRateCtrl,
-                focusNode: _vatFocus,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                textAlign: TextAlign.center,
-                textInputAction: TextInputAction.done,
-                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-                decoration:
-                    widget.fieldDec(hint: '${l.taxRateShort}%', suffixText: '%'),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                  ],
-                onChanged: (_) => widget.onChanged(),
-                onFieldSubmitted: (_) => _handleVatSubmit(),
-              ),
+          ),
+          const SizedBox(width: LinesTableEditor._gap),
+          SizedBox(
+            width: LinesTableEditor._qtyWidth,
+            child: TextFormField(
+              controller: widget.line.quantityCtrl,
+              focusNode: _qtyFocus,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              textAlign: TextAlign.center,
+              textInputAction: TextInputAction.next,
+              style: t.bodySmall,
+              decoration: widget.fieldDec(hint: l.lineQuantity),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+              ],
+              onChanged: (_) => widget.onChanged(),
+              onFieldSubmitted: (_) => _focusNext(_unitFocus),
             ),
-            const SizedBox(width: LinesTableEditor._gap),
-            SizedBox(
-              width: LinesTableEditor._totalWidth,
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
-                  transitionBuilder: (child, anim) =>
-                      FadeTransition(opacity: anim, child: child),
-                  child: Text(
-                    NumberFormat.simpleCurrency(name: '').format(total),
-                    key: ValueKey<double>(total.toDouble()),
-                    style: t.bodyMedium.copyWith(
-                      color: cs.onSurface,
-                      fontWeight: FontWeight.w800,
-                    ),
+          ),
+          const SizedBox(width: LinesTableEditor._gap),
+          SizedBox(
+            width: LinesTableEditor._unitWidth,
+            child: TextFormField(
+              controller: widget.line.unitPriceCtrl,
+              focusNode: _unitFocus,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              textAlign: TextAlign.center,
+              textInputAction: TextInputAction.next,
+              style: t.bodySmall,
+              decoration: widget.fieldDec(hint: l.lineUnitPrice),
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+              ],
+              onChanged: (_) => widget.onChanged(),
+              onFieldSubmitted: (_) => _focusNext(_vatFocus),
+              validator: priceValidator,
+            ),
+          ),
+          const SizedBox(width: LinesTableEditor._gap),
+          SizedBox(
+            width: LinesTableEditor._vatWidth,
+            child: TextFormField(
+              controller: widget.line.taxRateCtrl,
+              focusNode: _vatFocus,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              textAlign: TextAlign.center,
+              textInputAction: TextInputAction.done,
+              style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              decoration:
+                  widget.fieldDec(hint: '${l.taxRateShort}%', suffixText: '%'),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+              ],
+              onChanged: (_) => widget.onChanged(),
+              onFieldSubmitted: (_) => _handleVatSubmit(),
+            ),
+          ),
+          const SizedBox(width: LinesTableEditor._gap),
+          SizedBox(
+            width: LinesTableEditor._totalWidth,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                transitionBuilder: (child, anim) =>
+                    FadeTransition(opacity: anim, child: child),
+                child: Text(
+                  NumberFormat.simpleCurrency(name: '').format(total),
+                  key: ValueKey<double>(total.toDouble()),
+                  style: t.bodyMedium.copyWith(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 4),
-            SizedBox(
-              width: LinesTableEditor._evidenceActionsWidth,
-              height: 48,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  IconButton(
-                    tooltip: l.invoiceLineEvidenceAttach,
-                    onPressed: widget.onAttachEvidence == null
-                        ? null
-                        : () => widget.onAttachEvidence!.call(),
-                    icon: const Icon(Icons.attach_file_rounded, size: 18),
-                    color: widget.canAttachEvidence
-                        ? null
-                        : cs.onSurfaceVariant.withValues(alpha: 0.65),
-                    padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints.tightFor(width: 36, height: 36),
-                    splashRadius: 18,
-                  ),
-                  IconButton(
-                    tooltip: l.invoiceLineEvidenceOpen,
-                    onPressed: widget.hasEvidence && widget.onOpenEvidence != null
-                        ? () => widget.onOpenEvidence!.call()
-                        : null,
-                    icon: const Icon(Icons.visibility_outlined, size: 18),
-                    padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints.tightFor(width: 36, height: 36),
-                    splashRadius: 18,
-                  ),
-                  IconButton(
-                    tooltip: l.invoiceLineEvidenceDelete,
-                    onPressed:
-                        widget.hasEvidence && widget.onDeleteEvidence != null
-                            ? () => widget.onDeleteEvidence!.call()
-                            : null,
-                    icon: const Icon(Icons.link_off_outlined, size: 18),
-                    color: cs.tertiary,
-                    padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints.tightFor(width: 36, height: 36),
-                    splashRadius: 18,
-                  ),
-                ],
-              ),
+          ),
+          const SizedBox(width: 4),
+          SizedBox(
+            width: LinesTableEditor._evidenceActionsWidth,
+            height: 48,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  tooltip: l.invoiceLineEvidenceAttach,
+                  onPressed: widget.onAttachEvidence == null
+                      ? null
+                      : () => widget.onAttachEvidence!.call(),
+                  icon: const Icon(Icons.attach_file_rounded, size: 18),
+                  color: widget.canAttachEvidence
+                      ? null
+                      : cs.onSurfaceVariant.withValues(alpha: 0.65),
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints.tightFor(width: 36, height: 36),
+                  splashRadius: 18,
+                ),
+                IconButton(
+                  tooltip: l.invoiceLineEvidenceOpen,
+                  onPressed: widget.hasEvidence && widget.onOpenEvidence != null
+                      ? () => widget.onOpenEvidence!.call()
+                      : null,
+                  icon: const Icon(Icons.visibility_outlined, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints.tightFor(width: 36, height: 36),
+                  splashRadius: 18,
+                ),
+                IconButton(
+                  tooltip: l.invoiceLineEvidenceDelete,
+                  onPressed:
+                      widget.hasEvidence && widget.onDeleteEvidence != null
+                          ? () => widget.onDeleteEvidence!.call()
+                          : null,
+                  icon: const Icon(Icons.link_off_outlined, size: 18),
+                  color: cs.tertiary,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints.tightFor(width: 36, height: 36),
+                  splashRadius: 18,
+                ),
+              ],
             ),
-            const SizedBox(width: 4),
-            SizedBox(
-              width: LinesTableEditor._deleteWidth,
-              height: 48,
-              child: IconButton(
-                tooltip: l.remove,
-                onPressed: widget.onDelete,
-                icon: const Icon(Icons.delete_outline),
-                color: cs.error,
-              ),
+          ),
+          const SizedBox(width: 4),
+          SizedBox(
+            width: LinesTableEditor._deleteWidth,
+            height: 48,
+            child: IconButton(
+              tooltip: l.remove,
+              onPressed: widget.onDelete,
+              icon: const Icon(Icons.delete_outline),
+              color: cs.error,
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
     );
   }
 }

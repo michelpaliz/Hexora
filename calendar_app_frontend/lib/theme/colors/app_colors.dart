@@ -4,11 +4,16 @@ class AppColors {
   // ðŸ©µ Surfaces & backgrounds
   static const Color background = Color(0xFFF5F8FD);
   static const Color surface = Color(0xFFFFFFFF); // pure white
+  static const Color formSection = Color(0xFFFFFFFF);
+  static const Color inputBackground = Color(0xFFEEF3FA);
+  static const Color inputBorder = Color(0xFFD5E0EF);
+  static const Color inputFocus = Color(0xFF2563EB);
+  static const Color selectedControl = Color(0xFFDBEAFE);
 
   // ðŸ”· Primary (Blue)
   static const Color primary = Color(0xFF1760CF);
-  static const Color primaryContainer = Color(0xFFE6EFFF);
-  static const Color outline = Color(0xFFDCE5F2);
+  static const Color primaryContainer = selectedControl;
+  static const Color outline = inputBorder;
   static const Color navigationForeground = Color(0xFFF1F5FC);
   static const Color primaryLight = Color(0xFF64B5F6);
   static const Color primaryDark = Color(0xFF1565C0);

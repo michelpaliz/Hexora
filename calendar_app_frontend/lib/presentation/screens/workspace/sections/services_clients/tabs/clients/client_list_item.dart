@@ -45,12 +45,24 @@ class ClientListItem extends StatelessWidget {
         .whereType<String>()
         .where((value) => value.trim().isNotEmpty)
         .join(' · ');
+    final es = Localizations.localeOf(context).languageCode == 'es';
     final warnings = <Widget>[
       if (client.billing?.isComplete != true)
-        HexoraStatusBadge(label: l.billingMissing, color: cs.onSurfaceVariant),
+        Tooltip(
+          message: l.billingMissing,
+          child: HexoraStatusBadge(
+            label: es ? 'Fact. incompleta' : 'Billing',
+            color: cs.onSurfaceVariant,
+          ),
+        ),
       if (client.missingCurrentMonthInvoice == true)
-        HexoraStatusBadge(
-            label: l.clientMissingInvoiceThisMonth, color: cs.error),
+        Tooltip(
+          message: l.clientMissingInvoiceThisMonth,
+          child: HexoraStatusBadge(
+            label: es ? 'Sin factura' : 'No invoice',
+            color: cs.error,
+          ),
+        ),
       if (!client.isActive)
         HexoraStatusBadge(label: l.inactive, color: cs.onSurfaceVariant),
     ];

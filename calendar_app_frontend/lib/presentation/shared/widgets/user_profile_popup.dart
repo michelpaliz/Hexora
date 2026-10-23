@@ -9,7 +9,7 @@ import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/blob_storage/blob_server.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/presentation/shared/widgets/profile_edit_dialog.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/theme_provider.dart';
@@ -20,9 +20,10 @@ import 'package:provider/provider.dart';
 /// Circular avatar button.  Tap → shows a profile card popup anchored
 /// to the top-right of the screen (near the nav bar).
 class UserProfilePopup extends StatelessWidget {
-  const UserProfilePopup({super.key, required this.user});
+  const UserProfilePopup({super.key, required this.user, this.onSettings});
 
   final User? user;
+  final VoidCallback? onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +70,7 @@ class UserProfilePopup extends StatelessWidget {
             const EdgeInsets.only(top: 56, right: 14, bottom: 0, left: 0),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 8,
-        child: _UserProfileCard(initialUser: u),
+        child: _UserProfileCard(initialUser: u, onSettings: onSettings),
       ),
     );
   }
@@ -80,8 +81,9 @@ class UserProfilePopup extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _UserProfileCard extends StatefulWidget {
-  const _UserProfileCard({required this.initialUser});
+  const _UserProfileCard({required this.initialUser, this.onSettings});
   final User initialUser;
+  final VoidCallback? onSettings;
 
   @override
   State<_UserProfileCard> createState() => _UserProfileCardState();
@@ -384,8 +386,10 @@ class _UserProfileCardState extends State<_UserProfileCard> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
-                    icon: const Icon(Icons.edit_outlined, size: 14),
-                    label: const Text('Edit profile'),
+                    icon: const Icon(Icons.settings_outlined, size: 14),
+                    label: Text(Localizations.localeOf(context).languageCode == 'es'
+                        ? 'Configuración'
+                        : 'Settings'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: activeColor,
                       side:
@@ -398,20 +402,11 @@ class _UserProfileCardState extends State<_UserProfileCard> {
                     ),
                     onPressed: () {
                       Navigator.of(context).pop();
-                      showDialog<void>(
-                        context: context,
-                        builder: (_) => Dialog(
-                          backgroundColor: Colors.transparent,
-                          elevation: 0,
-                          insetPadding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 24),
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(
-                                maxWidth: 480, maxHeight: 820),
-                            child: ProfileEditDialog(user: _user),
-                          ),
-                        ),
-                      );
+                      if (widget.onSettings != null) {
+                        widget.onSettings!();
+                      } else {
+                        Navigator.of(context).pushNamed(AppRoutes.settings);
+                      }
                     },
                   ),
                 ),

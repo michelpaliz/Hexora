@@ -35,6 +35,9 @@ class HexoraNavDestination {
 /// Layout: brand · module strip (+ More) · search · notifications · profile.
 /// Labels collapse to icons (with tooltips) on narrower windows or when the
 /// user picks the compact density; the active module always keeps its label.
+///
+/// When [groupSwitcher] is provided it replaces the "HEXORA" wordmark; the
+/// compact Hexora icon is retained on the left as secondary branding.
 class HexoraGlobalNavBar extends StatelessWidget {
   const HexoraGlobalNavBar({
     super.key,
@@ -52,6 +55,7 @@ class HexoraGlobalNavBar extends StatelessWidget {
     this.profileDetails,
     this.onBack,
     this.backTooltip,
+    this.groupSwitcher,
   });
 
   final List<HexoraNavDestination> destinations;
@@ -68,6 +72,10 @@ class HexoraGlobalNavBar extends StatelessWidget {
   final Widget? profileDetails;
   final VoidCallback? onBack;
   final String? backTooltip;
+
+  /// When set, replaces the "HEXORA" wordmark with this widget (typically a
+  /// group/workspace switcher). The compact Hexora icon is kept for branding.
+  final Widget? groupSwitcher;
 
   static const double _labelsBreakpoint = 1440;
   static const double _brandTextBreakpoint = 1100;
@@ -100,11 +108,16 @@ class HexoraGlobalNavBar extends StatelessWidget {
           ),
           child: Row(
             children: [
-              _Brand(
-                onTap: onBrandTap,
-                tooltip: brandTooltip,
-                showText: width >= _brandTextBreakpoint,
-              ),
+              if (groupSwitcher != null) ...[
+                _BrandIcon(onTap: onBrandTap, tooltip: brandTooltip),
+                const SizedBox(width: 4),
+                groupSwitcher!,
+              ] else
+                _Brand(
+                  onTap: onBrandTap,
+                  tooltip: brandTooltip,
+                  showText: width >= _brandTextBreakpoint,
+                ),
               Container(
                 width: 1,
                 height: 24,
@@ -232,6 +245,41 @@ class _Brand extends StatelessWidget {
         borderRadius: BorderRadius.circular(NavigationTokens.radius),
         hoverColor: HexoraGlobalNavColors.foreground.withValues(alpha: 0.06),
         child: content,
+      ),
+    );
+  }
+}
+
+/// Compact Hexora icon (no wordmark) used alongside the group switcher so
+/// the app brand remains visible without taking dominant space.
+class _BrandIcon extends StatelessWidget {
+  const _BrandIcon({this.onTap, this.tooltip});
+
+  final VoidCallback? onTap;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: Image.asset(
+          'assets/images/branding/logo_icon.png',
+          width: 22,
+          height: 22,
+        ),
+      ),
+    );
+    if (onTap == null) return Semantics(label: 'Hexora', child: icon);
+    return Tooltip(
+      message: tooltip ?? 'Hexora',
+      waitDuration: const Duration(milliseconds: 350),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(NavigationTokens.radius),
+        hoverColor: HexoraGlobalNavColors.foreground.withValues(alpha: 0.06),
+        child: icon,
       ),
     );
   }

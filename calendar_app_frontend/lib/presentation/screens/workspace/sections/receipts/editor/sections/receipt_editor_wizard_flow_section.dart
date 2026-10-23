@@ -245,6 +245,7 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
         groupId: widget.group.id,
         clientId: _useManualClient ? '' : _clientId!,
         clientName: _useManualClient ? _clientNameCtrl.text.trim() : null,
+        clientSnapshot: _manualClientSnapshot,
         status: 'draft',
         issueDate: _issueDate,
         notes: _notesCtrl.text.trim(),

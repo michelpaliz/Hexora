@@ -338,3 +338,42 @@ DateTime? _date(dynamic value) {
   if (value is DateTime) return value;
   return DateTime.tryParse(value?.toString() ?? '');
 }
+
+class WorkerLiveLocation {
+  const WorkerLiveLocation({
+    required this.workerId,
+    required this.workerName,
+    required this.latitude,
+    required this.longitude,
+    this.accuracyMeters,
+    this.recordedAt,
+  });
+
+  final String workerId;
+  final String workerName;
+  final double latitude;
+  final double longitude;
+  final double? accuracyMeters;
+  final DateTime? recordedAt;
+
+  factory WorkerLiveLocation.fromJson(Map<String, dynamic> json) {
+    final worker = json['worker'] is Map
+        ? Map<String, dynamic>.from(json['worker'] as Map)
+        : const <String, dynamic>{};
+    return WorkerLiveLocation(
+      workerId: _identifier(
+        json['workerId'] ?? worker['_id'] ?? worker['id'] ?? json['_id'],
+      ),
+      workerName: _text(
+        json['workerName'] ?? worker['displayName'] ?? worker['name'],
+        fallback: '?',
+      ),
+      latitude: _number(json['latitude']),
+      longitude: _number(json['longitude']),
+      accuracyMeters: json['accuracyMeters'] is num
+          ? (json['accuracyMeters'] as num).toDouble()
+          : null,
+      recordedAt: _date(json['recordedAt']),
+    );
+  }
+}

@@ -55,6 +55,9 @@ class _Visits implements ITimeTrackingApiClient {
             label: 'Calle principal'),
       ]);
     }
+    if (invocation.memberName == #getActiveWorkerLocations) {
+      return Future.value(<WorkerLiveLocation>[]);
+    }
     return super.noSuchMethod(invocation);
   }
 }

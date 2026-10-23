@@ -36,6 +36,8 @@ String buildAzureMapsDocument({
     .pin:after{content:'';position:absolute;width:8px;height:8px;border-radius:50%;background:white;top:7px;left:7px}
     .pin-selected{width:34px;height:34px;background:#ef7b45;border-width:4px;box-shadow:0 0 0 6px rgba(239,123,69,.24),0 5px 16px rgba(15,23,42,.42)}
     .pin-selected:after{width:10px;height:10px;top:8px;left:8px}
+    .pin-worker{background:#16a34a}
+    .pin-worker.pin-selected{background:#ef7b45}
     .selected-pin{width:32px;height:32px;border-radius:50% 50% 50% 0;background:#ef7b45;border:3px solid white;box-shadow:0 4px 14px rgba(15,23,42,.38);transform:rotate(-45deg);cursor:grab}
     .selected-pin:after{content:'';position:absolute;width:10px;height:10px;border-radius:50%;background:white;top:8px;left:8px}
     .user-location{position:relative;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#1677ff;border:3px solid white;box-shadow:0 3px 12px rgba(15,23,42,.48)}
@@ -129,9 +131,11 @@ String buildAzureMapsDocument({
       });
       orderedPins.forEach(function(pin){
         const isSelected = pin.id === selectedPinId;
+        const isWorker = pin.type === 'worker';
+        const cls = 'pin' + (isWorker ? ' pin-worker' : '') + (isSelected ? ' pin-selected' : '');
         const marker = new atlas.HtmlMarker({
           position:[pin.longitude,pin.latitude],
-          htmlContent:'<div class="pin' + (isSelected ? ' pin-selected' : '') + '"></div>',
+          htmlContent:'<div class="' + cls + '"></div>',
           anchor:'bottom'
         });
         map.markers.add(marker);
@@ -141,7 +145,7 @@ String buildAzureMapsDocument({
         pinMarkers.push(marker);
         if (isSelected) {
           const content = document.createElement('div');
-          content.textContent = pin.title || 'Cliente';
+          content.textContent = pin.title || (pin.type === 'worker' ? 'Trabajador' : 'Cliente');
           content.style.cssText = 'padding:8px 12px;font:600 13px Inter,Arial,sans-serif;color:#162739';
           popup = new atlas.Popup({content:content, position:[pin.longitude,pin.latitude], pixelOffset:[0,-36]});
           popup.open(map);

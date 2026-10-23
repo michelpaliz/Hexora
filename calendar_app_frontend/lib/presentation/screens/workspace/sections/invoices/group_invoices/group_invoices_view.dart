@@ -202,6 +202,14 @@ class _GroupInvoicesView extends StatelessWidget {
                   icon: const Icon(Icons.refresh_rounded, size: 18),
                 ),
               ),
+              Tooltip(
+                message: l.createReceiptCta,
+                child: FilledButton(
+                  onPressed: state._openCreateReceipt,
+                  style: compactPrimaryButtonStyle,
+                  child: const Icon(Icons.add_rounded, size: 18),
+                ),
+              ),
             ]
           : null;
       final clientsActions = activeMenu == 'clients' ||
@@ -265,6 +273,40 @@ class _GroupInvoicesView extends StatelessWidget {
           recurringReceiptsActions ??
           recurringActions ??
           invoiceActions;
+      final invoiceToolbarTabs = showInvoiceActions
+          ? _InvoiceToolbarTabs(
+              draftsCount: state._drafts.length,
+              invoicesCount: state._invoices.length,
+              draftsSelected: activeMenu != 'invoices_issued',
+              onDrafts: () => state._changeInvoicesMenu('invoices_drafts'),
+              onInvoices: () => state._changeInvoicesMenu('invoices_issued'),
+            )
+          : null;
+      final receiptToolbarTabs = activeMenu == 'receipts'
+          ? HexoraDocumentStatusTabs(
+              tabs: [
+                HexoraDocumentStatusTab(
+                  label: Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Borradores'
+                      : 'Drafts',
+                  count: state._receiptDrafts.length,
+                  icon: Icons.drafts_outlined,
+                ),
+                HexoraDocumentStatusTab(
+                  label: Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Recibos'
+                      : 'Receipts',
+                  count: state._receipts.length,
+                  icon: Icons.receipt_long_outlined,
+                ),
+              ],
+              selectedIndex: state._receiptListTabIndex,
+              onSelected: (index) => state._updateView(
+                () => state._receiptListTabIndex = index,
+              ),
+            )
+          : null;
+      final documentToolbarTabs = invoiceToolbarTabs ?? receiptToolbarTabs;
 
       final content = _GroupInvoicesContent(
         state: state,
@@ -371,6 +413,15 @@ class _GroupInvoicesView extends StatelessWidget {
                       ? FolderPanel(
                           title: folderTitle,
                           showTab: true,
+                          tabContent: documentToolbarTabs == null
+                              ? null
+                              : Row(
+                                  children: [
+                                    HexoraBreadcrumb(title: folderTitle),
+                                    const SizedBox(width: 16),
+                                    Expanded(child: documentToolbarTabs),
+                                  ],
+                                ),
                           actions: folderActions,
                           actionsSpacing: 6,
                           contentTopPadding: showInvoiceActions
@@ -460,6 +511,43 @@ class _GroupInvoicesView extends StatelessWidget {
               label:
                   Text(fabIsReceipts ? l.createReceiptCta : l.createInvoiceCta),
             ),
+    );
+  }
+}
+
+class _InvoiceToolbarTabs extends StatelessWidget {
+  const _InvoiceToolbarTabs({
+    required this.draftsCount,
+    required this.invoicesCount,
+    required this.draftsSelected,
+    required this.onDrafts,
+    required this.onInvoices,
+  });
+
+  final int draftsCount;
+  final int invoicesCount;
+  final bool draftsSelected;
+  final VoidCallback onDrafts;
+  final VoidCallback onInvoices;
+
+  @override
+  Widget build(BuildContext context) {
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    return HexoraDocumentStatusTabs(
+      tabs: [
+        HexoraDocumentStatusTab(
+          icon: Icons.drafts_outlined,
+          label: isEs ? 'Borradores' : 'Drafts',
+          count: draftsCount,
+        ),
+        HexoraDocumentStatusTab(
+          icon: Icons.receipt_long_outlined,
+          label: isEs ? 'Facturas' : 'Invoices',
+          count: invoicesCount,
+        ),
+      ],
+      selectedIndex: draftsSelected ? 0 : 1,
+      onSelected: (index) => index == 0 ? onDrafts() : onInvoices(),
     );
   }
 }

@@ -318,14 +318,15 @@ class _MailConsoleView extends StatelessWidget {
         : domain.threadState(state._selectedThreadKey!);
     final selectedThread = threadState?.thread;
 
-    Widget leftColumn() {
-      return _buildMailSidebar(context);
-    }
-
     Widget threadList() {
-      final threads = threadsState.folder == state._folder
+      final folderThreads = threadsState.folder == state._folder
           ? threadsState.threads
           : const <MailThread>[];
+      final threads = switch (state._desktopListFilter) {
+        1 => folderThreads.where((thread) => thread.unreadCount > 0).toList(),
+        2 => folderThreads.where((thread) => thread.important).toList(),
+        _ => folderThreads,
+      };
       final activeQuery = (threadsState.query ?? '').trim();
       final isThreadSearch = activeQuery.length >= 2;
 
@@ -402,71 +403,130 @@ class _MailConsoleView extends StatelessWidget {
       );
     }
 
-    Widget middleColumn() {
-      final activeQuery = (threadsState.query ?? '').trim();
-      final isSearchActive = activeQuery.length >= 2;
-      return Expanded(
-        flex: 2,
-        child: Focus(
-          focusNode: state._threadListFocus,
-          onKeyEvent: (_, event) {
-            if (event is! KeyDownEvent) return KeyEventResult.ignored;
-            if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-              state._navigateThread(1);
-              return KeyEventResult.handled;
-            }
-            if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-              state._navigateThread(-1);
-              return KeyEventResult.handled;
-            }
-            return KeyEventResult.ignored;
-          },
-          child: Column(
-            children: [
-              _ThreadToolbar(
-                folder: state._folder,
-                searchController: state._threadSearchController,
-                searching: threadsState.loading &&
-                    (threadsState.query ?? '').trim().length >= 2,
-                onSearchChanged: state._onThreadSearchChanged,
-                onClearSearch: state._clearThreadSearch,
-                hasSelection: selectedThread != null,
-                hasUnread:
-                    selectedThread?.messages.any((m) => m.unread) ?? false,
-                onRefresh: _asyncCallback(state._refreshAll),
-                onToggleRead: _asyncCallback(
-                  () => state._markSelectedRead(
-                    unread: !(selectedThread?.messages.any((m) => m.unread) ??
-                        false),
-                  ),
-                ),
-                onArchive: _asyncCallback(
-                  () => state._moveSelectedThread(
-                    context.read<MailDomain>().archive,
-                    toastMessage: l.mailDetailArchived,
-                  ),
-                ),
-                onSpam: _asyncCallback(
-                  () => state._moveSelectedThread(
-                    context.read<MailDomain>().spam,
-                    toastMessage: l.mailDetailSpammed,
-                  ),
-                ),
-                onTrash: _asyncCallback(
-                  () => state._moveSelectedThread(
-                    context.read<MailDomain>().trash,
-                    toastMessage: l.mailDetailTrashed,
+    void selectListFilter(int index) {
+      state.update(() => state._desktopListFilter = index);
+      final target = index == 3 ? MailFolder.archive : MailFolder.inbox;
+      if (state._folder != target) state._selectFolder(target);
+    }
+
+    Widget listTabs() {
+      final all = threadsState.folder == state._folder
+          ? threadsState.threads
+          : const <MailThread>[];
+      final unread = all.where((thread) => thread.unreadCount > 0).length;
+      final important = all.where((thread) => thread.important).length;
+      final tabs = <(String, int?)>[
+        ('Todos', state._folder == MailFolder.inbox ? all.length : null),
+        ('No leídos', state._folder == MailFolder.inbox ? unread : null),
+        ('Importantes', state._folder == MailFolder.inbox ? important : null),
+        ('Archivados', state._folder == MailFolder.archive ? all.length : null),
+      ];
+      return SizedBox(
+        height: 46,
+        child: Row(
+          children: [
+            for (var index = 0; index < tabs.length; index++)
+              Expanded(
+                child: InkWell(
+                  key: ValueKey('mail-list-filter-$index'),
+                  onTap: () => selectListFilter(index),
+                  child: Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          width: 2,
+                          color: state._desktopListFilter == index
+                              ? cs.primary
+                              : Colors.transparent,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      tabs[index].$2 == null
+                          ? tabs[index].$1
+                          : '${tabs[index].$1} (${tabs[index].$2})',
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            fontSize: 12,
+                            fontWeight: state._desktopListFilter == index
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: state._desktopListFilter == index
+                                ? cs.primary
+                                : cs.onSurfaceVariant,
+                          ),
+                    ),
                   ),
                 ),
               ),
-              if (isSearchActive)
-                _ActiveSearchChip(
-                  query: activeQuery,
-                  onClear: state._clearThreadSearch,
+          ],
+        ),
+      );
+    }
+
+    Widget middleColumn() {
+      final activeQuery = (threadsState.query ?? '').trim();
+      final isSearchActive = activeQuery.length >= 2;
+      return Focus(
+        focusNode: state._threadListFocus,
+        onKeyEvent: (_, event) {
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+            state._navigateThread(1);
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+            state._navigateThread(-1);
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Column(
+          children: [
+            _ThreadToolbar(
+              folder: state._folder,
+              searchController: state._threadSearchController,
+              searching: threadsState.loading &&
+                  (threadsState.query ?? '').trim().length >= 2,
+              onSearchChanged: state._onThreadSearchChanged,
+              onClearSearch: state._clearThreadSearch,
+              hasSelection: selectedThread != null,
+              hasUnread: selectedThread?.messages.any((m) => m.unread) ?? false,
+              onRefresh: _asyncCallback(state._refreshAll),
+              onToggleRead: _asyncCallback(
+                () => state._markSelectedRead(
+                  unread:
+                      !(selectedThread?.messages.any((m) => m.unread) ?? false),
                 ),
-              Expanded(child: threadList()),
-            ],
-          ),
+              ),
+              onArchive: _asyncCallback(
+                () => state._moveSelectedThread(
+                  context.read<MailDomain>().archive,
+                  toastMessage: l.mailDetailArchived,
+                ),
+              ),
+              onSpam: _asyncCallback(
+                () => state._moveSelectedThread(
+                  context.read<MailDomain>().spam,
+                  toastMessage: l.mailDetailSpammed,
+                ),
+              ),
+              onTrash: _asyncCallback(
+                () => state._moveSelectedThread(
+                  context.read<MailDomain>().trash,
+                  toastMessage: l.mailDetailTrashed,
+                ),
+              ),
+            ),
+            if (isSearchActive)
+              _ActiveSearchChip(
+                query: activeQuery,
+                onClear: state._clearThreadSearch,
+              ),
+            listTabs(),
+            Expanded(child: threadList()),
+          ],
         ),
       );
     }
@@ -484,7 +544,7 @@ class _MailConsoleView extends StatelessWidget {
               : state._showTemplateManager
                   ? _TemplatesManagerPanel(state: state)
                   : state._selectedThreadKey == null
-                      ? Center(child: Text(l.mailConsoleSelectThread))
+                      ? const _MailReadingEmptyState()
                       : (selectedThread == null)
                           ? (threadState?.error != null)
                               ? Center(
@@ -527,53 +587,127 @@ class _MailConsoleView extends StatelessWidget {
                             );
     }
 
-    Widget rightColumn() {
-      return Expanded(
-        flex: 3,
-        child: rightPaneContent(),
-      );
-    }
+    Widget desktopHeader() => Container(
+          height: 58,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            border: Border(
+              bottom:
+                  BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.mail_outline_rounded, color: cs.primary, size: 22),
+              const SizedBox(width: 10),
+              PopupMenuButton<MailFolder>(
+                tooltip: l.mailConsoleFoldersTitle,
+                onSelected: (folder) {
+                  state.update(() => state._desktopListFilter =
+                      folder == MailFolder.archive ? 3 : 0);
+                  state._selectFolder(folder);
+                },
+                itemBuilder: (_) => [
+                  for (final folder in MailFolder.values)
+                    PopupMenuItem(
+                      value: folder,
+                      child: Row(
+                        children: [
+                          Icon(_folderIcon(folder), size: 17),
+                          const SizedBox(width: 9),
+                          Text(_folderLabel(folder, l)),
+                        ],
+                      ),
+                    ),
+                ],
+                child: Row(
+                  children: [
+                    Text(
+                      l.mailConsoleTitle,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(Icons.keyboard_arrow_down_rounded,
+                        size: 18, color: cs.onSurfaceVariant),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              PopupMenuButton<String>(
+                key: const ValueKey('mail-desktop-more-action'),
+                tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+                icon: const Icon(Icons.more_horiz_rounded, size: 20),
+                onSelected: (value) {
+                  if (value == 'footer') {
+                    state._openFooterManager();
+                  } else if (value == 'templates') {
+                    unawaited(state._openTemplateManager());
+                  }
+                },
+                itemBuilder: (_) => [
+                  PopupMenuItem(
+                    value: 'footer',
+                    child: ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.description_outlined),
+                      title: Text(l.mailFooterCreateCta),
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'templates',
+                    child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.view_list_outlined),
+                      title: Text('Templates'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                key: const ValueKey('mail-desktop-compose-action'),
+                onPressed: state._openCompose,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: Text(
+                  l.localeName.startsWith('es') ? 'Nuevo correo' : 'New email',
+                ),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                ),
+              ),
+            ],
+          ),
+        );
 
-    final content = Row(
+    final content = Column(
       children: [
-        leftColumn(),
-        const SizedBox(width: 10),
+        desktopHeader(),
         Expanded(
           child: state._showFooterManager ||
                   state._showTemplateManager ||
                   state._showCompose
-              ? FolderSectionCard(
-                  label: state._showCompose
-                      ? l.mailComposeTitle
-                      : state._showFooterManager
-                          ? l.mailFooterCreateCta
-                          : 'Templates',
-                  leftTabOffset: 0,
-                  child: rightPaneContent(),
-                )
-              : FolderSectionCard(
-                  label:
-                      '${l.mailConsoleTitle} · ${_folderLabel(state._folder, l)}',
-                  leftTabOffset: 0,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 15),
-                    child: Row(
+              ? rightPaneContent()
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final listWidth =
+                        (constraints.maxWidth * 0.41).clamp(440.0, 720.0);
+                    return Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        middleColumn(),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: VerticalDivider(
-                            width: 1,
-                            thickness: 1,
-                            color: cs.outlineVariant.withValues(alpha: 0.4),
-                          ),
+                        SizedBox(width: listWidth, child: middleColumn()),
+                        VerticalDivider(
+                          width: 1,
+                          thickness: 1,
+                          color: cs.outlineVariant.withValues(alpha: 0.4),
                         ),
-                        const SizedBox(width: 6),
-                        rightColumn(),
+                        Expanded(child: rightPaneContent()),
                       ],
-                    ),
-                  ),
+                    );
+                  },
                 ),
         ),
       ],

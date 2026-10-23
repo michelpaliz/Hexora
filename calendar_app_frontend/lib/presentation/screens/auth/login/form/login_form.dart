@@ -82,8 +82,27 @@ class _LoginFormState extends State<LoginForm> {
       );
     } catch (error) {
       await authService.logOut();
-      if (mounted) _showSnack('No se pudo cambiar la contraseña: $error');
+      if (mounted) {
+        _showSnack(
+          _loginErrorMessage(AppLocalizations.of(context)!, error),
+        );
+      }
     }
+  }
+
+  String _loginErrorMessage(AppLocalizations l10n, Object error) {
+    if (error is WrongPasswordAuthException) {
+      return l10n.loginInvalidCredentials;
+    }
+    if (error is UserNotFoundAuthException) {
+      return l10n.userNotFound;
+    }
+    if (error is LoginRequestFailedAuthException) {
+      final message = error.message.trim();
+      return message.isEmpty ? l10n.authError : message;
+    }
+    // Do not expose raw FormatException, socket, or implementation details.
+    return l10n.authError;
   }
 
   Future<void> _resendVerification({String? overrideEmail}) async {
@@ -305,10 +324,8 @@ class _LoginFormState extends State<LoginForm> {
                               authService, email);
                         } else if (e is EmailNotVerifiedAuthException) {
                           _promptEmailVerification(email);
-                        } else if (e is WrongPasswordAuthException) {
-                          _showSnack(l10n.loginInvalidCredentials);
                         } else {
-                          _showSnack('Login failed: $e');
+                          _showSnack(_loginErrorMessage(l10n, e));
                         }
                       }
                     }

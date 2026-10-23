@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/service_catalog/service.dart';
 import 'package:hexora/services/service_catalog/service_api_client.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -214,11 +215,14 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
             ? Icon(Icons.check_circle_rounded, color: cs.secondary)
             : null,
         filled: true,
-        fillColor: isLight ? Colors.white : cs.surfaceContainerHighest,
+        fillColor:
+            isLight ? AppColors.inputBackground : cs.surfaceContainerHighest,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+          borderSide: BorderSide(
+              color: isLight
+                  ? AppColors.inputBorder
+                  : cs.outlineVariant.withValues(alpha: 0.5)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

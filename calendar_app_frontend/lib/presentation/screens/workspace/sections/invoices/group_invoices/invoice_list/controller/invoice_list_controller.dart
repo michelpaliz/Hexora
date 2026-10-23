@@ -73,6 +73,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   String? _summaryError;
   bool _clientNameSortEnabled = false;
   InvoiceSortDir _clientNameSortDir = InvoiceSortDir.asc;
+  String _searchText = '';
 
   @override
   void initState() {
@@ -439,17 +440,27 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
     num subtotal = 0;
     num taxTotal = 0;
     num total = 0;
+    var mismatchCount = 0;
     for (final invoice in invoices) {
-      subtotal += invoice.subtotal ?? 0;
-      taxTotal += invoice.taxTotal ?? 0;
-      total += invoice.total ?? 0;
+      final invoiceSubtotal = invoice.subtotal ?? 0;
+      final invoiceTax = invoice.taxTotal ?? 0;
+      final invoiceTotal = invoice.total ?? 0;
+      subtotal += invoiceSubtotal;
+      taxTotal += invoiceTax;
+      total += invoiceTotal;
+      if (invoice.subtotal != null &&
+          invoice.taxTotal != null &&
+          invoice.total != null &&
+          (invoiceSubtotal + invoiceTax - invoiceTotal).abs() > 0.02) {
+        mismatchCount++;
+      }
     }
     return {
       'count': invoices.length,
       'subtotal': subtotal,
       'taxTotal': taxTotal,
       'total': total,
-      'mismatchCount': 0,
+      'mismatchCount': mismatchCount,
     };
   }
 

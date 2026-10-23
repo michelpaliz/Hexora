@@ -29,8 +29,6 @@ class _InvoiceEditorView extends StatelessWidget {
         final canCompleteDraft = !state._c.saving &&
             step1Complete &&
             (state._c.editingIssued || state._c.previewedPdf);
-        final reinforceDraft = canCompleteDraft && state._c.previewedPdf;
-
         final step1Missing = <String>[
           if (!hasClient) l.invoicePreviewNeedsClient,
           if (!datesComplete) l.invoicePreviewNeedsDate,
@@ -711,38 +709,6 @@ class _InvoiceEditorView extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   totalsSummary(),
-                  const SizedBox(height: 12),
-                  FilledButton.icon(
-                    onPressed: canCompleteDraft
-                        ? () => state._c.handleSaveDraft(
-                              context,
-                              confirmIfEditing: false,
-                            )
-                        : null,
-                    style: reinforceDraft
-                        ? FilledButton.styleFrom(
-                            elevation: 3,
-                            shadowColor: cs.primary.withValues(alpha: 0.35),
-                          )
-                        : null,
-                    icon: state._c.saving
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.save_outlined),
-                    label: Text(
-                      state._c.saving
-                          ? l.savingLabel
-                          : state._c.editingIssued
-                              ? (Localizations.localeOf(context).languageCode ==
-                                      'es'
-                                  ? 'Guardar cambios'
-                                  : 'Save changes')
-                              : l.invoiceSaveDraftCta,
-                    ),
-                  ),
                   if (!canCompleteDraft && draftCompletionReason != null) ...[
                     const SizedBox(height: 8),
                     Text(
@@ -754,6 +720,34 @@ class _InvoiceEditorView extends StatelessWidget {
                   ],
                 ],
               );
+
+              final currentEditorStep = state._tabController.index;
+              Future<void> continueEditor() async {
+                if (currentEditorStep >= 3) {
+                  await state._c.handleSaveDraft(
+                    context,
+                    confirmIfEditing: false,
+                  );
+                  return;
+                }
+                if (currentEditorStep == 2 && state._c.savedInvoice == null) {
+                  await state._c.handleSaveDraft(
+                    context,
+                    confirmIfEditing: false,
+                  );
+                  if (!context.mounted || state._c.savedInvoice == null) return;
+                }
+                final next = currentEditorStep + 1;
+                state._c.setCurrentStepIndex(next);
+                state._tabController.animateTo(next);
+              }
+
+              final canContinue = switch (currentEditorStep) {
+                0 => hasClient,
+                1 => datesComplete && !invalidDates,
+                2 => step1Complete && !state._c.saving,
+                _ => canCompleteDraft,
+              };
 
               return Form(
                 key: state._c.formKey,
@@ -874,6 +868,41 @@ class _InvoiceEditorView extends StatelessWidget {
                           ],
                         ),
                       ),
+                      HexoraDocumentFooter(
+                        status: _InvoiceDraftStatusChip(
+                          controller: state._c,
+                          t: t,
+                          cs: cs,
+                        ),
+                        back: currentEditorStep == 0
+                            ? null
+                            : OutlinedButton.icon(
+                                onPressed: () {
+                                  final previous = currentEditorStep - 1;
+                                  state._c.setCurrentStepIndex(previous);
+                                  state._tabController.animateTo(previous);
+                                },
+                                icon: const Icon(Icons.arrow_back_rounded,
+                                    size: 17),
+                                label: Text(l.back),
+                              ),
+                        primary: FilledButton.icon(
+                          onPressed: canContinue ? continueEditor : null,
+                          icon: Icon(
+                            currentEditorStep == 3
+                                ? Icons.save_outlined
+                                : Icons.arrow_forward_rounded,
+                            size: 17,
+                          ),
+                          label: Text(
+                            currentEditorStep == 3
+                                ? l.invoiceSaveDraftCta
+                                : (l.localeName.startsWith('es')
+                                    ? 'Continuar'
+                                    : 'Continue'),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -907,279 +936,128 @@ class _InvoiceEditorView extends StatelessWidget {
     final selectedClient = state._c.clientId == null
         ? null
         : state.widget.clients.cast<GroupClient?>().firstWhere(
-              (c) => c?.id == state._c.clientId,
+              (client) => client?.id == state._c.clientId,
               orElse: () => null,
             );
 
-    Widget listCard({required double maxListHeight}) {
-      return Container(
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-        ),
+    Widget? selectedDetails;
+    if (selectedClient != null) {
+      selectedDetails = Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-              child: Row(
+            Center(
+              child: Column(
                 children: [
-                  Text(
-                    l.receiptSelectClientLabel,
-                    style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
-                  ),
-                  const Spacer(),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    width: 52,
+                    height: 52,
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(999),
+                      color: cs.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
-                      '${state.widget.clients.length}',
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11,
+                      selectedClient.name.trim().isEmpty
+                          ? '?'
+                          : selectedClient.name.trim()[0].toUpperCase(),
+                      style: t.titleLarge.copyWith(
+                        color: cs.primary,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    selectedClient.name,
+                    style: t.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: cs.onSurface,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 10),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                child: ClientSearchSelect(
-                  clients: state.widget.clients,
-                  selectedClientId: state._c.clientId,
-                  onClientChanged: state._c.setClientId,
-                  useDefaultPropertyKind: false,
-                  showAdvancedFilters: false,
-                  maxListHeight: maxListHeight,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    Widget previewCard() {
-      return AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        decoration: BoxDecoration(
-          color: selectedClient != null
-              ? cs.primary.withValues(alpha: 0.04)
-              : cs.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selectedClient != null
-                ? cs.primary.withValues(alpha: 0.28)
-                : cs.outlineVariant.withValues(alpha: 0.35),
-          ),
-        ),
-        child: selectedClient == null
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color:
-                              cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(
-                          Icons.person_search_outlined,
-                          size: 26,
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.4),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        isEs
-                            ? 'Selecciona un cliente\npara continuar'
-                            : 'Select a client\nto continue',
-                        style: t.bodyMedium.copyWith(
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            : Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              color: cs.primary.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: Center(
-                              child: Text(
-                                selectedClient.name.trim().isEmpty
-                                    ? '?'
-                                    : selectedClient.name
-                                        .trim()[0]
-                                        .toUpperCase(),
-                                style: t.titleLarge.copyWith(
-                                  color: cs.primary,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            selectedClient.name,
-                            style: t.bodyLarge.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: cs.onSurface,
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      alignment: WrapAlignment.center,
-                      children: [
-                        if ((selectedClient.email ?? '').trim().isNotEmpty)
-                          _InvoiceClientChip(
-                            icon: Icons.email_outlined,
-                            label: selectedClient.email!.trim(),
-                          ),
-                        if ((selectedClient.phone ?? '').trim().isNotEmpty)
-                          _InvoiceClientChip(
-                            icon: Icons.phone_outlined,
-                            label: selectedClient.phone!.trim(),
-                          ),
-                        if ((selectedClient.entityType ?? '').trim().isNotEmpty)
-                          _InvoiceClientChip(
-                            icon: Icons.business_outlined,
-                            label: selectedClient.entityType!.trim(),
-                          ),
-                        if ((selectedClient.propertyKind ?? '')
-                            .trim()
-                            .isNotEmpty)
-                          _InvoiceClientChip(
-                            icon: Icons.home_work_outlined,
-                            label: selectedClient.propertyKind!.trim(),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: _InvoiceClientStatsBox(
-                        issuedCount: state._c.issuedThisMonthCount,
-                        draftCount: state._c.clientDraftCount,
-                        loading: state._c.loadingClientStats,
-                        pastInvoices: state._c.clientPastInvoices,
-                        onPreview: (inv) async {
-                          final bytes =
-                              await state._c.fetchHistoricalPdf(inv.id);
-                          final fileName = inv.isDraft
-                              ? 'invoice-draft-${inv.id}.pdf'
-                              : 'invoice-${inv.invoiceNumber}.pdf';
-                          await pdf_launcher.launchPdfPreview(bytes,
-                              fileName: fileName);
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (state._c.editingIssued) ...[
-                      OutlinedButton.icon(
-                        onPressed: () =>
-                            _editIssuedBillingDetails(context, state),
-                        icon: const Icon(Icons.badge_outlined, size: 18),
-                        label: Text(
-                          isEs
-                              ? 'Editar datos fiscales'
-                              : 'Edit billing details',
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    FilledButton.icon(
-                      onPressed: () {
-                        state._c.setCurrentStepIndex(1);
-                        state._tabController.animateTo(1);
-                      },
-                      icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                      label: Text(
-                        isEs ? 'Continuar → Fechas' : 'Continue → Dates',
-                      ),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-      );
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 620;
-        if (!wide) {
-          return SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              alignment: WrapAlignment.center,
               children: [
-                SizedBox(
-                  height: 430,
-                  child: listCard(maxListHeight: 340),
-                ),
-                if (selectedClient != null) ...[
-                  const SizedBox(height: 10),
-                  FilledButton.icon(
-                    onPressed: () {
-                      state._c.setCurrentStepIndex(1);
-                      state._tabController.animateTo(1);
-                    },
-                    icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                    label: Text(
-                      isEs ? 'Continuar → Fechas' : 'Continue → Dates',
-                    ),
+                if ((selectedClient.email ?? '').trim().isNotEmpty)
+                  _InvoiceClientChip(
+                    icon: Icons.email_outlined,
+                    label: selectedClient.email!.trim(),
                   ),
-                ],
+                if ((selectedClient.phone ?? '').trim().isNotEmpty)
+                  _InvoiceClientChip(
+                    icon: Icons.phone_outlined,
+                    label: selectedClient.phone!.trim(),
+                  ),
+                if ((selectedClient.entityType ?? '').trim().isNotEmpty)
+                  _InvoiceClientChip(
+                    icon: Icons.business_outlined,
+                    label: selectedClient.entityType!.trim(),
+                  ),
+                if ((selectedClient.propertyKind ?? '').trim().isNotEmpty)
+                  _InvoiceClientChip(
+                    icon: Icons.home_work_outlined,
+                    label: selectedClient.propertyKind!.trim(),
+                  ),
               ],
             ),
-          );
-        }
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(flex: 3, child: listCard(maxListHeight: double.infinity)),
-            const SizedBox(width: 12),
-            Expanded(flex: 2, child: previewCard()),
+            const SizedBox(height: 12),
+            Expanded(
+              child: _InvoiceClientStatsBox(
+                issuedCount: state._c.issuedThisMonthCount,
+                draftCount: state._c.clientDraftCount,
+                loading: state._c.loadingClientStats,
+                pastInvoices: state._c.clientPastInvoices,
+                onPreview: (invoice) async {
+                  final bytes = await state._c.fetchHistoricalPdf(invoice.id);
+                  final fileName = invoice.isDraft
+                      ? 'invoice-draft-${invoice.id}.pdf'
+                      : 'invoice-${invoice.invoiceNumber}.pdf';
+                  await pdf_launcher.launchPdfPreview(
+                    bytes,
+                    fileName: fileName,
+                  );
+                },
+              ),
+            ),
+            if (state._c.editingIssued) ...[
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () => _editIssuedBillingDetails(context, state),
+                icon: const Icon(Icons.badge_outlined, size: 18),
+                label: Text(
+                  isEs ? 'Editar datos fiscales' : 'Edit billing details',
+                ),
+              ),
+            ],
           ],
-        );
-      },
+        ),
+      );
+    }
+
+    return DocumentClientStep(
+      clients: state.widget.clients,
+      selectedClientId: state._c.clientId,
+      onClientChanged: state._c.setClientId,
+      mode: DocumentClientMode.existing,
+      onModeChanged: (_) {},
+      selectedDetails: selectedDetails,
+      allowManual: false,
+      existingLabel: isEs ? 'Cliente existente' : 'Existing client',
+      selectClientLabel: l.receiptSelectClientLabel,
+      emptySelectionLabel: isEs
+          ? 'Selecciona un cliente para continuar'
+          : 'Select a client to continue',
+      twoColumnBreakpoint: 900,
     );
   }
 

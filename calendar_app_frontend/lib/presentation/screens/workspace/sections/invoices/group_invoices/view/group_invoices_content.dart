@@ -57,8 +57,48 @@ class _GroupInvoicesContent extends StatelessWidget {
         selectedClient: state._selectedClient,
         issuedInvoices: visibleInvoices,
         draftInvoices: draftInvoices,
-        onSelectClient: (c) =>
-            state._updateView(() => state._selectedClient = c),
+        onSelectClient: (c) => state._updateView(() {
+          state._selectedClient = c;
+          // Picking a client in the list means viewing it, not the form.
+          state._inlineClientEditorOpen = false;
+          state._inlineClientEditing = null;
+        }),
+        detailOverride: state._inlineClientEditorOpen
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+                    child: Row(children: [
+                      Expanded(
+                        child: ClientHeader(
+                            isEdit: state._inlineClientEditing != null),
+                      ),
+                      IconButton(
+                        tooltip: MaterialLocalizations.of(context)
+                            .closeButtonTooltip,
+                        icon: const Icon(Icons.close_rounded, size: 18),
+                        onPressed: state._closeInlineClientEditor,
+                      ),
+                    ]),
+                  ),
+                  Expanded(
+                    child: AddClientSheet(
+                      key: ValueKey(
+                          'inline-client-${state._inlineClientEditing?.id ?? 'new'}'),
+                      groupId: state.widget.group.id,
+                      api: state._clientsApi,
+                      client: state._inlineClientEditing,
+                      existingClients: state._clients,
+                      closeOnSave: false,
+                      onCancel: state._closeInlineClientEditor,
+                      onSaved: state._handleInlineClientSaved,
+                      onOpenExisting: state._openInlineClientEditor,
+                    ),
+                  ),
+                ],
+              )
+            : null,
         onCreateInvoice: state._openCreateInvoice,
         onCreateReceipt: state._openCreateReceipt,
         onEditSelectedClient: () {
@@ -69,6 +109,7 @@ class _GroupInvoicesContent extends StatelessWidget {
         onOpenInvoiceDetail: state._openInvoiceDetail,
         onDeleteInvoice: state._deleteInvoice,
         onDownloadVisibleInvoices: state._downloadVisibleInvoicesPdfs,
+        onAddClient: state._openCreateClient,
         onUpdateClientClassification: state._updateClientClassification,
       );
     }
@@ -110,6 +151,13 @@ class _GroupInvoicesContent extends StatelessWidget {
         onLoadInlinePdf: state._loadReceiptInlinePdfBytes,
         disableDetailPreviewInteraction:
             state._disableReceiptPreviewInteraction,
+        initialTabIndex: state._receiptListTabIndex,
+        showHeaderTabs: false,
+        onTabChanged: (index) =>
+            state._updateView(() => state._receiptListTabIndex = index),
+        onClearSelection: () =>
+            state._updateView(() => state._selectedReceipt = null),
+        modeNotifier: state._receiptSplitModeNotifier,
       );
     }
 
@@ -321,6 +369,8 @@ class _GroupInvoicesContent extends StatelessWidget {
         selectedInvoice: state._selectedInvoice,
         onSelectInvoice: (inv) =>
             state._updateView(() => state._selectedInvoice = inv),
+        onClearSelection: () =>
+            state._updateView(() => state._selectedInvoice = null),
         onDeleteInvoice: state._deleteInvoice,
         onEditDraft: state._openEditDraft,
         onIssueDraft: state._issueInvoice,
@@ -339,6 +389,7 @@ class _GroupInvoicesContent extends StatelessWidget {
           state._selectedMenu = 'recurring';
         }),
         canEditIssued: state.canEditIssuedInvoices(context),
+        showHeaderTabs: false,
       );
     }
 
@@ -360,6 +411,8 @@ class _GroupInvoicesContent extends StatelessWidget {
         selectedInvoice: state._selectedInvoice,
         onSelectInvoice: (inv) =>
             state._updateView(() => state._selectedInvoice = inv),
+        onClearSelection: () =>
+            state._updateView(() => state._selectedInvoice = null),
         onDeleteInvoice: state._deleteInvoice,
         onEditDraft: state._openEditDraft,
         onIssueDraft: state._issueInvoice,
@@ -378,6 +431,7 @@ class _GroupInvoicesContent extends StatelessWidget {
           state._selectedMenu = 'recurring';
         }),
         canEditIssued: state.canEditIssuedInvoices(context),
+        showHeaderTabs: false,
       );
     }
 
@@ -390,6 +444,8 @@ class _GroupInvoicesContent extends StatelessWidget {
       selectedInvoice: state._selectedInvoice,
       onSelectInvoice: (inv) =>
           state._updateView(() => state._selectedInvoice = inv),
+      onClearSelection: () =>
+          state._updateView(() => state._selectedInvoice = null),
       onDeleteInvoice: state._deleteInvoice,
       onEditDraft: state._openEditDraft,
       onIssueDraft: state._issueInvoice,
@@ -407,6 +463,7 @@ class _GroupInvoicesContent extends StatelessWidget {
         state._selectedMenu = 'recurring';
       }),
       canEditIssued: state.canEditIssuedInvoices(context),
+      showHeaderTabs: false,
     );
   }
 }

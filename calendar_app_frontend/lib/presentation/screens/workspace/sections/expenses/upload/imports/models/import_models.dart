@@ -8,7 +8,13 @@ class _ExpenseImportTypeScale {
   static const code = 12.0;
 }
 
-enum _BatchExecutionFileStatus { success, warning, error }
+enum _BatchExecutionFileStatus {
+  pending,
+  processing,
+  completed,
+  review,
+  error,
+}
 
 class _BatchExecutionFile {
   final int originalIndex;

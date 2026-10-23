@@ -53,12 +53,11 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
 
   String? _resolveDefaultPropertyKind() {
     if (!widget.useDefaultPropertyKind) return null;
-    final match = widget.clients
-        .map((c) => (c.propertyKind ?? '').trim())
-        .firstWhere(
-          (v) => v.toLowerCase() == widget.defaultPropertyKind,
-          orElse: () => '',
-        );
+    final match =
+        widget.clients.map((c) => (c.propertyKind ?? '').trim()).firstWhere(
+              (v) => v.toLowerCase() == widget.defaultPropertyKind,
+              orElse: () => '',
+            );
     return match.isEmpty ? null : match;
   }
 
@@ -113,18 +112,18 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
     final cs = Theme.of(context).colorScheme;
     final entityOptions = widget.showAdvancedFilters
         ? (widget.clients
-          .map((c) => (c.entityType ?? '').trim())
-          .where((v) => v.isNotEmpty)
-          .toSet()
-          .toList()
+            .map((c) => (c.entityType ?? '').trim())
+            .where((v) => v.isNotEmpty)
+            .toSet()
+            .toList()
           ..sort())
         : const <String>[];
     final propertyOptions = widget.showAdvancedFilters
         ? (widget.clients
-          .map((c) => (c.propertyKind ?? '').trim())
-          .where((v) => v.isNotEmpty)
-          .toSet()
-          .toList()
+            .map((c) => (c.propertyKind ?? '').trim())
+            .where((v) => v.isNotEmpty)
+            .toSet()
+            .toList()
           ..sort())
         : const <String>[];
     final filtered = widget.clients.where((c) {
@@ -158,48 +157,52 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
               final meta = <String>[
                 if ((client.email ?? '').isNotEmpty) client.email!,
                 if ((client.phone ?? '').isNotEmpty) client.phone!,
-                if ((client.propertyKind ?? '').isNotEmpty) client.propertyKind!,
+                if ((client.propertyKind ?? '').isNotEmpty)
+                  client.propertyKind!,
               ].join(' - ');
-              return ListItemCard(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                leading: CircleAvatar(
-                  radius: 14,
-                  backgroundColor: cs.primary.withValues(alpha: 0.1),
-                  child: Text(
-                    client.name.trim().isEmpty
-                        ? '?'
-                        : client.name.trim()[0].toUpperCase(),
-                    style: t.bodySmall.copyWith(
-                      fontSize: 11,
-                      color: cs.primary,
-                      fontWeight: FontWeight.w800,
+              return SizedBox(
+                height: 52,
+                child: ListItemCard(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  leading: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: cs.primary.withValues(alpha: 0.1),
+                    child: Text(
+                      client.name.trim().isEmpty
+                          ? '?'
+                          : client.name.trim()[0].toUpperCase(),
+                      style: t.bodySmall.copyWith(
+                        fontSize: 11,
+                        color: cs.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
+                  title: client.name,
+                  titleStyle: t.bodySmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    color: cs.onSurface,
+                  ),
+                  subtitle: meta.isEmpty ? null : meta,
+                  subtitleStyle: t.bodySmall.copyWith(
+                    fontSize: 10,
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  selected: selected,
+                  showLeadingStripe: true,
+                  borderRadius: BorderRadius.circular(8),
+                  trailing: selected
+                      ? Icon(
+                          Icons.check_circle_rounded,
+                          color: cs.primary,
+                          size: 18,
+                        )
+                      : null,
+                  onTap: () => widget.onClientChanged(client.id),
                 ),
-                title: client.name,
-                titleStyle: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
-                  color: cs.onSurface,
-                ),
-                subtitle: meta.isEmpty ? null : meta,
-                subtitleStyle: t.bodySmall.copyWith(
-                  fontSize: 10,
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-                selected: selected,
-                showLeadingStripe: true,
-                borderRadius: BorderRadius.circular(8),
-                trailing: selected
-                    ? Icon(
-                        Icons.check_circle_rounded,
-                        color: cs.primary,
-                        size: 18,
-                      )
-                    : null,
-                onTap: () => widget.onClientChanged(client.id),
               );
             },
           );
@@ -254,8 +257,7 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                 entityLabel:
                     widget.showAdvancedFilters ? l.clientEntityTypeLabel : null,
                 entityOptions: entityOptions,
-                entityFilter:
-                    widget.showAdvancedFilters ? _entityFilter : null,
+                entityFilter: widget.showAdvancedFilters ? _entityFilter : null,
                 onToggleEntity: widget.showAdvancedFilters
                     ? (v) => setState(() => _entityFilter = v)
                     : null,

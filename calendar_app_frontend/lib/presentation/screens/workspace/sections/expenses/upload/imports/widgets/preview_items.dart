@@ -25,6 +25,12 @@ class _BatchExpensePreviewItemTile extends StatelessWidget {
     final vendor = _batchJobText(prediction['vendorName']);
     final invoiceNumber = _batchJobText(prediction['invoiceNumber']);
     final issueDate = _batchJobText(prediction['issueDate']);
+    final taxableBase = _expensePreviewMoney(
+      prediction['taxableBase'] ?? prediction['base'] ?? prediction['subtotal'],
+    );
+    final tax = _expensePreviewMoney(
+      prediction['taxTotal'] ?? prediction['tax'] ?? prediction['vat'],
+    );
     final total = _expensePreviewMoney(prediction['total']);
     final currency = _batchJobText(prediction['currency']);
     final duplicateReason = _batchJobFirstText([
@@ -85,7 +91,8 @@ class _BatchExpensePreviewItemTile extends StatelessWidget {
                       item.originalPath,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: ts.bodySmall?.copyWith(color: cs.onSurfaceVariant, fontSize: 11),
+                      style: ts.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant, fontSize: 11),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -104,6 +111,16 @@ class _BatchExpensePreviewItemTile extends StatelessWidget {
                             _PreviewMeta(
                               label: 'Fecha',
                               value: issueDate,
+                              priority: _PreviewMetaPriority.secondary,
+                            ),
+                            _PreviewMeta(
+                              label: 'Base',
+                              value: taxableBase,
+                              priority: _PreviewMetaPriority.secondary,
+                            ),
+                            _PreviewMeta(
+                              label: 'IVA',
+                              value: tax,
                               priority: _PreviewMetaPriority.secondary,
                             ),
                           ],

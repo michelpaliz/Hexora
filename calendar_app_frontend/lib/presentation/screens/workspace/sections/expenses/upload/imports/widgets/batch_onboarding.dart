@@ -7,11 +7,15 @@ class _BatchOnboardingFlow extends StatefulWidget {
     List<({String fileName, Uint8List fileBytes})> files, {
     required int selectedCount,
   })? onDropWebDocuments;
+  final VoidCallback? onPickDocuments;
+  final VoidCallback? onPickZip;
 
   const _BatchOnboardingFlow({
     required this.cs,
     required this.ts,
     required this.onDropWebDocuments,
+    required this.onPickDocuments,
+    required this.onPickZip,
   });
 
   @override
@@ -62,7 +66,8 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
         return;
       }
       for (var i = 0;
-          i < files.length && i < _ExpenseUploadScreenStateBase._maxBatchDocuments;
+          i < files.length &&
+              i < _ExpenseUploadScreenStateBase._maxBatchDocuments;
           i++) {
         final file = files[i];
         final fileName = names[i];
@@ -70,8 +75,7 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
           if (fileName.toLowerCase().endsWith('.zip') &&
               await controller.getFileSize(file) >
                   _ExpenseUploadScreenStateBase._maxBatchArchiveSizeBytes) {
-            droppedFiles.add(
-                (fileName: fileName, fileBytes: Uint8List(0)));
+            droppedFiles.add((fileName: fileName, fileBytes: Uint8List(0)));
             continue;
           }
           if (!fileName.toLowerCase().endsWith('.zip') &&
@@ -115,8 +119,8 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
     final content = AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
-      margin: const EdgeInsets.all(14),
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+      margin: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         color: _dragging
@@ -210,7 +214,37 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 16),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              FilledButton.icon(
+                onPressed: widget.onPickDocuments,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(220, 44),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                ),
+                icon: const Icon(Icons.upload_file_outlined, size: 18),
+                label: Text(isEs ? 'Seleccionar archivos' : 'Select files'),
+              ),
+              OutlinedButton.icon(
+                onPressed: widget.onPickZip,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(195, 44),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                ),
+                icon: const Icon(Icons.folder_outlined, size: 18),
+                label: Text(isEs ? 'Seleccionar un ZIP' : 'Select a ZIP'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 680),
             child: Row(
@@ -234,6 +268,44 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
                       ),
                     ),
                 ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer.withValues(alpha: 0.13),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              spacing: 24,
+              runSpacing: 8,
+              children: [
+                _BatchLimitItem(
+                  icon: Icons.insert_drive_file_outlined,
+                  title: isEs ? 'Formatos admitidos' : 'Supported formats',
+                  value: 'PDF, JPG, JPEG, PNG, WEBP',
+                  cs: cs,
+                  ts: ts,
+                ),
+                _BatchLimitItem(
+                  icon: Icons.inventory_2_outlined,
+                  title: isEs ? 'Tamano maximo' : 'Maximum size',
+                  value: isEs ? '100 MB por ZIP' : '100 MB per ZIP',
+                  cs: cs,
+                  ts: ts,
+                ),
+                _BatchLimitItem(
+                  icon: Icons.description_outlined,
+                  title: isEs ? 'Limite de documentos' : 'Document limit',
+                  value: isEs
+                      ? 'Hasta 200 facturas por ZIP'
+                      : 'Up to 200 invoices per ZIP',
+                  cs: cs,
+                  ts: ts,
+                ),
               ],
             ),
           ),
@@ -268,6 +340,53 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
 
     return content;
   }
+}
+
+class _BatchLimitItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+  final ColorScheme cs;
+  final TextTheme ts;
+
+  const _BatchLimitItem({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.cs,
+    required this.ts,
+  });
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: cs.surface,
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Icon(icon, size: 17, color: cs.primary),
+          ),
+          const SizedBox(width: 9),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(title,
+                  style: ts.bodySmall?.copyWith(fontWeight: FontWeight.w800)),
+              Text(value,
+                  style: ts.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+            ],
+          ),
+        ],
+      );
 }
 
 class _OnboardingStep extends StatelessWidget {

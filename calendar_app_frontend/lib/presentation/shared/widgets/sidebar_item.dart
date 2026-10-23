@@ -13,7 +13,9 @@ class SidebarItem extends StatelessWidget {
       this.textStyle,
       this.count,
       this.trailing,
-      this.primaryAction = false});
+      this.primaryAction = false,
+      this.rowHeight,
+      this.iconSize});
   final IconData icon;
   final String label;
   final bool isSelected;
@@ -23,6 +25,8 @@ class SidebarItem extends StatelessWidget {
   final int? count;
   final Widget? trailing;
   final bool primaryAction;
+  final double? rowHeight;
+  final double? iconSize;
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +74,8 @@ class SidebarItem extends StatelessWidget {
                                     borderRadius: radius))),
                       ConstrainedBox(
                           constraints: BoxConstraints(
-                              minHeight: NavigationTokens.rowHeight(context)),
+                              minHeight: rowHeight ??
+                                  NavigationTokens.rowHeight(context)),
                           child: Padding(
                               padding: EdgeInsets.symmetric(
                                   horizontal: collapsed
@@ -83,7 +88,8 @@ class SidebarItem extends StatelessWidget {
                                       : MainAxisAlignment.start,
                                   children: [
                                     Icon(icon,
-                                        size: NavigationTokens.iconSize,
+                                        size: iconSize ??
+                                            NavigationTokens.iconSize,
                                         color: fg),
                                     if (!collapsed) ...[
                                       const SizedBox(

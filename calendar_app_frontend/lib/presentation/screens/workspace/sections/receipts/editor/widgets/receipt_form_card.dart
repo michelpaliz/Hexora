@@ -51,12 +51,13 @@ class ReceiptFormCard extends StatelessWidget {
         suffixIcon: suffix,
         border: const OutlineInputBorder(),
         isDense: true,
-        filled: false,
+        filled: true,
+        fillColor: cs.surfaceContainer,
       );
     }
 
     return Card(
-      color: Colors.transparent,
+      color: cs.surface,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),

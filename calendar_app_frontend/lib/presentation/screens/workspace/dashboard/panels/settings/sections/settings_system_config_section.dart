@@ -10,6 +10,7 @@ import 'package:hexora/presentation/screens/settings/dialogs/change_password_dia
 import 'package:hexora/presentation/screens/settings/dialogs/change_username_dialog.dart';
 import 'package:hexora/presentation/screens/settings/widgets/account_section.dart';
 import 'package:hexora/presentation/screens/settings/widgets/language_sheet.dart';
+import 'package:hexora/presentation/screens/profile/edit/profile_edit_dialog.dart';
 import 'package:hexora/presentation/screens/settings/widgets/nav_tile.dart';
 import 'package:hexora/presentation/screens/settings/widgets/preferences_section.dart';
 import 'package:hexora/presentation/screens/settings/widgets/section_card.dart';
@@ -224,6 +225,7 @@ class _SettingsSystemConfigSectionState
                 if (!mounted) return;
                 _snack(err ?? successMessage);
               },
+              onEditProfile: () => showProfileEditDialog(context),
               onChangePassword: () async {
                 final result = await showChangePasswordDialog(context);
                 if (result == null) return;

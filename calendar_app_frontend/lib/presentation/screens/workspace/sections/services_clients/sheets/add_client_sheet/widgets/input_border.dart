@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 
 OutlineInputBorder buildInputBorder(
   BuildContext context, {
@@ -6,10 +7,15 @@ OutlineInputBorder buildInputBorder(
   double width = 1,
 }) {
   final cs = Theme.of(context).colorScheme;
+  final isLight = Theme.of(context).brightness == Brightness.light;
   return OutlineInputBorder(
     borderRadius: BorderRadius.circular(8),
     borderSide: BorderSide(
-        color: color ?? cs.outlineVariant.withValues(alpha: 0.5), width: width),
+        color: color ??
+            (isLight
+                ? AppColors.inputBorder
+                : cs.outlineVariant.withValues(alpha: 0.5)),
+        width: width),
   );
 }
 
@@ -24,6 +30,7 @@ InputDecoration buildInputDecoration(
   bool isRequired = false,
 }) {
   final cs = Theme.of(context).colorScheme;
+  final isLight = Theme.of(context).brightness == Brightness.light;
 
   return InputDecoration(
     isDense: true,
@@ -46,7 +53,7 @@ InputDecoration buildInputDecoration(
         : null,
     suffixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
     filled: true,
-    fillColor: cs.surface,
+    fillColor: isLight ? AppColors.inputBackground : cs.surface,
     enabledBorder: buildInputBorder(context),
     focusedBorder: buildInputBorder(
       context,

@@ -18,7 +18,6 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
   bool _historyLoading = false;
   String? _historyError;
   Invoice get _invoice => _currentInvoice ?? widget.invoice;
-  num get _total => _lines.fold<num>(0, (sum, l) => sum + (l.lineTotal ?? 0));
 
   Future<void> _loadInvoiceDetail() async {
     final id = widget.invoice.id.trim();

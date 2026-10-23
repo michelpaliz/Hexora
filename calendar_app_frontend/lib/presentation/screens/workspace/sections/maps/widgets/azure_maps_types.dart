@@ -1,3 +1,5 @@
+enum AzureMapPinType { client, worker }
+
 class AzureMapPin {
   const AzureMapPin({
     required this.id,
@@ -5,6 +7,7 @@ class AzureMapPin {
     required this.latitude,
     required this.longitude,
     required this.radiusMeters,
+    this.type = AzureMapPinType.client,
   });
 
   final String id;
@@ -12,6 +15,7 @@ class AzureMapPin {
   final double latitude;
   final double longitude;
   final double radiusMeters;
+  final AzureMapPinType type;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
         'id': id,
@@ -19,6 +23,7 @@ class AzureMapPin {
         'latitude': latitude,
         'longitude': longitude,
         'radiusMeters': radiusMeters,
+        'type': type.name,
       };
 }
 

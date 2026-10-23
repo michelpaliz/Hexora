@@ -55,9 +55,107 @@ class ExpenseProviderPicker extends StatelessWidget {
       );
     }
 
+    final isSpanish = l.localeName.toLowerCase().startsWith('es');
+    final heading = Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: cs.primaryContainer.withValues(alpha: 0.42),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(Icons.storefront_outlined, size: 19, color: cs.primary),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isSpanish ? 'Proveedor' : 'Supplier',
+                style: ts.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: cs.onSurface,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                isSpanish
+                    ? 'Selecciona un proveedor o introduce sus datos manualmente.'
+                    : 'Select a supplier or enter its details manually.',
+                style: ts.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+    final modeSelector = Container(
+      height: 36,
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.65),
+        ),
+        borderRadius: BorderRadius.circular(9),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Expanded(
+            child: _ProviderModeButton(
+              label: isSpanish ? 'Proveedor existente' : 'Saved supplier',
+              icon: Icons.storefront_outlined,
+              selected: hasRealProvider,
+              onPressed: loading ? null : openPicker,
+            ),
+          ),
+          VerticalDivider(
+            width: 1,
+            thickness: 1,
+            color: cs.outlineVariant.withValues(alpha: 0.65),
+          ),
+          Expanded(
+            child: _ProviderModeButton(
+              label: isSpanish ? 'Proveedor manual' : 'Manual supplier',
+              icon: Icons.edit_outlined,
+              selected: !hasRealProvider,
+              onPressed: loading ? null : () => onSelectProvider(null),
+            ),
+          ),
+        ],
+      ),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 680) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  heading,
+                  const SizedBox(height: 10),
+                  modeSelector,
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: heading),
+                const SizedBox(width: 12),
+                SizedBox(width: 350, child: modeSelector),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 14),
         // ── Trigger button ──
         Material(
           color: Colors.transparent,
@@ -66,7 +164,8 @@ class ExpenseProviderPicker extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             onTap: loading ? null : openPicker,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              constraints: const BoxConstraints(minHeight: 42),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(10),
@@ -76,41 +175,24 @@ class ExpenseProviderPicker extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Icon(
-                    hasRealProvider
-                        ? Icons.business_outlined
-                        : Icons.edit_outlined,
-                    size: 16,
-                    color: hasRealProvider ? cs.primary : cs.onSurfaceVariant,
-                  ),
+                  Icon(Icons.search_rounded,
+                      size: 18, color: cs.onSurfaceVariant),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          l.expenseUploadProviderSavedLabel.toUpperCase(),
-                          style: ts.bodySmall?.copyWith(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 1),
-                        Text(
-                          selectedName,
-                          style: ts.bodyMedium?.copyWith(
-                            fontSize: 13,
-                            color: hasRealProvider
-                                ? cs.onSurface
-                                : cs.onSurfaceVariant,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                    child: Text(
+                      hasRealProvider
+                          ? selectedName
+                          : (isSpanish
+                              ? 'Buscar proveedor por nombre, NIF o referencia...'
+                              : 'Search supplier by name, tax ID or reference...'),
+                      style: ts.bodyMedium?.copyWith(
+                        fontSize: 13,
+                        color: hasRealProvider
+                            ? cs.onSurface
+                            : cs.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -146,6 +228,49 @@ class ExpenseProviderPicker extends StatelessWidget {
 }
 
 // ── Sheet ─────────────────────────────────────────────────────────────────────
+
+class _ProviderModeButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback? onPressed;
+
+  const _ProviderModeButton({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onPressed,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: const EdgeInsets.symmetric(horizontal: 13),
+        color: selected
+            ? cs.primaryContainer.withValues(alpha: 0.48)
+            : Colors.transparent,
+        child: Row(
+          children: [
+            Icon(icon, size: 15, color: selected ? cs.primary : cs.onSurface),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                color: selected ? cs.primary : cs.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _ProviderPickerSheet extends StatefulWidget {
   final List<Map<String, dynamic>> providers;
@@ -269,16 +394,15 @@ class _ProviderPickerSheetState extends State<_ProviderPickerSheet> {
                             setState(() => _query = '');
                           },
                           padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                              minWidth: 36, minHeight: 36),
+                          constraints:
+                              const BoxConstraints(minWidth: 36, minHeight: 36),
                         )
                       : null,
                   filled: true,
-                  fillColor:
-                      cs.surfaceContainerHighest.withValues(alpha: 0.25),
+                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.25),
                   isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 4, vertical: 10),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: BorderSide(
@@ -437,8 +561,7 @@ class _ProviderRow extends StatelessWidget {
                 name,
                 style: ts.bodyMedium?.copyWith(
                   fontSize: 13,
-                  fontWeight:
-                      isSelected ? FontWeight.w600 : FontWeight.normal,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                   color: isSelected ? cs.primary : cs.onSurface,
                 ),
                 maxLines: 1,
