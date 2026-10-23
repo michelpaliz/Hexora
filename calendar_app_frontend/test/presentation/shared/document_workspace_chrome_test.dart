@@ -113,6 +113,8 @@ void main() {
 
     expect(find.byTooltip('List only'), findsOneWidget);
     expect(find.byTooltip('Split view'), findsOneWidget);
+    expect(find.text('Document list'), findsOneWidget);
+    expect(find.text('Document preview'), findsNothing);
 
     await tester.tap(find.byTooltip('List only'));
     await tester.pump();

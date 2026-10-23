@@ -319,14 +319,19 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     final paymentStatus =
         (widget.invoice.paymentStatus ?? '').trim().toLowerCase();
     final paymentLabel = switch (paymentStatus) {
-      'paid' => isEs ? 'Pago: cobrada' : 'Payment: paid',
-      'partial' => isEs ? 'Pago: parcialmente cobrada' : 'Payment: partial',
-      'overdue' => isEs ? 'Pago: vencida' : 'Payment: overdue',
-      'unpaid' => isEs ? 'Pago: pendiente' : 'Payment: pending',
-      _ => null,
+      'paid' => isEs ? 'Pagada' : 'Paid',
+      'partial' => isEs ? 'Parcial' : 'Partial',
+      'overdue' || 'unpaid' => isEs ? 'Pendiente' : 'Pending',
+      _ => isEs ? 'Sin información' : 'No information',
+    };
+    final paymentColor = switch (paymentStatus) {
+      'paid' => isLight ? const Color(0xFF2E7D32) : const Color(0xFF81C784),
+      'partial' => amber,
+      'overdue' => cs.error,
+      'unpaid' => cs.onSurfaceVariant,
+      _ => cs.onSurfaceVariant,
     };
     final secondaryStates = [
-      if (paymentLabel != null) paymentLabel,
       '${isEs ? 'Entrega' : 'Delivery'}: ${deliveryStatusLabel(widget.invoice.deliveryStatus, feminine: true)}',
       linkTooltip,
       if (showInvoiceType)
@@ -351,6 +356,17 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       metadata: widget.showClient ? widget.client.name : '',
       amount: totalLabel,
       date: date,
+      payment: Tooltip(
+        message: paymentStatus.isEmpty
+            ? (isEs
+                ? 'No hay información de pago confirmada'
+                : 'No confirmed payment information')
+            : paymentLabel,
+        child: HexoraStatusBadge(
+          label: paymentLabel,
+          color: paymentColor,
+        ),
+      ),
       taxableBase: _subtotal,
       vat: _taxTotal,
       visibleFinancialColumns: widget.visibleFinancialColumns,

@@ -36,6 +36,7 @@ void main() {
               HexoraFinancialColumn.taxableBase,
               HexoraFinancialColumn.vat,
               HexoraFinancialColumn.total,
+              HexoraFinancialColumn.payment,
             },
           ),
           for (var i = 0; i < 3; i++)
@@ -46,6 +47,7 @@ void main() {
                   clientId: 'c',
                   invoiceNumber: '36$i-26',
                   total: [36.30, 4395.42, 1234567.89][i],
+                  paymentStatus: ['paid', 'partial', null][i],
                   status: 'issued',
                   deliveryStatus: 'sent',
                   deliveryChannel: 'email'),
@@ -59,6 +61,7 @@ void main() {
                 HexoraFinancialColumn.taxableBase,
                 HexoraFinancialColumn.vat,
                 HexoraFinancialColumn.total,
+                HexoraFinancialColumn.payment,
               },
             ),
         ])),
@@ -69,6 +72,10 @@ void main() {
       expect(find.text('Factura'), findsOneWidget);
       expect(find.text('Cliente'), findsOneWidget);
       expect(find.text('Acciones'), findsOneWidget);
+      expect(find.text('Pago'), findsOneWidget);
+      expect(find.text('Pagada'), findsOneWidget);
+      expect(find.text('Parcial'), findsOneWidget);
+      expect(find.text('Sin información'), findsOneWidget);
       expect(find.byKey(const ValueKey('document-identity-column')),
           findsNWidgets(3));
       expect(find.byKey(const ValueKey('document-client-column')),
@@ -84,6 +91,7 @@ void main() {
       );
       for (final key in [
         'document-status-column',
+        'document-payment-column',
         'document-amount-column',
         'document-actions-column'
       ]) {

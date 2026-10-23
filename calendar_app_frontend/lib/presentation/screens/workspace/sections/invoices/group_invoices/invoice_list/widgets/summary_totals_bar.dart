@@ -60,6 +60,7 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
     final search = SizedBox(
       height: 38,
       child: TextFormField(
+        key: ValueKey(searchQuery),
         initialValue: searchQuery,
         onChanged: onSearchChanged,
         textInputAction: TextInputAction.search,

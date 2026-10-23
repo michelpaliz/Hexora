@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
@@ -30,6 +32,7 @@ part '../invoice_list/widgets/summary_totals_bar.dart';
 part '../invoice_list/widgets/invoice_filters_menu.dart';
 part '../invoice_list/widgets/invoice_download_menu.dart';
 part '../invoice_list/widgets/payment_notices.dart';
+part '../invoice_list/widgets/invoice_column_filters.dart';
 
 class GroupInvoicesInvoicesView extends StatefulWidget {
   final List<Invoice> drafts;

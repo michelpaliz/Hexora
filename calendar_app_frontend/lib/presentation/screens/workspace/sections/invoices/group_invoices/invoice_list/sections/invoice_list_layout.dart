@@ -8,7 +8,37 @@ extension _InvoiceListLayout on _InvoicesTabListState {
         ? (_unlinkedInvoices ?? const <Invoice>[])
         : widget.invoices;
     final searchQuery = _searchText.trim().toLowerCase();
+    final invoiceQuery = _invoiceNumberQuery.trim().toLowerCase();
+    final hasColumnFilters = searchQuery.isNotEmpty ||
+        invoiceQuery.isNotEmpty ||
+        _selectedClientNames.isNotEmpty ||
+        _selectedLifecycleStatuses.isNotEmpty ||
+        _selectedPaymentStatuses.isNotEmpty ||
+        _baseRange.active ||
+        _vatRange.active ||
+        _totalRange.active ||
+        hasFilter;
     final filtered = sourceInvoices.where((inv) {
+      if (invoiceQuery.isNotEmpty &&
+          !inv.invoiceNumber.toLowerCase().contains(invoiceQuery)) {
+        return false;
+      }
+      if (_selectedClientNames.isNotEmpty &&
+          !_selectedClientNames.contains(_normalizedClientName(inv, l))) {
+        return false;
+      }
+      if (_selectedLifecycleStatuses.isNotEmpty &&
+          !_selectedLifecycleStatuses
+              .contains(_normalizedLifecycleStatus(inv))) {
+        return false;
+      }
+      if (_selectedPaymentStatuses.isNotEmpty &&
+          !_selectedPaymentStatuses.contains(_normalizedPaymentStatus(inv))) {
+        return false;
+      }
+      if (_baseRange.active && !_baseRange.includes(inv.subtotal)) return false;
+      if (_vatRange.active && !_vatRange.includes(inv.taxTotal)) return false;
+      if (_totalRange.active && !_totalRange.includes(inv.total)) return false;
       if (searchQuery.isNotEmpty) {
         final clientName = _invoiceFallbackClientName(inv, l).toLowerCase();
         final amount = inv.total?.toString() ?? '';
@@ -35,7 +65,37 @@ extension _InvoiceListLayout on _InvoicesTabListState {
       return true;
     }).toList();
     final visible = [...filtered];
-    if (widget.allowClientNameSort && _clientNameSortEnabled) {
+    if (_columnSort != null) {
+      int compareNullableNum(num? a, num? b) {
+        if (a == null && b == null) return 0;
+        if (a == null) return 1;
+        if (b == null) return -1;
+        return a.compareTo(b);
+      }
+
+      int compare(Invoice a, Invoice b) => switch (_columnSort!) {
+            _InvoiceColumnSort.number => a.invoiceNumber
+                .toLowerCase()
+                .compareTo(b.invoiceNumber.toLowerCase()),
+            _InvoiceColumnSort.client => _normalizedClientName(a, l)
+                .compareTo(_normalizedClientName(b, l)),
+            _InvoiceColumnSort.status => _normalizedLifecycleStatus(a)
+                .compareTo(_normalizedLifecycleStatus(b)),
+            _InvoiceColumnSort.payment => _normalizedPaymentStatus(a)
+                .compareTo(_normalizedPaymentStatus(b)),
+            _InvoiceColumnSort.date => (_invoiceDate(a) ?? DateTime(9999))
+                .compareTo(_invoiceDate(b) ?? DateTime(9999)),
+            _InvoiceColumnSort.taxableBase =>
+              compareNullableNum(a.subtotal, b.subtotal),
+            _InvoiceColumnSort.vat =>
+              compareNullableNum(a.taxTotal, b.taxTotal),
+            _InvoiceColumnSort.total => compareNullableNum(a.total, b.total),
+          };
+      visible.sort((a, b) {
+        final value = compare(a, b);
+        return _columnSortDir == InvoiceSortDir.asc ? value : -value;
+      });
+    } else if (widget.allowClientNameSort && _clientNameSortEnabled) {
       visible.sort((a, b) {
         final compare = _invoiceClientSortName(a, l).compareTo(
           _invoiceClientSortName(b, l),
@@ -59,9 +119,19 @@ extension _InvoiceListLayout on _InvoicesTabListState {
         break;
       }
     }
-    final summaryTotals = _unlinkedOnly || searchQuery.isNotEmpty
-        ? _summaryFromInvoices(visible)
-        : _summaryTotals;
+    // [sourceInvoices] is the complete module dataset, so this uses the same
+    // normalized criteria as the rows and never falls back to page totals.
+    final usesLocalSummary = _unlinkedOnly ||
+        searchQuery.isNotEmpty ||
+        invoiceQuery.isNotEmpty ||
+        _selectedClientNames.isNotEmpty ||
+        _selectedLifecycleStatuses.isNotEmpty ||
+        _selectedPaymentStatuses.isNotEmpty ||
+        _baseRange.active ||
+        _vatRange.active ||
+        _totalRange.active;
+    final summaryTotals =
+        usesLocalSummary ? _summaryFromInvoices(visible) : _summaryTotals;
 
     Future<void> downloadFiltered({required bool excel}) async {
       final action =
@@ -273,6 +343,13 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                   : null;
 
               final labelActions = <Widget>[
+                if (hasColumnFilters)
+                  TextButton.icon(
+                    onPressed: _clearColumnFilters,
+                    icon: const Icon(Icons.filter_alt_off_outlined, size: 15),
+                    label:
+                        Text(isSpanish ? 'Limpiar filtros' : 'Clear filters'),
+                  ),
                 if (issueAllButton != null) issueAllButton,
                 sortButton(
                   value: InvoiceSortBy.date,
@@ -299,8 +376,16 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                   count: visible.length,
                   totalCount: sourceInvoices.length,
                   summary: summaryTotals,
-                  loading: _unlinkedOnly ? _unlinkedLoading : _summaryLoading,
-                  error: _unlinkedOnly ? _unlinkedError : _summaryError,
+                  loading: _unlinkedOnly
+                      ? _unlinkedLoading
+                      : usesLocalSummary
+                          ? false
+                          : _summaryLoading,
+                  error: _unlinkedOnly
+                      ? _unlinkedError
+                      : usesLocalSummary
+                          ? null
+                          : _summaryError,
                   fromDate: _fromDate,
                   toDate: _toDate,
                   quickRange: _quickRange,
@@ -308,9 +393,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                   unlinkedOnly: _unlinkedOnly,
                   paymentSuggestionsLoading: _paymentSuggestionsLoading,
                   searchQuery: _searchText,
-                  onSearchChanged: (value) {
-                    _updateInvoiceListState(() => _searchText = value);
-                  },
+                  onSearchChanged: _setGlobalSearchDebounced,
                   onDateRangeSelected: (value) {
                     if (value == DateQuickRange.month) {
                       _setRangeDays(30);
@@ -426,6 +509,15 @@ extension _InvoiceListLayout on _InvoicesTabListState {
             identityLabel: 'Factura',
             visibleFinancialColumns: _visibleFinancialColumns,
             actionsWidth: 144,
+            headerBuilder: (context, column, label, width, numeric) =>
+                _buildInvoiceColumnHeader(
+              context,
+              column: column,
+              label: label,
+              width: width,
+              numeric: numeric,
+              invoices: sourceInvoices,
+            ),
           ),
           Expanded(
             child: visible.isEmpty

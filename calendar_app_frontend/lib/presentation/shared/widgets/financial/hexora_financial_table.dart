@@ -3,7 +3,7 @@ import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum HexoraFinancialColumn { date, taxableBase, vat, total }
+enum HexoraFinancialColumn { date, taxableBase, vat, total, payment }
 
 extension HexoraFinancialColumnX on HexoraFinancialColumn {
   String get storageName => switch (this) {
@@ -11,6 +11,7 @@ extension HexoraFinancialColumnX on HexoraFinancialColumn {
         HexoraFinancialColumn.taxableBase => 'taxableBase',
         HexoraFinancialColumn.vat => 'vat',
         HexoraFinancialColumn.total => 'total',
+        HexoraFinancialColumn.payment => 'payment',
       };
 }
 
@@ -30,11 +31,113 @@ abstract final class HexoraFinancialFormat {
   }
 }
 
+enum HexoraHeaderSortDirection { ascending, descending }
+
+/// Compact table-header control shared by document workspaces. The popover
+/// keeps filter inputs out of the table until they are needed.
+class HexoraFilterableHeaderCell extends StatelessWidget {
+  const HexoraFilterableHeaderCell({
+    super.key,
+    required this.label,
+    required this.width,
+    required this.menuBuilder,
+    this.numeric = false,
+    this.centered = false,
+    this.filterActive = false,
+    this.sortDirection,
+  });
+
+  final String label;
+  final double width;
+  final bool numeric;
+  final bool centered;
+  final bool filterActive;
+  final HexoraHeaderSortDirection? sortDirection;
+  final WidgetBuilder menuBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: width,
+      child: Align(
+        alignment: centered
+            ? AlignmentDirectional.center
+            : numeric
+                ? AlignmentDirectional.centerEnd
+                : AlignmentDirectional.centerStart,
+        child: PopupMenuButton<void>(
+          tooltip: 'Filtrar y ordenar $label',
+          padding: EdgeInsets.zero,
+          position: PopupMenuPosition.under,
+          constraints: const BoxConstraints(minWidth: 260, maxWidth: 320),
+          itemBuilder: (context) => [
+            PopupMenuItem<void>(
+              enabled: false,
+              padding: EdgeInsets.zero,
+              child: menuBuilder(context),
+            ),
+          ],
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 30),
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            decoration: filterActive
+                ? BoxDecoration(
+                    color: cs.primaryContainer.withValues(alpha: .55),
+                    borderRadius: BorderRadius.circular(6),
+                  )
+                : null,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontFamily: HexoraTypography.fontFamily,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color:
+                              filterActive ? cs.primary : cs.onSurfaceVariant,
+                        ),
+                  ),
+                ),
+                const SizedBox(width: 3),
+                Icon(
+                  sortDirection == HexoraHeaderSortDirection.ascending
+                      ? Icons.arrow_upward_rounded
+                      : sortDirection == HexoraHeaderSortDirection.descending
+                          ? Icons.arrow_downward_rounded
+                          : Icons.filter_alt_outlined,
+                  size: 13,
+                  color: filterActive || sortDirection != null
+                      ? cs.primary
+                      : cs.onSurfaceVariant,
+                ),
+                if (filterActive)
+                  Container(
+                    margin: const EdgeInsetsDirectional.only(start: 3),
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                        color: cs.primary, shape: BoxShape.circle),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class HexoraColumnVisibilityStore {
   const HexoraColumnVisibilityStore._();
 
   static String _key(String moduleKey) =>
-      'hexora.financialTable.$moduleKey.visibleColumns.v1';
+      'hexora.financialTable.$moduleKey.visibleColumns.v2';
 
   static Future<Set<HexoraFinancialColumn>> load(
     String moduleKey,
@@ -80,6 +183,7 @@ class HexoraColumnVisibilityMenu extends StatelessWidget {
         HexoraFinancialColumn.taxableBase => 'Base imponible',
         HexoraFinancialColumn.vat => 'IVA',
         HexoraFinancialColumn.total => 'Total',
+        HexoraFinancialColumn.payment => 'Pago',
       };
 
   @override

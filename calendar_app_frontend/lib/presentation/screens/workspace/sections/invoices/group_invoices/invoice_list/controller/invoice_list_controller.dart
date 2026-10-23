@@ -74,11 +74,24 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   bool _clientNameSortEnabled = false;
   InvoiceSortDir _clientNameSortDir = InvoiceSortDir.asc;
   String _searchText = '';
+  String _invoiceNumberQuery = '';
+  Timer? _invoiceSearchDebounce;
+  Timer? _globalSearchDebounce;
+  Set<String> _selectedClientNames = {};
+  Set<String> _selectedLifecycleStatuses = {};
+  Set<String> _selectedPaymentStatuses = {};
+  _InvoiceAmountRange _baseRange = const _InvoiceAmountRange();
+  _InvoiceAmountRange _vatRange = const _InvoiceAmountRange();
+  _InvoiceAmountRange _totalRange = const _InvoiceAmountRange();
+  _InvoiceColumnSort? _columnSort;
+  InvoiceSortDir _columnSortDir = InvoiceSortDir.asc;
+  int _summaryRequestGeneration = 0;
   static const _availableFinancialColumns = {
     HexoraFinancialColumn.date,
     HexoraFinancialColumn.taxableBase,
     HexoraFinancialColumn.vat,
     HexoraFinancialColumn.total,
+    HexoraFinancialColumn.payment,
   };
   Set<HexoraFinancialColumn> _visibleFinancialColumns =
       Set.of(_availableFinancialColumns);
@@ -100,6 +113,13 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
 
   void _setVisibleFinancialColumns(Set<HexoraFinancialColumn> value) {
     setState(() => _visibleFinancialColumns = value);
+  }
+
+  @override
+  void dispose() {
+    _invoiceSearchDebounce?.cancel();
+    _globalSearchDebounce?.cancel();
+    super.dispose();
   }
 
   @override
@@ -147,6 +167,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   }
 
   Future<void> _loadSummaryTotals() async {
+    final requestGeneration = ++_summaryRequestGeneration;
     final groupId = widget.groupId.trim();
     if (!widget.showSummaryTotals || groupId.isEmpty) {
       if (mounted) {
@@ -171,13 +192,15 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
         to: _apiDate(_toDate, endOfDay: true),
         currency: 'EUR',
       );
-      if (!mounted) return;
+      if (!mounted || requestGeneration != _summaryRequestGeneration) return;
       setState(() => _summaryTotals = summary);
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || requestGeneration != _summaryRequestGeneration) return;
       setState(() => _summaryError = e.toString());
     } finally {
-      if (mounted) setState(() => _summaryLoading = false);
+      if (mounted && requestGeneration == _summaryRequestGeneration) {
+        setState(() => _summaryLoading = false);
+      }
     }
   }
 
@@ -485,6 +508,68 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
     };
   }
 
+  String _normalizedClientName(Invoice invoice, AppLocalizations l) =>
+      _invoiceFallbackClientName(invoice, l).trim().toLowerCase();
+
+  String _normalizedLifecycleStatus(Invoice invoice) {
+    final raw = (invoice.status ?? '').trim().toLowerCase();
+    if (raw.contains('cancel')) return 'cancelled';
+    if (raw.contains('rectif')) return 'rectified';
+    if (invoice.isDraft) return 'draft';
+    return 'issued';
+  }
+
+  String _normalizedPaymentStatus(Invoice invoice) {
+    final raw = (invoice.paymentStatus ?? '').trim().toLowerCase();
+    return switch (raw) {
+      'paid' => 'paid',
+      'partial' => 'partial',
+      'unpaid' || 'overdue' => 'unpaid',
+      _ => 'unknown',
+    };
+  }
+
+  void _setInvoiceNumberQueryDebounced(String value) {
+    _invoiceSearchDebounce?.cancel();
+    _invoiceSearchDebounce = Timer(const Duration(milliseconds: 280), () {
+      if (mounted) setState(() => _invoiceNumberQuery = value.trim());
+    });
+  }
+
+  void _setGlobalSearchDebounced(String value) {
+    _globalSearchDebounce?.cancel();
+    _globalSearchDebounce = Timer(const Duration(milliseconds: 280), () {
+      if (mounted) setState(() => _searchText = value);
+    });
+  }
+
+  void _applyColumnSort(_InvoiceColumnSort value, InvoiceSortDir direction) {
+    setState(() {
+      _columnSort = value;
+      _columnSortDir = direction;
+    });
+  }
+
+  void _clearColumnFilters() {
+    _invoiceSearchDebounce?.cancel();
+    _globalSearchDebounce?.cancel();
+    setState(() {
+      _searchText = '';
+      _invoiceNumberQuery = '';
+      _selectedClientNames = {};
+      _selectedLifecycleStatuses = {};
+      _selectedPaymentStatuses = {};
+      _baseRange = const _InvoiceAmountRange();
+      _vatRange = const _InvoiceAmountRange();
+      _totalRange = const _InvoiceAmountRange();
+      _fromDate = null;
+      _toDate = null;
+      _quickRange = DateQuickRange.none;
+    });
+    _notifyDateFilterChanged();
+    _refreshFilteredData();
+  }
+
   @override
   Widget build(BuildContext context) => _InvoiceListLayout(this).build(context);
 
@@ -505,6 +590,17 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
       _toDate = now;
       _fromDate = DateTime(now.year, now.month - (months - 1), now.day);
       _quickRange = DateQuickRange.quarter;
+    });
+    _notifyDateFilterChanged();
+    _refreshFilteredData();
+  }
+
+  void _setRangeYear() {
+    final now = DateTime.now();
+    setState(() {
+      _toDate = now;
+      _fromDate = DateTime(now.year - 1, now.month, now.day + 1);
+      _quickRange = DateQuickRange.custom;
     });
     _notifyDateFilterChanged();
     _refreshFilteredData();

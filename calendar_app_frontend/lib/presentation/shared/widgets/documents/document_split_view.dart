@@ -231,9 +231,9 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
       if (width < widget.drawerBreakpoint) return _buildOverlayLayout(width);
 
       final hasSelection = widget.selectionKey != null;
-      final defaultMode = width >= widget.splitBreakpoint || hasSelection
-          ? DocumentViewMode.split
-          : DocumentViewMode.list;
+      // Start with the dense full-width table. A user's explicit split-view
+      // preference is restored from storage through [_userMode].
+      const defaultMode = DocumentViewMode.list;
       var mode = _userMode ?? defaultMode;
       // Not enough room for both panes at their minimum: fall back to one.
       if (mode == DocumentViewMode.document) mode = DocumentViewMode.split;

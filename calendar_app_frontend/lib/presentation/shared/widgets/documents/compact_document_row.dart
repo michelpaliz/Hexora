@@ -21,6 +21,17 @@ Set<HexoraFinancialColumn> _columnsForWidth(
 
 const _expandedTableWidth = 1080.0;
 
+enum CompactDocumentColumn {
+  identity,
+  client,
+  status,
+  payment,
+  date,
+  taxableBase,
+  vat,
+  total,
+}
+
 class _DocumentColumnLayout {
   const _DocumentColumnLayout({
     required this.expanded,
@@ -28,6 +39,7 @@ class _DocumentColumnLayout {
     required this.invoice,
     required this.client,
     required this.status,
+    required this.payment,
     required this.date,
     required this.base,
     required this.vat,
@@ -40,6 +52,7 @@ class _DocumentColumnLayout {
   final double invoice;
   final double client;
   final double status;
+  final double payment;
   final double date;
   final double base;
   final double vat;
@@ -63,6 +76,7 @@ _DocumentColumnLayout _documentColumnLayout(
       invoice: 0,
       client: 0,
       status: HexoraDocumentTokens.statusColumn,
+      payment: columns.contains(HexoraFinancialColumn.payment) ? 108 : 0,
       date: columns.contains(HexoraFinancialColumn.date) ? 104 : 0,
       base: columns.contains(HexoraFinancialColumn.taxableBase) ? 112 : 0,
       vat: columns.contains(HexoraFinancialColumn.vat) ? 96 : 0,
@@ -71,22 +85,32 @@ _DocumentColumnLayout _documentColumnLayout(
     );
   }
 
-  final invoice = width * .10;
-  final status = width * .12;
-  final date = columns.contains(HexoraFinancialColumn.date) ? width * .12 : 0.0;
+  final invoice = width * .09;
+  final status = width * .10;
+  final payment =
+      columns.contains(HexoraFinancialColumn.payment) ? width * .10 : 0.0;
+  final date = columns.contains(HexoraFinancialColumn.date) ? width * .10 : 0.0;
   final base =
-      columns.contains(HexoraFinancialColumn.taxableBase) ? width * .12 : 0.0;
-  final vat = columns.contains(HexoraFinancialColumn.vat) ? width * .09 : 0.0;
+      columns.contains(HexoraFinancialColumn.taxableBase) ? width * .11 : 0.0;
+  final vat = columns.contains(HexoraFinancialColumn.vat) ? width * .08 : 0.0;
   final total =
-      columns.contains(HexoraFinancialColumn.total) ? width * .12 : 0.0;
-  final client =
-      width - invoice - status - date - base - vat - total - actionsWidth;
+      columns.contains(HexoraFinancialColumn.total) ? width * .11 : 0.0;
+  final client = width -
+      invoice -
+      status -
+      payment -
+      date -
+      base -
+      vat -
+      total -
+      actionsWidth;
   return _DocumentColumnLayout(
     expanded: true,
     columns: columns,
     invoice: invoice,
     client: client,
     status: status,
+    payment: payment,
     date: date,
     base: base,
     vat: vat,
@@ -126,16 +150,36 @@ class CompactDocumentTableHeader extends StatelessWidget {
     required this.visibleFinancialColumns,
     this.clientLabel = 'Cliente',
     this.statusLabel = 'Estado',
+    this.paymentLabel = 'Pago',
     this.actionsLabel = 'Acciones',
     this.actionsWidth = 144,
+    this.headerBuilder,
   });
 
   final String identityLabel;
   final Set<HexoraFinancialColumn> visibleFinancialColumns;
   final String clientLabel;
   final String statusLabel;
+  final String paymentLabel;
   final String actionsLabel;
   final double actionsWidth;
+  final Widget Function(
+    BuildContext context,
+    CompactDocumentColumn column,
+    String label,
+    double width,
+    bool numeric,
+  )? headerBuilder;
+
+  Widget _cell(
+    BuildContext context,
+    CompactDocumentColumn column,
+    String label,
+    double width, {
+    bool numeric = false,
+  }) =>
+      headerBuilder?.call(context, column, label, width, numeric) ??
+      HexoraFinancialHeaderCell(label: label, width: width, numeric: numeric);
 
   @override
   Widget build(BuildContext context) {
@@ -148,8 +192,11 @@ class CompactDocumentTableHeader extends StatelessWidget {
       final contentWidth = constraints.maxWidth - 24;
       final layout = _documentColumnLayout(
           contentWidth, visibleFinancialColumns, effectiveActionsWidth);
-      final financialWidth =
-          layout.date + layout.base + layout.vat + layout.total;
+      final financialWidth = layout.date +
+          layout.base +
+          layout.vat +
+          layout.total +
+          layout.payment;
       if (constraints.maxWidth <
           financialWidth + layout.status + effectiveActionsWidth + 180) {
         return const SizedBox.shrink();
@@ -160,14 +207,14 @@ class CompactDocumentTableHeader extends StatelessWidget {
         color: cs.surfaceContainerLow.withValues(alpha: .55),
         child: Row(children: [
           if (layout.expanded) ...[
-            HexoraFinancialHeaderCell(
+            KeyedSubtree(
                 key: const ValueKey('document-identity-header'),
-                label: identityLabel,
-                width: layout.invoice),
-            HexoraFinancialHeaderCell(
+                child: _cell(context, CompactDocumentColumn.identity,
+                    identityLabel, layout.invoice)),
+            KeyedSubtree(
                 key: const ValueKey('document-client-header'),
-                label: clientLabel,
-                width: layout.client),
+                child: _cell(context, CompactDocumentColumn.client, clientLabel,
+                    layout.client)),
           ] else ...[
             const SizedBox(width: 24),
             Expanded(
@@ -177,20 +224,24 @@ class CompactDocumentTableHeader extends StatelessWidget {
           ],
           SizedBox(
             width: layout.status,
-            child: HexoraFinancialHeaderCell(
-                label: statusLabel, width: double.infinity),
+            child: _cell(context, CompactDocumentColumn.status, statusLabel,
+                double.infinity),
           ),
+          if (layout.columns.contains(HexoraFinancialColumn.payment))
+            _cell(context, CompactDocumentColumn.payment, paymentLabel,
+                layout.payment),
           if (layout.columns.contains(HexoraFinancialColumn.date))
-            HexoraFinancialHeaderCell(label: 'Fecha', width: layout.date),
+            _cell(context, CompactDocumentColumn.date, 'Fecha', layout.date),
           if (layout.columns.contains(HexoraFinancialColumn.taxableBase))
-            HexoraFinancialHeaderCell(
-                label: 'Base imponible', width: layout.base, numeric: true),
+            _cell(context, CompactDocumentColumn.taxableBase, 'Base imponible',
+                layout.base,
+                numeric: true),
           if (layout.columns.contains(HexoraFinancialColumn.vat))
-            HexoraFinancialHeaderCell(
-                label: 'IVA', width: layout.vat, numeric: true),
+            _cell(context, CompactDocumentColumn.vat, 'IVA', layout.vat,
+                numeric: true),
           if (layout.columns.contains(HexoraFinancialColumn.total))
-            HexoraFinancialHeaderCell(
-                label: 'Total', width: layout.total, numeric: true),
+            _cell(context, CompactDocumentColumn.total, 'Total', layout.total,
+                numeric: true),
           SizedBox(
             key: const ValueKey('document-actions-header'),
             width: layout.actions,
@@ -230,6 +281,7 @@ class CompactDocumentRow extends StatelessWidget {
       this.primaryActionWidth = 0,
       this.quickActionSlots = 0,
       this.date,
+      this.payment,
       this.taxableBase,
       this.vat,
       this.visibleFinancialColumns = const {HexoraFinancialColumn.total}});
@@ -255,6 +307,7 @@ class CompactDocumentRow extends StatelessWidget {
   /// keeps the same position on every row. Standard order: Edit, Download.
   final int quickActionSlots;
   final DateTime? date;
+  final Widget? payment;
   final num? taxableBase;
   final num? vat;
   final Set<HexoraFinancialColumn> visibleFinancialColumns;
@@ -492,6 +545,15 @@ class CompactDocumentRow extends StatelessWidget {
                             child: status)),
                     if (!layout.expanded) const SizedBox(width: 12),
                   ],
+                  if (columns.contains(HexoraFinancialColumn.payment))
+                    SizedBox(
+                      key: const ValueKey('document-payment-column'),
+                      width: layout.payment,
+                      child: Align(
+                        alignment: AlignmentDirectional.center,
+                        child: payment ?? const SizedBox.shrink(),
+                      ),
+                    ),
                   if (columns.contains(HexoraFinancialColumn.date))
                     HexoraDateCell(value: date, width: layout.date),
                   if (columns.contains(HexoraFinancialColumn.taxableBase))
