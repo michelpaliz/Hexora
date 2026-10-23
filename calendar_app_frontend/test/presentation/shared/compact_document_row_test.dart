@@ -12,7 +12,7 @@ import 'package:hexora/theme/themes/app_theme.dart';
 
 void main() {
   for (final brightness in Brightness.values) {
-    for (final width in [400.0, 900.0]) {
+    for (final width in [400.0, 700.0, 900.0]) {
       testWidgets(
           'compact financial rows $brightness width $width retain actions',
           (tester) async {
@@ -71,7 +71,7 @@ void main() {
         ));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-        if (width == 900) {
+        if (width >= 650) {
           expect(tester.getSize(find.byType(CompactDocumentRow).first).height,
               lessThanOrEqualTo(HexoraDocumentTokens.rowHeight));
           expect(

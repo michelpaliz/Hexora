@@ -4,6 +4,20 @@ import 'package:hexora/presentation/shared/widgets/hexora_list_row.dart';
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 
+Set<HexoraFinancialColumn> _columnsForWidth(
+  double width,
+  Set<HexoraFinancialColumn> requested,
+) {
+  final columns = Set<HexoraFinancialColumn>.of(requested);
+  if (width < 860) {
+    columns
+      ..remove(HexoraFinancialColumn.taxableBase)
+      ..remove(HexoraFinancialColumn.vat);
+  }
+  if (width < 640) columns.remove(HexoraFinancialColumn.date);
+  return columns;
+}
+
 class CompactDocumentAction {
   const CompactDocumentAction(this.label, this.onPressed,
       {this.destructive = false});
@@ -44,19 +58,15 @@ class CompactDocumentTableHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return LayoutBuilder(builder: (context, constraints) {
-      final financialWidth = (visibleFinancialColumns
-                  .contains(HexoraFinancialColumn.date)
+      if (constraints.maxWidth < 560) return const SizedBox.shrink();
+      final columns =
+          _columnsForWidth(constraints.maxWidth, visibleFinancialColumns);
+      final financialWidth = (columns.contains(HexoraFinancialColumn.date)
               ? 104.0
               : 0) +
-          (visibleFinancialColumns.contains(HexoraFinancialColumn.taxableBase)
-              ? 112.0
-              : 0) +
-          (visibleFinancialColumns.contains(HexoraFinancialColumn.vat)
-              ? 96.0
-              : 0) +
-          (visibleFinancialColumns.contains(HexoraFinancialColumn.total)
-              ? 120.0
-              : 0);
+          (columns.contains(HexoraFinancialColumn.taxableBase) ? 112.0 : 0) +
+          (columns.contains(HexoraFinancialColumn.vat) ? 96.0 : 0) +
+          (columns.contains(HexoraFinancialColumn.total) ? 120.0 : 0);
       if (constraints.maxWidth <
           financialWidth +
               HexoraDocumentTokens.statusColumn +
@@ -78,16 +88,15 @@ class CompactDocumentTableHeader extends StatelessWidget {
             child: HexoraFinancialHeaderCell(
                 label: statusLabel, width: double.infinity),
           ),
-          if (visibleFinancialColumns.contains(HexoraFinancialColumn.date))
+          if (columns.contains(HexoraFinancialColumn.date))
             const HexoraFinancialHeaderCell(label: 'Fecha', width: 104),
-          if (visibleFinancialColumns
-              .contains(HexoraFinancialColumn.taxableBase))
+          if (columns.contains(HexoraFinancialColumn.taxableBase))
             const HexoraFinancialHeaderCell(
                 label: 'Base imponible', width: 112, numeric: true),
-          if (visibleFinancialColumns.contains(HexoraFinancialColumn.vat))
+          if (columns.contains(HexoraFinancialColumn.vat))
             const HexoraFinancialHeaderCell(
                 label: 'IVA', width: 96, numeric: true),
-          if (visibleFinancialColumns.contains(HexoraFinancialColumn.total))
+          if (columns.contains(HexoraFinancialColumn.total))
             const HexoraFinancialHeaderCell(
                 label: 'Total', width: 120, numeric: true),
           SizedBox(width: actionsWidth),
@@ -151,9 +160,9 @@ class CompactDocumentRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final touch = MediaQuery.sizeOf(context).width < 650 ||
-        Theme.of(context).platform == TargetPlatform.android ||
-        Theme.of(context).platform == TargetPlatform.iOS;
+    // The web target platform may still report Android/iOS. Use the actual
+    // viewport so desktop panes do not inherit the stacked mobile row.
+    final touch = MediaQuery.sizeOf(context).width < 650;
     final target = touch ? 48.0 : 40.0;
     final emptySlots = quickActionSlots > quickActions.length
         ? quickActionSlots - quickActions.length
@@ -173,26 +182,18 @@ class CompactDocumentRow extends StatelessWidget {
             const baseWidth = 112.0;
             const vatWidth = 96.0;
             const totalWidth = 120.0;
-            final financialWidth = (visibleFinancialColumns
-                        .contains(HexoraFinancialColumn.date)
-                    ? dateWidth
-                    : 0) +
-                (visibleFinancialColumns
-                        .contains(HexoraFinancialColumn.taxableBase)
-                    ? baseWidth
-                    : 0) +
-                (visibleFinancialColumns.contains(HexoraFinancialColumn.vat)
-                    ? vatWidth
-                    : 0) +
-                (visibleFinancialColumns.contains(HexoraFinancialColumn.total)
-                    ? totalWidth
-                    : 0);
-            final narrow = constraints.maxWidth <
-                    (HexoraDocumentTokens.statusColumn +
-                        financialWidth +
-                        actionsColumnWidth +
-                        110) ||
-                MediaQuery.textScalerOf(context).scale(13) > 18;
+            final columns =
+                _columnsForWidth(constraints.maxWidth, visibleFinancialColumns);
+            final stacked =
+                touch || MediaQuery.textScalerOf(context).scale(13) > 18;
+            final showStatusColumn = !stacked && constraints.maxWidth >= 560;
+            final dateInMetadata =
+                visibleFinancialColumns.contains(HexoraFinancialColumn.date) &&
+                    !columns.contains(HexoraFinancialColumn.date);
+            final secondaryLabel = [
+              metadata,
+              if (dateInMetadata) HexoraFinancialFormat.date(date),
+            ].where((value) => value.isNotEmpty).join(' · ');
             final summary = Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,24 +206,31 @@ class CompactDocumentRow extends StatelessWidget {
                           style: text.bodyMedium?.copyWith(
                               fontFamily: HexoraTypography.fontFamily,
                               fontSize: 13,
-                              fontWeight: FontWeight.w500)),
+                              fontWeight: FontWeight.w600)),
                     ),
                     if (titleTrailing != null) ...[
                       const SizedBox(width: 6),
                       titleTrailing!,
                     ],
                   ]),
-                  Text(metadata,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.bodySmall?.copyWith(
-                          fontFamily: HexoraTypography.fontFamily,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w400,
-                          color: cs.onSurfaceVariant)),
-                  if (narrow &&
-                      visibleFinancialColumns
-                          .contains(HexoraFinancialColumn.date))
+                  Row(children: [
+                    Expanded(
+                      child: Text(secondaryLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.bodySmall?.copyWith(
+                              fontFamily: HexoraTypography.fontFamily,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w400,
+                              color: cs.onSurfaceVariant,
+                              fontFeatures: HexoraTypography.numericFeatures)),
+                    ),
+                    if (!showStatusColumn && status != null) ...[
+                      const SizedBox(width: 6),
+                      Flexible(child: status!),
+                    ],
+                  ]),
+                  if (stacked && columns.contains(HexoraFinancialColumn.date))
                     Text(
                       HexoraFinancialFormat.date(date),
                       maxLines: 1,
@@ -233,7 +241,6 @@ class CompactDocumentRow extends StatelessWidget {
                         fontFeatures: HexoraTypography.numericFeatures,
                       ),
                     ),
-                  if (narrow && status != null) status!,
                 ]);
             final amountWidget = amount == null
                 ? null
@@ -267,7 +274,7 @@ class CompactDocumentRow extends StatelessWidget {
                       child: IconButton(
                           tooltip: action.tooltip,
                           onPressed: action.busy ? null : action.onPressed,
-                          iconSize: HexoraDocumentTokens.icon,
+                          iconSize: 16,
                           padding: EdgeInsets.zero,
                           icon: action.busy
                               ? busyIndicator()
@@ -279,7 +286,7 @@ class CompactDocumentRow extends StatelessWidget {
                     child: IconButton(
                         tooltip: previewLabel,
                         onPressed: previewBusy ? null : onPreview,
-                        iconSize: HexoraDocumentTokens.icon,
+                        iconSize: 16,
                         padding: EdgeInsets.zero,
                         icon: previewBusy
                             ? const SizedBox(
@@ -297,8 +304,7 @@ class CompactDocumentRow extends StatelessWidget {
                     child: PopupMenuButton<int>(
                         tooltip:
                             MaterialLocalizations.of(context).moreButtonTooltip,
-                        icon: const Icon(Icons.more_vert,
-                            size: HexoraDocumentTokens.icon),
+                        icon: const Icon(Icons.more_vert, size: 16),
                         padding: EdgeInsets.zero,
                         onSelected: (index) => actions[index].onPressed?.call(),
                         itemBuilder: (_) => [
@@ -318,30 +324,28 @@ class CompactDocumentRow extends StatelessWidget {
               Row(children: [
                 // Blue is reserved for selection and primary actions.
                 Icon(icon,
-                    size: HexoraDocumentTokens.icon,
+                    size: 16,
                     color: selected ? cs.primary : cs.onSurfaceVariant),
                 const SizedBox(width: 8),
                 Expanded(child: summary),
-                if (!narrow) ...[
+                if (!stacked) ...[
                   const SizedBox(width: 8),
-                  SizedBox(
-                      key: const ValueKey('document-status-column'),
-                      width: HexoraDocumentTokens.statusColumn,
-                      child: Align(
-                          alignment: AlignmentDirectional.centerEnd,
-                          child: status)),
-                  const SizedBox(width: 12),
-                  if (visibleFinancialColumns
-                      .contains(HexoraFinancialColumn.date))
+                  if (showStatusColumn) ...[
+                    SizedBox(
+                        key: const ValueKey('document-status-column'),
+                        width: HexoraDocumentTokens.statusColumn,
+                        child: Align(
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: status)),
+                    const SizedBox(width: 12),
+                  ],
+                  if (columns.contains(HexoraFinancialColumn.date))
                     HexoraDateCell(value: date, width: dateWidth),
-                  if (visibleFinancialColumns
-                      .contains(HexoraFinancialColumn.taxableBase))
+                  if (columns.contains(HexoraFinancialColumn.taxableBase))
                     HexoraFinancialCell(value: taxableBase, width: baseWidth),
-                  if (visibleFinancialColumns
-                      .contains(HexoraFinancialColumn.vat))
+                  if (columns.contains(HexoraFinancialColumn.vat))
                     HexoraFinancialCell(value: vat, width: vatWidth),
-                  if (visibleFinancialColumns
-                      .contains(HexoraFinancialColumn.total))
+                  if (columns.contains(HexoraFinancialColumn.total))
                     SizedBox(
                         key: const ValueKey('document-amount-column'),
                         width: totalWidth,
@@ -354,11 +358,10 @@ class CompactDocumentRow extends StatelessWidget {
                       child: actionsWidget),
                 ],
               ]),
-              if (narrow)
+              if (stacked)
                 Row(children: [
                   Expanded(
-                      child: visibleFinancialColumns
-                              .contains(HexoraFinancialColumn.total)
+                      child: columns.contains(HexoraFinancialColumn.total)
                           ? amountWidget ?? const SizedBox.shrink()
                           : const SizedBox.shrink()),
                   actionsWidget
