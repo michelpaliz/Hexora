@@ -181,47 +181,29 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
               widget.minListWidth + widget.minPreviewWidth + _dividerWidth) {
         mode = hasSelection ? DocumentViewMode.document : DocumentViewMode.list;
       }
-      return switch (mode) {
-        DocumentViewMode.list => Row(children: [
-            Expanded(child: widget.list),
-            SizedBox(width: widget.gap),
-            _ModeRail(
-              actions: [
-                _RailAction(
-                  icon: Icons.vertical_split_outlined,
-                  tooltip: _isEs ? 'Vista dividida' : 'Split view',
-                  onPressed: () => _setMode(DocumentViewMode.split),
-                ),
-                _RailAction(
-                  icon: Icons.open_in_full_rounded,
-                  tooltip: _isEs ? 'Ampliar documento' : 'Expand document',
-                  onPressed: hasSelection
-                      ? () => _setMode(DocumentViewMode.document)
-                      : null,
-                ),
-              ],
-            ),
-          ]),
-        DocumentViewMode.document => Row(children: [
-            _ModeRail(
-              actions: [
-                _RailAction(
-                  icon: Icons.view_list_outlined,
-                  tooltip: _isEs ? 'Mostrar solo la lista' : 'Show list only',
-                  onPressed: () => _setMode(DocumentViewMode.list),
-                ),
-                _RailAction(
-                  icon: Icons.vertical_split_outlined,
-                  tooltip: _isEs ? 'Vista dividida' : 'Split view',
-                  onPressed: () => _setMode(DocumentViewMode.split),
-                ),
-              ],
-            ),
-            SizedBox(width: widget.gap),
-            Expanded(child: widget.preview),
-          ]),
+      final workspace = switch (mode) {
+        DocumentViewMode.list => widget.list,
+        DocumentViewMode.document => widget.preview,
         DocumentViewMode.split => _buildSplit(width),
       };
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _ModeToolbar(
+            mode: mode,
+            hasSelection: hasSelection,
+            compactTooltip: _isEs ? 'Compactar panel' : 'Compact panel',
+            expandTooltip: _isEs ? 'Expandir panel' : 'Expand panel',
+            restoreTooltip: _isEs ? 'Restaurar panel' : 'Restore panel',
+            onCompact: () => _setMode(DocumentViewMode.list),
+            onRestore: () => _setMode(DocumentViewMode.split),
+            onExpand:
+                hasSelection ? () => _setMode(DocumentViewMode.document) : null,
+          ),
+          SizedBox(height: widget.gap / 2),
+          Expanded(child: workspace),
+        ],
+      );
     });
   }
 
@@ -255,18 +237,6 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
           setState(() => _fraction = widget.initialListFraction);
           _persist();
         },
-        collapsePreview: _RailAction(
-          icon: Icons.chevron_right_rounded,
-          tooltip: _isEs ? 'Ocultar vista previa' : 'Hide preview',
-          onPressed: () => _setMode(DocumentViewMode.list),
-        ),
-        expandPreview: _RailAction(
-          icon: Icons.chevron_left_rounded,
-          tooltip: _isEs ? 'Ampliar documento' : 'Expand document',
-          onPressed: widget.selectionKey == null
-              ? null
-              : () => _setMode(DocumentViewMode.document),
-        ),
         dragTooltip: _isEs
             ? 'Arrastra para redimensionar · doble clic para restablecer'
             : 'Drag to resize · double-click to reset',
@@ -327,49 +297,113 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
   }
 }
 
-class _RailAction {
-  const _RailAction({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
+class _ModeToolbar extends StatelessWidget {
+  const _ModeToolbar({
+    required this.mode,
+    required this.hasSelection,
+    required this.compactTooltip,
+    required this.expandTooltip,
+    required this.restoreTooltip,
+    required this.onCompact,
+    required this.onExpand,
+    required this.onRestore,
   });
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback? onPressed;
-}
 
-Widget _railButton(BuildContext context, _RailAction action) => IconButton(
-      tooltip: action.tooltip,
-      onPressed: action.onPressed,
-      icon: Icon(action.icon),
-      iconSize: 18,
-      color: Theme.of(context).colorScheme.onSurfaceVariant,
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints.tightFor(width: 28, height: 28),
-      visualDensity: VisualDensity.compact,
-    );
-
-/// Collapsed pane: a slim strip with the buttons that bring it back.
-class _ModeRail extends StatelessWidget {
-  const _ModeRail({required this.actions});
-  final List<_RailAction> actions;
+  final DocumentViewMode mode;
+  final bool hasSelection;
+  final String compactTooltip;
+  final String expandTooltip;
+  final String restoreTooltip;
+  final VoidCallback onCompact;
+  final VoidCallback? onExpand;
+  final VoidCallback onRestore;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      width: 36,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
+    return SizedBox(
+      height: 34,
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: Container(
+          padding: const EdgeInsets.all(1),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.45),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ModeButton(
+                icon: Icons.view_sidebar_outlined,
+                tooltip: compactTooltip,
+                active: mode == DocumentViewMode.list,
+                onPressed: mode == DocumentViewMode.list ? null : onCompact,
+              ),
+              _ModeButton(
+                icon: Icons.splitscreen_rounded,
+                tooltip: restoreTooltip,
+                active: mode == DocumentViewMode.split,
+                onPressed: mode == DocumentViewMode.split ? null : onRestore,
+              ),
+              _ModeButton(
+                icon: Icons.open_in_full_rounded,
+                tooltip: expandTooltip,
+                active: mode == DocumentViewMode.document,
+                onPressed: mode == DocumentViewMode.document || !hasSelection
+                    ? null
+                    : onExpand,
+              ),
+            ],
+          ),
+        ),
       ),
-      child: Column(children: [
-        for (final action in actions) ...[
-          _railButton(context, action),
-          const SizedBox(height: 4),
-        ],
-      ]),
+    );
+  }
+}
+
+class _ModeButton extends StatelessWidget {
+  const _ModeButton({
+    required this.icon,
+    required this.tooltip,
+    required this.active,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final bool active;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Semantics(
+      selected: active,
+      button: true,
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        icon: Icon(icon),
+        iconSize: 17,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+        style: IconButton.styleFrom(
+          minimumSize: const Size(30, 30),
+          maximumSize: const Size(30, 30),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          foregroundColor: active ? cs.primary : cs.onSurfaceVariant,
+          disabledForegroundColor:
+              active ? cs.primary : cs.onSurface.withValues(alpha: 0.3),
+          backgroundColor:
+              active ? cs.primaryContainer.withValues(alpha: 0.55) : null,
+          disabledBackgroundColor:
+              active ? cs.primaryContainer.withValues(alpha: 0.55) : null,
+        ),
+      ),
     );
   }
 }
@@ -381,8 +415,6 @@ class _SplitDivider extends StatefulWidget {
     required this.onDragUpdate,
     required this.onDragEnd,
     required this.onReset,
-    required this.collapsePreview,
-    required this.expandPreview,
     required this.dragTooltip,
   });
 
@@ -391,8 +423,6 @@ class _SplitDivider extends StatefulWidget {
   final ValueChanged<double> onDragUpdate;
   final VoidCallback onDragEnd;
   final VoidCallback onReset;
-  final _RailAction collapsePreview;
-  final _RailAction expandPreview;
   final String dragTooltip;
 
   @override
@@ -410,9 +440,6 @@ class _SplitDividerState extends State<_SplitDivider> {
     return SizedBox(
       width: widget.width,
       child: Column(children: [
-        const SizedBox(height: 6),
-        _railButton(context, widget.expandPreview),
-        _railButton(context, widget.collapsePreview),
         Expanded(
           child: Tooltip(
             message: widget.dragTooltip,

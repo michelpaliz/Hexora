@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_workspace_chrome.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   testWidgets('document status tabs preserve selection callbacks',
       (tester) async {
     var selected = 0;
@@ -78,5 +82,50 @@ void main() {
     await tester.tap(find.byIcon(Icons.close_rounded));
 
     expect((previous, next, expanded, closed), (1, 1, 1, 1));
+  });
+
+  testWidgets('split layout controls are horizontal and preserve modes',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.forPlatform(
+          Brightness.light,
+          platform: TargetPlatform.windows,
+        ),
+        home: const Scaffold(
+          body: DocumentSplitView(
+            storageKey: 'workspace-control-test',
+            selectionKey: 'selected-document',
+            list: Text('Document list'),
+            preview: Text('Document preview'),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byTooltip('Compact panel'), findsOneWidget);
+    expect(find.byTooltip('Restore panel'), findsOneWidget);
+    expect(find.byTooltip('Expand panel'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Compact panel'));
+    await tester.pump();
+    expect(find.text('Document list'), findsOneWidget);
+    expect(find.text('Document preview'), findsNothing);
+
+    await tester.tap(find.byTooltip('Restore panel'));
+    await tester.pump();
+    expect(find.text('Document list'), findsOneWidget);
+    expect(find.text('Document preview'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Expand panel'));
+    await tester.pump();
+    expect(find.text('Document list'), findsNothing);
+    expect(find.text('Document preview'), findsOneWidget);
   });
 }
