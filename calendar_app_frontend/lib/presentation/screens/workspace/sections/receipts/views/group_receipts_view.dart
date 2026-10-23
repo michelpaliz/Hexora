@@ -143,9 +143,9 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
                 ),
               ),
               CompactDocumentTableHeader(
-                identityLabel: 'Recibo / Cliente',
+                identityLabel: 'Recibo',
                 visibleFinancialColumns: _visible,
-                actionsWidth: 120,
+                actionsWidth: 144,
               ),
             ],
           );

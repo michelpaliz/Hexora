@@ -357,8 +357,14 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       selected: widget.selected,
       onTap: widget.onTap,
       previewLabel: isEs ? 'Vista previa' : 'Preview',
-      quickActionSlots: 2,
+      quickActionSlots: 3,
       quickActions: [
+        if (widget.onPreview != null)
+          CompactDocumentQuickAction(
+            icon: Icons.visibility_outlined,
+            tooltip: isEs ? 'Vista previa' : 'Preview',
+            onPressed: widget.onPreview,
+          ),
         if (widget.onEdit != null)
           CompactDocumentQuickAction(
             icon: Icons.edit_outlined,
@@ -398,9 +404,6 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                 ? (isEs ? 'Ocultar detalles' : 'Hide details')
                 : (isEs ? 'Ver detalles' : 'Show details'),
             () => setState(() => _detailsExpanded = !_detailsExpanded)),
-        if (widget.onPreview != null)
-          CompactDocumentAction(
-              isEs ? 'Vista previa' : 'Preview', widget.onPreview),
         if (widget.onIssue != null)
           CompactDocumentAction(l.invoiceIssueCta, widget.onIssue),
         if (widget.onInspectRecurrence != null)

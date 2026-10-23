@@ -22,6 +22,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/j
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/prompt_clipboard_helper.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_workspace_chrome.dart';
 import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
@@ -2191,9 +2192,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       final id = _budgetId(item);
       final selectedRow = (_selectedBudgetId ?? '').trim() == id.trim();
       final date = _budgetDate(item);
-      final dateLabel = date == null
-          ? '-'
-          : DateFormat.yMMMd(l.localeName).format(date.toLocal());
       final totalLabel = NumberFormat.currency(
         locale: l.localeName,
         symbol: '€',
@@ -2231,21 +2229,24 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
               : HexoraDocumentStatus.cancelled;
       final number = _budgetNumber(item).trim();
       final hasNumber = number.isNotEmpty && number != '-';
+      void selectBudget() {
+        setState(() => _selectedBudgetId = id);
+        _loadDetailPreviewPdf(id);
+      }
 
       return CompactDocumentRow(
         icon: Icons.request_quote_outlined,
-        title: _budgetClientName(item, l),
-        metadata: [
-          hasNumber ? number : statusLabel,
-          dateLabel,
-        ].join(' · '),
+        title: hasNumber ? number : statusLabel,
+        metadata: _budgetClientName(item, l),
         amount: totalLabel,
-        selected: selectedRow,
-        onTap: () {
-          setState(() => _selectedBudgetId = id);
-          _loadDetailPreviewPdf(id);
+        date: date,
+        visibleFinancialColumns: const {
+          HexoraFinancialColumn.date,
+          HexoraFinancialColumn.total,
         },
-        previewLabel: l.download,
+        selected: selectedRow,
+        onTap: selectBudget,
+        previewLabel: _isSpanishLocale ? 'Vista previa' : 'Preview',
         status: HexoraStatusBadge.document(context,
             status: documentStatus, label: statusLabel),
         primaryActionWidth: primaryActionWidth,
@@ -2276,8 +2277,13 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                   label: Text(_isSpanishLocale ? 'Emitir' : 'Issue'),
                 ),
               ),
-        quickActionSlots: 2,
+        quickActionSlots: 3,
         quickActions: [
+          CompactDocumentQuickAction(
+            icon: Icons.visibility_outlined,
+            tooltip: _isSpanishLocale ? 'Vista previa' : 'Preview',
+            onPressed: selectBudget,
+          ),
           if (widget.onEditDraftBudget != null)
             CompactDocumentQuickAction(
               icon: Icons.edit_outlined,
@@ -2581,6 +2587,17 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                     ],
                   ),
                   const SizedBox(height: 6),
+                  if (!_loadingBudgets &&
+                      (_budgetsError ?? '').trim().isEmpty &&
+                      activeList.isNotEmpty)
+                    CompactDocumentTableHeader(
+                      identityLabel: 'Presupuesto',
+                      visibleFinancialColumns: const {
+                        HexoraFinancialColumn.date,
+                        HexoraFinancialColumn.total,
+                      },
+                      actionsWidth: primaryActionWidth + 144,
+                    ),
                   Expanded(
                     child: _loadingBudgets
                         ? const Center(child: CircularProgressIndicator())

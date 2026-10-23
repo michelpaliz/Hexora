@@ -423,9 +423,9 @@ extension _InvoiceListLayout on _InvoicesTabListState {
           ],
           const SizedBox(height: 6),
           CompactDocumentTableHeader(
-            identityLabel: 'Factura / Cliente',
+            identityLabel: 'Factura',
             visibleFinancialColumns: _visibleFinancialColumns,
-            actionsWidth: 120,
+            actionsWidth: 144,
           ),
           Expanded(
             child: visible.isEmpty
@@ -512,6 +512,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                                         )
                                     : null,
                                 onTap: () => widget.onTap(inv),
+                                onPreview: () => widget.onTap(inv),
                                 onDelete: widget.onDelete == null
                                     ? null
                                     : () => widget.onDelete!(inv),

@@ -97,7 +97,10 @@ void main() {
         await tester.tap(find.descendant(
             of: find.byType(CompactDocumentRow).at(1),
             matching: find.byTooltip(l.download)));
-        await select(0, 'Vista previa');
+        await tester.tap(find.descendant(
+            of: find.byType(CompactDocumentRow).at(0),
+            matching: find.byTooltip('Vista previa')));
+        await tester.pumpAndSettle();
         expect(calls, contains('preview'));
         await select(0, l.invoiceIssueCta);
         await select(0, 'Ver recurrencia');

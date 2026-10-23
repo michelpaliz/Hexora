@@ -7,6 +7,7 @@ import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/invoice_row_item.dart';
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_list_row.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
 
@@ -15,7 +16,7 @@ void main() {
     testWidgets('invoice columns and status slots align in $brightness',
         (tester) async {
       tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(1000, 700);
+      tester.view.physicalSize = const Size(1400, 700);
       addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(tester.view.resetPhysicalSize);
       var opened = 0;
@@ -28,6 +29,15 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
             body: Column(children: [
+          const CompactDocumentTableHeader(
+            identityLabel: 'Factura',
+            visibleFinancialColumns: {
+              HexoraFinancialColumn.date,
+              HexoraFinancialColumn.taxableBase,
+              HexoraFinancialColumn.vat,
+              HexoraFinancialColumn.total,
+            },
+          ),
           for (var i = 0; i < 3; i++)
             InvoiceListItem(
               invoice: Invoice(
@@ -43,12 +53,35 @@ void main() {
               selected: i == 1,
               warning: i == 2,
               onTap: () => opened++,
+              onPreview: () => opened++,
+              visibleFinancialColumns: const {
+                HexoraFinancialColumn.date,
+                HexoraFinancialColumn.taxableBase,
+                HexoraFinancialColumn.vat,
+                HexoraFinancialColumn.total,
+              },
             ),
         ])),
       ));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       final rows = find.byType(CompactDocumentRow);
+      expect(find.text('Factura'), findsOneWidget);
+      expect(find.text('Cliente'), findsOneWidget);
+      expect(find.text('Acciones'), findsOneWidget);
+      expect(find.byKey(const ValueKey('document-identity-column')),
+          findsNWidgets(3));
+      expect(find.byKey(const ValueKey('document-client-column')),
+          findsNWidgets(3));
+      expect(
+        tester
+            .getTopRight(find.byKey(const ValueKey('document-actions-header')))
+            .dx,
+        tester
+            .getTopRight(
+                find.byKey(const ValueKey('document-actions-column')).first)
+            .dx,
+      );
       for (final key in [
         'document-status-column',
         'document-amount-column',
@@ -68,7 +101,8 @@ void main() {
       expect(
           tester.getCenter(links.at(0)).dx, tester.getCenter(links.at(2)).dx);
       for (var i = 0; i < 3; i++) {
-        expect(tester.getSize(rows.at(i)).height, lessThanOrEqualTo(HexoraDocumentTokens.rowHeight));
+        expect(tester.getSize(rows.at(i)).height,
+            lessThanOrEqualTo(HexoraDocumentTokens.rowHeight));
       }
       expect(find.byTooltip('Requiere atención'), findsOneWidget);
       BorderDirectional border(int row) {

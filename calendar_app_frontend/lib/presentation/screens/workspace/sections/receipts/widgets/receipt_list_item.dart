@@ -351,8 +351,8 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
     }
 
     return CompactDocumentRow(
-      title: widget.client.name,
-      metadata: number,
+      title: number,
+      metadata: widget.client.name,
       amount: totalLabel,
       date: date,
       taxableBase: widget.receipt.subtotal,
@@ -361,8 +361,15 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
       selected: widget.selected,
       onTap: widget.onTap,
       previewLabel: l.preview,
-      quickActionSlots: 2,
+      quickActionSlots: 3,
       quickActions: [
+        if (widget.onPreview != null)
+          CompactDocumentQuickAction(
+            icon: Icons.visibility_outlined,
+            tooltip: l.preview,
+            busy: _previewing,
+            onPressed: _previewing ? null : _runPreview,
+          ),
         if (widget.onEdit != null)
           CompactDocumentQuickAction(
             icon: Icons.edit_outlined,
@@ -407,9 +414,6 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
                 ? l.clientDetailsCollapseTooltip
                 : l.clientDetailsExpandTooltip,
             () => setState(() => _detailsExpanded = !_detailsExpanded)),
-        if (widget.onPreview != null)
-          CompactDocumentAction(_previewing ? '${l.preview}…' : l.preview,
-              _previewing ? null : _runPreview),
         if (canMarkSent && widget.onMarkSent != null)
           CompactDocumentAction('Marcar como enviado', widget.onMarkSent),
         if (canMarkUnsent && widget.onMarkUnsent != null)
