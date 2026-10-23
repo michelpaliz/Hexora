@@ -157,4 +157,32 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('filter surface supports a scrollable value list',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: HexoraFilterableHeaderCell(
+          label: 'Cliente',
+          width: 180,
+          menuBuilder: (_) => Padding(
+            padding: const EdgeInsets.all(12),
+            child: HexoraMultiSelectFilter(
+              values: List.generate(40, (index) => 'Cliente $index'),
+              selected: const {},
+              labelFor: (value) => value,
+              onChanged: (_) {},
+            ),
+          ),
+        ),
+      ),
+    ));
+
+    await tester.tap(find.byTooltip('Filtrar y ordenar Cliente'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cliente 0'), findsOneWidget);
+    expect(find.byType(ListView), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

@@ -55,6 +55,40 @@ class HexoraFilterableHeaderCell extends StatelessWidget {
   final HexoraHeaderSortDirection? sortDirection;
   final WidgetBuilder menuBuilder;
 
+  Future<void> _showFilterDialog(BuildContext context) {
+    final viewport = MediaQuery.sizeOf(context);
+    final maxHeight = (viewport.height - 48).clamp(240.0, 520.0);
+    return showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.08),
+      builder: (dialogContext) {
+        final cs = Theme.of(dialogContext).colorScheme;
+        return Dialog(
+          insetPadding: const EdgeInsets.all(24),
+          clipBehavior: Clip.antiAlias,
+          backgroundColor: cs.surface,
+          surfaceTintColor: Colors.transparent,
+          elevation: 8,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: cs.outlineVariant),
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: 280,
+              maxWidth: 320,
+              maxHeight: maxHeight,
+            ),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.zero,
+              child: menuBuilder(dialogContext),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -66,70 +100,70 @@ class HexoraFilterableHeaderCell extends StatelessWidget {
             : numeric
                 ? AlignmentDirectional.centerEnd
                 : AlignmentDirectional.centerStart,
-        child: PopupMenuButton<void>(
-          tooltip: 'Filtrar y ordenar $label',
-          padding: EdgeInsets.zero,
-          position: PopupMenuPosition.under,
-          constraints: const BoxConstraints(minWidth: 260, maxWidth: 320),
-          itemBuilder: (context) => [
-            PopupMenuItem<void>(
-              enabled: false,
-              padding: EdgeInsets.zero,
-              child: menuBuilder(context),
-            ),
-          ],
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 30),
-            padding: const EdgeInsets.symmetric(horizontal: 3),
-            decoration: filterActive
-                ? BoxDecoration(
-                    color: cs.primaryContainer.withValues(alpha: .55),
-                    borderRadius: BorderRadius.circular(6),
-                  )
-                : null,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: width > 32 ? width - 32 : width,
-                  ),
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontFamily: HexoraTypography.fontFamily,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w500,
-                          color:
-                              filterActive ? cs.primary : cs.onSurfaceVariant,
-                        ),
-                  ),
-                ),
-                const SizedBox(width: 3),
-                Icon(
-                  sortDirection == HexoraHeaderSortDirection.ascending
-                      ? Icons.arrow_upward_rounded
-                      : sortDirection == HexoraHeaderSortDirection.descending
-                          ? Icons.arrow_downward_rounded
-                          : Icons.filter_alt_outlined,
-                  size: 13,
-                  color: filterActive || sortDirection != null
-                      ? cs.primary
-                      : cs.onSurfaceVariant,
-                ),
-                if (filterActive)
-                  Container(
-                    margin: const EdgeInsetsDirectional.only(start: 3),
-                    width: 5,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: cs.primary,
-                      shape: BoxShape.circle,
+        child: Tooltip(
+          message: 'Filtrar y ordenar $label',
+          child: Semantics(
+            button: true,
+            label: 'Filtrar y ordenar $label',
+            child: InkWell(
+              borderRadius: BorderRadius.circular(6),
+              onTap: () => _showFilterDialog(context),
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 30),
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                decoration: filterActive
+                    ? BoxDecoration(
+                        color: cs.primaryContainer.withValues(alpha: .55),
+                        borderRadius: BorderRadius.circular(6),
+                      )
+                    : null,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: width > 32 ? width - 32 : width,
+                      ),
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              fontFamily: HexoraTypography.fontFamily,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                              color: filterActive
+                                  ? cs.primary
+                                  : cs.onSurfaceVariant,
+                            ),
+                      ),
                     ),
-                  ),
-              ],
+                    const SizedBox(width: 3),
+                    Icon(
+                      sortDirection == HexoraHeaderSortDirection.ascending
+                          ? Icons.arrow_upward_rounded
+                          : sortDirection ==
+                                  HexoraHeaderSortDirection.descending
+                              ? Icons.arrow_downward_rounded
+                              : Icons.filter_alt_outlined,
+                      size: 13,
+                      color: filterActive || sortDirection != null
+                          ? cs.primary
+                          : cs.onSurfaceVariant,
+                    ),
+                    if (filterActive)
+                      Container(
+                        margin: const EdgeInsetsDirectional.only(start: 3),
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: cs.primary,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
