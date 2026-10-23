@@ -12,6 +12,8 @@ class InvoiceDetailHeader extends StatelessWidget {
     required this.issueDateLabel,
     required this.moreActions,
     this.onBack,
+    this.onPrevious,
+    this.onNext,
     this.onClose,
     this.invoiceType,
     this.onExpand,
@@ -26,6 +28,8 @@ class InvoiceDetailHeader extends StatelessWidget {
   final String issueDateLabel;
   final Widget moreActions;
   final VoidCallback? onBack;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
   final VoidCallback? onClose;
   final String? invoiceType;
   final VoidCallback? onExpand;
@@ -49,7 +53,8 @@ class InvoiceDetailHeader extends StatelessWidget {
       dateLabel: issueDateLabel,
       trailingLabel: typeLabel,
       moreActions: moreActions,
-      onPrevious: onBack,
+      onPrevious: onPrevious ?? onBack,
+      onNext: onNext,
       onClose: onClose,
       onExpand: onExpand,
       isExpanded: isExpanded,

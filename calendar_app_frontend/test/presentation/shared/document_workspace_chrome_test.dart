@@ -109,23 +109,17 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byTooltip('Compact panel'), findsOneWidget);
-    expect(find.byTooltip('Restore panel'), findsOneWidget);
-    expect(find.byTooltip('Expand panel'), findsOneWidget);
+    expect(find.byTooltip('List only'), findsOneWidget);
+    expect(find.byTooltip('Split view'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Compact panel'));
+    await tester.tap(find.byTooltip('List only'));
     await tester.pump();
     expect(find.text('Document list'), findsOneWidget);
     expect(find.text('Document preview'), findsNothing);
 
-    await tester.tap(find.byTooltip('Restore panel'));
+    await tester.tap(find.byTooltip('Split view'));
     await tester.pump();
     expect(find.text('Document list'), findsOneWidget);
-    expect(find.text('Document preview'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Expand panel'));
-    await tester.pump();
-    expect(find.text('Document list'), findsNothing);
     expect(find.text('Document preview'), findsOneWidget);
   });
 }

@@ -674,12 +674,8 @@ class _PresupuestoDocumentActionsViewState
               onNext: index >= 0 && index + 1 < documents.length
                   ? () => _selectDetail(documents[index + 1])
                   : null,
-              onExpand: () {
-                _splitModeNotifier.value = mode == DocumentViewMode.document
-                    ? DocumentViewMode.split
-                    : DocumentViewMode.document;
-              },
-              isExpanded: mode == DocumentViewMode.document,
+              onExpand: null,
+              isExpanded: false,
               onClose: _closeDetail,
               moreActions: PopupMenuButton<String>(
                 tooltip: 'Más acciones',

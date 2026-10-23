@@ -2357,13 +2357,8 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                   selectedIndex >= 0 && selectedIndex + 1 < activeList.length
                       ? () => selectAt(selectedIndex + 1)
                       : null,
-              onExpand: () {
-                _budgetSplitModeNotifier.value =
-                    mode == DocumentViewMode.document
-                        ? DocumentViewMode.split
-                        : DocumentViewMode.document;
-              },
-              isExpanded: mode == DocumentViewMode.document,
+              onExpand: null,
+              isExpanded: false,
               onClose: () => setState(() => _selectedBudgetId = null),
               moreActions: PopupMenuButton<String>(
                 tooltip: _isSpanishLocale ? 'Más acciones' : 'More actions',

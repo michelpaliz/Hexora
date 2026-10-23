@@ -631,12 +631,8 @@ class GroupReceiptsView extends StatelessWidget {
                             onSelectReceipt(activeReceipts[selectedIndex + 1])
                         : null,
                     onClose: onClearSelection,
-                    onExpand: () {
-                      modeNotifier.value = mode == DocumentViewMode.document
-                          ? DocumentViewMode.split
-                          : DocumentViewMode.document;
-                    },
-                    isExpanded: mode == DocumentViewMode.document,
+                    onExpand: null,
+                    isExpanded: false,
                   ),
                 ),
         ),

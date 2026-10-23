@@ -101,24 +101,24 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
     super.dispose();
   }
 
-  void _toggleExpand() {
-    _splitModeNotifier.value =
-        _splitModeNotifier.value == DocumentViewMode.document
-            ? null
-            : DocumentViewMode.document;
-  }
-
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final activeInvoices =
+        widget.initialTabIndex == 0 ? widget.drafts : widget.invoices;
+    final selectedIndex = widget.selectedInvoice == null
+        ? -1
+        : activeInvoices.indexWhere(
+            (invoice) => invoice.id == widget.selectedInvoice!.id,
+          );
 
     return Padding(
       padding: const EdgeInsets.all(5),
       child: ValueListenableBuilder<DocumentViewMode?>(
         valueListenable: _splitModeNotifier,
-        builder: (context, splitMode, _) => DocumentSplitView(
+        builder: (context, mode, child) => DocumentSplitView(
           storageKey: 'invoices',
           modeNotifier: _splitModeNotifier,
           selectionKey: widget.selectedInvoice?.id,
@@ -241,8 +241,19 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                     onOpenRecurringSeries: widget.onOpenRecurringSeries,
                     onInvoiceChanged: widget.onRefresh,
                     onClose: widget.onClearSelection,
-                    onExpand: _toggleExpand,
-                    isExpanded: splitMode == DocumentViewMode.document,
+                    onPrevious: selectedIndex > 0
+                        ? () => widget.onSelectInvoice(
+                              activeInvoices[selectedIndex - 1],
+                            )
+                        : null,
+                    onNext: selectedIndex >= 0 &&
+                            selectedIndex + 1 < activeInvoices.length
+                        ? () => widget.onSelectInvoice(
+                              activeInvoices[selectedIndex + 1],
+                            )
+                        : null,
+                    onExpand: null,
+                    isExpanded: false,
                   ),
           ),
         ),

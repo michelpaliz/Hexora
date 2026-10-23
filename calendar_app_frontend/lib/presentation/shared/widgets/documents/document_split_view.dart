@@ -92,7 +92,9 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
 
   void _onExternalMode() {
     final m = widget.modeNotifier!.value;
-    if (m != _userMode) setState(() => _userMode = m);
+    final normalized =
+        m == DocumentViewMode.document ? DocumentViewMode.split : m;
+    if (normalized != _userMode) setState(() => _userMode = normalized);
   }
 
   Future<void> _restore() async {
@@ -104,9 +106,12 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
       if (!mounted) return;
       setState(() {
         if (fraction != null) _fraction = fraction;
-        _userMode = DocumentViewMode.values
+        final restored = DocumentViewMode.values
             .where((m) => m.name == modeName)
             .firstOrNull;
+        _userMode = restored == DocumentViewMode.document
+            ? DocumentViewMode.split
+            : restored;
       });
     } catch (_) {
       // Preferences are a convenience; defaults are fine without them.
@@ -141,9 +146,6 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
     if (widget.selectionKey != null &&
         widget.selectionKey != oldWidget.selectionKey) {
       _overlayOpen = true;
-      // Picking a document while the preview is collapsed means the user
-      // wants to see it.
-      if (_userMode == DocumentViewMode.list) _userMode = null;
     }
     if (widget.selectionKey == null) _overlayOpen = false;
   }
@@ -176,10 +178,11 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
           : DocumentViewMode.list;
       var mode = _userMode ?? defaultMode;
       // Not enough room for both panes at their minimum: fall back to one.
+      if (mode == DocumentViewMode.document) mode = DocumentViewMode.split;
       if (mode == DocumentViewMode.split &&
           width <
               widget.minListWidth + widget.minPreviewWidth + _dividerWidth) {
-        mode = hasSelection ? DocumentViewMode.document : DocumentViewMode.list;
+        mode = hasSelection ? DocumentViewMode.split : DocumentViewMode.list;
       }
       final workspace = switch (mode) {
         DocumentViewMode.list => widget.list,
@@ -191,14 +194,10 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
         children: [
           _ModeToolbar(
             mode: mode,
-            hasSelection: hasSelection,
-            compactTooltip: _isEs ? 'Compactar panel' : 'Compact panel',
-            expandTooltip: _isEs ? 'Expandir panel' : 'Expand panel',
-            restoreTooltip: _isEs ? 'Restaurar panel' : 'Restore panel',
+            listTooltip: _isEs ? 'Solo lista' : 'List only',
+            splitTooltip: _isEs ? 'Vista dividida' : 'Split view',
             onCompact: () => _setMode(DocumentViewMode.list),
             onRestore: () => _setMode(DocumentViewMode.split),
-            onExpand:
-                hasSelection ? () => _setMode(DocumentViewMode.document) : null,
           ),
           SizedBox(height: widget.gap / 2),
           Expanded(child: workspace),
@@ -300,22 +299,16 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
 class _ModeToolbar extends StatelessWidget {
   const _ModeToolbar({
     required this.mode,
-    required this.hasSelection,
-    required this.compactTooltip,
-    required this.expandTooltip,
-    required this.restoreTooltip,
+    required this.listTooltip,
+    required this.splitTooltip,
     required this.onCompact,
-    required this.onExpand,
     required this.onRestore,
   });
 
   final DocumentViewMode mode;
-  final bool hasSelection;
-  final String compactTooltip;
-  final String expandTooltip;
-  final String restoreTooltip;
+  final String listTooltip;
+  final String splitTooltip;
   final VoidCallback onCompact;
-  final VoidCallback? onExpand;
   final VoidCallback onRestore;
 
   @override
@@ -339,23 +332,15 @@ class _ModeToolbar extends StatelessWidget {
             children: [
               _ModeButton(
                 icon: Icons.view_sidebar_outlined,
-                tooltip: compactTooltip,
+                tooltip: listTooltip,
                 active: mode == DocumentViewMode.list,
                 onPressed: mode == DocumentViewMode.list ? null : onCompact,
               ),
               _ModeButton(
                 icon: Icons.splitscreen_rounded,
-                tooltip: restoreTooltip,
+                tooltip: splitTooltip,
                 active: mode == DocumentViewMode.split,
                 onPressed: mode == DocumentViewMode.split ? null : onRestore,
-              ),
-              _ModeButton(
-                icon: Icons.open_in_full_rounded,
-                tooltip: expandTooltip,
-                active: mode == DocumentViewMode.document,
-                onPressed: mode == DocumentViewMode.document || !hasSelection
-                    ? null
-                    : onExpand,
               ),
             ],
           ),

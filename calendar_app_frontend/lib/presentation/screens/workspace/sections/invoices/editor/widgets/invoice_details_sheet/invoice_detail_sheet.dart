@@ -48,6 +48,8 @@ class InvoiceDetailSheet extends StatefulWidget {
   final ValueChanged<String>? onOpenRecurringSeries;
   final VoidCallback? onInvoiceChanged;
   final VoidCallback? onClose;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
 
   final bool fullPage;
   final VoidCallback? onExpand;
@@ -63,6 +65,8 @@ class InvoiceDetailSheet extends StatefulWidget {
     this.onOpenRecurringSeries,
     this.onInvoiceChanged,
     this.onClose,
+    this.onPrevious,
+    this.onNext,
     this.onExpand,
     this.isExpanded = false,
   });
@@ -267,7 +271,9 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
                               ),
                         ),
                         Text(
-                          invoice.displayNumber(draftLabel: l.statusDraft),
+                          invoice.invoiceNumber.trim().isEmpty
+                              ? (isEs ? 'Factura' : 'Invoice')
+                              : invoice.invoiceNumber.trim(),
                           style: AppTypography.of(context).bodySmall.copyWith(
                                 color: cs.onSurfaceVariant,
                                 fontWeight: FontWeight.w600,
@@ -470,7 +476,8 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
             .add_Hm()
             .format(invoice.occurrenceDate!);
     final issueDate = invoice.issueDate ?? invoice.registeredAt;
-    final issueDateLabel = issueDate == null
+    final issueDateLabel = issueDate == null ||
+            (invoice.status ?? '').trim().toLowerCase() != 'issued'
         ? ''
         : '${isEs ? 'Emitida el' : 'Issued'} ${DateFormat.yMMMd(l.localeName).format(issueDate.toLocal())}';
 
@@ -554,7 +561,8 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
                   issueDateLabel: issueDateLabel,
                   invoiceType: invoice.invoiceType,
                   moreActions: headerMenu,
-                  onBack: widget.onClose,
+                  onPrevious: widget.onPrevious,
+                  onNext: widget.onNext,
                   onClose: widget.onClose,
                   onExpand: widget.onExpand,
                   isExpanded: widget.isExpanded,
@@ -708,16 +716,13 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         ),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(6),
               child: Container(
                 decoration: BoxDecoration(
                   color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: cs.outlineVariant.withValues(alpha: 0.3),
-                  ),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: _buildPdfArea(cs, l),
               ),
