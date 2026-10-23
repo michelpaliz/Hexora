@@ -122,4 +122,39 @@ void main() {
     expect(find.text('Filtro compacto'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('open filter survives responsive header removal', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(900, 640);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LayoutBuilder(
+          builder: (context, constraints) => constraints.maxWidth >= 560
+              ? HexoraFilterableHeaderCell(
+                  label: 'Cliente',
+                  width: 180,
+                  menuBuilder: (_) => const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text('Filtro adaptable'),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ),
+    ));
+
+    await tester.tap(find.byTooltip('Filtrar y ordenar Cliente'));
+    await tester.pumpAndSettle();
+    expect(find.text('Filtro adaptable'), findsOneWidget);
+
+    tester.view.physicalSize = const Size(480, 640);
+    await tester.pumpAndSettle();
+    await tester.tapAt(const Offset(450, 600));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
 }
