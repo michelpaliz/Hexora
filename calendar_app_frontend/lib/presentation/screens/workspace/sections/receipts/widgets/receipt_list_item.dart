@@ -367,8 +367,8 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
           CompactDocumentQuickAction(
             icon: Icons.visibility_outlined,
             tooltip: l.preview,
-            busy: _previewing,
-            onPressed: _previewing ? null : _runPreview,
+            onPressed: widget.onTap,
+            opensPreviewDrawer: true,
           ),
         if (widget.onEdit != null)
           CompactDocumentQuickAction(

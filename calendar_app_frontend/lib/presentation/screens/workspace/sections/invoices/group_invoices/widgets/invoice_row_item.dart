@@ -364,6 +364,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
             icon: Icons.visibility_outlined,
             tooltip: isEs ? 'Vista previa' : 'Preview',
             onPressed: widget.onPreview,
+            opensPreviewDrawer: true,
           ),
         if (widget.onEdit != null)
           CompactDocumentQuickAction(

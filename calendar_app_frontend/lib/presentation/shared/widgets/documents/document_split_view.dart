@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// How the workspace is shared between the document list and its preview.
@@ -9,6 +10,29 @@ enum DocumentViewMode { list, split, document }
 /// viewers (iframes) would otherwise swallow the pointer mid-drag, so
 /// [PdfInlinePreview] stops taking pointer events while this is set.
 final ValueNotifier<bool> documentSplitDragging = ValueNotifier(false);
+
+/// Exposes the effective workspace mode to document rows and lets a preview
+/// action request the list-mode drawer without coupling the list to the split
+/// view state.
+class DocumentWorkspaceScope extends InheritedWidget {
+  const DocumentWorkspaceScope({
+    super.key,
+    required this.mode,
+    required this.openPreviewDrawer,
+    required super.child,
+  });
+
+  final DocumentViewMode mode;
+  final VoidCallback openPreviewDrawer;
+
+  static DocumentWorkspaceScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<DocumentWorkspaceScope>();
+
+  @override
+  bool updateShouldNotify(DocumentWorkspaceScope oldWidget) =>
+      mode != oldWidget.mode ||
+      openPreviewDrawer != oldWidget.openPreviewDrawer;
+}
 
 /// One list + preview layout for every document module (invoices, receipts,
 /// quotes, contracts).
@@ -78,7 +102,10 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
   /// Explicit user choice; null means "default for this width".
   late DocumentViewMode? _userMode = _modes[widget.storageKey];
   bool _overlayOpen = false;
+  bool _previewDrawerOpen = false;
   bool _dragging = false;
+  FocusNode? _focusBeforeDrawer;
+  final FocusNode _drawerFocus = FocusNode(debugLabel: 'documentPreviewDrawer');
 
   String get _fractionPref => 'documentSplit.${widget.storageKey}.fraction';
   String get _modePref => 'documentSplit.${widget.storageKey}.mode';
@@ -148,23 +175,54 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
       _overlayOpen = true;
     }
     if (widget.selectionKey == null) _overlayOpen = false;
+    if (widget.selectionKey == null) _previewDrawerOpen = false;
   }
 
   @override
   void dispose() {
     widget.modeNotifier?.removeListener(_onExternalMode);
     if (_dragging) documentSplitDragging.value = false;
+    _drawerFocus.dispose();
     super.dispose();
   }
 
   void _setMode(DocumentViewMode? mode) {
-    setState(() => _userMode = mode);
+    setState(() {
+      _userMode = mode;
+      if (mode != DocumentViewMode.list) _previewDrawerOpen = false;
+    });
     widget.modeNotifier?.value = mode;
     _persist();
   }
 
   bool get _isEs =>
       Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
+
+  void _openPreviewDrawer() {
+    _focusBeforeDrawer = FocusManager.instance.primaryFocus;
+    setState(() {
+      // Preserve the effective list layout when selection changes. Without an
+      // explicit list mode, medium-width workspaces would switch to split as
+      // soon as the preview action selected a document.
+      _userMode = DocumentViewMode.list;
+      _previewDrawerOpen = true;
+    });
+    widget.modeNotifier?.value = DocumentViewMode.list;
+    _persist();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _drawerFocus.requestFocus();
+    });
+  }
+
+  void _closePreviewDrawer() {
+    if (!_previewDrawerOpen) return;
+    setState(() => _previewDrawerOpen = false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_focusBeforeDrawer?.canRequestFocus ?? false) {
+        _focusBeforeDrawer!.requestFocus();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -185,9 +243,13 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
         mode = hasSelection ? DocumentViewMode.split : DocumentViewMode.list;
       }
       final workspace = switch (mode) {
-        DocumentViewMode.list => widget.list,
+        DocumentViewMode.list => _buildListWithPreviewDrawer(width),
         DocumentViewMode.document => widget.preview,
-        DocumentViewMode.split => _buildSplit(width),
+        DocumentViewMode.split => DocumentWorkspaceScope(
+            mode: DocumentViewMode.split,
+            openPreviewDrawer: _openPreviewDrawer,
+            child: _buildSplit(width),
+          ),
       };
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -207,6 +269,64 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
   }
 
   static const double _dividerWidth = 24;
+
+  Widget _buildListWithPreviewDrawer(double width) {
+    final cs = Theme.of(context).colorScheme;
+    final drawerWidth = (width * .38).clamp(420.0, 520.0);
+    final hasPreview = widget.selectionKey != null;
+    return Stack(clipBehavior: Clip.hardEdge, children: [
+      Positioned.fill(
+        child: DocumentWorkspaceScope(
+          mode: DocumentViewMode.list,
+          openPreviewDrawer: _openPreviewDrawer,
+          child: widget.list,
+        ),
+      ),
+      if (hasPreview && _previewDrawerOpen)
+        PositionedDirectional(
+          top: 0,
+          bottom: 0,
+          end: 0,
+          width: drawerWidth,
+          child: TweenAnimationBuilder<double>(
+            key: ValueKey(widget.selectionKey),
+            tween: Tween(begin: 1, end: 0),
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, child) => Transform.translate(
+              offset: Offset(drawerWidth * value, 0),
+              child: child,
+            ),
+            child: CallbackShortcuts(
+              bindings: {
+                const SingleActivator(LogicalKeyboardKey.escape):
+                    _closePreviewDrawer,
+              },
+              child: Focus(
+                focusNode: _drawerFocus,
+                child: FocusTraversalGroup(
+                  child: Material(
+                    key: const ValueKey('document-preview-drawer'),
+                    color: cs.surface,
+                    elevation: 10,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: const BorderRadiusDirectional.only(
+                        topStart: Radius.circular(8),
+                        bottomStart: Radius.circular(8),
+                      ),
+                      side: BorderSide(
+                          color: cs.outlineVariant.withValues(alpha: .55)),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: widget.preview,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+    ]);
+  }
 
   Widget _buildSplit(double width) {
     final available = width - _dividerWidth;
@@ -250,7 +370,13 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
     final phone = width < 650;
     final panelWidth = phone ? width : (width * 0.85).clamp(0.0, 640.0);
     return Stack(children: [
-      Positioned.fill(child: widget.list),
+      Positioned.fill(
+        child: DocumentWorkspaceScope(
+          mode: DocumentViewMode.list,
+          openPreviewDrawer: _openPreviewDrawer,
+          child: widget.list,
+        ),
+      ),
       if (open) ...[
         if (!phone)
           Positioned.fill(

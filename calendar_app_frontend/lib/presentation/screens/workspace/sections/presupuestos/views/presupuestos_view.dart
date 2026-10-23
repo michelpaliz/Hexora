@@ -2283,6 +2283,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
             icon: Icons.visibility_outlined,
             tooltip: _isSpanishLocale ? 'Vista previa' : 'Preview',
             onPressed: selectBudget,
+            opensPreviewDrawer: true,
           ),
           if (widget.onEditDraftBudget != null)
             CompactDocumentQuickAction(

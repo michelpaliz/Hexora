@@ -3,6 +3,7 @@ import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_list_row.dart';
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
 
 Set<HexoraFinancialColumn> _columnsForWidth(
   double width,
@@ -109,11 +110,13 @@ class CompactDocumentQuickAction {
       {required this.icon,
       required this.tooltip,
       required this.onPressed,
-      this.busy = false});
+      this.busy = false,
+      this.opensPreviewDrawer = false});
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
   final bool busy;
+  final bool opensPreviewDrawer;
 }
 
 class CompactDocumentTableHeader extends StatelessWidget {
@@ -137,15 +140,18 @@ class CompactDocumentTableHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final split =
+        DocumentWorkspaceScope.maybeOf(context)?.mode == DocumentViewMode.split;
+    final effectiveActionsWidth = split ? actionsWidth - 36 : actionsWidth;
     return LayoutBuilder(builder: (context, constraints) {
       if (constraints.maxWidth < 560) return const SizedBox.shrink();
       final contentWidth = constraints.maxWidth - 24;
       final layout = _documentColumnLayout(
-          contentWidth, visibleFinancialColumns, actionsWidth);
+          contentWidth, visibleFinancialColumns, effectiveActionsWidth);
       final financialWidth =
           layout.date + layout.base + layout.vat + layout.total;
       if (constraints.maxWidth <
-          financialWidth + layout.status + actionsWidth + 180) {
+          financialWidth + layout.status + effectiveActionsWidth + 180) {
         return const SizedBox.shrink();
       }
       return Container(
@@ -257,15 +263,28 @@ class CompactDocumentRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final workspace = DocumentWorkspaceScope.maybeOf(context);
+    final hidePreviewAction = workspace?.mode == DocumentViewMode.split;
+    final visibleQuickActions = quickActions
+        .where((action) => !(hidePreviewAction && action.opensPreviewDrawer))
+        .toList(growable: false);
+    final hiddenPreviewSlots =
+        hidePreviewAction && quickActions.any((a) => a.opensPreviewDrawer)
+            ? 1
+            : 0;
+    final effectiveQuickActionSlots =
+        (quickActionSlots - hiddenPreviewSlots).clamp(0, quickActionSlots);
     // The web target platform may still report Android/iOS. Use the actual
     // viewport so desktop panes do not inherit the stacked mobile row.
     final touch = MediaQuery.sizeOf(context).width < 650;
     final target = touch ? 48.0 : 36.0;
-    final emptySlots = quickActionSlots > quickActions.length
-        ? quickActionSlots - quickActions.length
+    final emptySlots = effectiveQuickActionSlots > visibleQuickActions.length
+        ? effectiveQuickActionSlots - visibleQuickActions.length
         : 0;
     final iconSlots =
-        (quickActions.isEmpty ? 1 : quickActions.length) + emptySlots + 1;
+        (visibleQuickActions.isEmpty ? 1 : visibleQuickActions.length) +
+            emptySlots +
+            1;
     final actionsColumnWidth = target * iconSlots + primaryActionWidth;
     return Column(mainAxisSize: MainAxisSize.min, children: [
       HexoraListRow(
@@ -361,14 +380,21 @@ class CompactDocumentRow extends StatelessWidget {
               else if (primaryAction != null)
                 primaryAction!,
               for (var i = 0; i < emptySlots; i++) SizedBox(width: target),
-              if (quickActions.isNotEmpty)
-                for (final action in quickActions)
+              if (visibleQuickActions.isNotEmpty)
+                for (final action in visibleQuickActions)
                   SizedBox(
                       width: target,
                       height: target,
                       child: IconButton(
                           tooltip: action.tooltip,
-                          onPressed: action.busy ? null : action.onPressed,
+                          onPressed: action.busy || action.onPressed == null
+                              ? null
+                              : () {
+                                  if (action.opensPreviewDrawer) {
+                                    workspace?.openPreviewDrawer();
+                                  }
+                                  action.onPressed!.call();
+                                },
                           iconSize: 16,
                           padding: EdgeInsets.zero,
                           style: IconButton.styleFrom(
