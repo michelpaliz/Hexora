@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_print
 
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/auth/exceptions/exception.dart';
@@ -11,6 +12,9 @@ import 'package:hexora/models/jobs/job_notification.dart';
 import '../../models/notifications/notification_user.dart'; // Update this import based on your file structure
 
 class NotificationApiClient {
+  NotificationApiClient({http.Client? client}) : _client = client;
+
+  final http.Client? _client;
   final String baseUrl = '${ApiConstants.baseUrl}/notifications';
 
   Uri _u([String path = '', Map<String, String>? query]) {
@@ -197,22 +201,23 @@ class NotificationApiClient {
   Future<NotificationUser> updateNotification(
     NotificationUser notification,
   ) async {
-    final response = await AuthenticatedHttpClient.put(
+    if (notification.id.trim().isEmpty) {
+      throw ArgumentError('Notification id is required');
+    }
+    final response = await AuthenticatedHttpClient.patch(
       Uri.parse('$baseUrl/${notification.id}'), // Use notification's id
+      client: _client,
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
       },
       body: jsonEncode(
-        notification.toJson(),
-      ), // Use NotificationUser's toJson method
+        <String, dynamic>{'isRead': notification.isRead},
+      ),
     );
-    if (response.statusCode == 200) {
-      return NotificationUser.fromJson(
-        jsonDecode(response.body),
-      ); // Convert back to NotificationUser
-    } else {
-      throw Exception('Failed to update notification');
-    }
+    _ensureOk(response, fallback: 'Failed to update notification');
+    final body = _decodeBody(response);
+    if (body is! Map) throw const FormatException('Invalid notification response');
+    return NotificationUser.fromJson(Map<String, dynamic>.from(body));
   }
 
   /// DELETE /notifications  -> removes all notifications for the authenticated user
