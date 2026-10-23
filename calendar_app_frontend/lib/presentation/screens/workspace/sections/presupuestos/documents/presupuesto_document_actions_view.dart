@@ -584,7 +584,7 @@ class _PresupuestoDocumentActionsViewState
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                 child: _filterToolbar(context),
               ),
               Padding(

@@ -56,68 +56,8 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
       symbol: '€',
       decimalDigits: 2,
     );
-    final displayedCount = count;
     final mismatches = _num(summary?['mismatchCount']).toInt();
-    final isLight = Theme.of(context).brightness == Brightness.light;
-
-    final periodParts = <String>[];
-    if (fromDate != null && toDate != null) {
-      final sameMonth =
-          fromDate!.year == toDate!.year && fromDate!.month == toDate!.month;
-      periodParts.add(sameMonth
-          ? DateFormat('MMMM yyyy', isEs ? 'es_ES' : 'en_US').format(fromDate!)
-          : '${DateFormat('d MMM', isEs ? 'es_ES' : 'en_US').format(fromDate!)} – ${DateFormat('d MMM yyyy', isEs ? 'es_ES' : 'en_US').format(toDate!)}');
-    }
-    final countText = displayedCount == totalCount
-        ? (isEs ? '$displayedCount facturas' : '$displayedCount invoices')
-        : (isEs
-            ? 'Mostrando $displayedCount de $totalCount facturas'
-            : 'Showing $displayedCount of $totalCount invoices');
-    final subtitle = ([countText, ...periodParts]).join(' · ');
-
-    final leading = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: cs.primaryContainer.withValues(alpha: isLight ? 0.45 : 0.18),
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Icon(Icons.receipt_long_outlined, size: 21, color: cs.primary),
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              isEs ? 'Facturas' : 'Invoices',
-              style: t.titleLarge.copyWith(
-                color: cs.onSurface,
-                fontWeight: FontWeight.w700,
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: t.caption.copyWith(
-                color: cs.onSurfaceVariant,
-                fontSize: 11,
-                height: 1.1,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-
     final search = SizedBox(
-      width: 320,
       height: 38,
       child: TextFormField(
         initialValue: searchQuery,
@@ -237,8 +177,6 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            leading,
-            const SizedBox(height: 10),
             if (constraints.maxWidth < 560) ...[
               SizedBox(width: double.infinity, child: search),
               const SizedBox(height: 8),
@@ -255,9 +193,7 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
         );
       }
       return Row(children: [
-        Expanded(child: Align(alignment: Alignment.centerLeft, child: leading)),
-        const SizedBox(width: 18),
-        Flexible(child: search),
+        Expanded(child: search),
         const SizedBox(width: 10),
         actions,
       ]);
@@ -267,7 +203,7 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
             color: cs.surface,
             borderRadius: BorderRadius.circular(10),
@@ -277,7 +213,7 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
           ),
           child: toolbar,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         totals,
         if (!loading && (error ?? '').trim().isNotEmpty) ...[
           const SizedBox(height: 6),

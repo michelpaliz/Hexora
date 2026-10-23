@@ -282,7 +282,7 @@ class GroupReceiptsView extends StatelessWidget {
         : activeReceipts.indexWhere((item) => item.id == selectedReceipt!.id);
 
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(5),
       child: DocumentSplitView(
         storageKey: 'receipts',
         modeNotifier: modeNotifier,
