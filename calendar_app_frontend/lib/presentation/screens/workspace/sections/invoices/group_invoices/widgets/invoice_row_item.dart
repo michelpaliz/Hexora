@@ -340,7 +340,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
         warningText(widget.monthWarningTooltip ?? widget.monthWarningLabel),
     ].join('\n');
     return CompactDocumentRow(
-      title: widget.showClient ? widget.client.name : numberLabel,
+      title: numberLabel,
       titleTrailing: warningTooltip.isEmpty
           ? null
           : Tooltip(
@@ -348,7 +348,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
               child: Icon(Icons.warning_amber_rounded,
                   size: 16, color: warning ? cs.error : amber),
             ),
-      metadata: widget.showClient ? numberLabel : '',
+      metadata: widget.showClient ? widget.client.name : '',
       amount: totalLabel,
       date: date,
       taxableBase: _subtotal,

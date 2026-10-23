@@ -165,7 +165,7 @@ class CompactDocumentRow extends StatelessWidget {
       HexoraListRow(
           selected: selected,
           onTap: onTap,
-          minHeight: HexoraDocumentTokens.rowHeight,
+          minHeight: 52,
           verticalPadding: 2,
           separatorWidth: 1,
           child: LayoutBuilder(builder: (context, constraints) {
