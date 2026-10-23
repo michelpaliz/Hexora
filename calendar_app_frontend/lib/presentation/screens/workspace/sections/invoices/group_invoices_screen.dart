@@ -203,7 +203,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   String? _error;
   final bool _busyProfile = false;
   bool _disableReceiptPreviewInteraction = false;
-  int _receiptListTabIndex = 0;
+  int _receiptListTabIndex = 1;
   final ValueNotifier<DocumentViewMode?> _receiptSplitModeNotifier =
       ValueNotifier<DocumentViewMode?>(null);
   final Set<String> _updatingReceiptDeliveryIds = <String>{};
@@ -347,6 +347,8 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       }
       if (target != null) {
         _selectedReceipt = target;
+        _receiptListTabIndex =
+            _receiptDrafts.any((r) => r.id == target!.id) ? 0 : 1;
         if (_selectedMenu != 'receipts') {
           _selectedMenu = 'receipts';
         }
@@ -475,9 +477,9 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
             }
           }
         }
-        _selectedReceipt ??= _receiptDrafts.isNotEmpty
-            ? _receiptDrafts.first
-            : (_receipts.isNotEmpty ? _receipts.first : null);
+        _selectedReceipt ??= _receipts.isNotEmpty
+            ? _receipts.first
+            : (_receiptDrafts.isNotEmpty ? _receiptDrafts.first : null);
         _applyPendingInitialSelections();
       });
     } catch (e) {

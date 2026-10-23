@@ -10,7 +10,7 @@ import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/presentation/screens/workspace/sections/receipts/widgets/receipt_detail_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/receipts/widgets/receipt_list_item.dart';
-import 'package:hexora/presentation/screens/workspace/sections/receipts/utils/receipt_delivery_utils.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -64,6 +64,17 @@ class _MonthDivider extends StatelessWidget {
       CompactDocumentMonthHeading(label: label);
 }
 
+enum _ReceiptSortColumn { number, client, status, date, base, total }
+
+class _ReceiptRange {
+  const _ReceiptRange({this.min, this.max});
+  final num? min;
+  final num? max;
+  bool get active => min != null || max != null;
+  bool includes(num value) =>
+      (min == null || value >= min!) && (max == null || value <= max!);
+}
+
 class _GroupedReceiptList extends StatefulWidget {
   final List<Receipt> receipts;
   final List<GroupClient> clients;
@@ -94,6 +105,16 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
     HexoraFinancialColumn.total,
   };
   Set<HexoraFinancialColumn> _visible = Set.of(_available);
+  String _numberQuery = '';
+  Set<String> _clients = {};
+  Set<String> _statuses = {};
+  Set<String> _deliveryStatuses = {};
+  DateTime? _fromDate;
+  DateTime? _toDate;
+  _ReceiptRange _baseRange = const _ReceiptRange();
+  _ReceiptRange _totalRange = const _ReceiptRange();
+  _ReceiptSortColumn? _sort;
+  bool _ascending = false;
 
   @override
   void initState() {
@@ -105,22 +126,329 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
 
   DateTime? _date(Receipt r) => r.issueDate ?? r.registeredAt;
 
+  num _total(Receipt receipt) =>
+      receipt.total ??
+      receipt.lines.fold<num>(
+        0,
+        (sum, line) => sum + (line.total ?? (line.quantity * line.unitPrice)),
+      );
+
+  String _clientName(Receipt receipt) => _receiptClientFor(
+        receipt,
+        widget.clients,
+        widget.unknownClientLabel,
+      ).name.trim().toLowerCase();
+
+  String _status(Receipt receipt) {
+    final raw = (receipt.status ?? '').trim().toLowerCase();
+    if (raw.contains('void') || raw.contains('cancel')) return 'void';
+    if (raw.contains('issue')) return 'issued';
+    return 'draft';
+  }
+
+  String _statusLabel(String value) => switch (value) {
+        'draft' => 'Borrador',
+        'void' => 'Anulado',
+        _ => 'Emitido',
+      };
+
+  String _deliveryLabel(String value) => switch (value) {
+        'sent' => 'Enviado',
+        'failed' => 'Error de envío',
+        _ => 'No enviado',
+      };
+
+  bool get _hasFilters =>
+      _numberQuery.isNotEmpty ||
+      _clients.isNotEmpty ||
+      _statuses.isNotEmpty ||
+      _deliveryStatuses.isNotEmpty ||
+      _fromDate != null ||
+      _toDate != null ||
+      _baseRange.active ||
+      _totalRange.active;
+
+  void _setSort(_ReceiptSortColumn column, bool ascending) => setState(() {
+        _sort = column;
+        _ascending = ascending;
+      });
+
+  void _clearAll() => setState(() {
+        _numberQuery = '';
+        _clients = {};
+        _statuses = {};
+        _deliveryStatuses = {};
+        _fromDate = null;
+        _toDate = null;
+        _baseRange = const _ReceiptRange();
+        _totalRange = const _ReceiptRange();
+      });
+
+  void _setDateMonths(int months) {
+    final now = DateTime.now();
+    setState(() {
+      _toDate = now;
+      _fromDate = DateTime(now.year, now.month - months, now.day + 1);
+    });
+  }
+
+  Future<void> _pickDateRange() async {
+    final now = DateTime.now();
+    final value = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(now.year - 10),
+      lastDate: DateTime(now.year + 5),
+      initialDateRange: _fromDate == null || _toDate == null
+          ? null
+          : DateTimeRange(start: _fromDate!, end: _toDate!),
+    );
+    if (value != null) {
+      setState(() {
+        _fromDate = value.start;
+        _toDate = value.end;
+      });
+    }
+  }
+
+  bool _filterActive(CompactDocumentColumn column) => switch (column) {
+        CompactDocumentColumn.identity => _numberQuery.isNotEmpty,
+        CompactDocumentColumn.client => _clients.isNotEmpty,
+        CompactDocumentColumn.status =>
+          _statuses.isNotEmpty || _deliveryStatuses.isNotEmpty,
+        CompactDocumentColumn.date => _fromDate != null || _toDate != null,
+        CompactDocumentColumn.taxableBase => _baseRange.active,
+        CompactDocumentColumn.total => _totalRange.active,
+        _ => false,
+      };
+
+  _ReceiptSortColumn _sortColumn(CompactDocumentColumn column) =>
+      switch (column) {
+        CompactDocumentColumn.identity => _ReceiptSortColumn.number,
+        CompactDocumentColumn.client => _ReceiptSortColumn.client,
+        CompactDocumentColumn.status => _ReceiptSortColumn.status,
+        CompactDocumentColumn.date => _ReceiptSortColumn.date,
+        CompactDocumentColumn.taxableBase => _ReceiptSortColumn.base,
+        _ => _ReceiptSortColumn.total,
+      };
+
+  void _clearColumn(CompactDocumentColumn column) => setState(() {
+        switch (column) {
+          case CompactDocumentColumn.identity:
+            _numberQuery = '';
+          case CompactDocumentColumn.client:
+            _clients = {};
+          case CompactDocumentColumn.status:
+            _statuses = {};
+            _deliveryStatuses = {};
+          case CompactDocumentColumn.date:
+            _fromDate = null;
+            _toDate = null;
+          case CompactDocumentColumn.taxableBase:
+            _baseRange = const _ReceiptRange();
+          case CompactDocumentColumn.total:
+            _totalRange = const _ReceiptRange();
+          case CompactDocumentColumn.payment:
+          case CompactDocumentColumn.vat:
+            break;
+        }
+      });
+
+  Widget _header(
+    BuildContext context,
+    CompactDocumentColumn column,
+    String label,
+    double width,
+    bool numeric,
+  ) {
+    final sortColumn = _sortColumn(column);
+    final active = _filterActive(column);
+    final direction = _sort == sortColumn
+        ? (_ascending
+            ? HexoraHeaderSortDirection.ascending
+            : HexoraHeaderSortDirection.descending)
+        : null;
+    final clientValues = widget.receipts
+        .map(_clientName)
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    final statusValues = widget.receipts.map(_status).toSet().toList();
+    final deliveryValues = widget.receipts
+        .map((r) => normalizedDeliveryStatus(r.deliveryStatus))
+        .toSet()
+        .toList();
+
+    Widget filter = const SizedBox.shrink();
+    if (column == CompactDocumentColumn.identity) {
+      filter = TextFormField(
+        initialValue: _numberQuery,
+        autofocus: true,
+        decoration: const InputDecoration(
+          labelText: 'Número de recibo',
+          hintText: 'Búsqueda exacta o parcial',
+          prefixIcon: Icon(Icons.search_rounded, size: 18),
+          isDense: true,
+        ),
+        onChanged: (value) => setState(() => _numberQuery = value.trim()),
+      );
+    } else if (column == CompactDocumentColumn.client) {
+      filter = HexoraMultiSelectFilter(
+        values: clientValues,
+        selected: _clients,
+        labelFor: (value) => value,
+        onChanged: (value) => setState(() => _clients = value),
+      );
+    } else if (column == CompactDocumentColumn.status) {
+      filter = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Documento', style: Theme.of(context).textTheme.labelSmall),
+          HexoraMultiSelectFilter(
+            values: statusValues,
+            selected: _statuses,
+            labelFor: _statusLabel,
+            onChanged: (value) => setState(() => _statuses = value),
+          ),
+          const SizedBox(height: 6),
+          Text('Entrega', style: Theme.of(context).textTheme.labelSmall),
+          HexoraMultiSelectFilter(
+            values: deliveryValues,
+            selected: _deliveryStatuses,
+            labelFor: _deliveryLabel,
+            onChanged: (value) => setState(() => _deliveryStatuses = value),
+          ),
+        ],
+      );
+    } else if (column == CompactDocumentColumn.date) {
+      filter = Wrap(spacing: 6, runSpacing: 6, children: [
+        ActionChip(
+            label: const Text('Mes'), onPressed: () => _setDateMonths(1)),
+        ActionChip(
+            label: const Text('Trimestre'), onPressed: () => _setDateMonths(3)),
+        ActionChip(
+            label: const Text('Año'), onPressed: () => _setDateMonths(12)),
+        ActionChip(
+            avatar: const Icon(Icons.date_range_outlined, size: 15),
+            label: const Text('Rango'),
+            onPressed: _pickDateRange),
+      ]);
+    } else if (column == CompactDocumentColumn.taxableBase) {
+      filter = HexoraAmountRangeInput(
+        min: _baseRange.min,
+        max: _baseRange.max,
+        onChanged: (min, max) =>
+            setState(() => _baseRange = _ReceiptRange(min: min, max: max)),
+      );
+    } else if (column == CompactDocumentColumn.total) {
+      filter = HexoraAmountRangeInput(
+        min: _totalRange.min,
+        max: _totalRange.max,
+        onChanged: (min, max) =>
+            setState(() => _totalRange = _ReceiptRange(min: min, max: max)),
+      );
+    }
+
+    return HexoraFilterableHeaderCell(
+      label: label,
+      width: width,
+      numeric: numeric,
+      centered: column == CompactDocumentColumn.status,
+      filterActive: active,
+      sortDirection: direction,
+      menuBuilder: (_) => HexoraColumnFilterMenu(
+        label: label,
+        sortDirection: direction,
+        onSortAscending: () => _setSort(sortColumn, true),
+        onSortDescending: () => _setSort(sortColumn, false),
+        filterActive: active,
+        onClear: () => _clearColumn(column),
+        child: filter,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context).toString();
+    final start = _fromDate == null
+        ? null
+        : DateTime(_fromDate!.year, _fromDate!.month, _fromDate!.day);
+    final end = _toDate == null
+        ? null
+        : DateTime(_toDate!.year, _toDate!.month, _toDate!.day, 23, 59, 59);
+    final filtered = widget.receipts.where((receipt) {
+      final number = (receipt.receiptNumber ?? '').toLowerCase();
+      if (_numberQuery.isNotEmpty &&
+          !number.contains(_numberQuery.toLowerCase())) {
+        return false;
+      }
+      if (_clients.isNotEmpty && !_clients.contains(_clientName(receipt))) {
+        return false;
+      }
+      if (_statuses.isNotEmpty && !_statuses.contains(_status(receipt))) {
+        return false;
+      }
+      if (_deliveryStatuses.isNotEmpty &&
+          !_deliveryStatuses
+              .contains(normalizedDeliveryStatus(receipt.deliveryStatus))) {
+        return false;
+      }
+      final date = _date(receipt);
+      if (start != null && (date == null || date.isBefore(start))) {
+        return false;
+      }
+      if (end != null && (date == null || date.isAfter(end))) {
+        return false;
+      }
+      if (_baseRange.active && !_baseRange.includes(receipt.subtotal ?? 0)) {
+        return false;
+      }
+      if (_totalRange.active && !_totalRange.includes(_total(receipt))) {
+        return false;
+      }
+      return true;
+    }).toList();
+    int compare(Receipt a, Receipt b) => switch (_sort) {
+          _ReceiptSortColumn.number => (a.receiptNumber ?? '')
+              .toLowerCase()
+              .compareTo((b.receiptNumber ?? '').toLowerCase()),
+          _ReceiptSortColumn.client => _clientName(a).compareTo(_clientName(b)),
+          _ReceiptSortColumn.status => _status(a).compareTo(_status(b)),
+          _ReceiptSortColumn.date =>
+            (_date(a) ?? DateTime(9999)).compareTo(_date(b) ?? DateTime(9999)),
+          _ReceiptSortColumn.base =>
+            (a.subtotal ?? 0).compareTo(b.subtotal ?? 0),
+          _ReceiptSortColumn.total => _total(a).compareTo(_total(b)),
+          null => (_date(b) ?? DateTime(0)).compareTo(_date(a) ?? DateTime(0)),
+        };
     final items = <Object>[];
-    String? lastKey;
-
-    for (final r in widget.receipts) {
+    final groups = <String, List<Receipt>>{};
+    final groupDates = <String, DateTime?>{};
+    for (final r in filtered) {
       final date = _date(r);
       final key = date == null
           ? '__none__'
           : '${date.year}-${date.month.toString().padLeft(2, '0')}';
-      if (key != lastKey) {
-        items.add(date == null ? '—' : _receiptMonthLabel(date, locale));
-        lastKey = key;
-      }
-      items.add(r);
+      groups.putIfAbsent(key, () => []).add(r);
+      groupDates[key] ??= date;
+    }
+    final groupKeys = groups.keys.toList()
+      ..sort((a, b) {
+        final aDate = groupDates[a] ?? DateTime(0);
+        final bDate = groupDates[b] ?? DateTime(0);
+        final value = aDate.compareTo(bDate);
+        return _sort == _ReceiptSortColumn.date && _ascending ? value : -value;
+      });
+    for (final key in groupKeys) {
+      final rows = groups[key]!
+        ..sort((a, b) {
+          final value = compare(a, b);
+          return _sort == null || _ascending ? value : -value;
+        });
+      final date = groupDates[key];
+      items.add(date == null ? '—' : _receiptMonthLabel(date, locale));
+      items.addAll(rows);
     }
 
     return ListView.builder(
@@ -130,22 +458,30 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
         if (i == 0) {
           return Column(
             children: [
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: HexoraColumnVisibilityMenu(
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(children: [
+                  Text('${filtered.length} recibos'),
+                  const Spacer(),
+                  if (_hasFilters)
+                    TextButton.icon(
+                      onPressed: _clearAll,
+                      icon: const Icon(Icons.filter_alt_off_outlined, size: 15),
+                      label: const Text('Limpiar filtros'),
+                    ),
+                  HexoraColumnVisibilityMenu(
                     moduleKey: 'recibos',
                     availableColumns: _available,
                     visibleColumns: _visible,
                     onChanged: (value) => setState(() => _visible = value),
                   ),
-                ),
+                ]),
               ),
               CompactDocumentTableHeader(
                 identityLabel: 'Recibo',
                 visibleFinancialColumns: _visible,
                 actionsWidth: 144,
+                headerBuilder: _header,
               ),
             ],
           );
@@ -196,74 +532,24 @@ class _IssuedReceiptsTab extends StatefulWidget {
 }
 
 class _IssuedReceiptsTabState extends State<_IssuedReceiptsTab> {
-  ReceiptDeliveryFilter _filter = ReceiptDeliveryFilter.all;
-
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final filtered = filterReceiptsByDelivery(widget.receipts, _filter);
-    return Column(
-      children: [
-        // Content-sized chips instead of a full-width dropdown, so the
-        // filter doesn't take space away from the list.
-        Padding(
-          padding: const EdgeInsets.fromLTRB(10, 8, 10, 2),
-          child: SingleChildScrollView(
-            key: const ValueKey('receipt-delivery-filter'),
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (final (value, label) in const [
-                  (ReceiptDeliveryFilter.all, 'Todos'),
-                  (ReceiptDeliveryFilter.notSent, 'No enviados'),
-                  (ReceiptDeliveryFilter.sent, 'Enviados'),
-                  (ReceiptDeliveryFilter.failed, 'Error de envío'),
-                ])
-                  Padding(
-                    padding: const EdgeInsetsDirectional.only(end: 6),
-                    child: ChoiceChip(
-                      label: Text(_filter == value
-                          ? '$label · ${filtered.length}'
-                          : label),
-                      selected: _filter == value,
-                      showCheckmark: false,
-                      visualDensity: VisualDensity.compact,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      onSelected: (_) => setState(() => _filter = value),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        Expanded(
-          child: filtered.isEmpty
-              ? Center(
-                  child: Text(
-                    'No hay recibos con este estado de envío.',
-                    style: TextStyle(color: cs.onSurfaceVariant),
-                  ),
-                )
-              : _GroupedReceiptList(
-                  receipts: filtered,
-                  clients: widget.clients,
-                  unknownClientLabel: widget.unknownClientLabel,
-                  padding: const EdgeInsets.all(10),
-                  itemBuilder: (receipt, client, visibleColumns) =>
-                      ReceiptListItem(
-                    receipt: receipt,
-                    client: client,
-                    selected: receipt.id == widget.selectedId,
-                    visibleFinancialColumns: visibleColumns,
-                    onTap: () => widget.onSelect(receipt),
-                    onPreview: () => widget.onPreview(receipt),
-                    onDownload: () => widget.onDownload(receipt),
-                    onMarkSent: () => widget.onMarkSent(receipt),
-                    onMarkUnsent: () => widget.onMarkUnsent(receipt),
-                  ),
-                ),
-        ),
-      ],
+    return _GroupedReceiptList(
+      receipts: widget.receipts,
+      clients: widget.clients,
+      unknownClientLabel: widget.unknownClientLabel,
+      padding: const EdgeInsets.all(10),
+      itemBuilder: (receipt, client, visibleColumns) => ReceiptListItem(
+        receipt: receipt,
+        client: client,
+        selected: receipt.id == widget.selectedId,
+        visibleFinancialColumns: visibleColumns,
+        onTap: () => widget.onSelect(receipt),
+        onPreview: () => widget.onPreview(receipt),
+        onDownload: () => widget.onDownload(receipt),
+        onMarkSent: () => widget.onMarkSent(receipt),
+        onMarkUnsent: () => widget.onMarkUnsent(receipt),
+      ),
     );
   }
 }
@@ -315,7 +601,7 @@ class GroupReceiptsView extends StatelessWidget {
     required this.onImportJson,
     required this.onLoadInlinePdf,
     this.disableDetailPreviewInteraction = false,
-    this.initialTabIndex = 0,
+    this.initialTabIndex = 1,
     this.showHeaderTabs = true,
     this.onTabChanged,
     this.onClearSelection,

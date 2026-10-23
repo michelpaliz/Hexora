@@ -1,4 +1,3 @@
-import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
@@ -46,6 +45,17 @@ enum _ClientSource { existing, manual }
 enum BudgetSortBy { date, number }
 
 enum BudgetSortDir { asc, desc }
+
+enum _BudgetColumnSort { number, client, status, date, base, vat, total }
+
+class _BudgetRange {
+  const _BudgetRange({this.min, this.max});
+  final num? min;
+  final num? max;
+  bool get active => min != null || max != null;
+  bool includes(num value) =>
+      (min == null || value >= min!) && (max == null || value <= max!);
+}
 
 class BudgetSortState {
   final BudgetSortBy by;
@@ -124,7 +134,25 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   String? _budgetsError;
   List<Map<String, dynamic>> _budgets = const [];
   String? _selectedBudgetId;
-  int _budgetsTabIndex = 0;
+  int _budgetsTabIndex = 1;
+  String _budgetNumberFilter = '';
+  Set<String> _budgetClientFilters = {};
+  Set<String> _budgetStatusFilters = {};
+  DateTime? _budgetFromDate;
+  DateTime? _budgetToDate;
+  _BudgetRange _budgetBaseRange = const _BudgetRange();
+  _BudgetRange _budgetVatRange = const _BudgetRange();
+  _BudgetRange _budgetTotalRange = const _BudgetRange();
+  _BudgetColumnSort? _budgetColumnSort;
+  bool _budgetSortAscending = false;
+  static const _budgetAvailableColumns = {
+    HexoraFinancialColumn.date,
+    HexoraFinancialColumn.taxableBase,
+    HexoraFinancialColumn.vat,
+    HexoraFinancialColumn.total,
+  };
+  Set<HexoraFinancialColumn> _budgetVisibleColumns =
+      Set.of(_budgetAvailableColumns);
   final ValueNotifier<DocumentViewMode?> _budgetSplitModeNotifier =
       ValueNotifier<DocumentViewMode?>(null);
   String? _selectedClientId;
@@ -679,6 +707,12 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   @override
   void initState() {
     super.initState();
+    HexoraColumnVisibilityStore.load(
+      'presupuestos',
+      _budgetAvailableColumns,
+    ).then((value) {
+      if (mounted) setState(() => _budgetVisibleColumns = value);
+    });
     if (widget.mode == GroupInvoicesBudgetsMode.list) {
       _loadBudgets();
     } else if (_isEditingBudget) {
@@ -727,9 +761,17 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     }
     if (initialBudgetChanged && widget.mode == GroupInvoicesBudgetsMode.list) {
       final targetId = (widget.initialSelectedBudgetId ?? '').trim();
-      if (targetId.isNotEmpty &&
-          _budgets.any((item) => _budgetId(item).trim() == targetId)) {
-        setState(() => _selectedBudgetId = targetId);
+      final target = targetId.isEmpty
+          ? null
+          : _budgets.cast<Map<String, dynamic>?>().firstWhere(
+                (item) => item != null && _budgetId(item).trim() == targetId,
+                orElse: () => null,
+              );
+      if (target != null) {
+        setState(() {
+          _selectedBudgetId = targetId;
+          _budgetsTabIndex = _isDraftBudget(target) ? 0 : 1;
+        });
         _loadDetailPreviewPdf(targetId);
       }
     }
@@ -1101,9 +1143,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   bool _isDraftBudget(Map<String, dynamic> item) =>
       _budgetStatus(item).contains('draft');
 
-  bool _isIssuedBudget(Map<String, dynamic> item) =>
-      _budgetStatus(item) == 'issued';
-
   int _budgetVersion(Map<String, dynamic> item) {
     final raw = item['currentVersion'] ??
         item['version'] ??
@@ -1196,44 +1235,36 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   /// once. Number sorting has no chronological order, so it stays flat.
   List<Object> _groupBudgetsForList(
     List<Map<String, dynamic>> budgets,
-    BudgetSortState sort,
     String locale,
   ) {
-    if (sort.by != BudgetSortBy.date) return List<Object>.of(budgets);
-    final ascending = sort.dir == BudgetSortDir.asc;
-    // Index tiebreak keeps the sort stable: same-day budgets keep the
-    // server order.
-    final order = List<int>.generate(budgets.length, (i) => i)
-      ..sort((i, j) {
-        final da = _budgetDate(budgets[i]);
-        final db = _budgetDate(budgets[j]);
-        final int byDate;
-        if (da == null && db == null) {
-          byDate = 0;
-        } else if (da == null) {
-          byDate = 1;
-        } else if (db == null) {
-          byDate = -1;
-        } else {
-          byDate = ascending ? da.compareTo(db) : db.compareTo(da);
-        }
-        return byDate != 0 ? byDate : i.compareTo(j);
-      });
-    final sorted = [for (final i in order) budgets[i]];
-    final items = <Object>[];
-    String? lastKey;
-    for (final b in sorted) {
-      final date = _budgetDate(b)?.toLocal();
+    final groups = <String, List<Map<String, dynamic>>>{};
+    final groupDates = <String, DateTime?>{};
+    for (final budget in budgets) {
+      final date = _budgetDate(budget)?.toLocal();
       final key = date == null
           ? '__none__'
           : '${date.year}-${date.month.toString().padLeft(2, '0')}';
-      if (key != lastKey) {
-        items.add(date == null
-            ? (_isSpanishLocale ? 'Sin fecha' : 'No date')
-            : _budgetMonthLabel(date, locale));
-        lastKey = key;
-      }
-      items.add(b);
+      groups.putIfAbsent(key, () => []).add(budget);
+      groupDates[key] = date == null ? null : DateTime(date.year, date.month);
+    }
+    final keys = groups.keys.toList()
+      ..sort((a, b) {
+        final da = groupDates[a];
+        final db = groupDates[b];
+        if (da == null && db == null) return 0;
+        if (da == null) return 1;
+        if (db == null) return -1;
+        final ascending =
+            _budgetColumnSort == _BudgetColumnSort.date && _budgetSortAscending;
+        return ascending ? da.compareTo(db) : db.compareTo(da);
+      });
+    final items = <Object>[];
+    for (final key in keys) {
+      final date = groupDates[key];
+      items.add(date == null
+          ? (_isSpanishLocale ? 'Sin fecha' : 'No date')
+          : _budgetMonthLabel(date, locale));
+      items.addAll(groups[key]!);
     }
     return items;
   }
@@ -1395,12 +1426,27 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         final preferred = (widget.initialSelectedBudgetId ?? '').trim();
         if (selected.isEmpty ||
             !_budgets.any((e) => _budgetId(e).trim() == selected)) {
-          if (preferred.isNotEmpty &&
-              _budgets.any((e) => _budgetId(e).trim() == preferred)) {
+          final preferredBudget = preferred.isEmpty
+              ? null
+              : _budgets.cast<Map<String, dynamic>?>().firstWhere(
+                    (item) =>
+                        item != null && _budgetId(item).trim() == preferred,
+                    orElse: () => null,
+                  );
+          if (preferredBudget != null) {
             _selectedBudgetId = preferred;
+            _budgetsTabIndex = _isDraftBudget(preferredBudget) ? 0 : 1;
           } else {
-            _selectedBudgetId =
-                _budgets.isEmpty ? null : _budgetId(_budgets.first);
+            final issuedBudget =
+                _budgets.cast<Map<String, dynamic>?>().firstWhere(
+                      (item) => item != null && !_isDraftBudget(item),
+                      orElse: () => null,
+                    );
+            final fallback =
+                issuedBudget ?? (_budgets.isEmpty ? null : _budgets.first);
+            _selectedBudgetId = fallback == null ? null : _budgetId(fallback);
+            _budgetsTabIndex =
+                fallback != null && _isDraftBudget(fallback) ? 0 : 1;
           }
         }
       });
@@ -2140,19 +2186,327 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     }
   }
 
+  num _budgetVatAmount(Map<String, dynamic> item) {
+    final direct = item['taxTotal'] ?? item['tax'] ?? item['iva'];
+    if (direct is num) return direct;
+    final parsed = num.tryParse((direct ?? '').toString().replaceAll(',', '.'));
+    if (parsed != null) return parsed;
+    final base = _budgetBaseAmount(item);
+    return base == null
+        ? 0
+        : (_budgetTotal(item) - base).clamp(0, double.infinity);
+  }
+
+  String _normalizedBudgetStatus(Map<String, dynamic> item) {
+    final raw = _budgetStatus(item);
+    if (raw.contains('draft')) return 'draft';
+    if (raw.contains('cancel') || raw.contains('void')) return 'cancelled';
+    if (raw.contains('accept')) return 'accepted';
+    if (raw.contains('reject')) return 'rejected';
+    return 'issued';
+  }
+
+  String _budgetStatusLabel(String value) => switch (value) {
+        'draft' => _isSpanishLocale ? 'Borrador' : 'Draft',
+        'cancelled' => _isSpanishLocale ? 'Anulado' : 'Cancelled',
+        'accepted' => _isSpanishLocale ? 'Aceptado' : 'Accepted',
+        'rejected' => _isSpanishLocale ? 'Rechazado' : 'Rejected',
+        _ => _isSpanishLocale ? 'Emitido' : 'Issued',
+      };
+
+  bool get _hasBudgetFilters =>
+      _budgetNumberFilter.isNotEmpty ||
+      _budgetClientFilters.isNotEmpty ||
+      _budgetStatusFilters.isNotEmpty ||
+      _budgetFromDate != null ||
+      _budgetToDate != null ||
+      _budgetBaseRange.active ||
+      _budgetVatRange.active ||
+      _budgetTotalRange.active;
+
+  void _clearBudgetFilters() => setState(() {
+        _budgetNumberFilter = '';
+        _budgetClientFilters = {};
+        _budgetStatusFilters = {};
+        _budgetFromDate = null;
+        _budgetToDate = null;
+        _budgetBaseRange = const _BudgetRange();
+        _budgetVatRange = const _BudgetRange();
+        _budgetTotalRange = const _BudgetRange();
+      });
+
+  void _setBudgetDateMonths(int months) {
+    final now = DateTime.now();
+    setState(() {
+      _budgetToDate = now;
+      _budgetFromDate = DateTime(now.year, now.month - months, now.day + 1);
+    });
+  }
+
+  Future<void> _pickBudgetDateRange() async {
+    final now = DateTime.now();
+    final value = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(now.year - 10),
+      lastDate: DateTime(now.year + 5),
+      initialDateRange: _budgetFromDate == null || _budgetToDate == null
+          ? null
+          : DateTimeRange(start: _budgetFromDate!, end: _budgetToDate!),
+    );
+    if (value != null) {
+      setState(() {
+        _budgetFromDate = value.start;
+        _budgetToDate = value.end;
+      });
+    }
+  }
+
+  _BudgetColumnSort _budgetSortFor(CompactDocumentColumn column) =>
+      switch (column) {
+        CompactDocumentColumn.identity => _BudgetColumnSort.number,
+        CompactDocumentColumn.client => _BudgetColumnSort.client,
+        CompactDocumentColumn.status => _BudgetColumnSort.status,
+        CompactDocumentColumn.date => _BudgetColumnSort.date,
+        CompactDocumentColumn.taxableBase => _BudgetColumnSort.base,
+        CompactDocumentColumn.vat => _BudgetColumnSort.vat,
+        _ => _BudgetColumnSort.total,
+      };
+
+  bool _budgetFilterActive(CompactDocumentColumn column) => switch (column) {
+        CompactDocumentColumn.identity => _budgetNumberFilter.isNotEmpty,
+        CompactDocumentColumn.client => _budgetClientFilters.isNotEmpty,
+        CompactDocumentColumn.status => _budgetStatusFilters.isNotEmpty,
+        CompactDocumentColumn.date =>
+          _budgetFromDate != null || _budgetToDate != null,
+        CompactDocumentColumn.taxableBase => _budgetBaseRange.active,
+        CompactDocumentColumn.vat => _budgetVatRange.active,
+        CompactDocumentColumn.total => _budgetTotalRange.active,
+        _ => false,
+      };
+
+  void _clearBudgetColumn(CompactDocumentColumn column) => setState(() {
+        switch (column) {
+          case CompactDocumentColumn.identity:
+            _budgetNumberFilter = '';
+          case CompactDocumentColumn.client:
+            _budgetClientFilters = {};
+          case CompactDocumentColumn.status:
+            _budgetStatusFilters = {};
+          case CompactDocumentColumn.date:
+            _budgetFromDate = null;
+            _budgetToDate = null;
+          case CompactDocumentColumn.taxableBase:
+            _budgetBaseRange = const _BudgetRange();
+          case CompactDocumentColumn.vat:
+            _budgetVatRange = const _BudgetRange();
+          case CompactDocumentColumn.total:
+            _budgetTotalRange = const _BudgetRange();
+          case CompactDocumentColumn.payment:
+            break;
+        }
+      });
+
+  Widget _budgetHeader(
+    BuildContext context,
+    CompactDocumentColumn column,
+    String label,
+    double width,
+    bool numeric,
+  ) {
+    final sort = _budgetSortFor(column);
+    final active = _budgetFilterActive(column);
+    final direction = _budgetColumnSort == sort
+        ? (_budgetSortAscending
+            ? HexoraHeaderSortDirection.ascending
+            : HexoraHeaderSortDirection.descending)
+        : null;
+    final l = AppLocalizations.of(context)!;
+    final clients = _budgets
+        .map((item) => _budgetClientName(item, l).trim().toLowerCase())
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    final statuses =
+        _budgets.map(_normalizedBudgetStatus).toSet().toList(growable: false);
+    Widget filter = const SizedBox.shrink();
+    if (column == CompactDocumentColumn.identity) {
+      filter = TextFormField(
+        initialValue: _budgetNumberFilter,
+        autofocus: true,
+        decoration: const InputDecoration(
+          labelText: 'Número de presupuesto',
+          hintText: 'Búsqueda exacta o parcial',
+          prefixIcon: Icon(Icons.search_rounded, size: 18),
+          isDense: true,
+        ),
+        onChanged: (value) =>
+            setState(() => _budgetNumberFilter = value.trim()),
+      );
+    } else if (column == CompactDocumentColumn.client) {
+      filter = HexoraMultiSelectFilter(
+        values: clients,
+        selected: _budgetClientFilters,
+        labelFor: (value) => value,
+        onChanged: (value) => setState(() => _budgetClientFilters = value),
+      );
+    } else if (column == CompactDocumentColumn.status) {
+      filter = HexoraMultiSelectFilter(
+        values: statuses,
+        selected: _budgetStatusFilters,
+        labelFor: _budgetStatusLabel,
+        onChanged: (value) => setState(() => _budgetStatusFilters = value),
+      );
+    } else if (column == CompactDocumentColumn.date) {
+      filter = Wrap(spacing: 6, runSpacing: 6, children: [
+        ActionChip(
+            label: const Text('Mes'), onPressed: () => _setBudgetDateMonths(1)),
+        ActionChip(
+            label: const Text('Trimestre'),
+            onPressed: () => _setBudgetDateMonths(3)),
+        ActionChip(
+            label: const Text('Año'),
+            onPressed: () => _setBudgetDateMonths(12)),
+        ActionChip(
+            avatar: const Icon(Icons.date_range_outlined, size: 15),
+            label: const Text('Rango'),
+            onPressed: _pickBudgetDateRange),
+      ]);
+    } else if (column == CompactDocumentColumn.taxableBase) {
+      filter = HexoraAmountRangeInput(
+        min: _budgetBaseRange.min,
+        max: _budgetBaseRange.max,
+        onChanged: (min, max) =>
+            setState(() => _budgetBaseRange = _BudgetRange(min: min, max: max)),
+      );
+    } else if (column == CompactDocumentColumn.vat) {
+      filter = HexoraAmountRangeInput(
+        min: _budgetVatRange.min,
+        max: _budgetVatRange.max,
+        onChanged: (min, max) =>
+            setState(() => _budgetVatRange = _BudgetRange(min: min, max: max)),
+      );
+    } else if (column == CompactDocumentColumn.total) {
+      filter = HexoraAmountRangeInput(
+        min: _budgetTotalRange.min,
+        max: _budgetTotalRange.max,
+        onChanged: (min, max) => setState(
+            () => _budgetTotalRange = _BudgetRange(min: min, max: max)),
+      );
+    }
+    return HexoraFilterableHeaderCell(
+      label: label,
+      width: width,
+      numeric: numeric,
+      centered: column == CompactDocumentColumn.status,
+      filterActive: active,
+      sortDirection: direction,
+      menuBuilder: (_) => HexoraColumnFilterMenu(
+        label: label,
+        sortDirection: direction,
+        onSortAscending: () => setState(() {
+          _budgetColumnSort = sort;
+          _budgetSortAscending = true;
+        }),
+        onSortDescending: () => setState(() {
+          _budgetColumnSort = sort;
+          _budgetSortAscending = false;
+        }),
+        filterActive: active,
+        onClear: () => _clearBudgetColumn(column),
+        child: filter,
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> _filteredBudgets(
+    List<Map<String, dynamic>> source,
+    AppLocalizations l,
+  ) {
+    final start =
+        _budgetFromDate == null ? null : DateUtils.dateOnly(_budgetFromDate!);
+    final end = _budgetToDate == null
+        ? null
+        : DateTime(_budgetToDate!.year, _budgetToDate!.month,
+            _budgetToDate!.day, 23, 59, 59);
+    final result = source.where((item) {
+      if (_budgetNumberFilter.isNotEmpty &&
+          !_budgetNumber(item)
+              .toLowerCase()
+              .contains(_budgetNumberFilter.toLowerCase())) {
+        return false;
+      }
+      final client = _budgetClientName(item, l).trim().toLowerCase();
+      if (_budgetClientFilters.isNotEmpty &&
+          !_budgetClientFilters.contains(client)) {
+        return false;
+      }
+      if (_budgetStatusFilters.isNotEmpty &&
+          !_budgetStatusFilters.contains(_normalizedBudgetStatus(item))) {
+        return false;
+      }
+      final date = _budgetDate(item);
+      if (start != null && (date == null || date.isBefore(start))) {
+        return false;
+      }
+      if (end != null && (date == null || date.isAfter(end))) {
+        return false;
+      }
+      final base = _budgetBaseAmount(item) ?? 0;
+      if (_budgetBaseRange.active && !_budgetBaseRange.includes(base)) {
+        return false;
+      }
+      final vat = _budgetVatAmount(item);
+      if (_budgetVatRange.active && !_budgetVatRange.includes(vat)) {
+        return false;
+      }
+      if (_budgetTotalRange.active &&
+          !_budgetTotalRange.includes(_budgetTotal(item))) {
+        return false;
+      }
+      return true;
+    }).toList();
+    int compare(Map<String, dynamic> a, Map<String, dynamic> b) =>
+        switch (_budgetColumnSort) {
+          _BudgetColumnSort.number => _budgetNumber(a)
+              .toLowerCase()
+              .compareTo(_budgetNumber(b).toLowerCase()),
+          _BudgetColumnSort.client => _budgetClientName(a, l)
+              .toLowerCase()
+              .compareTo(_budgetClientName(b, l).toLowerCase()),
+          _BudgetColumnSort.status =>
+            _normalizedBudgetStatus(a).compareTo(_normalizedBudgetStatus(b)),
+          _BudgetColumnSort.date => (_budgetDate(a) ?? DateTime(9999))
+              .compareTo(_budgetDate(b) ?? DateTime(9999)),
+          _BudgetColumnSort.base =>
+            (_budgetBaseAmount(a) ?? 0).compareTo(_budgetBaseAmount(b) ?? 0),
+          _BudgetColumnSort.vat =>
+            _budgetVatAmount(a).compareTo(_budgetVatAmount(b)),
+          _BudgetColumnSort.total => _budgetTotal(a).compareTo(_budgetTotal(b)),
+          null => 0,
+        };
+    if (_budgetColumnSort != null) {
+      result.sort((a, b) {
+        final value = compare(a, b);
+        return _budgetSortAscending ? value : -value;
+      });
+    }
+    return result;
+  }
+
   Widget _buildBudgetsListLayout(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final t = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
     final drafts = _budgets.where(_isDraftBudget).toList(growable: false);
+    // Keep cancelled, accepted and other non-draft records accessible after
+    // removing the legacy "Todos" tab.
     final issuedBudgets =
-        _budgets.where(_isIssuedBudget).toList(growable: false);
-    final activeList = switch (_budgetsTabIndex) {
-      1 => drafts,
-      2 => issuedBudgets,
-      _ => _budgets,
-    };
-    final sortState = _effectiveBudgetSortState;
+        _budgets.where((item) => !_isDraftBudget(item)).toList(growable: false);
+    final filteredDrafts = _filteredBudgets(drafts, l);
+    final filteredIssuedBudgets = _filteredBudgets(issuedBudgets, l);
+    final activeList =
+        _budgetsTabIndex == 0 ? filteredDrafts : filteredIssuedBudgets;
     // Same width on every row so totals align whether or not a row is a draft.
     final primaryActionWidth = activeList.any(_isDraftBudget) ? 84.0 : 0.0;
     final selected = activeList.cast<Map<String, dynamic>?>().firstWhere(
@@ -2197,7 +2551,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         symbol: '€',
       ).format(_budgetTotal(item));
       final isDraft = _isDraftBudget(item);
-      final isIssued = _isIssuedBudget(item);
+      final normalizedStatus = _normalizedBudgetStatus(item);
       final isIssuing = _issuingBudgetIds.contains(id);
       final missingClientFields = _missingClientBillingFieldsForBudget(item);
       final canIssueBudget = isDraft && missingClientFields.isEmpty;
@@ -2217,16 +2571,12 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
             ),
           );
 
-      final statusLabel = isDraft
-          ? (_isSpanishLocale ? 'Borrador' : 'Draft')
-          : isIssued
-              ? (_isSpanishLocale ? 'Emitido' : 'Issued')
-              : (_isSpanishLocale ? 'Anulado' : 'Void');
-      final documentStatus = isDraft
-          ? HexoraDocumentStatus.draft
-          : isIssued
-              ? HexoraDocumentStatus.issued
-              : HexoraDocumentStatus.cancelled;
+      final statusLabel = _budgetStatusLabel(normalizedStatus);
+      final documentStatus = switch (normalizedStatus) {
+        'draft' => HexoraDocumentStatus.draft,
+        'cancelled' || 'rejected' => HexoraDocumentStatus.cancelled,
+        _ => HexoraDocumentStatus.issued,
+      };
       final number = _budgetNumber(item).trim();
       final hasNumber = number.isNotEmpty && number != '-';
       void selectBudget() {
@@ -2240,10 +2590,9 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         metadata: _budgetClientName(item, l),
         amount: totalLabel,
         date: date,
-        visibleFinancialColumns: const {
-          HexoraFinancialColumn.date,
-          HexoraFinancialColumn.total,
-        },
+        taxableBase: _budgetBaseAmount(item),
+        vat: _budgetVatAmount(item),
+        visibleFinancialColumns: _budgetVisibleColumns,
         selected: selectedRow,
         onTap: selectBudget,
         previewLabel: _isSpanishLocale ? 'Vista previa' : 'Preview',
@@ -2521,54 +2870,37 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                             setState(() => _budgetsTabIndex = index),
                         tabs: [
                           HexoraDocumentStatusTab(
-                            label: _isSpanishLocale ? 'Todos' : 'All',
-                            count: _budgets.length,
-                            icon: Icons.description_outlined,
-                          ),
-                          HexoraDocumentStatusTab(
                             label: _isSpanishLocale ? 'Borradores' : 'Drafts',
-                            count: drafts.length,
+                            count: filteredDrafts.length,
                             icon: Icons.edit_note_outlined,
                           ),
                           HexoraDocumentStatusTab(
-                            label: _isSpanishLocale ? 'Emitidos' : 'Issued',
-                            count: issuedBudgets.length,
+                            label:
+                                _isSpanishLocale ? 'Presupuestos' : 'Proposals',
+                            count: filteredIssuedBudgets.length,
                             icon: Icons.task_alt_outlined,
                           ),
                         ],
                       ),
                       const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _isSpanishLocale
-                              ? '${activeList.length} ${activeList.length == 1 ? 'presupuesto' : 'presupuestos'}'
-                              : '${activeList.length} ${activeList.length == 1 ? 'budget' : 'budgets'}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: t.labelSmall?.copyWith(
-                            fontSize: 11,
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      const Spacer(),
+                      if (_hasBudgetFilters)
+                        TextButton.icon(
+                          onPressed: _clearBudgetFilters,
+                          icon: const Icon(Icons.filter_alt_off_outlined,
+                              size: 15),
+                          label: Text(_isSpanishLocale
+                              ? 'Limpiar filtros'
+                              : 'Clear filters'),
                         ),
+                      HexoraColumnVisibilityMenu(
+                        moduleKey: 'presupuestos',
+                        availableColumns: _budgetAvailableColumns,
+                        visibleColumns: _budgetVisibleColumns,
+                        onChanged: (value) =>
+                            setState(() => _budgetVisibleColumns = value),
                       ),
-                      _BudgetSortMenuButton(
-                        state: sortState,
-                        enabled: !_loadingBudgets && activeList.isNotEmpty,
-                        isSpanishLocale: _isSpanishLocale,
-                        onChanged: (by) async {
-                          final next = nextBudgetSortState(
-                            _effectiveBudgetSortState,
-                            by,
-                          );
-                          if (next.by == _effectiveBudgetSortState.by &&
-                              next.dir == _effectiveBudgetSortState.dir) {
-                            return;
-                          }
-                          setState(() => _budgetSortState = next);
-                          await _loadBudgets();
-                        },
-                      ),
+                      const SizedBox(width: 4),
                       toolbarIconButton(
                         tooltip: l.refreshAction,
                         onPressed: _loadingBudgets ? null : _loadBudgets,
@@ -2593,11 +2925,9 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                       activeList.isNotEmpty)
                     CompactDocumentTableHeader(
                       identityLabel: 'Presupuesto',
-                      visibleFinancialColumns: const {
-                        HexoraFinancialColumn.date,
-                        HexoraFinancialColumn.total,
-                      },
+                      visibleFinancialColumns: _budgetVisibleColumns,
                       actionsWidth: primaryActionWidth + 144,
+                      headerBuilder: _budgetHeader,
                     ),
                   Expanded(
                     child: _loadingBudgets
@@ -2614,10 +2944,10 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                                 ? Center(
                                     child: Text(
                                       switch (_budgetsTabIndex) {
-                                        1 => _isSpanishLocale
+                                        0 => _isSpanishLocale
                                             ? 'No hay borradores.'
                                             : 'There are no drafts.',
-                                        2 => _isSpanishLocale
+                                        1 => _isSpanishLocale
                                             ? 'No hay presupuestos emitidos.'
                                             : 'There are no issued budgets.',
                                         _ => _isSpanishLocale
@@ -2634,7 +2964,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                                         Localizations.localeOf(context)
                                             .toString();
                                     final items = _groupBudgetsForList(
-                                        activeList, sortState, locale);
+                                        activeList, locale);
                                     return ListView.builder(
                                       padding: EdgeInsets.zero,
                                       itemCount: items.length,
@@ -4442,86 +4772,6 @@ class _BudgetHistoryDialogState extends State<_BudgetHistoryDialog> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _BudgetSortMenuButton extends StatelessWidget {
-  const _BudgetSortMenuButton({
-    required this.state,
-    required this.enabled,
-    required this.isSpanishLocale,
-    required this.onChanged,
-  });
-
-  final BudgetSortState state;
-  final bool enabled;
-  final bool isSpanishLocale;
-  final Future<void> Function(BudgetSortBy by) onChanged;
-
-  String _label(BudgetSortBy by) => switch (by) {
-        BudgetSortBy.date => isSpanishLocale ? 'Fecha' : 'Date',
-        BudgetSortBy.number => isSpanishLocale ? 'Número' : 'Number',
-      };
-
-  IconData _icon(BudgetSortBy by) => switch (by) {
-        BudgetSortBy.date => Icons.calendar_today_outlined,
-        BudgetSortBy.number => Icons.tag_rounded,
-      };
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final ascending = state.dir == BudgetSortDir.asc;
-    final dirIcon =
-        ascending ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded;
-
-    return PopupMenuButton<BudgetSortBy>(
-      tooltip: isSpanishLocale ? 'Ordenar por' : 'Sort by',
-      enabled: enabled,
-      position: PopupMenuPosition.under,
-      onSelected: onChanged,
-      itemBuilder: (context) => [
-        for (final by in BudgetSortBy.values)
-          NavigationPopupMenuItem(
-            value: by,
-            child: Row(
-              children: [
-                Icon(
-                  _icon(by),
-                  size: 16,
-                  color: state.by == by ? cs.secondary : cs.onSurfaceVariant,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    _label(by),
-                    style: TextStyle(
-                      fontWeight:
-                          state.by == by ? FontWeight.w700 : FontWeight.w500,
-                      color: state.by == by ? cs.secondary : null,
-                    ),
-                  ),
-                ),
-                if (state.by == by)
-                  Icon(dirIcon, size: 15, color: cs.secondary),
-              ],
-            ),
-          ),
-      ],
-      child: SizedBox(
-        width: 36,
-        height: 36,
-        child: Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(_icon(state.by), size: 17, color: cs.onSurfaceVariant),
-              Icon(dirIcon, size: 12, color: cs.onSurfaceVariant),
-            ],
-          ),
-        ),
       ),
     );
   }

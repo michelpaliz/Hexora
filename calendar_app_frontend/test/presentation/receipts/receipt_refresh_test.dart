@@ -97,6 +97,7 @@ void main() {
       await tester.pumpAndSettle();
       GroupReceiptsView view() =>
           tester.widget<GroupReceiptsView>(find.byType(GroupReceiptsView));
+      expect(view().initialTabIndex, 1);
       expect(view().selectedReceipt!.total, 302);
       view().onEditReceipt(view().selectedReceipt!);
       await tester.pumpAndSettle();

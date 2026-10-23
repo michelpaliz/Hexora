@@ -133,6 +133,193 @@ class HexoraFilterableHeaderCell extends StatelessWidget {
   }
 }
 
+class HexoraColumnFilterMenu extends StatelessWidget {
+  const HexoraColumnFilterMenu({
+    super.key,
+    required this.label,
+    required this.onSortAscending,
+    required this.onSortDescending,
+    required this.child,
+    required this.filterActive,
+    required this.onClear,
+    this.sortDirection,
+  });
+
+  final String label;
+  final VoidCallback onSortAscending;
+  final VoidCallback onSortDescending;
+  final HexoraHeaderSortDirection? sortDirection;
+  final Widget child;
+  final bool filterActive;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(label,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            SegmentedButton<HexoraHeaderSortDirection>(
+              segments: const [
+                ButtonSegment(
+                  value: HexoraHeaderSortDirection.ascending,
+                  icon: Icon(Icons.arrow_upward_rounded, size: 15),
+                  label: Text('Ascendente'),
+                ),
+                ButtonSegment(
+                  value: HexoraHeaderSortDirection.descending,
+                  icon: Icon(Icons.arrow_downward_rounded, size: 15),
+                  label: Text('Descendente'),
+                ),
+              ],
+              selected: sortDirection == null ? const {} : {sortDirection!},
+              emptySelectionAllowed: true,
+              showSelectedIcon: false,
+              onSelectionChanged: (value) {
+                if (value.isEmpty) return;
+                value.first == HexoraHeaderSortDirection.ascending
+                    ? onSortAscending()
+                    : onSortDescending();
+              },
+              style: ButtonStyle(
+                visualDensity: VisualDensity.compact,
+                textStyle: WidgetStatePropertyAll(
+                  Theme.of(context).textTheme.labelSmall,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            child,
+            const SizedBox(height: 8),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton.icon(
+                onPressed: filterActive
+                    ? () {
+                        onClear();
+                        Navigator.of(context).pop();
+                      }
+                    : null,
+                icon: const Icon(Icons.filter_alt_off_outlined, size: 15),
+                label: const Text('Limpiar'),
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class HexoraMultiSelectFilter extends StatefulWidget {
+  const HexoraMultiSelectFilter({
+    super.key,
+    required this.values,
+    required this.selected,
+    required this.labelFor,
+    required this.onChanged,
+  });
+
+  final List<String> values;
+  final Set<String> selected;
+  final String Function(String) labelFor;
+  final ValueChanged<Set<String>> onChanged;
+
+  @override
+  State<HexoraMultiSelectFilter> createState() =>
+      _HexoraMultiSelectFilterState();
+}
+
+class _HexoraMultiSelectFilterState extends State<HexoraMultiSelectFilter> {
+  late final Set<String> _selected = Set.of(widget.selected);
+
+  @override
+  Widget build(BuildContext context) => ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 220),
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (final value in widget.values)
+              CheckboxListTile(
+                dense: true,
+                visualDensity: VisualDensity.compact,
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: Text(widget.labelFor(value),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                value: _selected.contains(value),
+                onChanged: (checked) {
+                  setState(() {
+                    checked == true
+                        ? _selected.add(value)
+                        : _selected.remove(value);
+                  });
+                  widget.onChanged(Set.of(_selected));
+                },
+              ),
+          ],
+        ),
+      );
+}
+
+class HexoraAmountRangeInput extends StatefulWidget {
+  const HexoraAmountRangeInput({
+    super.key,
+    this.min,
+    this.max,
+    required this.onChanged,
+  });
+
+  final num? min;
+  final num? max;
+  final void Function(num? min, num? max) onChanged;
+
+  @override
+  State<HexoraAmountRangeInput> createState() => _HexoraAmountRangeInputState();
+}
+
+class _HexoraAmountRangeInputState extends State<HexoraAmountRangeInput> {
+  late num? _min = widget.min;
+  late num? _max = widget.max;
+
+  num? _parse(String raw) =>
+      num.tryParse(raw.trim().replaceAll('.', '').replaceAll(',', '.'));
+
+  @override
+  Widget build(BuildContext context) => Row(children: [
+        Expanded(
+          child: TextFormField(
+            initialValue: widget.min?.toString(),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration:
+                const InputDecoration(labelText: 'Mínimo', isDense: true),
+            onChanged: (raw) {
+              _min = _parse(raw);
+              widget.onChanged(_min, _max);
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: TextFormField(
+            initialValue: widget.max?.toString(),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration:
+                const InputDecoration(labelText: 'Máximo', isDense: true),
+            onChanged: (raw) {
+              _max = _parse(raw);
+              widget.onChanged(_min, _max);
+            },
+          ),
+        ),
+      ]);
+}
+
 class HexoraColumnVisibilityStore {
   const HexoraColumnVisibilityStore._();
 
