@@ -40,6 +40,31 @@ if (-Not (Test-Path $LOCAL_BUILD_PATH)) {
   Write-Error "Error: Flutter build failed. The directory '$LOCAL_BUILD_PATH' was not found."
 }
 
+# Existing users may still be controlled by Flutter's former offline-first
+# worker. Publish a one-time replacement at the same URL so it activates
+# immediately, removes only Flutter's app caches, and stops intercepting
+# requests. New builds do not register this worker (`--pwa-strategy=none`).
+$CleanupWorkerPath = Join-Path $LOCAL_BUILD_PATH "flutter_service_worker.js"
+$CleanupWorker = @'
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys
+          .filter((key) => key === 'flutter-app-cache' || key.startsWith('flutter-temp-cache'))
+          .map((key) => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
+  );
+});
+'@
+[System.IO.File]::WriteAllText(
+  $CleanupWorkerPath,
+  $CleanupWorker,
+  [System.Text.UTF8Encoding]::new($false)
+)
+
 Write-Host "Verifying icon assets locally..."
 $FontManifestRoot = Join-Path $LOCAL_BUILD_PATH "FontManifest.json"
 $FontManifestAssets = Join-Path $LOCAL_BUILD_PATH "assets\FontManifest.json"
