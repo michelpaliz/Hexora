@@ -1,6 +1,7 @@
 import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -63,12 +64,16 @@ class _MonthDivider extends StatelessWidget {
       CompactDocumentMonthHeading(label: label);
 }
 
-class _GroupedReceiptList extends StatelessWidget {
+class _GroupedReceiptList extends StatefulWidget {
   final List<Receipt> receipts;
   final List<GroupClient> clients;
   final String unknownClientLabel;
   final EdgeInsetsGeometry padding;
-  final Widget Function(Receipt, GroupClient) itemBuilder;
+  final Widget Function(
+    Receipt,
+    GroupClient,
+    Set<HexoraFinancialColumn>,
+  ) itemBuilder;
 
   const _GroupedReceiptList({
     required this.receipts,
@@ -78,6 +83,26 @@ class _GroupedReceiptList extends StatelessWidget {
     required this.itemBuilder,
   });
 
+  @override
+  State<_GroupedReceiptList> createState() => _GroupedReceiptListState();
+}
+
+class _GroupedReceiptListState extends State<_GroupedReceiptList> {
+  static const _available = {
+    HexoraFinancialColumn.date,
+    HexoraFinancialColumn.taxableBase,
+    HexoraFinancialColumn.total,
+  };
+  Set<HexoraFinancialColumn> _visible = Set.of(_available);
+
+  @override
+  void initState() {
+    super.initState();
+    HexoraColumnVisibilityStore.load('recibos', _available).then((value) {
+      if (mounted) setState(() => _visible = value);
+    });
+  }
+
   DateTime? _date(Receipt r) => r.issueDate ?? r.registeredAt;
 
   @override
@@ -86,7 +111,7 @@ class _GroupedReceiptList extends StatelessWidget {
     final items = <Object>[];
     String? lastKey;
 
-    for (final r in receipts) {
+    for (final r in widget.receipts) {
       final date = _date(r);
       final key = date == null
           ? '__none__'
@@ -99,17 +124,44 @@ class _GroupedReceiptList extends StatelessWidget {
     }
 
     return ListView.builder(
-      padding: padding,
-      itemCount: items.length,
+      padding: widget.padding,
+      itemCount: items.length + 1,
       itemBuilder: (_, i) {
-        final item = items[i];
+        if (i == 0) {
+          return Column(
+            children: [
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: HexoraColumnVisibilityMenu(
+                    moduleKey: 'recibos',
+                    availableColumns: _available,
+                    visibleColumns: _visible,
+                    onChanged: (value) => setState(() => _visible = value),
+                  ),
+                ),
+              ),
+              CompactDocumentTableHeader(
+                identityLabel: 'Recibo / Cliente',
+                visibleFinancialColumns: _visible,
+                actionsWidth: 120,
+              ),
+            ],
+          );
+        }
+        final item = items[i - 1];
         if (item is String) return _MonthDivider(label: item, first: i == 0);
         final r = item as Receipt;
-        final client = _receiptClientFor(r, clients, unknownClientLabel);
+        final client = _receiptClientFor(
+          r,
+          widget.clients,
+          widget.unknownClientLabel,
+        );
         return Padding(
           padding: EdgeInsets.only(
               bottom: MediaQuery.sizeOf(context).width < 650 ? 8 : 0),
-          child: itemBuilder(r, client),
+          child: widget.itemBuilder(r, client, _visible),
         );
       },
     );
@@ -197,10 +249,12 @@ class _IssuedReceiptsTabState extends State<_IssuedReceiptsTab> {
                   clients: widget.clients,
                   unknownClientLabel: widget.unknownClientLabel,
                   padding: const EdgeInsets.all(10),
-                  itemBuilder: (receipt, client) => ReceiptListItem(
+                  itemBuilder: (receipt, client, visibleColumns) =>
+                      ReceiptListItem(
                     receipt: receipt,
                     client: client,
                     selected: receipt.id == widget.selectedId,
+                    visibleFinancialColumns: visibleColumns,
                     onTap: () => widget.onSelect(receipt),
                     onPreview: () => widget.onPreview(receipt),
                     onDownload: () => widget.onDownload(receipt),
@@ -439,10 +493,12 @@ class GroupReceiptsView extends StatelessWidget {
                         clients: clients,
                         unknownClientLabel: l.unknownClient,
                         padding: const EdgeInsets.all(10),
-                        itemBuilder: (r, client) => ReceiptListItem(
+                        itemBuilder: (r, client, visibleColumns) =>
+                            ReceiptListItem(
                           receipt: r,
                           client: client,
                           selected: r.id == selectedReceipt?.id,
+                          visibleFinancialColumns: visibleColumns,
                           onTap: () => onSelectReceipt(r),
                           onPreview: () => onPreviewPdf(r),
                           onEdit: () => onEditReceipt(r),

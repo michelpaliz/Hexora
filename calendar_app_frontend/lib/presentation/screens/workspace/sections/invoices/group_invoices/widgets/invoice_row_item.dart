@@ -2,6 +2,7 @@ import 'package:hexora/presentation/shared/widgets/documents/compact_document_ro
 import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:hexora/presentation/shared/widgets/documents/mobile_document_card.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
@@ -30,6 +31,7 @@ class InvoiceListItem extends StatefulWidget {
   final String? monthWarningTooltip;
   final bool selected;
   final bool mobile;
+  final Set<HexoraFinancialColumn> visibleFinancialColumns;
 
   /// Hide the client name when the list is already scoped to one client;
   /// the invoice number becomes the row title instead.
@@ -53,6 +55,12 @@ class InvoiceListItem extends StatefulWidget {
     this.selected = false,
     this.mobile = false,
     this.showClient = true,
+    this.visibleFinancialColumns = const {
+      HexoraFinancialColumn.date,
+      HexoraFinancialColumn.taxableBase,
+      HexoraFinancialColumn.vat,
+      HexoraFinancialColumn.total,
+    },
   });
 
   @override
@@ -340,11 +348,12 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
               child: Icon(Icons.warning_amber_rounded,
                   size: 16, color: warning ? cs.error : amber),
             ),
-      metadata: [
-        if (widget.showClient) numberLabel,
-        if (dateLabel.isNotEmpty) dateLabel
-      ].join(' · '),
+      metadata: widget.showClient ? numberLabel : '',
       amount: totalLabel,
+      date: date,
+      taxableBase: _subtotal,
+      vat: _taxTotal,
+      visibleFinancialColumns: widget.visibleFinancialColumns,
       selected: widget.selected,
       onTap: widget.onTap,
       previewLabel: isEs ? 'Vista previa' : 'Preview',

@@ -6,6 +6,7 @@ import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge
 import 'package:hexora/presentation/shared/widgets/documents/document_workspace_chrome.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
@@ -58,6 +59,12 @@ class _PresupuestoDocumentActionsViewState
   int _page = 0;
   static const _pageSize = 10;
   final Set<String> _selected = {};
+  static const _availableFinancialColumns = {
+    HexoraFinancialColumn.date,
+    HexoraFinancialColumn.total,
+  };
+  Set<HexoraFinancialColumn> _visibleFinancialColumns =
+      Set.of(_availableFinancialColumns);
   Map<String, dynamic>? _editingDocument;
   Map<String, dynamic>? _detailDocument;
   Uint8List? _detailPdfBytes;
@@ -73,6 +80,12 @@ class _PresupuestoDocumentActionsViewState
     _api = widget.api ?? PresupuestosApi();
     _workspace = PresupuestoDocumentWorkspace(api: _api);
     _search.addListener(_onSearchChanged);
+    HexoraColumnVisibilityStore.load(
+      'presupuestos',
+      _availableFinancialColumns,
+    ).then((value) {
+      if (mounted) setState(() => _visibleFinancialColumns = value);
+    });
     _load();
   }
 
@@ -839,18 +852,17 @@ class _PresupuestoDocumentActionsViewState
                         child: _tableHeaderLabel(context, 'Propuesta')),
                     Expanded(
                         flex: 3, child: _tableHeaderLabel(context, 'Cliente')),
-                    SizedBox(
-                        width: 130, child: _tableHeaderLabel(context, 'Fecha')),
+                    if (_visibleFinancialColumns
+                        .contains(HexoraFinancialColumn.date))
+                      const HexoraFinancialHeaderCell(
+                          label: 'Fecha', width: 104),
                     SizedBox(
                         width: 110,
                         child: _tableHeaderLabel(context, 'Estado')),
-                    SizedBox(
-                        width: 130,
-                        child: Padding(
-                            padding: const EdgeInsets.only(
-                                right: HexoraTableTokens.cellPadding),
-                            child: _tableHeaderLabel(context, 'Importe',
-                                align: TextAlign.right))),
+                    if (_visibleFinancialColumns
+                        .contains(HexoraFinancialColumn.total))
+                      const HexoraFinancialHeaderCell(
+                          label: 'Total', width: 120, numeric: true),
                     SizedBox(
                         width: HexoraTableTokens.actionColumn,
                         child: _tableHeaderLabel(context, 'Acciones')),
@@ -885,6 +897,7 @@ class _PresupuestoDocumentActionsViewState
                   onDelete: () => _remove(document),
                   onDuplicate: () => _duplicate(document),
                   mutationBusy: _mutationBusy,
+                  visibleFinancialColumns: _visibleFinancialColumns,
                 ),
             ]);
           }),
@@ -953,6 +966,14 @@ class _PresupuestoDocumentActionsViewState
                   const SizedBox(width: HexoraTableTokens.gap),
                   _sortButton(context),
                   const SizedBox(width: HexoraTableTokens.gap),
+                  HexoraColumnVisibilityMenu(
+                    moduleKey: 'presupuestos',
+                    availableColumns: _availableFinancialColumns,
+                    visibleColumns: _visibleFinancialColumns,
+                    onChanged: (value) =>
+                        setState(() => _visibleFinancialColumns = value),
+                  ),
+                  const SizedBox(width: HexoraTableTokens.gap),
                   _refreshButton(context),
                   if (widget.onCreate != null) ...[
                     const SizedBox(width: HexoraTableTokens.gap),
@@ -965,16 +986,27 @@ class _PresupuestoDocumentActionsViewState
                 children: [
                   _searchField(context),
                   const SizedBox(height: HexoraTableTokens.gap),
-                  Row(
-                    children: [
-                      _sortButton(context),
-                      const SizedBox(width: HexoraTableTokens.gap),
-                      _refreshButton(context),
-                      if (widget.onCreate != null) ...[
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _sortButton(context),
                         const SizedBox(width: HexoraTableTokens.gap),
-                        Expanded(child: _createButton(context)),
+                        HexoraColumnVisibilityMenu(
+                          moduleKey: 'presupuestos',
+                          availableColumns: _availableFinancialColumns,
+                          visibleColumns: _visibleFinancialColumns,
+                          onChanged: (value) =>
+                              setState(() => _visibleFinancialColumns = value),
+                        ),
+                        const SizedBox(width: HexoraTableTokens.gap),
+                        _refreshButton(context),
+                        if (widget.onCreate != null) ...[
+                          const SizedBox(width: HexoraTableTokens.gap),
+                          _createButton(context),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ],
               );
@@ -1179,6 +1211,10 @@ class _DocumentRow extends StatelessWidget {
     this.table = false,
     this.selected = false,
     this.onSelect,
+    this.visibleFinancialColumns = const {
+      HexoraFinancialColumn.date,
+      HexoraFinancialColumn.total,
+    },
   });
 
   final Map<String, dynamic> document;
@@ -1197,6 +1233,7 @@ class _DocumentRow extends StatelessWidget {
   final bool table;
   final bool selected;
   final ValueChanged<bool?>? onSelect;
+  final Set<HexoraFinancialColumn> visibleFinancialColumns;
 
   bool get _isIssued => presupuestoDocumentStatus(document) == 'issued';
   bool get _isDraft => presupuestoDocumentStatus(document) == 'draft';
@@ -1319,20 +1356,9 @@ class _DocumentRow extends StatelessWidget {
                                 ]),
                           ),
                         ]))),
-                SizedBox(
-                    width: 130,
-                    child: Row(children: [
-                      Icon(Icons.calendar_today_outlined,
-                          size: 15, color: cs.onSurfaceVariant),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: line(
-                            date == null
-                                ? 'Sin fecha'
-                                : DateFormat('d MMM y', 'es').format(date),
-                            muted: true),
-                      ),
-                    ])),
+                if (visibleFinancialColumns
+                    .contains(HexoraFinancialColumn.date))
+                  HexoraDateCell(value: date, width: 104),
                 SizedBox(
                     width: 110,
                     child: Align(
@@ -1342,22 +1368,9 @@ class _DocumentRow extends StatelessWidget {
                           status: _statusKind,
                           label: _statusLabel,
                         ))),
-                SizedBox(
-                    width: 130,
-                    child: Padding(
-                        padding: const EdgeInsets.only(
-                            right: HexoraTableTokens.cellPadding),
-                        child: Text(
-                            amount == null
-                                ? '—'
-                                : NumberFormat.currency(
-                                        locale: 'es_ES', symbol: '€')
-                                    .format(amount),
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                                color: cs.onSurface,
-                                fontWeight: FontWeight.w600,
-                                fontFeatures: HexoraTypography.numericFeatures),
-                            textAlign: TextAlign.right))),
+                if (visibleFinancialColumns
+                    .contains(HexoraFinancialColumn.total))
+                  HexoraFinancialCell(value: amount, total: true, width: 120),
                 SizedBox(
                     width: HexoraTableTokens.actionColumn,
                     child: _actions(context)),

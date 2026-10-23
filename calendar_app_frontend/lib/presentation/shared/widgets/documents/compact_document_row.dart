@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_list_row.dart';
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 
 class CompactDocumentAction {
   const CompactDocumentAction(this.label, this.onPressed,
@@ -25,6 +26,77 @@ class CompactDocumentQuickAction {
   final bool busy;
 }
 
+class CompactDocumentTableHeader extends StatelessWidget {
+  const CompactDocumentTableHeader({
+    super.key,
+    required this.identityLabel,
+    required this.visibleFinancialColumns,
+    this.statusLabel = 'Estado',
+    this.actionsWidth = 120,
+  });
+
+  final String identityLabel;
+  final Set<HexoraFinancialColumn> visibleFinancialColumns;
+  final String statusLabel;
+  final double actionsWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return LayoutBuilder(builder: (context, constraints) {
+      final financialWidth = (visibleFinancialColumns
+                  .contains(HexoraFinancialColumn.date)
+              ? 104.0
+              : 0) +
+          (visibleFinancialColumns.contains(HexoraFinancialColumn.taxableBase)
+              ? 112.0
+              : 0) +
+          (visibleFinancialColumns.contains(HexoraFinancialColumn.vat)
+              ? 96.0
+              : 0) +
+          (visibleFinancialColumns.contains(HexoraFinancialColumn.total)
+              ? 120.0
+              : 0);
+      if (constraints.maxWidth <
+          financialWidth +
+              HexoraDocumentTokens.statusColumn +
+              actionsWidth +
+              180) {
+        return const SizedBox.shrink();
+      }
+      return Container(
+        height: HexoraTableTokens.headingHeight,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        color: cs.surfaceContainerLow.withValues(alpha: .55),
+        child: Row(children: [
+          const SizedBox(width: HexoraDocumentTokens.icon + 8),
+          Expanded(
+              child: HexoraFinancialHeaderCell(
+                  label: identityLabel, width: double.infinity)),
+          SizedBox(
+            width: HexoraDocumentTokens.statusColumn,
+            child: HexoraFinancialHeaderCell(
+                label: statusLabel, width: double.infinity),
+          ),
+          if (visibleFinancialColumns.contains(HexoraFinancialColumn.date))
+            const HexoraFinancialHeaderCell(label: 'Fecha', width: 104),
+          if (visibleFinancialColumns
+              .contains(HexoraFinancialColumn.taxableBase))
+            const HexoraFinancialHeaderCell(
+                label: 'Base imponible', width: 112, numeric: true),
+          if (visibleFinancialColumns.contains(HexoraFinancialColumn.vat))
+            const HexoraFinancialHeaderCell(
+                label: 'IVA', width: 96, numeric: true),
+          if (visibleFinancialColumns.contains(HexoraFinancialColumn.total))
+            const HexoraFinancialHeaderCell(
+                label: 'Total', width: 120, numeric: true),
+          SizedBox(width: actionsWidth),
+        ]),
+      );
+    });
+  }
+}
+
 class CompactDocumentRow extends StatelessWidget {
   const CompactDocumentRow(
       {super.key,
@@ -44,7 +116,11 @@ class CompactDocumentRow extends StatelessWidget {
       this.quickActions = const [],
       this.primaryAction,
       this.primaryActionWidth = 0,
-      this.quickActionSlots = 0});
+      this.quickActionSlots = 0,
+      this.date,
+      this.taxableBase,
+      this.vat,
+      this.visibleFinancialColumns = const {HexoraFinancialColumn.total}});
   final String title, metadata, previewLabel;
   final String? amount;
   final IconData icon;
@@ -66,6 +142,10 @@ class CompactDocumentRow extends StatelessWidget {
   /// Edit when editing isn't permitted) leave its slot empty, so Download
   /// keeps the same position on every row. Standard order: Edit, Download.
   final int quickActionSlots;
+  final DateTime? date;
+  final num? taxableBase;
+  final num? vat;
+  final Set<HexoraFinancialColumn> visibleFinancialColumns;
 
   @override
   Widget build(BuildContext context) {
@@ -89,14 +169,29 @@ class CompactDocumentRow extends StatelessWidget {
           verticalPadding: 2,
           separatorWidth: 1,
           child: LayoutBuilder(builder: (context, constraints) {
-            final amountWidth = HexoraDocumentTokens.amountColumn *
-                MediaQuery.textScalerOf(context).scale(13) /
-                13;
+            const dateWidth = 104.0;
+            const baseWidth = 112.0;
+            const vatWidth = 96.0;
+            const totalWidth = 120.0;
+            final financialWidth = (visibleFinancialColumns
+                        .contains(HexoraFinancialColumn.date)
+                    ? dateWidth
+                    : 0) +
+                (visibleFinancialColumns
+                        .contains(HexoraFinancialColumn.taxableBase)
+                    ? baseWidth
+                    : 0) +
+                (visibleFinancialColumns.contains(HexoraFinancialColumn.vat)
+                    ? vatWidth
+                    : 0) +
+                (visibleFinancialColumns.contains(HexoraFinancialColumn.total)
+                    ? totalWidth
+                    : 0);
             final narrow = constraints.maxWidth <
                     (HexoraDocumentTokens.statusColumn +
-                        amountWidth +
+                        financialWidth +
                         actionsColumnWidth +
-                        180) ||
+                        110) ||
                 MediaQuery.textScalerOf(context).scale(13) > 18;
             final summary = Column(
                 mainAxisSize: MainAxisSize.min,
@@ -125,6 +220,19 @@ class CompactDocumentRow extends StatelessWidget {
                           fontSize: 11,
                           fontWeight: FontWeight.w400,
                           color: cs.onSurfaceVariant)),
+                  if (narrow &&
+                      visibleFinancialColumns
+                          .contains(HexoraFinancialColumn.date))
+                    Text(
+                      HexoraFinancialFormat.date(date),
+                      maxLines: 1,
+                      style: text.bodySmall?.copyWith(
+                        fontFamily: HexoraTypography.fontFamily,
+                        fontSize: 12,
+                        color: cs.onSurfaceVariant,
+                        fontFeatures: HexoraTypography.numericFeatures,
+                      ),
+                    ),
                   if (narrow && status != null) status!,
                 ]);
             final amountWidget = amount == null
@@ -133,7 +241,7 @@ class CompactDocumentRow extends StatelessWidget {
                     textAlign: TextAlign.right,
                     style: text.bodyMedium?.copyWith(
                         fontFamily: HexoraTypography.fontFamily,
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                         fontFeatures: HexoraTypography.numericFeatures));
             Widget busyIndicator() => const SizedBox(
@@ -223,12 +331,23 @@ class CompactDocumentRow extends StatelessWidget {
                           alignment: AlignmentDirectional.centerEnd,
                           child: status)),
                   const SizedBox(width: 12),
-                  SizedBox(
-                      key: const ValueKey('document-amount-column'),
-                      width: amountWidth,
-                      child: Align(
-                          alignment: AlignmentDirectional.centerEnd,
-                          child: amountWidget)),
+                  if (visibleFinancialColumns
+                      .contains(HexoraFinancialColumn.date))
+                    HexoraDateCell(value: date, width: dateWidth),
+                  if (visibleFinancialColumns
+                      .contains(HexoraFinancialColumn.taxableBase))
+                    HexoraFinancialCell(value: taxableBase, width: baseWidth),
+                  if (visibleFinancialColumns
+                      .contains(HexoraFinancialColumn.vat))
+                    HexoraFinancialCell(value: vat, width: vatWidth),
+                  if (visibleFinancialColumns
+                      .contains(HexoraFinancialColumn.total))
+                    SizedBox(
+                        key: const ValueKey('document-amount-column'),
+                        width: totalWidth,
+                        child: Align(
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: amountWidget)),
                   SizedBox(
                       key: const ValueKey('document-actions-column'),
                       width: actionsColumnWidth,
@@ -237,7 +356,11 @@ class CompactDocumentRow extends StatelessWidget {
               ]),
               if (narrow)
                 Row(children: [
-                  Expanded(child: amountWidget ?? const SizedBox.shrink()),
+                  Expanded(
+                      child: visibleFinancialColumns
+                              .contains(HexoraFinancialColumn.total)
+                          ? amountWidget ?? const SizedBox.shrink()
+                          : const SizedBox.shrink()),
                   actionsWidget
                 ])
             ]);

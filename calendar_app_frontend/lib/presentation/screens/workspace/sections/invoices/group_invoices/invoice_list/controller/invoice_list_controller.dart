@@ -74,11 +74,32 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   bool _clientNameSortEnabled = false;
   InvoiceSortDir _clientNameSortDir = InvoiceSortDir.asc;
   String _searchText = '';
+  static const _availableFinancialColumns = {
+    HexoraFinancialColumn.date,
+    HexoraFinancialColumn.taxableBase,
+    HexoraFinancialColumn.vat,
+    HexoraFinancialColumn.total,
+  };
+  Set<HexoraFinancialColumn> _visibleFinancialColumns =
+      Set.of(_availableFinancialColumns);
 
   @override
   void initState() {
     super.initState();
+    _loadColumnVisibility();
     _scheduleSummaryLoad();
+  }
+
+  Future<void> _loadColumnVisibility() async {
+    final value = await HexoraColumnVisibilityStore.load(
+      'facturas',
+      _availableFinancialColumns,
+    );
+    if (mounted) setState(() => _visibleFinancialColumns = value);
+  }
+
+  void _setVisibleFinancialColumns(Set<HexoraFinancialColumn> value) {
+    setState(() => _visibleFinancialColumns = value);
   }
 
   @override

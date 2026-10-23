@@ -285,6 +285,13 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                   tooltip: l.invoiceSortByNumberLabel,
                 ),
                 if (widget.allowClientNameSort) clientNameSortButton(),
+                HexoraColumnVisibilityMenu(
+                  moduleKey: 'facturas',
+                  availableColumns:
+                      _InvoicesTabListState._availableFinancialColumns,
+                  visibleColumns: _visibleFinancialColumns,
+                  onChanged: _setVisibleFinancialColumns,
+                ),
               ];
 
               if (widget.showSummaryTotals) {
@@ -378,6 +385,14 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                       }
                     },
                   ),
+                  const SizedBox(width: 8),
+                  HexoraColumnVisibilityMenu(
+                    moduleKey: 'facturas',
+                    availableColumns:
+                        _InvoicesTabListState._availableFinancialColumns,
+                    visibleColumns: _visibleFinancialColumns,
+                    onChanged: _setVisibleFinancialColumns,
+                  ),
                   const Spacer(),
                   if (issueAllButton != null) Flexible(child: issueAllButton),
                   const SizedBox(width: 8),
@@ -407,6 +422,11 @@ extension _InvoiceListLayout on _InvoicesTabListState {
             ),
           ],
           const SizedBox(height: 6),
+          CompactDocumentTableHeader(
+            identityLabel: 'Factura / Cliente',
+            visibleFinancialColumns: _visibleFinancialColumns,
+            actionsWidth: 120,
+          ),
           Expanded(
             child: visible.isEmpty
                 ? Center(
@@ -467,6 +487,8 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                               InvoiceListItem(
                                 invoice: inv,
                                 client: client,
+                                visibleFinancialColumns:
+                                    _visibleFinancialColumns,
                                 selected: selected,
                                 warning: hasUnknownClientError,
                                 warningLabel: hasUnknownClientError

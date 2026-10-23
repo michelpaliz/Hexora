@@ -1,6 +1,7 @@
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
 import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
 import 'package:hexora/presentation/shared/widgets/documents/mobile_document_card.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/receipt/receipt.dart';
@@ -21,12 +22,18 @@ class ReceiptListItem extends StatefulWidget {
   final VoidCallback? onMarkSent;
   final VoidCallback? onMarkUnsent;
   final bool selected;
+  final Set<HexoraFinancialColumn> visibleFinancialColumns;
 
   const ReceiptListItem({
     super.key,
     required this.receipt,
     required this.client,
     this.selected = false,
+    this.visibleFinancialColumns = const {
+      HexoraFinancialColumn.date,
+      HexoraFinancialColumn.taxableBase,
+      HexoraFinancialColumn.total,
+    },
     this.onTap,
     this.onPreview,
     this.onEdit,
@@ -345,8 +352,11 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
 
     return CompactDocumentRow(
       title: widget.client.name,
-      metadata: '$number · $shortDateLabel',
+      metadata: number,
       amount: totalLabel,
+      date: date,
+      taxableBase: widget.receipt.subtotal,
+      visibleFinancialColumns: widget.visibleFinancialColumns,
       icon: Icons.receipt_long_outlined,
       selected: widget.selected,
       onTap: widget.onTap,
