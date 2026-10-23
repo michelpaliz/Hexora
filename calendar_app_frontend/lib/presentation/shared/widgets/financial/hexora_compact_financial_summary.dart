@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
@@ -27,7 +28,7 @@ class HexoraFinancialAlert {
   final VoidCallback? onPressed;
 }
 
-class HexoraCompactFinancialSummary extends StatelessWidget {
+class HexoraCompactFinancialSummary extends StatefulWidget {
   const HexoraCompactFinancialSummary({
     super.key,
     required this.metrics,
@@ -42,11 +43,40 @@ class HexoraCompactFinancialSummary extends StatelessWidget {
   final String loadingLabel;
 
   @override
+  State<HexoraCompactFinancialSummary> createState() =>
+      _HexoraCompactFinancialSummaryState();
+}
+
+class _HexoraCompactFinancialSummaryState
+    extends State<HexoraCompactFinancialSummary> {
+  final ScrollController _horizontalController = ScrollController();
+
+  @override
+  void dispose() {
+    _horizontalController.dispose();
+    super.dispose();
+  }
+
+  void _handlePointerSignal(PointerSignalEvent signal) {
+    if (signal is! PointerScrollEvent || !_horizontalController.hasClients) {
+      return;
+    }
+    final delta = signal.scrollDelta.dx.abs() > signal.scrollDelta.dy.abs()
+        ? signal.scrollDelta.dx
+        : signal.scrollDelta.dy;
+    final position = _horizontalController.position;
+    _horizontalController.jumpTo(
+      (_horizontalController.offset + delta)
+          .clamp(position.minScrollExtent, position.maxScrollExtent),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
 
-    if (loading) {
+    if (widget.loading) {
       return Container(
         constraints: const BoxConstraints(minHeight: 60),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -61,7 +91,7 @@ class HexoraCompactFinancialSummary extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Text(
-              loadingLabel,
+              widget.loadingLabel,
               style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
@@ -72,8 +102,8 @@ class HexoraCompactFinancialSummary extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final children = <Widget>[
-          for (final metric in metrics) _metric(context, metric),
-          if (alert != null) _alert(context, alert!),
+          for (final metric in widget.metrics) _metric(context, metric),
+          if (widget.alert != null) _alert(context, widget.alert!),
         ];
         final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
         final wide = constraints.maxWidth >= 700 && textScale <= 1.4;
@@ -101,18 +131,45 @@ class HexoraCompactFinancialSummary extends StatelessWidget {
                     ],
                   ),
                 )
-              : Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final child in children)
-                      SizedBox(
-                        width: constraints.maxWidth >= 420
-                            ? (constraints.maxWidth - 28) / 2
-                            : constraints.maxWidth - 20,
-                        child: child,
+              : Scrollbar(
+                  controller: _horizontalController,
+                  thumbVisibility: true,
+                  notificationPredicate: (notification) =>
+                      notification.metrics.axis == Axis.horizontal,
+                  child: Listener(
+                    onPointerSignal: _handlePointerSignal,
+                    child: ScrollConfiguration(
+                      behavior: ScrollConfiguration.of(context).copyWith(
+                        dragDevices: const {
+                          PointerDeviceKind.touch,
+                          PointerDeviceKind.mouse,
+                          PointerDeviceKind.stylus,
+                          PointerDeviceKind.trackpad,
+                        },
                       ),
-                  ],
+                      child: SingleChildScrollView(
+                        controller: _horizontalController,
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.only(bottom: 5),
+                        child: IntrinsicHeight(
+                          child: Row(
+                            children: [
+                              for (var index = 0;
+                                  index < children.length;
+                                  index++) ...[
+                                SizedBox(
+                                  width: index == 2 ? 180 : 160,
+                                  child: children[index],
+                                ),
+                                if (index != children.length - 1)
+                                  const SizedBox(width: 8),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
         );
       },

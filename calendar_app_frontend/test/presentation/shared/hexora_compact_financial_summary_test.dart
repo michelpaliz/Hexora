@@ -71,7 +71,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('wraps without overflow on narrow enlarged layouts',
+  testWidgets('scrolls horizontally without overflow on narrow layouts',
       (tester) async {
     tester.view.physicalSize = const Size(320, 800);
     tester.view.devicePixelRatio = 1;
@@ -83,6 +83,16 @@ void main() {
     );
 
     expect(find.text('274.130,47 €'), findsOneWidget);
+    final scrollView = tester.widget<SingleChildScrollView>(
+      find.byType(SingleChildScrollView),
+    );
+    expect(scrollView.scrollDirection, Axis.horizontal);
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(-180, 0),
+    );
+    await tester.pump();
+    expect(scrollView.controller!.offset, greaterThan(0));
     expect(tester.takeException(), isNull);
   });
 }
