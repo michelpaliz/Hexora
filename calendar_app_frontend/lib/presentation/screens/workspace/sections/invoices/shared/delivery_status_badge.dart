@@ -3,10 +3,11 @@ import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-enum DeliveryStatusVisual { neutral, success, error }
-
 String normalizedDeliveryStatus(String? value) {
   switch ((value ?? '').trim().toLowerCase()) {
+    case 'delivered':
+    case 'confirmed_delivered':
+      return 'delivered';
     case 'sent':
       return 'sent';
     case 'failed':
@@ -31,6 +32,8 @@ String deliveryChannelLabel(String? value) {
 
 String deliveryStatusLabel(String? value, {bool feminine = false}) {
   switch (normalizedDeliveryStatus(value)) {
+    case 'delivered':
+      return feminine ? 'Entregada' : 'Entregado';
     case 'sent':
       return feminine ? 'Enviada' : 'Enviado';
     case 'failed':
@@ -63,17 +66,16 @@ class DeliveryStatusBadge extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final normalized = normalizedDeliveryStatus(status);
     final label = deliveryStatusLabel(status, feminine: feminine);
-    final visual = switch (normalized) {
-      'sent' => DeliveryStatusVisual.success,
-      'failed' => DeliveryStatusVisual.error,
-      _ => DeliveryStatusVisual.neutral,
-    };
-    final color = switch (visual) {
-      DeliveryStatusVisual.success => cs.primary,
-      DeliveryStatusVisual.error => cs.error,
-      DeliveryStatusVisual.neutral => cs.onSurfaceVariant,
+    final color = switch (normalized) {
+      'delivered' => Theme.of(context).brightness == Brightness.light
+          ? const Color(0xFF2E7D32)
+          : const Color(0xFF81C784),
+      'sent' => cs.primary,
+      'failed' => cs.error,
+      _ => cs.onSurfaceVariant,
     };
     final icon = switch (normalized) {
+      'delivered' => Icons.done_all_rounded,
       'sent' => Icons.mark_email_read_outlined,
       'failed' => Icons.error_outline_rounded,
       _ => Icons.mark_email_unread_outlined,

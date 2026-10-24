@@ -41,7 +41,7 @@ void main() {
                   groupId: 'group',
                   clientId: 'client',
                   total: 36.30,
-                  deliveryStatus: 'sent',
+                  deliveryStatus: 'confirmed_delivered',
                   status: 'issued'),
               client: client,
               onTap: () => opened++),
@@ -66,11 +66,24 @@ void main() {
       ));
       await tester.pumpAndSettle();
       expect(find.byType(MobileDocumentCard), findsNWidgets(3));
-      expect(find.text('Enviada'), findsOneWidget);
+      expect(find.text('Enviada'), findsNothing);
+      expect(find.text('Entregada'), findsNothing);
+      expect(find.byIcon(Icons.done_all_rounded), findsNothing);
       expect(find.text('No enviado'), findsOneWidget);
-      expect(find.byIcon(Icons.mark_email_read_outlined), findsOneWidget);
       expect(find.byIcon(Icons.mark_email_unread_outlined), findsOneWidget);
       expect(tester.takeException(), isNull);
+
+      await tester.tap(find.byType(PopupMenuButton<String>).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Ver detalles'));
+      await tester.pumpAndSettle();
+      expect(find.text('Seguimiento de entrega'), findsOneWidget);
+      expect(find.text('Enviada'), findsOneWidget);
+      expect(find.text('Entregada'), findsOneWidget);
+      expect(find.byIcon(Icons.send_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.done_all_rounded), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
       for (var i = 0; i < 3; i++) {
         final card = find.byType(MobileDocumentCard).at(i);
         await tester.ensureVisible(card);

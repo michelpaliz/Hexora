@@ -165,40 +165,49 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   Widget _buildMobileCard(AppLocalizations l, AppTypography t, ColorScheme cs,
       String total, String date) {
     final inv = widget.invoice;
-    return MobileDocumentCard(
-      title: widget.client.name,
-      amount: total,
-      metadata:
-          [inv.invoiceNumber, date].where((v) => v.isNotEmpty).join(' · '),
-      isDraft: inv.isDraft,
-      statusLabel: inv.isDraft ? l.statusDraft : l.statusIssued,
-      onTap: widget.onTap,
-      badges: [
-        DeliveryStatusBadge(
-          status: inv.deliveryStatus,
-          channel: inv.deliveryChannel,
-          sentAt: inv.sentAt,
-          deliveryError: inv.deliveryError,
-          feminine: true,
+    final isEs = l.localeName.toLowerCase().startsWith('es');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        MobileDocumentCard(
+          title: widget.client.name,
+          amount: total,
+          metadata:
+              [inv.invoiceNumber, date].where((v) => v.isNotEmpty).join(' · '),
+          isDraft: inv.isDraft,
+          statusLabel: inv.isDraft ? l.statusDraft : l.statusIssued,
+          onTap: widget.onTap,
+          trailing: PopupMenuButton<String>(
+            tooltip: isEs ? 'Más acciones' : 'More actions',
+            onSelected: (value) {
+              if (value == 'details') {
+                setState(() => _detailsExpanded = !_detailsExpanded);
+              }
+              if (value == 'edit') widget.onEdit?.call();
+              if (value == 'delete') widget.onDelete?.call();
+            },
+            itemBuilder: (_) => [
+              NavigationPopupMenuItem(
+                value: 'details',
+                child: Text(_detailsExpanded
+                    ? (isEs ? 'Ocultar detalles' : 'Hide details')
+                    : (isEs ? 'Ver detalles' : 'Show details')),
+              ),
+              if (widget.onEdit != null)
+                NavigationPopupMenuItem(value: 'edit', child: Text(l.edit)),
+              if (widget.onDelete != null)
+                NavigationPopupMenuItem(
+                    value: 'delete',
+                    child: Text(l.remove, style: TextStyle(color: cs.error))),
+            ],
+          ),
         ),
+        if (_detailsExpanded)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: _InvoiceDeliveryTracking(invoice: inv),
+          ),
       ],
-      trailing: widget.onEdit != null || widget.onDelete != null
-          ? PopupMenuButton<String>(
-              tooltip: l.edit,
-              onSelected: (value) {
-                if (value == 'edit') widget.onEdit?.call();
-                if (value == 'delete') widget.onDelete?.call();
-              },
-              itemBuilder: (_) => [
-                if (widget.onEdit != null)
-                  NavigationPopupMenuItem(value: 'edit', child: Text(l.edit)),
-                if (widget.onDelete != null)
-                  NavigationPopupMenuItem(
-                      value: 'delete',
-                      child: Text(l.remove, style: TextStyle(color: cs.error))),
-              ],
-            )
-          : null,
     );
   }
 
@@ -332,7 +341,6 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       _ => cs.onSurfaceVariant,
     };
     final secondaryStates = [
-      '${isEs ? 'Entrega' : 'Delivery'}: ${deliveryStatusLabel(widget.invoice.deliveryStatus, feminine: true)}',
       linkTooltip,
       if (showInvoiceType)
         invoiceType == 'advance'
@@ -433,19 +441,131 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
           ? null
           : Align(
               alignment: AlignmentDirectional.centerStart,
-              child: Text(
-                  [
-                    '${l.invoiceLinesTitle}: $linesCountLabel',
-                    if (dateLabel.isNotEmpty) dateLabel,
-                    if (isIssued) issuedByTooltip,
-                    if (showInvoiceType) invoiceType,
-                    if (breakdownTooltip != null) breakdownTooltip,
-                    linkTooltip,
-                    if (widget.warningLabel != null) widget.warningLabel!,
-                    if (widget.monthWarningTooltip != null)
-                      widget.monthWarningTooltip!,
-                  ].join(' · '),
-                  style: t.bodySmall)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                      [
+                        '${l.invoiceLinesTitle}: $linesCountLabel',
+                        if (dateLabel.isNotEmpty) dateLabel,
+                        if (isIssued) issuedByTooltip,
+                        if (showInvoiceType) invoiceType,
+                        if (breakdownTooltip != null) breakdownTooltip,
+                        linkTooltip,
+                        if (widget.warningLabel != null) widget.warningLabel!,
+                        if (widget.monthWarningTooltip != null)
+                          widget.monthWarningTooltip!,
+                      ].join(' · '),
+                      style: t.bodySmall),
+                  const SizedBox(height: 8),
+                  _InvoiceDeliveryTracking(invoice: widget.invoice),
+                ],
+              )),
+    );
+  }
+}
+
+class _InvoiceDeliveryTracking extends StatelessWidget {
+  const _InvoiceDeliveryTracking({required this.invoice});
+
+  final Invoice invoice;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final status = normalizedDeliveryStatus(invoice.deliveryStatus);
+    final isDelivered = status == 'delivered';
+    final isSent = status == 'sent' || isDelivered;
+    final isFailed = status == 'failed';
+    final sentAtLabel = invoice.sentAt == null
+        ? null
+        : DateFormat.yMMMd(Localizations.localeOf(context).toString())
+            .add_Hm()
+            .format(invoice.sentAt!.toLocal());
+    final channel = (invoice.deliveryChannel ?? '').trim().isEmpty
+        ? null
+        : deliveryChannelLabel(invoice.deliveryChannel);
+    final sentDetail = [sentAtLabel, channel]
+        .whereType<String>()
+        .where((value) => value.isNotEmpty)
+        .join(' · ');
+    final success = isLight ? const Color(0xFF2E7D32) : const Color(0xFF81C784);
+
+    Widget statusItem({
+      required IconData icon,
+      required String label,
+      required Color color,
+      String? detail,
+    }) {
+      return Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(label,
+              style: t.caption
+                  .copyWith(color: color, fontWeight: FontWeight.w600)),
+          if ((detail ?? '').isNotEmpty) ...[
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(detail!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant)),
+            ),
+          ],
+        ],
+      );
+    }
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: cs.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(isEs ? 'Seguimiento de entrega' : 'Delivery tracking',
+                style: t.caption.copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            if (isFailed)
+              statusItem(
+                icon: Icons.send_outlined,
+                label: isEs ? 'Error de envío' : 'Delivery failed',
+                color: cs.error,
+                detail: invoice.deliveryError,
+              )
+            else if (!isSent)
+              statusItem(
+                icon: Icons.send_outlined,
+                label: isEs ? 'No enviada' : 'Not sent',
+                color: cs.onSurfaceVariant,
+              )
+            else ...[
+              statusItem(
+                icon: Icons.send_rounded,
+                label: isEs ? 'Enviada' : 'Sent',
+                color: cs.primary,
+                detail: sentDetail,
+              ),
+              if (isDelivered) ...[
+                const SizedBox(height: 6),
+                statusItem(
+                  icon: Icons.done_all_rounded,
+                  label: isEs ? 'Entregada' : 'Delivered',
+                  color: success,
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
