@@ -22,6 +22,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_history_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_lines.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_party.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_public_link_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_payment_editor.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/invoice_delivery_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
@@ -401,6 +402,10 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
           invoice: invoice,
           onSave: _updateInvoicePayment,
         ),
+        if ((invoice.status ?? '').toLowerCase() == 'issued') ...[
+          const SizedBox(height: 12),
+          InvoicePublicLinkCard(invoiceId: invoice.id),
+        ],
 
         // Delivery status
         const SizedBox(height: 12),
