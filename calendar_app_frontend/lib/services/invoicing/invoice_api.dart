@@ -756,6 +756,24 @@ class InvoicesApi {
     return _decode<Invoice>(r, (j) => Invoice.fromJson(j));
   }
 
+  Future<Map<String, dynamic>> getPublicLink(String id) async {
+    final r = await AuthenticatedHttpClient.get(
+      _u('/$id/public-link'), headers: _headers());
+    return _decode<Map<String, dynamic>>(r, (j) => Map<String, dynamic>.from(j));
+  }
+
+  Future<Map<String, dynamic>> revokePublicLink(String id) async {
+    final r = await AuthenticatedHttpClient.post(
+      _u('/$id/public-link/revoke'), headers: _headers());
+    return _decode<Map<String, dynamic>>(r, (j) => Map<String, dynamic>.from(j));
+  }
+
+  Future<Map<String, dynamic>> regeneratePublicLink(String id) async {
+    final r = await AuthenticatedHttpClient.post(
+      _u('/$id/public-link/regenerate'), headers: _headers());
+    return _decode<Map<String, dynamic>>(r, (j) => Map<String, dynamic>.from(j));
+  }
+
   /// POST /invoices/:id/issue  -> locks invoice, assigns number/issueDate/status
   Future<Invoice> issue(String id) async {
     final r = await AuthenticatedHttpClient.post(
