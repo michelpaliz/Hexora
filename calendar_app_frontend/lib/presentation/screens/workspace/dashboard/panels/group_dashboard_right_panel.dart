@@ -161,7 +161,8 @@ class GroupDashboardRightPanel extends StatelessWidget {
     if (activeAnchor == 'workers' ||
         activeAnchor == 'services' ||
         activeAnchor == 'settings' ||
-        activeAnchor == 'notifications') {
+        activeAnchor == 'notifications' ||
+        activeAnchor == 'chat') {
       return content;
     }
 
