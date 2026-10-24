@@ -10,6 +10,7 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
   bool _previewing = false;
   bool _downloadingPdf = false;
   bool _inlinePdfLoading = false;
+  int _inlinePdfRequestId = 0;
   String? _inlinePdfError;
   Uint8List? _inlinePdfBytes;
   bool _savingBillingName = false;
@@ -29,6 +30,12 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
     } catch (_) {
       // Keep rendering from the selected list item snapshot if detail refresh fails.
     }
+  }
+
+  Future<void> _refreshPaymentAndPreview() async {
+    await _loadInvoiceDetail();
+    widget.onInvoiceChanged?.call();
+    if (mounted) await _loadInlinePdfPreview();
   }
 
   Future<void> _loadInvoiceHistory() async {
@@ -119,7 +126,7 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
   }
 
   Future<void> _loadInlinePdfPreview() async {
-    if (_inlinePdfLoading) return;
+    final requestId = ++_inlinePdfRequestId;
     setState(() {
       _inlinePdfLoading = true;
       _inlinePdfError = null;
@@ -127,16 +134,16 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
     try {
       final r = await _invoicesApi.previewPdf(_invoice.id);
       final bytes = _validatePdf(r);
-      if (!mounted) return;
+      if (!mounted || requestId != _inlinePdfRequestId) return;
       setState(() => _inlinePdfBytes = bytes);
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || requestId != _inlinePdfRequestId) return;
       setState(() {
         _inlinePdfBytes = null;
         _inlinePdfError = e.toString();
       });
     } finally {
-      if (mounted) {
+      if (mounted && requestId == _inlinePdfRequestId) {
         setState(() => _inlinePdfLoading = false);
       }
     }

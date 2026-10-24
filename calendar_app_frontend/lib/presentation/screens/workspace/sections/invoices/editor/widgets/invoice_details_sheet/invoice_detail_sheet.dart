@@ -129,6 +129,27 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     _loadInvoiceHistory();
   }
 
+  @override
+  void didUpdateWidget(covariant InvoiceDetailSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final previous = oldWidget.invoice;
+    final current = widget.invoice;
+    final differentInvoice = previous.id != current.id;
+    final paymentChanged = previous.paymentStatus != current.paymentStatus ||
+        previous.paidAmount != current.paidAmount ||
+        previous.paidAt != current.paidAt ||
+        previous.paymentSource != current.paymentSource;
+    if (!differentInvoice && !paymentChanged) return;
+    _currentInvoice = null;
+    if (differentInvoice) {
+      _lines = current.lines;
+      _fetchLines();
+      _loadInvoiceHistory();
+    }
+    _loadInvoiceDetail();
+    if (!widget.fullPage) _loadInlinePdfPreview();
+  }
+
   // ── Computed helpers ────────────────────────────────────────────────────────
 
   String _resolveStatus(String status) {
@@ -772,12 +793,30 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         builder: (context, constraints) {
           final h =
               constraints.maxHeight.isFinite ? constraints.maxHeight : 400.0;
-          return PdfInlinePreview(
-            bytes: _inlinePdfBytes!,
-            height: h,
-            showToolbar: false,
-            interactive: !_previewMenuOpen,
-          );
+          return Stack(children: [
+            PdfInlinePreview(
+              bytes: _inlinePdfBytes!,
+              height: h,
+              showToolbar: false,
+              interactive: !_previewMenuOpen,
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Material(
+                color: cs.surface,
+                borderRadius: BorderRadius.circular(8),
+                child: IconButton(
+                  tooltip: l.localeName.startsWith('es')
+                      ? 'Actualizar estado y vista previa'
+                      : 'Refresh payment status and preview',
+                  onPressed: _refreshPaymentAndPreview,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ),
+          ]);
         },
       );
     }
