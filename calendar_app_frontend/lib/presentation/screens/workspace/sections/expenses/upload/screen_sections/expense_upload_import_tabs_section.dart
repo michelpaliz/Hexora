@@ -63,6 +63,8 @@ mixin _ExpenseUploadImportTabsSection on _ExpenseUploadScreenStateBase {
   Future<void> confirmBatchPreviewImport();
   Future<void> exportBatchIncidentExcel();
   Future<void> generateBatchJsonWithAi();
+  Future<List<Map<String, dynamic>>> _loadRecentBatchJobs();
+  Future<void> _openRecentBatchJob(Map<String, dynamic> job);
   List<Map<String, dynamic>> extractBatchInvoices(Map<String, dynamic> payload);
   @override
   String resolveGroupId();

@@ -189,6 +189,10 @@ class _GroupInvoicesContent extends StatelessWidget {
       );
     }
 
+    if (state._selectedMenu == 'expenses_import_history') {
+      return ExpenseImportHistoryScreen(groupId: state.widget.group.id);
+    }
+
     if (state._selectedMenu == 'expenses_list') {
       return ExpenseUploadScreen(
         key: state._safeExpensesListKey,

@@ -74,6 +74,8 @@ class PrivateDocument {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final String? uploadedByName;
+  final DateTime? fileReplacedAt;
+  final String? fileReplacedByName;
 
   const PrivateDocument({
     required this.id,
@@ -91,6 +93,8 @@ class PrivateDocument {
     this.createdAt,
     this.updatedAt,
     this.uploadedByName,
+    this.fileReplacedAt,
+    this.fileReplacedByName,
   });
 
   String get displayTitle =>
@@ -119,7 +123,10 @@ class PrivateDocument {
 
     List<String> stringList(dynamic v) {
       if (v is List) {
-        return v.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList();
+        return v
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
       }
       return const [];
     }
@@ -146,7 +153,8 @@ class PrivateDocument {
       status: str(json['status'] ?? json['reviewStatus']).isEmpty
           ? PrivateDocumentReviewStatus.pendingReview
           : str(json['status'] ?? json['reviewStatus']),
-      fileSizeBytes: intOrNull(json['fileSizeBytes'] ?? json['fileSize'] ?? json['size']),
+      fileSizeBytes:
+          intOrNull(json['fileSizeBytes'] ?? json['fileSize'] ?? json['size']),
       mimeType: strOrNull(json['mimeType'] ?? json['contentType']),
       expiryDate: dateOrNull(json['expiryDate'] ?? json['expiresAt']),
       notes: strOrNull(json['notes']),
@@ -155,7 +163,20 @@ class PrivateDocument {
       createdAt: dateOrNull(json['createdAt'] ?? json['uploadedAt']),
       updatedAt: dateOrNull(json['updatedAt']),
       uploadedByName: strOrNull(
-        json['uploadedByName'] ?? json['uploadedBy']?['name'],
+        json['uploadedByName'] ??
+            (json['uploadedBy'] is Map
+                ? (json['uploadedBy']['name'] ??
+                    json['uploadedBy']['username'] ??
+                    json['uploadedBy']['email'])
+                : null),
+      ),
+      fileReplacedAt: dateOrNull(json['fileReplacedAt']),
+      fileReplacedByName: strOrNull(
+        json['fileReplacedBy'] is Map
+            ? (json['fileReplacedBy']['name'] ??
+                json['fileReplacedBy']['username'] ??
+                json['fileReplacedBy']['email'])
+            : null,
       ),
     );
   }

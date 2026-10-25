@@ -108,6 +108,35 @@ class AuthenticatedHttpClient {
     );
   }
 
+  /// Rebuilds multipart bodies for a retry because their streams are single-use.
+  static Future<http.Response> sendMultipart(
+    http.MultipartRequest Function(Map<String, String> headers) buildRequest,
+  ) async {
+    Future<http.Response> send(Map<String, String> headers) async {
+      final request = buildRequest(headers);
+      request.headers.addAll(headers);
+      return http.Response.fromStream(await request.send());
+    }
+
+    var response = await send(
+      await authorizedHeaders(includeJsonContentType: false),
+    );
+    if (response.statusCode != 401) return response;
+
+    final refreshResult = await _refreshAccessToken();
+    if (refreshResult == _RefreshResult.invalidCredentials) {
+      await _notifySessionExpired();
+      return response;
+    }
+    if (refreshResult == _RefreshResult.temporaryFailure) return response;
+
+    response = await send(
+      await authorizedHeaders(includeJsonContentType: false),
+    );
+    if (response.statusCode == 401) await _notifySessionExpired();
+    return response;
+  }
+
   static Future<http.Response> _request({
     required String method,
     required Uri uri,

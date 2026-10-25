@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:hexora/services/blob_storage/blob_repository.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
@@ -46,7 +44,7 @@ class PhotoController extends ChangeNotifier {
     notifyListeners();
     try {
       // This should upload to blob storage and commit on your backend.
-      await _repo.uploadUserAvatar(file: File(pickedImage!.path));
+      await _repo.uploadUserAvatar(bytes: await pickedImage!.readAsBytes());
 
       // Refresh the signed-in user so UI gets the canonical URL.
       final fresh = await _userDomain.getUser();
@@ -87,10 +85,12 @@ class PhotoController extends ChangeNotifier {
       // Upload + commit (BlobRepository should handle both steps)
       await _repo.uploadGroupPhoto(
         groupId: groupId,
-        file: File(pickedImage!.path),
+        bytes: await pickedImage!.readAsBytes(),
       );
 
       // Pull server truth so subscribers (e.g., lists/calendars) update.
+      _groupDomain.currentGroup =
+          await _groupDomain.groupRepository.getGroupById(groupId);
       await _groupDomain.refreshGroupsForCurrentUser(_userDomain);
 
       if (context.mounted) {

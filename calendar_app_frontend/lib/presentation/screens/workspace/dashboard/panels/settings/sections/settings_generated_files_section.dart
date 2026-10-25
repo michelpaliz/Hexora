@@ -127,8 +127,8 @@ class _SettingsGeneratedFilesSectionState
                 Expanded(
                   child: Text(
                     isEs
-                        ? 'Archivos generados para este grupo'
-                        : 'Generated files for this group',
+                        ? 'Archivos generados para este negocio'
+                        : 'Generated files for this business',
                     style: t.bodyMedium.copyWith(
                       color: cs.onSurfaceVariant,
                       fontWeight: FontWeight.w600,

@@ -82,4 +82,82 @@ void main() {
       expect(find.byType(MobileNotificationTile), findsOneWidget);
     });
   }
+
+  for (final expected in const [
+    NotificationDetailAction.confirm,
+    NotificationDetailAction.decline,
+    NotificationDetailAction.markRead,
+    NotificationDetailAction.delete,
+  ]) {
+    testWidgets('notification detail returns the $expected action',
+        (tester) async {
+      final notification = NotificationUser(
+        id: 'invitation-1',
+        senderId: 'sender',
+        recipientId: 'user',
+        titleKey: '',
+        messageKey: '',
+        fallbackTitle: 'Group invitation',
+        fallbackMessage: 'You were invited to a group',
+        args: const {},
+        timestamp: DateTime(2026, 9, 21),
+        groupId: 'group',
+        category: Category.groupInvitation,
+      );
+      NotificationDetailAction? result;
+
+      await tester.pumpWidget(MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: FilledButton(
+              onPressed: () async {
+                result = await Navigator.of(context)
+                    .push<NotificationDetailAction>(MaterialPageRoute(
+                  builder: (_) => NotificationDetailPage(
+                    notification: notification,
+                  ),
+                ));
+              },
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      switch (expected) {
+        case NotificationDetailAction.confirm:
+          await tester.tap(find.text('Confirm'));
+          break;
+        case NotificationDetailAction.decline:
+          await tester.tap(find.text('Cancel'));
+          break;
+        case NotificationDetailAction.markRead:
+          await tester.tap(find.byTooltip('More options'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Mark as read'));
+          break;
+        case NotificationDetailAction.delete:
+          await tester.tap(find.byTooltip('More options'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Delete notification'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.text('Confirm'),
+          ));
+          break;
+        case NotificationDetailAction.open:
+          fail('Open is covered by the document notification test.');
+      }
+      await tester.pumpAndSettle();
+
+      expect(result, expected);
+      expect(find.byType(NotificationDetailPage), findsNothing);
+    });
+  }
 }

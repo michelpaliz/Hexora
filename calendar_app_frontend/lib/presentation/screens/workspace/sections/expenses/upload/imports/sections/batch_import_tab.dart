@@ -184,6 +184,7 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
       Widget executionPanel = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _buildRecentBatchJobs(cs),
           if (_batchStartingJob && batchArchiveName != null) ...[
             Text('Subiendo y extrayendo facturas del ZIP…',
                 style: Theme.of(context).textTheme.bodySmall),

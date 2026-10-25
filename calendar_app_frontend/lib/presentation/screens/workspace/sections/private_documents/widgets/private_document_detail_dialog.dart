@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:hexora/models/documents/private_document.dart';
 import 'package:hexora/services/documents/private_documents_api.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
@@ -56,6 +57,7 @@ class _PrivateDocumentDetailDialogBodyState
   bool _saving = false;
   bool _deleting = false;
   bool _openingFile = false;
+  bool _replacingFile = false;
   String? _error;
 
   bool get _isEs => Localizations.localeOf(context)
@@ -117,6 +119,7 @@ class _PrivateDocumentDetailDialogBodyState
       firstDate: DateTime(2000),
       lastDate: DateTime(DateTime.now().year + 30),
     );
+    if (!mounted) return;
     if (picked == null) return;
     setState(() {
       _expiryController.text = DateFormat('yyyy-MM-dd').format(picked);
@@ -151,27 +154,92 @@ class _PrivateDocumentDetailDialogBodyState
     }
   }
 
+  Future<void> _replaceFile() async {
+    if (_dirty) {
+      setState(() => _error = _isEs
+          ? 'Guarda los cambios antes de reemplazar el archivo'
+          : 'Save your changes before replacing the file');
+      return;
+    }
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'jpe', 'png', 'webp'],
+      allowMultiple: false,
+      withData: true,
+    );
+    final file = result?.files.single;
+    if (!mounted) return;
+    if (file == null) return;
+    if (file.bytes == null || file.bytes!.isEmpty) {
+      setState(() => _error = _isEs ? 'Archivo vacío' : 'Empty file');
+      return;
+    }
+    if (file.bytes!.length > PrivateDocumentsApi.maxUploadBytes) {
+      setState(() => _error = _isEs
+          ? 'El archivo supera el límite de 20 MB'
+          : 'File exceeds the 20 MB limit');
+      return;
+    }
+    setState(() {
+      _replacingFile = true;
+      _error = null;
+    });
+    try {
+      await widget.api.replaceFile(
+        groupId: widget.groupId,
+        documentId: widget.document.id,
+        bytes: file.bytes!,
+        fileName: file.name,
+      );
+      if (!mounted) return;
+      showSuccessSnack(
+          context, _isEs ? 'Archivo reemplazado' : 'File replaced');
+      Navigator.of(context).pop(PrivateDocumentDetailResult.changed);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => _replacingFile = false);
+    }
+  }
+
   Future<void> _save() async {
+    if (_titleController.text.trim().isEmpty) {
+      setState(() => _error = _isEs
+          ? 'Introduce un título para el documento'
+          : 'Enter a document title');
+      return;
+    }
+    final expiryText = _expiryController.text.trim();
+    final expiryDate =
+        expiryText.isEmpty ? null : DateTime.tryParse(expiryText);
+    if (expiryText.isNotEmpty && expiryDate == null) {
+      setState(() => _error = _isEs
+          ? 'Introduce una fecha de caducidad válida'
+          : 'Enter a valid expiry date');
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;
     });
     try {
-      final expiryText = _expiryController.text.trim();
       await widget.api.update(
         groupId: widget.groupId,
         documentId: widget.document.id,
         title: _titleController.text.trim(),
         category: _category,
         status: _status,
-        expiryDate: expiryText.isEmpty ? null : DateTime.tryParse(expiryText),
+        expiryDate: expiryDate,
         clearExpiryDate: expiryText.isEmpty,
         notes: _notesController.text.trim(),
         tags: _splitList(_tagsController.text),
         counterparties: _splitList(_counterpartiesController.text),
       );
       if (!mounted) return;
-      showSuccessSnack(context, _isEs ? 'Documento actualizado' : 'Document updated');
+      showSuccessSnack(
+          context, _isEs ? 'Documento actualizado' : 'Document updated');
       Navigator.of(context).pop(PrivateDocumentDetailResult.changed);
     } catch (e) {
       if (!mounted) return;
@@ -216,7 +284,8 @@ class _PrivateDocumentDetailDialogBodyState
       await widget.api
           .remove(groupId: widget.groupId, documentId: widget.document.id);
       if (!mounted) return;
-      showSuccessSnack(context, _isEs ? 'Documento eliminado' : 'Document deleted');
+      showSuccessSnack(
+          context, _isEs ? 'Documento eliminado' : 'Document deleted');
       Navigator.of(context).pop(PrivateDocumentDetailResult.changed);
     } catch (e) {
       if (!mounted) return;
@@ -230,7 +299,7 @@ class _PrivateDocumentDetailDialogBodyState
   Widget build(BuildContext context) {
     final isEs = _isEs;
     final cs = Theme.of(context).colorScheme;
-    final busy = _saving || _deleting || _openingFile;
+    final busy = _saving || _deleting || _openingFile || _replacingFile;
 
     return AlertDialog(
       title: Text(
@@ -245,16 +314,17 @@ class _PrivateDocumentDetailDialogBodyState
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
+              Text(
+                widget.document.fileName,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  Expanded(
-                    child: Text(
-                      widget.document.fileName,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: cs.onSurfaceVariant),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
                   OutlinedButton.icon(
                     onPressed: busy ? null : _openFile,
                     icon: _openingFile
@@ -266,7 +336,30 @@ class _PrivateDocumentDetailDialogBodyState
                         : const Icon(Icons.open_in_new_rounded, size: 16),
                     label: Text(isEs ? 'Abrir' : 'Open'),
                   ),
+                  OutlinedButton.icon(
+                    onPressed: busy ? null : _replaceFile,
+                    icon: const Icon(Icons.upload_file_outlined, size: 16),
+                    label: Text(isEs ? 'Reemplazar' : 'Replace'),
+                  ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                [
+                  if (widget.document.uploadedByName != null)
+                    '${isEs ? "Subido por" : "Uploaded by"}: ${widget.document.uploadedByName}',
+                  if (widget.document.createdAt != null)
+                    '${isEs ? "Fecha de subida" : "Uploaded on"}: ${DateFormat('dd/MM/yyyy HH:mm').format(widget.document.createdAt!.toLocal())}',
+                  if (widget.document.fileSizeBytes != null)
+                    '${(widget.document.fileSizeBytes! / 1024).toStringAsFixed(0)} KB',
+                  if (widget.document.fileReplacedAt != null)
+                    '${isEs ? "Archivo reemplazado" : "File replaced"}: ${DateFormat('dd/MM/yyyy HH:mm').format(widget.document.fileReplacedAt!.toLocal())}',
+                  if (widget.document.fileReplacedByName != null)
+                    '${isEs ? "Por" : "By"} ${widget.document.fileReplacedByName}',
+                ].join(' · '),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -408,7 +501,8 @@ class _PrivateDocumentDetailDialogBodyState
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : Icon(Icons.delete_outline_rounded, color: cs.error),
-          label: Text(isEs ? 'Eliminar' : 'Delete', style: TextStyle(color: cs.error)),
+          label: Text(isEs ? 'Eliminar' : 'Delete',
+              style: TextStyle(color: cs.error)),
         ),
         Row(
           mainAxisSize: MainAxisSize.min,

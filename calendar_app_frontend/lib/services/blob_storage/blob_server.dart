@@ -12,6 +12,32 @@ class UploadResult {
   UploadResult({required this.photoUrl, required this.blobName});
 }
 
+String? detectImageMimeType(Uint8List bytes) {
+  if (bytes.length >= 3 &&
+      bytes[0] == 0xff &&
+      bytes[1] == 0xd8 &&
+      bytes[2] == 0xff) {
+    return 'image/jpeg';
+  }
+  if (bytes.length >= 8 &&
+      bytes[0] == 0x89 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x4e &&
+      bytes[3] == 0x47 &&
+      bytes[4] == 0x0d &&
+      bytes[5] == 0x0a &&
+      bytes[6] == 0x1a &&
+      bytes[7] == 0x0a) {
+    return 'image/png';
+  }
+  if (bytes.length >= 12 &&
+      String.fromCharCodes(bytes.sublist(0, 4)) == 'RIFF' &&
+      String.fromCharCodes(bytes.sublist(8, 12)) == 'WEBP') {
+    return 'image/webp';
+  }
+  return null;
+}
+
 class BlobUploadException implements Exception {
   final String stage;
   final String method;
@@ -64,6 +90,14 @@ Future<UploadResult> uploadImageToAzure({
   if (file == null && bytes == null) {
     throw ArgumentError('Either file or bytes must be provided');
   }
+  final contentBytes = bytes ?? await file!.readAsBytes();
+  final uploadMimeType = mimeType.startsWith('image/')
+      ? detectImageMimeType(contentBytes)
+      : mimeType;
+  if (uploadMimeType == null) throw ArgumentError('Unsupported image content');
+  if (mimeType.startsWith('image/') && contentBytes.length > 10 * 1024 * 1024) {
+    throw ArgumentError('Image must be 10 MB or smaller');
+  }
 
   // --- 1) Get upload SAS ---
   final String sasEndpoint = (scope == 'users')
@@ -80,7 +114,7 @@ Future<UploadResult> uploadImageToAzure({
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        'mimeType': mimeType,
+        'mimeType': uploadMimeType,
         'strategy': 'versioned',
       }),
     );
@@ -126,7 +160,6 @@ Future<UploadResult> uploadImageToAzure({
   final blobName = sasData['blobName'] as String;
 
   // --- 2) Upload to Azure ---
-  final contentBytes = bytes ?? await file!.readAsBytes();
   final uploadUri = Uri.parse(uploadUrl);
   late final http.Response putResp;
   try {
@@ -134,7 +167,7 @@ Future<UploadResult> uploadImageToAzure({
       uploadUri,
       headers: {
         'x-ms-blob-type': 'BlockBlob',
-        'Content-Type': mimeType,
+        'Content-Type': uploadMimeType,
       },
       body: contentBytes,
     );

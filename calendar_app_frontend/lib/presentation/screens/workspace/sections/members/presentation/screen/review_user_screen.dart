@@ -169,13 +169,7 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
                             GroupRole.owner,
                           ];
                       final currentUserId = context.read<UserDomain>().user?.id;
-                      final actorIsOwner = (() {
-                        final g = gd.currentGroup;
-                        if (g == null || currentUserId == null) return false;
-                        final wire = g.userRoles[currentUserId] ?? '';
-                        return wire.toLowerCase().replaceAll('-', '') ==
-                            'owner';
-                      })();
+                      final actorIsOwner = gd.currentGroup?.ownerId == currentUserId;
                       return ValueListenableBuilder<Map<String, String>>(
                         valueListenable: gd.userRoles,
                         builder: (_, rolesMap, __) {
@@ -186,7 +180,8 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
                           return UpdateRolesTab(
                             rolesByUserId: mappedRoles,
                             membersById: port.membersById,
-                            assignableRoles: roles,
+                            assignableRoles:
+                                roles.where((r) => r != GroupRole.owner).toList(),
                             canEditRole: (userId) => port.canEditRole(userId),
                             setRole: (userId, r) => port.setRole(userId, r),
                             actorIsOwner: actorIsOwner,

@@ -1045,6 +1045,8 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
   }
 
   Future<void> _resumeCachedBatchJobIfNeeded() async {
+    final recentJobs = await _loadRecentBatchJobs();
+    if (!mounted) return;
     if (_hasTrackedBatchJob) {
       if (_hasRunningBatchJob) {
         _startBatchJobPolling();
@@ -1052,7 +1054,22 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       return;
     }
     final restored = _restoreCachedBatchJobSnapshot();
-    if (!restored) {
+    final cachedJob = restored
+        ? recentJobs
+            .where((job) => _batchJobText(job['jobId']) == _batchJobId)
+            .firstOrNull
+        : null;
+    if (restored && cachedJob != null && cachedJob['canResume'] != true) {
+      _resetBatchJobTracking();
+    }
+    if (!_hasTrackedBatchJob) {
+      final resumable =
+          recentJobs.where((job) => job['canResume'] == true).firstOrNull;
+      if (resumable != null) {
+        await _openRecentBatchJob(resumable);
+        return;
+      }
+      if (_recentBatchJobsError == null) return;
       final persisted = await _restorePersistedBatchJobMapping();
       if (!persisted || !mounted) return;
     }
@@ -1063,7 +1080,7 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       resultPayload: _batchJobResult,
     );
     if (_isExpenseBatchJobTerminal(restoredStatus)) {
-      await _discardBatchIfAlreadyImported();
+      if (_batchJobResult == null) await _fetchBatchJobResult(silent: true);
       return;
     }
     _startBatchJobPolling();

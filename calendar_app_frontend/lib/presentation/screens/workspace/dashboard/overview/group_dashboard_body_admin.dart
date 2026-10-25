@@ -226,7 +226,7 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
             color: cs.surfaceContainerLow,
             child: ExpansionTile(
               key: const PageStorageKey('group-details'),
-              title: Text(es ? 'Información del grupo' : 'Group information'),
+              title: Text(es ? 'Información del negocio' : 'Business information'),
               leading: const Icon(Icons.info_outline),
               childrenPadding: const EdgeInsets.all(12),
               children: [

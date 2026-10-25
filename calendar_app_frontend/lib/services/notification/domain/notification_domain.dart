@@ -12,6 +12,7 @@ class NotificationDomain extends ChangeNotifier {
 
   List<NotificationUser> _notifications = [];
   List<String> _notificationIds = []; // Store IDs only
+  int _stateRevision = 0;
   final NotificationApiClient notificationService;
   final _notificationViewModel =
       StreamController<List<NotificationUser>>.broadcast();
@@ -24,8 +25,11 @@ class NotificationDomain extends ChangeNotifier {
 
   // Initialize notifications with IDs, fetch full NotificationUser objects
   Future<void> initNotifications(List<String> notificationIds) async {
+    final revision = ++_stateRevision;
     _notificationIds = notificationIds;
-    _notifications = await _fetchNotificationsByIds(notificationIds);
+    final fetched = await _fetchNotificationsByIds(notificationIds);
+    if (revision != _stateRevision) return;
+    _notifications = fetched;
     _notifications = _sortNotificationsByDate(_notifications);
     _notificationViewModel.add(_notifications);
     notifyListeners();
@@ -63,7 +67,41 @@ class NotificationDomain extends ChangeNotifier {
   Future<void> updateNotificationStream(
     List<NotificationUser> notifications,
   ) async {
+    _stateRevision++;
     _notifications = _mergeNotifications(notifications, _notifications);
+    _notificationViewModel.add(_notifications);
+    notifyListeners();
+  }
+
+  /// Reconcile one business after its notifications panel refreshes. Keeping
+  /// other businesses untouched prevents their unread items affecting this
+  /// business's badge, while removing stale local entries for this business.
+  void replaceGroupNotifications(
+    String groupId,
+    List<NotificationUser> notifications,
+  ) {
+    _stateRevision++;
+    final currentById = {
+      for (final notification in _notifications) notification.id: notification
+    };
+    for (final notification in notifications) {
+      if (currentById[notification.id]?.isRead == true) {
+        notification.isRead = true;
+      }
+    }
+    final byId = <String, NotificationUser>{
+      for (final notification in _notifications)
+        if (notification.groupId != groupId) notification.id: notification,
+      for (final notification in notifications)
+        if (notification.groupId == groupId) notification.id: notification,
+    };
+    _notifications = _sortNotificationsByDate(byId.values.toList());
+    for (final notification in notifications) {
+      if (notification.groupId == groupId &&
+          !_notificationIds.contains(notification.id)) {
+        _notificationIds.add(notification.id);
+      }
+    }
     _notificationViewModel.add(_notifications);
     notifyListeners();
   }
@@ -74,6 +112,7 @@ class NotificationDomain extends ChangeNotifier {
     List<NotificationUser> fetched, {
     required Map<String, bool> readStateAtStart,
   }) async {
+    _stateRevision++;
     final current = {for (final n in _notifications) n.id: n};
     final next = <String, NotificationUser>{};
     for (final n in fetched) {
@@ -99,6 +138,7 @@ class NotificationDomain extends ChangeNotifier {
   }
 
   Future<void> addInboundNotification(NotificationUser notification) async {
+    _stateRevision++;
     final existingIndex =
         _notifications.indexWhere((item) => item.id == notification.id);
     if (existingIndex >= 0) {
@@ -205,6 +245,7 @@ class NotificationDomain extends ChangeNotifier {
   /// so the caller can persist them on the user.
   Future<List<String>> removeNotificationById(String notificationId) async {
     try {
+      _stateRevision++;
       _notificationIds.remove(notificationId);
       _notifications.removeWhere(
         (notification) => notification.id == notificationId,
@@ -246,6 +287,7 @@ class NotificationDomain extends ChangeNotifier {
   }
 
   void clearNotifications() {
+    _stateRevision++;
     _notifications.clear();
     _notificationIds.clear();
     _notificationViewModel.add(_notifications);

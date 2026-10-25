@@ -829,9 +829,11 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
       final isEs = Localizations.localeOf(context).languageCode == 'es';
       final issuedMessage = editingIssued && e is InvoicesApiException
           ? switch (e.statusCode) {
-              400 => isEs
-                  ? 'Revisa los valores y escribe un motivo para el cambio.'
-                  : 'Check the values and provide a reason for the change.',
+              400 => e.message.trim().isNotEmpty
+                  ? e.message
+                  : (isEs
+                      ? 'Revisa los valores y escribe un motivo para el cambio.'
+                      : 'Check the values and provide a reason for the change.'),
               403 => isEs
                   ? 'No tienes permiso para editar esta factura.'
                   : 'You do not have permission to edit this invoice.',
@@ -868,25 +870,35 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: Text(isEs ? 'Confirmar cambios' : 'Confirm changes'),
-          content: Form(
-            key: formKey,
-            child: TextFormField(
-              controller: controller,
-              autofocus: true,
-              maxLines: 3,
-              maxLength: 500,
-              decoration: InputDecoration(
-                labelText: isEs ? 'Motivo del cambio' : 'Reason for change',
-                hintText: isEs
-                    ? 'Ej.: Correccion solicitada por el cliente'
-                    : 'E.g. Correction requested by the client',
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(isEs
+                  ? 'El cambio quedará registrado con tu usuario, fecha y motivo. Si ya enviaste el PDF, tendrás que compartir la versión actualizada.'
+                  : 'This change will be recorded with your name, date and reason. If you already sent the PDF, share the updated version.'),
+              const SizedBox(height: 12),
+              Form(
+                key: formKey,
+                child: TextFormField(
+                  controller: controller,
+                  autofocus: true,
+                  maxLines: 3,
+                  maxLength: 500,
+                  decoration: InputDecoration(
+                    labelText: isEs ? 'Motivo del cambio' : 'Reason for change',
+                    hintText: isEs
+                        ? 'Ej.: Corrección solicitada por el cliente'
+                        : 'E.g. Correction requested by the client',
+                  ),
+                  validator: (value) => (value ?? '').trim().isEmpty
+                      ? (isEs
+                          ? 'El motivo es obligatorio.'
+                          : 'A reason is required.')
+                      : null,
+                ),
               ),
-              validator: (value) => (value ?? '').trim().isEmpty
-                  ? (isEs
-                      ? 'El motivo es obligatorio.'
-                      : 'A reason is required.')
-                  : null,
-            ),
+            ],
           ),
           actions: [
             TextButton(
@@ -1187,6 +1199,13 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     try {
       final issued = await _invoicesApi.issue(_savedInvoice!.id);
       _savedInvoice = issued;
+      // The draft PDF cannot contain the new public-status QR. Replace it
+      // immediately so the editor never keeps showing a stale preview.
+      _previewPdfBytes = null;
+      _previewedPdf = false;
+      notifyListeners();
+
+      if (context.mounted) await _refreshPreviewAfterIssuedUpdate(context);
       notifyListeners();
 
       if (!context.mounted) return;

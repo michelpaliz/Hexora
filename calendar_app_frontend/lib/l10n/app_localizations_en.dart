@@ -36,7 +36,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get darkMode => 'Dark Mode';
 
   @override
-  String get groups => 'Groups';
+  String get groups => 'Businesses';
 
   @override
   String get calendar => 'Calendar';
@@ -48,7 +48,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get logout => 'Log out';
 
   @override
-  String get groupData => 'Group Data';
+  String get groupData => 'Business Data';
 
   @override
   String get notifications => 'Notifications';
@@ -70,7 +70,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String welcomeGroupView(Object username) {
-    return 'Welcome $username here you can see the list of groups that you are part of.';
+    return 'Welcome $username here you can see the list of businesses that you are part of.';
   }
 
   @override
@@ -81,16 +81,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String groupName(int maxChar) {
-    return 'Group name (max $maxChar characters)  ';
+    return 'Business name (max $maxChar characters)  ';
   }
 
   @override
   String groupDescription(int maxChar) {
-    return 'Group description (max $maxChar characters)  ';
+    return 'Business description (max $maxChar characters)  ';
   }
 
   @override
-  String get addPplGroup => 'Add people to your group';
+  String get addPplGroup => 'Add people to your business';
 
   @override
   String get addUser => 'Add user';
@@ -108,26 +108,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get member => 'Member';
 
   @override
-  String get saveGroup => 'Save the group';
+  String get saveGroup => 'Save the business';
 
   @override
-  String get addImageGroup => 'Add image for the group';
+  String get addImageGroup => 'Add image for the business';
 
   @override
   String get removeEvent => 'Are you sure you want to remove this event ?';
 
   @override
-  String get removeGroup => 'Are you sure you want to remove this group ?';
+  String get removeGroup => 'Are you sure you want to remove this business ?';
 
   @override
   String get removeCalendar =>
       'Are you sure you want to remove this calendar ?';
 
   @override
-  String get groupCreated => 'Group created successfully!';
+  String get groupCreated => 'Business created successfully!';
 
   @override
-  String get failedToCreateGroup => 'Failed to create the group';
+  String get failedToCreateGroup => 'Failed to create the business';
 
   @override
   String get eventCreated => 'The event has been created';
@@ -136,7 +136,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventEdited => 'The event has been edited';
 
   @override
-  String get eventAddedGroup => 'The event has been added to the group';
+  String get eventAddedGroup => 'The event has been added to the business';
 
   @override
   String get event => 'Event';
@@ -510,12 +510,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String textFieldGroupName(int TITLE_MAX_LENGHT) {
-    return 'Enter group name (Limit: $TITLE_MAX_LENGHT characters) ';
+    return 'Enter business name (Limit: $TITLE_MAX_LENGHT characters) ';
   }
 
   @override
   String textFieldDescription(int DESCRIPTION_MAX_LENGHT) {
-    return 'Enter group description (Limit: $DESCRIPTION_MAX_LENGHT characters)';
+    return 'Enter business description (Limit: $DESCRIPTION_MAX_LENGHT characters)';
   }
 
   @override
@@ -531,7 +531,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get editGroup => 'Edit Group';
+  String get editGroup => 'Edit Business';
 
   @override
   String get remove => 'Remove';
@@ -556,37 +556,39 @@ class AppLocalizationsEn extends AppLocalizations {
       'You are not an administrator to remove this item.';
 
   @override
-  String get leaveGroup => 'Leave group';
+  String get leaveGroup => 'Leave business';
 
   @override
   String permissionDeniedRole(Object role) {
-    return 'You are currently a $role of this group.';
+    return 'You are currently a $role of this business.';
   }
 
   @override
-  String get putGroupImage => 'Put an image for the group';
+  String get putGroupImage => 'Put an image for the business';
 
   @override
   String get close => 'close';
 
   @override
-  String get addNewUser => 'Add a new user to your group';
+  String get addNewUser => 'Add a new user to your business';
 
   @override
   String get cannotRemoveYourself =>
-      'You cannot remove yourself from the group';
+      'You cannot remove yourself from the business';
 
   @override
-  String get requiredTextFields => 'Group name and description are required.';
+  String get requiredTextFields =>
+      'Business name and description are required.';
 
   @override
-  String get groupNameRequired => 'Group name cannot be empty';
+  String get groupNameRequired => 'Business name cannot be empty';
 
   @override
-  String get groupEdited => 'Group edited successfully!';
+  String get groupEdited => 'Business edited successfully!';
 
   @override
-  String get failedToEditGroup => 'Failed to edit the group. Please try again';
+  String get failedToEditGroup =>
+      'Failed to edit the business. Please try again';
 
   @override
   String get searchPerson => 'Search by user name';
@@ -596,13 +598,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get confirmRemovalMessage =>
-      'Are you sure you want to delete this group?';
+      'Are you sure you want to delete this business?';
 
   @override
   String get confirmRemoval => 'Confirm Removal';
 
   @override
-  String get groupDeletedSuccessfully => 'Group deleted successfully!';
+  String get groupDeletedSuccessfully => 'Business deleted successfully!';
 
   @override
   String get showInactiveClients => 'Show inactive clients';
@@ -646,16 +648,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get noGroupsAvailable => 'NO GROUP/S FOUND/S';
+  String get noGroupsAvailable => 'NO BUSINESSES FOUND';
 
   @override
-  String get noGroupsFound => 'No groups found';
+  String get noGroupsFound => 'No businesses found';
 
   @override
-  String get noGroupsDescription => 'Create or join a group to get started';
+  String get noGroupsDescription => 'Create or join a business to get started';
 
   @override
-  String get searchGroups => 'Search groups';
+  String get searchGroups => 'Search businesses';
 
   @override
   String get weatherSummarySunny => 'Sunny';
@@ -747,10 +749,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get save => 'Save changes';
 
   @override
-  String get groupNameText => 'Group name';
+  String get groupNameText => 'Business name';
 
   @override
-  String get groupOwner => 'Group owner';
+  String get groupOwner => 'Business owner';
 
   @override
   String get enableRepetitiveEvents => 'Enable repetitive events';
@@ -822,11 +824,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupNotCreated =>
-      'There was an error creating the group, try again';
+      'There was an error creating the business, try again';
 
   @override
   String get questionDeleteGroup =>
-      'Are you sure you want to delete this group?';
+      'Are you sure you want to delete this business?';
 
   @override
   String get errorEventCreation =>
@@ -847,7 +849,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get confirmDeleteDescription => 'Remove event.';
 
   @override
-  String get groupNameLabel => 'Group Name';
+  String get groupNameLabel => 'Business Name';
 
   @override
   String get descriptionLabel => 'Description';
@@ -917,23 +919,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String notificationGroupCreationMessage(Object groupName) {
-    return 'You created the group: $groupName';
+    return 'You created the business: $groupName';
   }
 
   @override
-  String get notificationJoinedGroupTitle => 'Welcome to the Group';
+  String get notificationJoinedGroupTitle => 'Welcome to the Business';
 
   @override
   String notificationJoinedGroupMessage(Object groupName) {
-    return 'You have joined the group: $groupName';
+    return 'You have joined the business: $groupName';
   }
 
   @override
-  String get notificationInvitationTitle => 'Group Invitation';
+  String get notificationInvitationTitle => 'Business Invitation';
 
   @override
   String notificationInvitationMessage(Object groupName) {
-    return 'You have been invited to join the group: $groupName';
+    return 'You have been invited to join the business: $groupName';
   }
 
   @override
@@ -954,19 +956,19 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get notificationGroupEditedTitle => 'Group Updated';
+  String get notificationGroupEditedTitle => 'Business Updated';
 
   @override
   String notificationGroupEditedMessage(Object groupName) {
-    return 'You updated the group: $groupName';
+    return 'You updated the business: $groupName';
   }
 
   @override
-  String get notificationGroupDeletedTitle => 'Group Deleted';
+  String get notificationGroupDeletedTitle => 'Business Deleted';
 
   @override
   String notificationGroupDeletedMessage(Object groupName) {
-    return 'You have deleted the group: $groupName';
+    return 'You have deleted the business: $groupName';
   }
 
   @override
@@ -991,23 +993,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String notificationUserLeftMessage(Object groupName, Object userName) {
-    return '$userName has left the group: $groupName';
+    return '$userName has left the business: $groupName';
   }
 
   @override
-  String get notificationGroupUpdateTitle => 'Group Updated';
+  String get notificationGroupUpdateTitle => 'Business Updated';
 
   @override
   String notificationGroupUpdateMessage(Object editorName, Object groupName) {
-    return '$editorName updated the group: $groupName';
+    return '$editorName updated the business: $groupName';
   }
 
   @override
-  String get notificationGroupDeletedAllTitle => 'Group Deleted';
+  String get notificationGroupDeletedAllTitle => 'Business Deleted';
 
   @override
   String notificationGroupDeletedAllMessage(Object groupName) {
-    return 'The group \"$groupName\" has been deleted by the owner.';
+    return 'The business \"$groupName\" has been deleted by the owner.';
   }
 
   @override
@@ -1196,7 +1198,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationEventReminderManual => 'Manual Test Notification';
 
   @override
-  String get categoryGroup => 'Group';
+  String get categoryGroup => 'Business';
 
   @override
   String get categoryUser => 'User';
@@ -1236,7 +1238,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pleaseSelectAtLeastOneUser => 'Please select at least one user';
 
   @override
-  String get groupMembers => 'Group Members';
+  String get groupMembers => 'Business Members';
 
   @override
   String get noInvitedUsersToDisplay => 'No invited users to display.';
@@ -1252,7 +1254,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get groupDescriptionLabel => 'Group Description';
+  String get groupDescriptionLabel => 'Business Description';
 
   @override
   String get agenda => 'Agenda';
@@ -1310,7 +1312,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get motivationSectionTitle => 'Motivation';
 
   @override
-  String get groupSectionTitle => 'Groups';
+  String get groupSectionTitle => 'Businesses';
 
   @override
   String get clearAllTooltip => 'Clear all notifications';
@@ -1441,7 +1443,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noUpcomingHint => 'Try another category or extend the range.';
 
   @override
-  String get agendaSelectGroupPrompt => 'Select a group to load events';
+  String get agendaSelectGroupPrompt => 'Select a business to load events';
 
   @override
   String get agendaChooseGroupButton => 'Choose';
@@ -1515,7 +1517,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noClientsYet => 'No clients yet';
 
   @override
-  String get addYourFirstClient => 'Add your first client to this group.';
+  String get addYourFirstClient => 'Add your first client to this business.';
 
   @override
   String get addClient => 'Add Client';
@@ -1602,10 +1604,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tabServices => 'Services';
 
   @override
-  String get clientsSectionTitle => 'Clients in this group';
+  String get clientsSectionTitle => 'Clients in this business';
 
   @override
-  String get servicesSectionTitle => 'Services in this group';
+  String get servicesSectionTitle => 'Services in this business';
 
   @override
   String get activeClientsSection => 'Active clients';
@@ -1737,7 +1739,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get servicesClientsSubtitle => 'Create and manage services/clients';
 
   @override
-  String get noCalendarWarning => 'This group has no calendar linked yet.';
+  String get noCalendarWarning => 'This business has no calendar linked yet.';
 
   @override
   String get sectionFilters => 'Filters';
@@ -1772,7 +1774,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get changeRole => 'Change role';
 
   @override
-  String get removeFromGroup => 'Remove from group';
+  String get removeFromGroup => 'Remove from business';
 
   @override
   String get roleOwner => 'Owner';
@@ -1851,22 +1853,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clearedAllNotifications => 'All notifications have been cleared.';
 
   @override
-  String get groupNotificationsSectionTitle => 'Group notifications';
+  String get groupNotificationsSectionTitle => 'Business notifications';
 
   @override
   String get updateRoleTitle => 'Update role';
 
   @override
   String get groupNotificationsSubtitle =>
-      'See invites, reminders, and alerts scoped to this group.';
+      'See invites, reminders, and alerts scoped to this business.';
 
   @override
   String get groupNotificationsEmpty =>
-      'This group doesn\'t have any notifications yet.';
+      'This business doesn\'t have any notifications yet.';
 
   @override
   String get groupNotificationsError =>
-      'We couldn\'t load the notifications for this group.';
+      'We couldn\'t load the notifications for this business.';
 
   @override
   String groupNotificationsTitle(String groupName) {
@@ -1922,13 +1924,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noUpcomingEvents => 'No upcoming events';
 
   @override
-  String get nothingScheduledSoon => 'Nothing scheduled soon for this group.';
+  String get nothingScheduledSoon =>
+      'Nothing scheduled soon for this business.';
 
   @override
   String get nextUp => 'Next up';
 
   @override
-  String get upcomingEventsSubtitle => 'Upcoming events for this group';
+  String get upcomingEventsSubtitle => 'Upcoming events for this business';
 
   @override
   String get seeAll => 'See all';
@@ -1965,10 +1968,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nothingScheduledSoonForThisGroup =>
-      'Nothing scheduled soon for this group.';
+      'Nothing scheduled soon for this business.';
 
   @override
-  String get upcomingEventsForThisGroup => 'Upcoming events for this group';
+  String get upcomingEventsForThisGroup => 'Upcoming events for this business';
 
   @override
   String get untitled => '(untitled)';
@@ -2065,11 +2068,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get roleCoAdmin => 'Co-Administrator';
 
   @override
-  String get leaveGroupQuestion => 'Are you sure you want to leave this group?';
+  String get leaveGroupQuestion =>
+      'Are you sure you want to leave this business?';
 
   @override
   String get removeMembersFirst =>
-      'Please remove all members before deleting the group.';
+      'Please remove all members before deleting the business.';
 
   @override
   String get refreshSuccess => 'Calendar refreshed';
@@ -2601,7 +2605,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Create a worker profile to start tracking hours and pay.';
 
   @override
-  String get membersInfoAccepted => 'Users who are part of this group.';
+  String get membersInfoAccepted => 'Users who are part of this business.';
 
   @override
   String get membersInfoPending => 'Invitations sent and awaiting acceptance.';
@@ -2670,7 +2674,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get delegateVisitHint => 'Choose who will carry out this visit';
 
   @override
-  String get delegateNoWorkers => 'No other group members available';
+  String get delegateNoWorkers => 'No other business members available';
 
   @override
   String get repetition => 'Repetition';
@@ -2715,7 +2719,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get calendarTitle => 'Calendar';
 
   @override
-  String get noGroupAvailable => 'No group available';
+  String get noGroupAvailable => 'No business available';
 
   @override
   String get tabDay => 'Day';
@@ -2801,13 +2805,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get groupDescriptionHint => 'Introduce the purpose of this group';
+  String get groupDescriptionHint => 'Introduce the purpose of this business';
 
   @override
-  String get groupNameTooShort => 'Group name too short';
+  String get groupNameTooShort => 'Business name too short';
 
   @override
-  String get groupNameHint => 'Input group name';
+  String get groupNameHint => 'Input business name';
 
   @override
   String get reviewUsersTitle => 'Members — Review & Roles';
@@ -2880,22 +2884,22 @@ class AppLocalizationsEn extends AppLocalizations {
       'Browse members by status, review invites, and manage roles.';
 
   @override
-  String get createGroup => 'Create group';
+  String get createGroup => 'Create business';
 
   @override
   String get editImage => 'Edit';
 
   @override
-  String get tapToChangePhoto => 'Tap to change group photo';
+  String get tapToChangePhoto => 'Tap to change business photo';
 
   @override
-  String get tapToAddPhoto => 'Tap to add group photo';
+  String get tapToAddPhoto => 'Tap to add business photo';
 
   @override
-  String get groupSaved => 'Group saved';
+  String get groupSaved => 'Business saved';
 
   @override
-  String get manageGroup => 'Manage group';
+  String get manageGroup => 'Manage business';
 
   @override
   String get hey => 'Hey';
@@ -2904,13 +2908,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get youAreThe => 'you are the';
 
   @override
-  String get ofThisGroup => 'of this group';
+  String get ofThisGroup => 'of this business';
 
   @override
-  String get youHaveSuperPowersHere => 'You have super powers for this group!';
+  String get youHaveSuperPowersHere =>
+      'You have super powers for this business!';
 
   @override
-  String get roleOwnerBullet1 => 'Change group settings and features';
+  String get roleOwnerBullet1 => 'Change business settings and features';
 
   @override
   String get roleOwnerBullet2 => 'Manage billing and subscription';
@@ -2922,11 +2927,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get roleOwnerBullet4 => 'View and edit all calendars and events';
 
   @override
-  String get roleOwnerBullet5 => 'Delete or transfer the group';
+  String get roleOwnerBullet5 => 'Delete or transfer the business';
 
   @override
   String get roleCoAdminBullet1 =>
-      'Create, edit, and delete events for the group';
+      'Create, edit, and delete events for the business';
 
   @override
   String get roleCoAdminBullet2 => 'Manage services and clients';
@@ -2948,22 +2953,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get roleMemberBullet3 => 'Add notes and comments';
 
   @override
-  String get groupSettingsTitle => 'Group settings';
+  String get groupSettingsTitle => 'Business settings';
 
   @override
   String get groupSettingsOwnerBannerOwner =>
-      'You are the owner of this group. You can manage every setting from here.';
+      'You are the owner of this business. You can manage every setting from here.';
 
   @override
   String get groupSettingsOwnerBannerNotOwner =>
-      'Only the group owner can update these settings.';
+      'Only the business owner can update these settings.';
 
   @override
   String get groupSettingsOverviewTitle => 'Overview';
 
   @override
   String get groupSettingsOverviewSubtitle =>
-      'General information about this group.';
+      'General information about this business.';
 
   @override
   String get groupSettingsDescriptionLabel => 'Description';
@@ -2985,7 +2990,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupSettingsUserRolesSubtitle =>
-      'Permissions for users in this group.';
+      'Permissions for users in this business.';
 
   @override
   String get groupSettingsNoRoles => 'No specific roles assigned yet.';
@@ -3015,14 +3020,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupSettingsDangerZoneOwner =>
-      'Deleting this group is permanent and cannot be undone.';
+      'Deleting this business is permanent and cannot be undone.';
 
   @override
   String get groupSettingsDangerZoneNonOwner =>
-      'Only the group owner can delete this group.';
+      'Only the business owner can delete this business.';
 
   @override
-  String get groupInfo => 'Group info';
+  String get groupInfo => 'Business info';
 
   @override
   String get groupInfoSubtitle => 'Name, description and basic details';
@@ -3856,11 +3861,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get invoiceIssueDuplicateNumberSnack =>
-      'That invoice number already exists in this group. Refresh the list or edit the draft number before issuing.';
+      'That invoice number already exists in this business. Refresh the list or edit the draft number before issuing.';
 
   @override
   String invoiceIssueDuplicateNumberValueSnack(Object number) {
-    return 'Invoice number $number already exists in this group. Refresh the list or edit the draft number before issuing.';
+    return 'Invoice number $number already exists in this business. Refresh the list or edit the draft number before issuing.';
   }
 
   @override
@@ -4229,7 +4234,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clientClassificationManageHint =>
-      'These options are saved for the group and can be reused when assigning types to clients.';
+      'These options are saved for the business and can be reused when assigning types to clients.';
 
   @override
   String get clientClassificationSaveCta => 'Save';
@@ -5456,7 +5461,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get expenseUploadBatchGroupRequired =>
-      'You must select a group before importing.';
+      'You must select a business before importing.';
 
   @override
   String get expenseUploadBatchImportCta => 'Import Expenses';
@@ -6710,18 +6715,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get systemConfigMenuLabel => 'System configuration';
 
   @override
-  String get groupPhotoUpdated => 'Group photo updated';
+  String get groupPhotoUpdated => 'Business photo updated';
 
   @override
-  String get groupPhotoUpdateFailed => 'Failed to update group photo';
+  String get groupPhotoUpdateFailed => 'Failed to update business photo';
 
   @override
   String get premiumRequiredSingleGroupMessage =>
-      'Your current plan allows only 1 group. Upgrade to Premium to create or join additional groups.';
+      'Your current plan allows only 1 business. Upgrade to Premium to create or join additional businesses.';
 
   @override
   String get premiumRequiredJoinGroupOnlyMessage =>
-      'You are already in a group. Upgrade to Premium to join more groups.';
+      'You are already in a business. Upgrade to Premium to join more businesses.';
 
   @override
   String get managedGroupLimitCreateMessage =>
@@ -6983,7 +6988,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get roleFallbackDescOwner =>
-      'Full control over the group. Can transfer ownership.';
+      'Full control over the business. Can transfer ownership.';
 
   @override
   String get roleFallbackDescAdmin =>
@@ -6994,7 +6999,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Can invite members and manage the calendar and events.';
 
   @override
-  String get roleFallbackDescMember => 'Can view and participate in the group.';
+  String get roleFallbackDescMember =>
+      'Can view and participate in the business.';
 
   @override
   String get permLabelInvite => 'Invite';
@@ -7003,10 +7009,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get permLabelKick => 'Remove members';
 
   @override
-  String get permLabelEditGroup => 'Edit group';
+  String get permLabelEditGroup => 'Edit business';
 
   @override
-  String get permLabelDeleteGroup => 'Delete group';
+  String get permLabelDeleteGroup => 'Delete business';
 
   @override
   String get permLabelManageRoles => 'Manage roles';
@@ -7048,7 +7054,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get permLabelTransferOwnership => 'Transfer ownership';
 
   @override
-  String get permLabelGroup => 'Group';
+  String get permLabelGroup => 'Business';
 
   @override
   String get permLabelStatements => 'Statements';
@@ -7079,7 +7085,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get roleDescOwner =>
-      'Full control of the group, members, settings, and shared tools.';
+      'Full control of the business, members, settings, and shared tools.';
 
   @override
   String get roleDescAdmin =>
@@ -7087,11 +7093,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get roleDescCoAdmin =>
-      'Can manage most shared group operations, but cannot delete the group or outrank the owner.';
+      'Can manage most shared business operations, but cannot delete the business or outrank the owner.';
 
   @override
   String get roleDescMember =>
-      'Can view shared group data and manage only their own allowed actions.';
+      'Can view shared business data and manage only their own allowed actions.';
 
   @override
   String get expenseJsonTabFlowHint =>
@@ -7239,7 +7245,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get expenseBatchLeftGroupRequired =>
-      'Select a group before importing.';
+      'Select a business before importing.';
 
   @override
   String get expenseBatchProgressCompleted => 'Import completed';
@@ -7906,7 +7912,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get groupSettingsDeleteGroup => 'Delete group';
+  String get groupSettingsDeleteGroup => 'Delete business';
 
   @override
   String get agendaCompleted => 'Completed';

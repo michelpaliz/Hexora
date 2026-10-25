@@ -80,14 +80,16 @@ class _MyHeaderDrawerState extends State<MyHeaderDrawer> {
         headers: const {'Content-Type': 'application/json'},
         body: jsonEncode({'blobName': result.blobName}),
       );
+      if (commitResp.statusCode != 200) {
+        throw StateError(
+            'Photo save failed (${commitResp.statusCode}): ${commitResp.body}');
+      }
+      final updatedUserJson =
+          jsonDecode(commitResp.body) as Map<String, dynamic>;
 
-      final updatedUserJson = (commitResp.statusCode == 200)
-          ? jsonDecode(commitResp.body) as Map<String, dynamic>
-          : null;
-
-      final committedPhotoUrl = updatedUserJson?['photoUrl'] ?? result.photoUrl;
+      final committedPhotoUrl = updatedUserJson['photoUrl'] ?? result.photoUrl;
       final committedBlobName =
-          updatedUserJson?['photoBlobName'] ?? result.blobName;
+          updatedUserJson['photoBlobName'] ?? result.blobName;
 
       if (!mounted) return;
 

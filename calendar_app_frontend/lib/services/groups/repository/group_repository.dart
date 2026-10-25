@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as devtools show log;
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:hexora/models/calendar/calendar.dart';
 import 'package:hexora/models/groups/permissions/group_permissions_response.dart';
@@ -304,7 +304,7 @@ class GroupRepository implements IGroupRepository {
   @override
   Future<void> uploadAndCommitGroupPhoto({
     required String groupId,
-    required File file,
+    required Uint8List bytes,
   }) async {
     final token = await _token();
 
@@ -312,7 +312,7 @@ class GroupRepository implements IGroupRepository {
     final uploadResult = await uploadImageToAzure(
       scope: 'groups',
       resourceId: groupId,
-      file: file,
+      bytes: bytes,
       accessToken: token,
     );
 

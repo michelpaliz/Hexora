@@ -53,15 +53,29 @@ class GroupUpdateController {
         photoUrl: imageUrl,
       );
 
-      await groupDomain.updateGroup(updatedGroup, userDomain);
+      final groupSaved = await groupDomain.updateGroup(updatedGroup, userDomain);
+      if (!groupSaved) {
+        throw StateError('Business update failed');
+      }
 
       // 2) Send invitations (server infers invitedBy from token)
+      final failedInvitations = <String>[];
       for (final invitedUserId in newlyInvitedUserIds) {
-        await invitationDomain.sendInvitation(
+        final invitation = await invitationDomain.sendInvitation(
           groupId: updatedGroup.id,
           userId: invitedUserId,
           role: userRoles[invitedUserId] ?? 'member',
         );
+        if (invitation == null) failedInvitations.add(invitedUserId);
+      }
+      if (failedInvitations.isNotEmpty) {
+        if (context.mounted) {
+          _showError(
+            'El negocio se guardó, pero no se pudieron enviar '
+            '${failedInvitations.length} invitación(es). Revisa los miembros pendientes.',
+          );
+        }
+        return false;
       }
 
       if (!context.mounted) return true;

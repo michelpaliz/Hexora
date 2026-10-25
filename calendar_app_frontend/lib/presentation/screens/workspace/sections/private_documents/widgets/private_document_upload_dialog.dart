@@ -12,7 +12,8 @@ class PrivateDocumentUploadDialog {
   }) {
     return showDialog<PrivateDocument?>(
       context: context,
-      builder: (_) => _PrivateDocumentUploadDialogBody(api: api, groupId: groupId),
+      builder: (_) =>
+          _PrivateDocumentUploadDialogBody(api: api, groupId: groupId),
     );
   }
 }
@@ -62,8 +63,13 @@ class _PrivateDocumentUploadDialogBodyState
   }
 
   Future<void> _pickFile() async {
-    final result =
-        await FilePicker.platform.pickFiles(allowMultiple: false, withData: true);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'jpe', 'png', 'webp'],
+      allowMultiple: false,
+      withData: true,
+    );
+    if (!mounted) return;
     final file = result?.files.single;
     if (file == null || file.bytes == null) return;
     if (file.bytes!.length > PrivateDocumentsApi.maxUploadBytes) {
@@ -88,6 +94,7 @@ class _PrivateDocumentUploadDialogBodyState
       firstDate: DateTime(2000),
       lastDate: DateTime(DateTime.now().year + 30),
     );
+    if (!mounted) return;
     if (picked == null) return;
     setState(() {
       _expiryController.text = DateFormat('yyyy-MM-dd').format(picked);
@@ -102,7 +109,17 @@ class _PrivateDocumentUploadDialogBodyState
 
   Future<void> _submit() async {
     if (_fileBytes == null || _fileName == null) {
-      setState(() => _error = _isEs ? 'Selecciona un archivo' : 'Select a file');
+      setState(
+          () => _error = _isEs ? 'Selecciona un archivo' : 'Select a file');
+      return;
+    }
+    final expiryText = _expiryController.text.trim();
+    final expiryDate =
+        expiryText.isEmpty ? null : DateTime.tryParse(expiryText);
+    if (expiryText.isNotEmpty && expiryDate == null) {
+      setState(() => _error = _isEs
+          ? 'Introduce una fecha de caducidad válida'
+          : 'Enter a valid expiry date');
       return;
     }
     setState(() {
@@ -110,8 +127,6 @@ class _PrivateDocumentUploadDialogBodyState
       _error = null;
     });
     try {
-      final expiryText = _expiryController.text.trim();
-      final expiryDate = expiryText.isEmpty ? null : DateTime.tryParse(expiryText);
       final created = await widget.api.upload(
         groupId: widget.groupId,
         bytes: _fileBytes!,

@@ -19,6 +19,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/recurrin
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/utils/recurrence_frequency.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/utils/recurring_invoices_helpers.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/widgets/recurring_detail_view/recurring_detail_generated_tab.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/widgets/recurring_detail_view/recurring_invoice_activity_tab.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/widgets/recurring_detail_view/recurring_detail_rule_tab.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/widgets/recurring_detail_view/recurring_detail_template_tab.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/widgets/series_status_pill.dart';
@@ -434,6 +435,49 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
     try {
       final l = AppLocalizations.of(context)!;
       final count = int.tryParse(_countCtrl.text.trim());
+      final interval = int.tryParse(_intervalCtrl.text.trim());
+      final frequency = canonicalFrequencyForApi(_freq);
+      final isWeekly = frequency == recurringFreqWeekly;
+      final isEs = l.localeName.toLowerCase().startsWith('es');
+      final usesDay = isWeekly ||
+          frequency == recurringFreqMonthly ||
+          frequency == recurringFreqBimensual ||
+          frequency == recurringFreqTrimestral;
+      final dayText =
+          isWeekly ? _weekDayCtrl.text.trim() : _billDayCtrl.text.trim();
+      final day = int.tryParse(dayText);
+      final scheduleError = interval == null || interval < 1
+          ? (isEs
+              ? 'El intervalo debe ser un entero positivo.'
+              : 'Interval must be a positive integer.')
+          : _endType == 'count' && (count == null || count < 1)
+              ? (isEs
+                  ? 'Indica un número de repeticiones válido.'
+                  : 'Enter a valid number of occurrences.')
+              : _endType == 'date' && _endDate == null
+                  ? (isEs
+                      ? 'Selecciona una fecha de fin.'
+                      : 'Select an end date.')
+                  : usesDay &&
+                          dayText.isNotEmpty &&
+                          (day == null ||
+                              day < (isWeekly ? 0 : 1) ||
+                              day > (isWeekly ? 6 : 31))
+                      ? isWeekly
+                          ? (isEs
+                              ? 'El día semanal debe estar entre 0 y 6.'
+                              : 'Weekday must be between 0 and 6.')
+                          : (isEs
+                              ? 'El día de ejecución debe estar entre 1 y 31.'
+                              : 'Execution day must be between 1 and 31.')
+                      : null;
+      if (scheduleError != null) {
+        setState(() {
+          _ruleErrorText = scheduleError;
+          _savingRule = false;
+        });
+        return false;
+      }
       final invoiceDay = int.tryParse(_invoiceDateDayCtrl.text.trim());
       final invoiceOffset =
           int.tryParse(_invoiceDateOffsetDaysCtrl.text.trim());
@@ -470,6 +514,11 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
         'timezone': _timezoneCtrl.text.trim().isNotEmpty
             ? _timezoneCtrl.text.trim()
             : 'Europe/Madrid',
+        'endDate': _endType == 'date' && _endDate != null
+            ? dateOnlyString(_endDate!)
+            : null,
+        'count': _endType == 'count' ? count : null,
+        'exceptions': _exceptions.map(dateOnlyString).toList(),
         if (!_isReceiptFlow) 'invoiceDateMode': _invoiceDateMode,
         if (!_isReceiptFlow) 'invoiceDateClampPolicy': _invoiceDateClampPolicy,
         if (!_isReceiptFlow && _invoiceDateMode == 'fixed_day')
@@ -477,20 +526,12 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
         if (!_isReceiptFlow && _invoiceDateMode == 'offset_days')
           'invoiceDateOffsetDays': invoiceOffset,
       };
-      if (_endType == 'date' && _endDate != null) {
-        payload['endDate'] = dateOnlyString(_endDate!);
-      } else if (_endType == 'count' && count != null) {
-        payload['count'] = count;
-      }
       if (canonicalFrequencyForApi(_freq) == recurringFreqMonthly ||
           canonicalFrequencyForApi(_freq) == recurringFreqBimensual ||
           canonicalFrequencyForApi(_freq) == recurringFreqTrimestral) {
         payload['billDay'] = int.tryParse(_billDayCtrl.text.trim());
       } else if (canonicalFrequencyForApi(_freq) == recurringFreqWeekly) {
         payload['billDay'] = int.tryParse(_weekDayCtrl.text.trim());
-      }
-      if (_exceptions.isNotEmpty) {
-        payload['exceptions'] = _exceptions.map(dateOnlyString).toList();
       }
       await widget.api.update(id, payload);
       _initialRuleSnapshot = _buildCurrentRuleSnapshot();
@@ -1202,13 +1243,12 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
                                     widget.api is RecurringReceiptsApi,
                               ),
                             ),
-                            Center(
-                              child: Text(
-                                l.recurringInvoicesActivityHint,
-                                style: t.bodySmall.copyWith(
-                                  color: cs.onSurfaceVariant,
-                                ),
-                              ),
+                            RecurringInvoiceActivityTab(
+                              key: ValueKey(
+                                  'activity-${seriesId(widget.series)}-${widget.series['updatedAt']}'),
+                              api: widget.api,
+                              seriesId: seriesId(widget.series),
+                              receiptsMode: _isReceiptFlow,
                             ),
                           ],
                         ),

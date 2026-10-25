@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 
 /// Full-screen in-app preview for a generated presupuesto PDF. Rendering is
-/// delegated to [PdfInlinePreview] (blob-backed iframe on web), so no bytes
+/// delegated to [PdfInlinePreview] (in-app renderer on mobile), so no bytes
 /// are ever written to disk unless [onDownload] is invoked explicitly.
 class PresupuestoPdfPreviewDialog extends StatelessWidget {
   const PresupuestoPdfPreviewDialog({

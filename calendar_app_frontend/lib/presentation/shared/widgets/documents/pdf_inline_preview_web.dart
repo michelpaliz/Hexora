@@ -1,9 +1,11 @@
 import 'dart:js_interop';
 import 'package:web/web.dart' as html;
-import 'dart:typed_data';
 import 'dart:ui_web' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'pdf_inline_preview_stub.dart' as rendered;
+import 'pdf_preview_platform.dart';
 
 import 'document_split_view.dart';
 
@@ -22,10 +24,34 @@ class PdfInlinePreview extends StatefulWidget {
   final bool showToolbar;
 
   @override
-  State<PdfInlinePreview> createState() => _PdfInlinePreviewState();
+  Widget build(BuildContext context) {
+    final useRenderer = useRenderedPdfPreview(
+      platform: defaultTargetPlatform,
+      viewportWidth: MediaQuery.sizeOf(context).width,
+      // iPad Safari can identify itself as a desktop Mac.
+      touchMac: html.window.navigator.maxTouchPoints > 1 &&
+          html.window.navigator.userAgent.contains('Macintosh'),
+    );
+    if (useRenderer) {
+      return rendered.PdfInlinePreview(
+        bytes: bytes, height: height, interactive: interactive,
+      );
+    }
+    return _BrowserPdfPreview(bytes: bytes, height: height, interactive: interactive);
+  }
 }
 
-class _PdfInlinePreviewState extends State<PdfInlinePreview> {
+class _BrowserPdfPreview extends StatefulWidget {
+  const _BrowserPdfPreview({required this.bytes, required this.height, required this.interactive});
+  final Uint8List bytes;
+  final double height;
+  final bool interactive;
+
+  @override
+  State<_BrowserPdfPreview> createState() => _PdfInlinePreviewState();
+}
+
+class _PdfInlinePreviewState extends State<_BrowserPdfPreview> {
   late final String _viewType;
   late html.HTMLIFrameElement _element;
   String? _url;
@@ -49,7 +75,7 @@ class _PdfInlinePreviewState extends State<PdfInlinePreview> {
   }
 
   @override
-  void didUpdateWidget(covariant PdfInlinePreview oldWidget) {
+  void didUpdateWidget(covariant _BrowserPdfPreview oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.bytes != widget.bytes ||
         oldWidget.showToolbar != widget.showToolbar) {

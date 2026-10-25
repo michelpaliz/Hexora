@@ -447,7 +447,9 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
             client: _clientForInvoice(inv, l),
             onTap: () => _openInvoiceDetail(inv),
             onDelete: invDraft ? () => s._deleteInvoice(inv) : null,
-            onEdit: invDraft ? () => s._openEditDraft(inv) : null,
+            onEdit: invDraft || s.canEditIssuedInvoices(context)
+                ? () => s._openEditDraft(inv)
+                : null,
           ),
         );
       },
@@ -958,7 +960,7 @@ class _ClientMobileInvoicesScreenState
                       await _refresh();
                     }
                   : null,
-              onEdit: isDrafts
+              onEdit: isDrafts || s.canEditIssuedInvoices(context)
                   ? () async {
                       await s._openEditDraft(inv);
                       await _refresh();

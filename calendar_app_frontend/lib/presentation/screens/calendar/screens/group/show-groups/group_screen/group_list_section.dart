@@ -79,8 +79,8 @@ class _GroupListSectionState extends State<GroupListSection> {
                   children: [
                     ErrorText(
                       loc.localeName.startsWith('es')
-                          ? 'No se pudieron cargar los grupos.'
-                          : 'Groups could not be loaded.',
+                          ? 'No se pudieron cargar los negocios.'
+                          : 'Businesses could not be loaded.',
                     ),
                     TextButton.icon(
                       onPressed: () =>

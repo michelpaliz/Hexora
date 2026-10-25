@@ -333,12 +333,12 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
               onDropFiles: _handleWebDropFiles,
             ),
           ),
-          IgnorePointer(child: content),
+          IgnorePointer(child: SingleChildScrollView(child: content)),
         ],
       );
     }
 
-    return content;
+    return SingleChildScrollView(child: content);
   }
 }
 

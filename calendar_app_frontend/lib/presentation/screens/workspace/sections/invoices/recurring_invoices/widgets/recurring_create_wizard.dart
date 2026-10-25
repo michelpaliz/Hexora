@@ -867,7 +867,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
       };
       final result = await widget.api.preview(payload);
       final rows = <Map<String, String>>[];
-      final items = result['items'];
+      final items = result['schedule'] ?? result['items'];
       if (items is List) {
         for (final item in items) {
           if (item is! Map) continue;
@@ -881,7 +881,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
           });
         }
       } else {
-        final dates = result['dates'];
+        final dates = result['occurrences'] ?? result['dates'];
         if (dates is List) {
           for (final item in dates) {
             rows.add({
@@ -932,6 +932,49 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
     final policyError = _validateIssuePolicy(l);
     if (policyError != null) {
       setState(() => _ruleErrorText = policyError);
+      if (_step < 3) _setDraftState(() => _step = 3);
+      return;
+    }
+    final interval = int.tryParse(_intervalCtrl.text.trim());
+    final count = int.tryParse(_countCtrl.text.trim());
+    final frequency = canonicalFrequencyForApi(_freq);
+    final dayText = frequency == recurringFreqWeekly
+        ? _weekDayCtrl.text.trim()
+        : _billDayCtrl.text.trim();
+    final day = int.tryParse(dayText);
+    final isWeekly = frequency == recurringFreqWeekly;
+    final isEs = l.localeName.toLowerCase().startsWith('es');
+    final usesDay = isWeekly ||
+        frequency == recurringFreqMonthly ||
+        frequency == recurringFreqBimensual ||
+        frequency == recurringFreqTrimestral;
+    final scheduleError = interval == null || interval < 1
+        ? (isEs
+            ? 'El intervalo debe ser un entero positivo.'
+            : 'Interval must be a positive integer.')
+        : _endType == 'count' && (count == null || count < 1)
+            ? (isEs
+                ? 'Indica un número de repeticiones válido.'
+                : 'Enter a valid number of occurrences.')
+            : _endType == 'date' && _endDate == null
+                ? (isEs
+                    ? 'Selecciona una fecha de fin.'
+                    : 'Select an end date.')
+                : usesDay &&
+                        dayText.isNotEmpty &&
+                        (day == null ||
+                            day < (isWeekly ? 0 : 1) ||
+                            day > (isWeekly ? 6 : 31))
+                    ? isWeekly
+                        ? (isEs
+                            ? 'El día semanal debe estar entre 0 y 6.'
+                            : 'Weekday must be between 0 and 6.')
+                        : (isEs
+                            ? 'El día de ejecución debe estar entre 1 y 31.'
+                            : 'Execution day must be between 1 and 31.')
+                    : null;
+    if (scheduleError != null) {
+      setState(() => _ruleErrorText = scheduleError);
       if (_step < 3) _setDraftState(() => _step = 3);
       return;
     }

@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/blob_storage/blob_server.dart';
@@ -27,13 +27,13 @@ class BlobRepository {
   }
 
   /// Uploads to Azure (via SAS) and commits to /users/me/photo.
-  Future<CommittedPhoto> uploadUserAvatar({required File file}) async {
+  Future<CommittedPhoto> uploadUserAvatar({required Uint8List bytes}) async {
     final token = await _accessToken();
 
     // 1) upload to Azure
     final up = await uploadImageToAzure(
       scope: 'users',
-      file: file,
+      bytes: bytes,
       accessToken: token,
     );
 
@@ -59,7 +59,7 @@ class BlobRepository {
   /// Uploads to Azure (via SAS) and commits to /groups/{id}/photo.
   Future<CommittedPhoto> uploadGroupPhoto({
     required String groupId,
-    required File file,
+    required Uint8List bytes,
   }) async {
     final token = await _accessToken();
 
@@ -67,7 +67,7 @@ class BlobRepository {
     final up = await uploadImageToAzure(
       scope: 'groups',
       resourceId: groupId,
-      file: file,
+      bytes: bytes,
       accessToken: token,
     );
 

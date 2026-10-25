@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
@@ -25,8 +23,10 @@ class UploadGroupPhotoUseCase {
     if (token == null) throw StateError('Not authenticated');
     await groupDomain.groupRepository.uploadAndCommitGroupPhoto(
       groupId: groupId,
-      file: File(file.path),
+      bytes: await file.readAsBytes(),
     );
+    groupDomain.currentGroup =
+        await groupDomain.groupRepository.getGroupById(groupId);
     await groupDomain.refreshGroupsForCurrentUser(userDomain);
   }
 }

@@ -523,6 +523,10 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   Map<String, dynamic>? _batchJobResult;
   Map<String, dynamic>? _batchConfirmResult;
   List<_ExpenseBatchPreviewItem> _batchPreviewItems = [];
+  List<Map<String, dynamic>> _recentBatchJobs = [];
+  bool _recentBatchJobsLoading = false;
+  bool _recentBatchJobsExpanded = false;
+  String? _recentBatchJobsError;
   Timer? _batchJobPollTimer;
 
   static const int _maxBatchDocuments = 200;

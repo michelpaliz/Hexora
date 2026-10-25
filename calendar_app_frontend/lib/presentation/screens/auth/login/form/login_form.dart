@@ -29,6 +29,7 @@ class _LoginFormState extends State<LoginForm> {
 
   bool _showPassword = false;
   bool _canSubmit = false;
+  bool _isSubmitting = false;
   bool _isResending = false;
 
   @override
@@ -303,11 +304,12 @@ class _LoginFormState extends State<LoginForm> {
             child: ElevatedButton(
               key: const Key('login_submit_button'),
               style: ButtonStyleHelper.resolved(context, enabled: _canSubmit),
-              onPressed: _canSubmit
+              onPressed: _canSubmit && !_isSubmitting
                   ? () async {
                       if (!_formKey.currentState!.validate()) return;
                       final email = _email.text.trim();
                       final password = _password.text;
+                      setState(() => _isSubmitting = true);
                       try {
                         await authService.logIn(
                             email: email, password: password);
@@ -327,10 +329,17 @@ class _LoginFormState extends State<LoginForm> {
                         } else {
                           _showSnack(_loginErrorMessage(l10n, e));
                         }
+                      } finally {
+                        if (mounted) setState(() => _isSubmitting = false);
                       }
                     }
                   : null,
-              child: Text(l10n.login),
+              child: _isSubmitting
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text(l10n.login),
             ),
           ),
 
