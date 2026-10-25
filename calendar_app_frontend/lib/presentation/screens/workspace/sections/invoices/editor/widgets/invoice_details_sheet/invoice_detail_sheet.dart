@@ -23,9 +23,11 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_lines.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_party.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_public_link_card.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_payment_editor.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/invoice_delivery_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_state.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
@@ -37,9 +39,6 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 part 'invoice_detail_sheet_logic_mixin.dart';
-
-String _truncateId(String id) =>
-    id.length <= 12 ? id : '${id.substring(0, 8)}…';
 
 class InvoiceDetailSheet extends StatefulWidget {
   final Invoice invoice;
@@ -119,6 +118,25 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     );
   }
 
+  void _openBankTransactions() {
+    final dashboard = Provider.of<GroupDashboardState?>(context, listen: false);
+    if (dashboard != null) {
+      dashboard.openSection(Sections.enableBanking);
+      return;
+    }
+    Navigator.of(context).pushNamed(
+      AppRoutes.enableBanking,
+      arguments: widget.group,
+    );
+  }
+
+  void _afterClosingDetails(VoidCallback action, BuildContext sheetContext) {
+    Navigator.of(sheetContext).pop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) action();
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -191,18 +209,29 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => DraggableScrollableSheet(
+      builder: (sheetContext) => DraggableScrollableSheet(
         expand: false,
         initialChildSize: .82,
         minChildSize: .4,
         maxChildSize: .96,
-        builder: (_, scrollCtrl) =>
-            _buildDetailsContent(scrollCtrl: scrollCtrl),
+        builder: (_, scrollCtrl) => _buildDetailsContent(
+          scrollCtrl: scrollCtrl,
+          onOpenPayments: () =>
+              _afterClosingDetails(_openBankTransactions, sheetContext),
+          onSendInvoice: () => _afterClosingDetails(
+            () => _openSendInvoice(canSend: true),
+            sheetContext,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildDetailsContent({ScrollController? scrollCtrl}) {
+  Widget _buildDetailsContent({
+    ScrollController? scrollCtrl,
+    VoidCallback? onOpenPayments,
+    VoidCallback? onSendInvoice,
+  }) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final invoice = _invoice;
@@ -234,8 +263,6 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         ? _invoiceHistory
         : invoice.updateHistory.map((entry) => entry.toJson()).toList();
     final deliveryStatus = normalizeDeliveryStatus(invoice.deliveryStatus);
-    final canChangeDelivery =
-        (invoice.status ?? '').toLowerCase().contains('issue');
     final sentAtLabel = invoice.sentAt == null
         ? '-'
         : DateFormat.yMMMd(l.localeName)
@@ -249,6 +276,10 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     final moneyFormat =
         NumberFormat.currency(locale: l.localeName, symbol: 'EUR ');
     final isEs = l.localeName.toLowerCase().startsWith('es');
+    final currentUserId = context.watch<UserDomain?>()?.user?.id;
+    final role =
+        currentUserId == null ? null : widget.group.userRoles[currentUserId];
+    final canSend = role == 'owner' || role == 'co-admin';
 
     return ListView(
       controller: scrollCtrl,
@@ -419,9 +450,10 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         ),
 
         const SizedBox(height: 12),
-        InvoicePaymentEditor(
+        _PaymentStatusSection(
           invoice: invoice,
-          onSave: _updateInvoicePayment,
+          localeName: l.localeName,
+          onOpenPayments: onOpenPayments,
         ),
         if ((invoice.status ?? '').toLowerCase() == 'issued') ...[
           const SizedBox(height: 12),
@@ -435,10 +467,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
           deliveryStatus: deliveryStatus,
           sentAtLabel: sentAtLabel,
           channelLabel: channelLabel,
-          canChangeDelivery: canChangeDelivery,
-          updatingDelivery: _updatingDelivery,
-          onMarkSent: _markInvoiceSent,
-          onMarkUnsent: _markInvoiceUnsent,
+          onSendInvoice: canSend ? onSendInvoice : null,
         ),
 
         // History
@@ -1181,202 +1210,290 @@ class _DetailRow extends StatelessWidget {
 
 // ── Delivery section (extracted to avoid massive build method) ─────────────────
 
-class _DeliverySection extends StatelessWidget {
-  final Invoice invoice;
-  final String deliveryStatus;
-  final String sentAtLabel;
-  final String channelLabel;
-  final bool canChangeDelivery;
-  final bool updatingDelivery;
-  final Future<void> Function({required String channel}) onMarkSent;
-  final VoidCallback onMarkUnsent;
+class _PaymentStatusSection extends StatelessWidget {
+  const _PaymentStatusSection({
+    required this.invoice,
+    required this.localeName,
+    this.onOpenPayments,
+  });
 
+  final Invoice invoice;
+  final String localeName;
+  final VoidCallback? onOpenPayments;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isEs = localeName.toLowerCase().startsWith('es');
+    final status = (invoice.paymentStatus ?? '').trim().toLowerCase();
+    final isPaid = const {'paid', 'pagada', 'pagado'}.contains(status);
+    final isPartial =
+        const {'partial', 'partially_paid', 'parcial'}.contains(status);
+    final color = isPaid
+        ? (Theme.of(context).brightness == Brightness.light
+            ? const Color(0xFF2E7D32)
+            : const Color(0xFF81C784))
+        : isPartial
+            ? cs.tertiary
+            : cs.onSurfaceVariant;
+    final label = isPaid
+        ? (isEs ? 'Pagada' : 'Paid')
+        : isPartial
+            ? (isEs ? 'Pago parcial' : 'Partially paid')
+            : (isEs ? 'Pendiente' : 'Pending');
+    final total = invoice.total?.toDouble();
+    final paid =
+        invoice.paidAmount?.toDouble() ?? (isPaid && total != null ? total : 0);
+    final outstanding = total == null ? null : (total - paid).clamp(0, total);
+    final money = NumberFormat.currency(locale: localeName, symbol: '€');
+    final paidAt = invoice.paidAt == null
+        ? null
+        : DateFormat.yMMMd(localeName)
+            .add_Hm()
+            .format(invoice.paidAt!.toLocal());
+    final method = _paymentMethodLabel(invoice.paymentMethod, isEs: isEs);
+    final source = _paymentSourceLabel(invoice.paymentSource, isEs: isEs);
+    final linkedCount = invoice.linkedEntriesCountSafe;
+    final canOpenPayments =
+        onOpenPayments != null && (linkedCount > 0 || (!isPaid && !isPartial));
+    final actionLabel = linkedCount > 1
+        ? (isEs ? 'Ver pagos vinculados' : 'View linked payments')
+        : linkedCount == 1
+            ? (isEs ? 'Ver transacción' : 'View transaction')
+            : (isEs ? 'Buscar transacción' : 'Find transaction');
+
+    return _CompactStatusSection(
+      icon: isPaid
+          ? Icons.check_circle_outline_rounded
+          : isPartial
+              ? Icons.timelapse_rounded
+              : Icons.schedule_outlined,
+      title: isEs ? 'Pago' : 'Payment',
+      color: color,
+      status: label,
+      metadata: [
+        _MetaChip(
+          icon: Icons.payments_outlined,
+          label: '${isEs ? 'Pagado' : 'Paid'}: ${money.format(paid)}',
+        ),
+        if (outstanding != null)
+          _MetaChip(
+            icon: Icons.account_balance_wallet_outlined,
+            label:
+                '${isEs ? 'Pendiente' : 'Outstanding'}: ${money.format(outstanding)}',
+          ),
+        if (paidAt != null)
+          _MetaChip(icon: Icons.event_available_outlined, label: paidAt),
+        if (method != null)
+          _MetaChip(icon: Icons.credit_card_outlined, label: method),
+        if (source != null)
+          _MetaChip(icon: Icons.source_outlined, label: source),
+      ],
+      action: canOpenPayments
+          ? TextButton.icon(
+              onPressed: onOpenPayments,
+              icon: Icon(
+                linkedCount > 0 ? Icons.open_in_new_rounded : Icons.search,
+                size: 15,
+              ),
+              label: Text(actionLabel),
+            )
+          : null,
+    );
+  }
+
+  static String? _paymentMethodLabel(String? value, {required bool isEs}) {
+    final raw = (value ?? '').trim();
+    if (raw.isEmpty) return null;
+    return switch (raw.toLowerCase()) {
+      'transfer' => isEs ? 'Transferencia' : 'Transfer',
+      'cash' => isEs ? 'Efectivo' : 'Cash',
+      'card' => isEs ? 'Tarjeta' : 'Card',
+      'check' => isEs ? 'Cheque' : 'Check',
+      'bizum' => 'Bizum',
+      _ => raw,
+    };
+  }
+
+  static String? _paymentSourceLabel(String? value, {required bool isEs}) {
+    final raw = (value ?? '').trim();
+    if (raw.isEmpty) return null;
+    return switch (raw.toLowerCase()) {
+      'manual' || 'manual_entry' => isEs ? 'Registro manual' : 'Manual entry',
+      'bank' ||
+      'bank_transaction' ||
+      'statement' ||
+      'reconciliation' =>
+        isEs ? 'Conciliación bancaria' : 'Bank reconciliation',
+      _ => raw,
+    };
+  }
+}
+
+class _DeliverySection extends StatelessWidget {
   const _DeliverySection({
     required this.invoice,
     required this.deliveryStatus,
     required this.sentAtLabel,
     required this.channelLabel,
-    required this.canChangeDelivery,
-    required this.updatingDelivery,
-    required this.onMarkSent,
-    required this.onMarkUnsent,
+    this.onSendInvoice,
   });
+
+  final Invoice invoice;
+  final String deliveryStatus;
+  final String sentAtLabel;
+  final String channelLabel;
+  final VoidCallback? onSendInvoice;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final delivered = deliveryStatus == 'delivered';
+    final sent = deliveryStatus == 'sent';
+    final failed = deliveryStatus == 'failed';
+    final color = delivered
+        ? (Theme.of(context).brightness == Brightness.light
+            ? const Color(0xFF2E7D32)
+            : const Color(0xFF81C784))
+        : sent
+            ? cs.primary
+            : failed
+                ? cs.error
+                : cs.onSurfaceVariant;
+    final canSend = onSendInvoice != null && (!sent && !delivered);
 
+    return _CompactStatusSection(
+      icon: delivered
+          ? Icons.done_all_rounded
+          : sent
+              ? Icons.send_rounded
+              : failed
+                  ? Icons.error_outline_rounded
+                  : Icons.mark_email_unread_outlined,
+      title: isEs ? 'Envío' : 'Delivery',
+      color: color,
+      status: deliveryStatusLabel(invoice.deliveryStatus, feminine: true),
+      metadata: [
+        if (invoice.sentAt != null)
+          _MetaChip(icon: Icons.schedule_outlined, label: sentAtLabel),
+        if ((invoice.deliveryChannel ?? '').trim().isNotEmpty &&
+            channelLabel != '-')
+          _MetaChip(
+            icon: channelLabel.toLowerCase().contains('email')
+                ? Icons.email_outlined
+                : Icons.send_outlined,
+            label: channelLabel,
+          ),
+        if (failed && (invoice.deliveryError ?? '').trim().isNotEmpty)
+          _MetaChip(
+            icon: Icons.error_outline_rounded,
+            label: invoice.deliveryError!.trim(),
+          ),
+      ],
+      action: canSend
+          ? TextButton.icon(
+              onPressed: onSendInvoice,
+              icon: const Icon(Icons.email_outlined, size: 15),
+              label: Text(failed
+                  ? (isEs ? 'Reintentar por email' : 'Retry by email')
+                  : (isEs ? 'Enviar por email' : 'Send by email')),
+            )
+          : null,
+    );
+  }
+}
+
+class _CompactStatusSection extends StatelessWidget {
+  const _CompactStatusSection({
+    required this.icon,
+    required this.title,
+    required this.color,
+    required this.status,
+    required this.metadata,
+    this.action,
+  });
+
+  final IconData icon;
+  final String title;
+  final Color color;
+  final String status;
+  final List<Widget> metadata;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header row
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
-            child: Row(
-              children: [
-                Icon(Icons.send_rounded, size: 14, color: cs.onSurfaceVariant),
-                const SizedBox(width: 8),
-                Text(
-                  'Estado de envío',
-                  style: AppTypography.of(context).bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                      ),
+          Row(
+            children: [
+              Icon(icon, size: 15, color: color),
+              const SizedBox(width: 7),
+              Text(
+                title,
+                style: t.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
                 ),
-                const Spacer(),
-                DeliveryStatusBadge(
-                  status: invoice.deliveryStatus,
-                  channel: invoice.deliveryChannel,
-                  sentAt: invoice.sentAt,
-                  deliveryError: invoice.deliveryError,
-                  feminine: true,
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(999),
                 ),
-              ],
-            ),
+                child: Text(
+                  status,
+                  style: t.bodySmall.copyWith(
+                    color: color,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
-
-          // Meta
-          if (invoice.sentAt != null ||
-              (invoice.deliveryChannel ?? '').trim().isNotEmpty ||
-              (invoice.sentBy ?? '').trim().isNotEmpty) ...[
-            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 4,
-                children: [
-                  if (invoice.sentAt != null)
-                    _MetaChip(
-                        icon: Icons.schedule_outlined, label: sentAtLabel),
-                  if ((invoice.deliveryChannel ?? '').trim().isNotEmpty)
-                    _MetaChip(
-                      icon: channelLabel.toLowerCase().contains('email')
-                          ? Icons.email_outlined
-                          : Icons.send_outlined,
-                      label: channelLabel,
-                    ),
-                  if ((invoice.sentBy ?? '').trim().isNotEmpty)
-                    _MetaChip(
-                      icon: Icons.person_outline,
-                      label: _truncateId(invoice.sentBy!.trim()),
-                    ),
-                ],
-              ),
-            ),
-          ],
-
-          // Error
-          if (deliveryStatus == 'failed' &&
-              (invoice.deliveryError ?? '').trim().isNotEmpty) ...[
-            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
-              child: Row(
-                children: [
-                  Icon(Icons.error_outline, size: 13, color: cs.error),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      invoice.deliveryError!.trim(),
-                      style: AppTypography.of(context)
-                          .bodySmall
-                          .copyWith(color: cs.error),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          // Actions
-          if (canChangeDelivery) ...[
-            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: PopupMenuButton<String>(
-                      tooltip: 'Marcar como enviada',
-                      enabled: !updatingDelivery,
-                      onSelected: (value) => onMarkSent(channel: value),
-                      itemBuilder: (_) => const [
-                        NavigationPopupMenuItem(
-                            value: 'manual', child: Text('Manual')),
-                        NavigationPopupMenuItem(
-                            value: 'email', child: Text('Email')),
-                        NavigationPopupMenuItem(
-                            value: 'whatsapp', child: Text('WhatsApp')),
-                      ],
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: cs.secondaryContainer.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                              color: cs.outlineVariant.withValues(alpha: 0.4)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (updatingDelivery)
-                              SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: cs.onSecondaryContainer,
-                                ),
-                              )
-                            else
-                              Icon(
-                                Icons.mark_email_read_outlined,
-                                size: 15,
-                                color: cs.onSecondaryContainer,
-                              ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Marcar enviada',
-                              style:
-                                  AppTypography.of(context).bodySmall.copyWith(
-                                        color: cs.onSecondaryContainer,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(Icons.arrow_drop_down,
-                                size: 16, color: cs.onSecondaryContainer),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 36,
-                    height: 36,
-                    child: Tooltip(
-                      message: 'Marcar como no enviada',
-                      child: OutlinedButton(
-                        onPressed: updatingDelivery ? null : onMarkUnsent,
-                        style: OutlinedButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        child: const Icon(Icons.mark_email_unread_outlined,
-                            size: 16),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+          if (metadata.isNotEmpty || action != null) ...[
+            const SizedBox(height: 6),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final stackAction = constraints.maxWidth < 420 ||
+                    MediaQuery.textScalerOf(context).scale(12) > 17;
+                final meta = Wrap(
+                  spacing: 10,
+                  runSpacing: 4,
+                  children: metadata,
+                );
+                if (action == null) return meta;
+                if (stackAction) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (metadata.isNotEmpty) meta,
+                      if (metadata.isNotEmpty) const SizedBox(height: 4),
+                      action!,
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(child: meta),
+                    const SizedBox(width: 8),
+                    action!,
+                  ],
+                );
+              },
             ),
           ],
         ],

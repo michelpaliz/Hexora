@@ -14,7 +14,6 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
   String? _inlinePdfError;
   Uint8List? _inlinePdfBytes;
   bool _savingBillingName = false;
-  bool _updatingDelivery = false;
   List<Map<String, dynamic>> _invoiceHistory = const [];
   bool _historyLoading = false;
   String? _historyError;
@@ -70,14 +69,6 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
     } finally {
       if (mounted) setState(() => _historyLoading = false);
     }
-  }
-
-  Future<void> _updateInvoicePayment(Map<String, dynamic> payload) async {
-    final updated = await _invoicesApi.updatePayment(_invoice.id, payload);
-    if (!mounted) return;
-    setState(() => _currentInvoice = updated);
-    widget.onInvoiceChanged?.call();
-    await _loadInlinePdfPreview();
   }
 
   Future<void> _fetchLines() async {
@@ -175,73 +166,6 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
           .showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       if (mounted) setState(() => _downloadingPdf = false);
-    }
-  }
-
-  Future<void> _markInvoiceSent({
-    required String channel,
-  }) async {
-    if (_updatingDelivery) return;
-    setState(() => _updatingDelivery = true);
-    try {
-      final updated = await _invoicesApi.markInvoiceSent(
-        _invoice.id,
-        channel: channel,
-      );
-      if (!mounted) return;
-      setState(() => _currentInvoice = updated);
-      await _notifyInvoiceChanged();
-      if (!mounted) return;
-      final l = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.invoiceDeliveryStatusUpdated)),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      final l = AppLocalizations.of(context)!;
-      final message = e.toString().replaceFirst('Exception: ', '').trim();
-      final normalized = message.toLowerCase();
-      final readable = normalized.contains('409') ||
-              normalized.contains('not issued') ||
-              normalized.contains('solo') && normalized.contains('emit')
-          ? l.invoiceDeliveryOnlyIssued
-          : (message.isEmpty ? l.invoiceDeliveryUpdateError : message);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(readable)),
-      );
-    } finally {
-      if (mounted) setState(() => _updatingDelivery = false);
-    }
-  }
-
-  Future<void> _markInvoiceUnsent() async {
-    if (_updatingDelivery) return;
-    setState(() => _updatingDelivery = true);
-    try {
-      final updated = await _invoicesApi.markInvoiceUnsent(_invoice.id);
-      if (!mounted) return;
-      setState(() => _currentInvoice = updated);
-      await _notifyInvoiceChanged();
-      if (!mounted) return;
-      final l = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.invoiceMarkedUnsent)),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      final l = AppLocalizations.of(context)!;
-      final message = e.toString().replaceFirst('Exception: ', '').trim();
-      final normalized = message.toLowerCase();
-      final readable = normalized.contains('409') ||
-              normalized.contains('not issued') ||
-              normalized.contains('solo') && normalized.contains('emit')
-          ? l.invoiceDeliveryOnlyIssued
-          : (message.isEmpty ? l.invoiceDeliveryUpdateError : message);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(readable)),
-      );
-    } finally {
-      if (mounted) setState(() => _updatingDelivery = false);
     }
   }
 
