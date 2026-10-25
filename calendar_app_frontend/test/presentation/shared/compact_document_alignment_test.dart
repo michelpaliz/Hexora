@@ -31,6 +31,8 @@ void main() {
             body: Column(children: [
           const CompactDocumentTableHeader(
             identityLabel: 'Factura',
+            actionsWidth: 96,
+            previewActionInFullView: false,
             visibleFinancialColumns: {
               HexoraFinancialColumn.date,
               HexoraFinancialColumn.taxableBase,
@@ -55,7 +57,6 @@ void main() {
               selected: i == 1,
               warning: i == 2,
               onTap: () => opened++,
-              onPreview: () => opened++,
               visibleFinancialColumns: const {
                 HexoraFinancialColumn.date,
                 HexoraFinancialColumn.taxableBase,
@@ -76,7 +77,7 @@ void main() {
         tester
             .getSize(find.byKey(const ValueKey('document-actions-header')))
             .width,
-        128,
+        96,
       );
       expect(find.text('Pago'), findsOneWidget);
       expect(find.text('Pagada'), findsOneWidget);
@@ -138,6 +139,9 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
       expect(opened, 1);
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pumpAndSettle();
+      expect(opened, 2);
       expect(tester.takeException(), isNull);
     });
   }

@@ -154,6 +154,7 @@ class CompactDocumentTableHeader extends StatelessWidget {
     this.paymentLabel = 'Pago',
     this.actionsLabel = 'Acciones',
     this.actionsWidth = _compactActionSlot * 4,
+    this.previewActionInFullView = true,
     this.headerBuilder,
   });
 
@@ -164,6 +165,7 @@ class CompactDocumentTableHeader extends StatelessWidget {
   final String paymentLabel;
   final String actionsLabel;
   final double actionsWidth;
+  final bool previewActionInFullView;
   final Widget Function(
     BuildContext context,
     CompactDocumentColumn column,
@@ -187,8 +189,9 @@ class CompactDocumentTableHeader extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final split =
         DocumentWorkspaceScope.maybeOf(context)?.mode == DocumentViewMode.split;
-    final effectiveActionsWidth =
-        split ? actionsWidth - _compactActionSlot : actionsWidth;
+    final effectiveActionsWidth = split && previewActionInFullView
+        ? actionsWidth - _compactActionSlot
+        : actionsWidth;
     return LayoutBuilder(builder: (context, constraints) {
       if (constraints.maxWidth < 560) return const SizedBox.shrink();
       final contentWidth = constraints.maxWidth - 24;

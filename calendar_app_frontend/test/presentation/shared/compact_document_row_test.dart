@@ -51,7 +51,7 @@ void main() {
                                 total: 714.48,
                                 issueDate: DateTime(2026, 9, 26)),
                             client: client,
-                            onPreview: () => calls.add('preview'),
+                            onTap: () => calls.add('details'),
                             onEdit: () => calls.add('edit'),
                             onIssue: () => calls.add('issue'),
                             onDelete: () => calls.add('delete'),
@@ -89,32 +89,39 @@ void main() {
           await tester.pumpAndSettle();
         }
 
-        // Standard layout: Edit and Download are visible icons; preview and
-        // the rest live in the overflow menu.
+        // The row is the only primary details action. Edit and download stay
+        // visible, while delivery tracking and other secondary actions remain
+        // in the overflow menu.
+        await tester.tap(find.text('336-26'));
+        await tester.pumpAndSettle();
+        expect(calls.where((call) => call == 'details').length, 1);
         await tester.tap(find.descendant(
             of: find.byType(CompactDocumentRow).at(0),
             matching: find.byTooltip(l.edit)));
+        expect(calls.where((call) => call == 'details').length, 1);
         await tester.tap(find.descendant(
             of: find.byType(CompactDocumentRow).at(1),
             matching: find.byTooltip(l.download)));
-        await tester.tap(find.descendant(
-            of: find.byType(CompactDocumentRow).at(0),
-            matching: find.byTooltip('Vista previa')));
-        await tester.pumpAndSettle();
-        expect(calls, contains('preview'));
+        expect(
+            find.descendant(
+                of: find.byType(CompactDocumentRow).at(0),
+                matching: find.byIcon(Icons.visibility_outlined)),
+            findsNothing);
         await select(0, l.invoiceIssueCta);
         await select(0, 'Ver recurrencia');
         await select(0, l.delete);
-        await select(0, 'Ver detalles');
+        await select(0, 'Seguimiento de entrega');
         expect(find.textContaining(l.invoiceLinesTitle), findsOneWidget);
-        await select(0, 'Ocultar detalles');
+        await select(0, 'Ocultar seguimiento');
         expect(find.textContaining(l.invoiceLinesTitle), findsNothing);
+        expect(calls.where((call) => call == 'details').length, 1);
         await select(1, 'Marcar como enviado');
         await select(1, l.delete);
         expect(
             calls,
             containsAll([
               'edit',
+              'details',
               'issue',
               'recurrence',
               'delete',

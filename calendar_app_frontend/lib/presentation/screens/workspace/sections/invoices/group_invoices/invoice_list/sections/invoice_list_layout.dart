@@ -508,7 +508,8 @@ extension _InvoiceListLayout on _InvoicesTabListState {
           CompactDocumentTableHeader(
             identityLabel: 'Factura',
             visibleFinancialColumns: _visibleFinancialColumns,
-            actionsWidth: 128,
+            actionsWidth: 96,
+            previewActionInFullView: false,
             headerBuilder: (context, column, label, width, numeric) =>
                 _buildInvoiceColumnHeader(
               context,
@@ -604,7 +605,6 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                                         )
                                     : null,
                                 onTap: () => widget.onTap(inv),
-                                onPreview: () => widget.onTap(inv),
                                 onDelete: widget.onDelete == null
                                     ? null
                                     : () => widget.onDelete!(inv),

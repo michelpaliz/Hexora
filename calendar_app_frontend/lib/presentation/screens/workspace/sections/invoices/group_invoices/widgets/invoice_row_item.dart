@@ -22,7 +22,6 @@ class InvoiceListItem extends StatefulWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onEdit;
   final VoidCallback? onIssue;
-  final VoidCallback? onPreview;
   final VoidCallback? onInspectRecurrence;
   final bool warning;
   final String? warningLabel;
@@ -45,7 +44,6 @@ class InvoiceListItem extends StatefulWidget {
     this.onDelete,
     this.onEdit,
     this.onIssue,
-    this.onPreview,
     this.onInspectRecurrence,
     this.warning = false,
     this.warningLabel,
@@ -190,8 +188,8 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
               NavigationPopupMenuItem(
                 value: 'details',
                 child: Text(_detailsExpanded
-                    ? (isEs ? 'Ocultar detalles' : 'Hide details')
-                    : (isEs ? 'Ver detalles' : 'Show details')),
+                    ? (isEs ? 'Ocultar seguimiento' : 'Hide delivery tracking')
+                    : (isEs ? 'Seguimiento de entrega' : 'Delivery tracking')),
               ),
               if (widget.onEdit != null)
                 NavigationPopupMenuItem(value: 'edit', child: Text(l.edit)),
@@ -381,15 +379,8 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       selected: widget.selected,
       onTap: widget.onTap,
       previewLabel: isEs ? 'Vista previa' : 'Preview',
-      quickActionSlots: 3,
+      quickActionSlots: 2,
       quickActions: [
-        if (widget.onPreview != null)
-          CompactDocumentQuickAction(
-            icon: Icons.visibility_outlined,
-            tooltip: isEs ? 'Vista previa' : 'Preview',
-            onPressed: widget.onPreview,
-            opensPreviewDrawer: true,
-          ),
         if (widget.onEdit != null)
           CompactDocumentQuickAction(
             icon: Icons.edit_outlined,
@@ -426,8 +417,8 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       actions: [
         CompactDocumentAction(
             _detailsExpanded
-                ? (isEs ? 'Ocultar detalles' : 'Hide details')
-                : (isEs ? 'Ver detalles' : 'Show details'),
+                ? (isEs ? 'Ocultar seguimiento' : 'Hide delivery tracking')
+                : (isEs ? 'Seguimiento de entrega' : 'Delivery tracking'),
             () => setState(() => _detailsExpanded = !_detailsExpanded)),
         if (widget.onIssue != null)
           CompactDocumentAction(l.invoiceIssueCta, widget.onIssue),

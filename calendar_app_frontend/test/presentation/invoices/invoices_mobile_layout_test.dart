@@ -81,7 +81,7 @@ void main() {
         expect(opened, isTrue);
         final context = tester.element(find.byType(InvoiceListItem));
         final edit = AppLocalizations.of(context)!.edit;
-        await tester.tap(find.byTooltip(edit));
+        await tester.tap(find.byType(PopupMenuButton<String>));
         await tester.pumpAndSettle();
         await tester.tap(find.text(edit));
         await tester.pumpAndSettle();

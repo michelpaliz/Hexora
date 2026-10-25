@@ -146,8 +146,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                           ),
                           onDeleteInvoice: (inv) =>
                               _c.deleteInvoice(context, inv),
-                          onEditDraft: (inv) =>
-                              _c.openEditDraft(context, inv),
+                          onEditDraft: (inv) => _c.openEditDraft(context, inv),
                           clientBillingViewBuilder: (client) =>
                               ClientBillingView(
                             client: client,
@@ -167,11 +166,6 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                               onTap: onTap,
                               onDelete: onDelete,
                               onEdit: onEdit,
-                              onPreview: () => _openInvoiceDetailSheet(
-                                invoice: invoice,
-                                clients: s.clients,
-                                billingProfile: s.billingProfile,
-                              ),
                             );
                           },
                         )
@@ -185,8 +179,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                           onSelectInvoice: _c.selectInvoice,
                           onDeleteDraft: (inv) =>
                               _c.deleteInvoice(context, inv),
-                          onEditDraft: (inv) =>
-                              _c.openEditDraft(context, inv),
+                          onEditDraft: (inv) => _c.openEditDraft(context, inv),
                           onIssueAll: (drafts) =>
                               _c.issueAllDrafts(context, drafts),
                           detailBuilder: (inv) => InvoiceDetailSheet(
@@ -207,11 +200,6 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
                               onTap: onTap,
                               onDelete: onDelete,
                               onEdit: onEdit,
-                              onPreview: () => _openInvoiceDetailSheet(
-                                invoice: inv,
-                                clients: s.clients,
-                                billingProfile: s.billingProfile,
-                              ),
                             );
                           },
                         ),
@@ -241,8 +229,3 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     );
   }
 }
-
-
-
-
-

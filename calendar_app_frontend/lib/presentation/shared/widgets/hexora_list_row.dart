@@ -45,8 +45,12 @@ class _HexoraListRowState extends State<HexoraListRow> {
               : Colors.transparent,
           child: InkWell(
             onTap: widget.onTap,
-            onFocusChange: (focused) => setState(
-                () => _keyboardFocused = focused && !_pointerDown),
+            mouseCursor: widget.onTap == null
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.click,
+            canRequestFocus: widget.onTap != null,
+            onFocusChange: (focused) =>
+                setState(() => _keyboardFocused = focused && !_pointerDown),
             hoverColor: cs.primary.withValues(alpha: .04),
             focusColor: _keyboardFocused
                 ? cs.primary.withValues(alpha: .12)

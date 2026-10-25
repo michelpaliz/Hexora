@@ -75,7 +75,7 @@ void main() {
 
       await tester.tap(find.byType(PopupMenuButton<String>).first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Ver detalles'));
+      await tester.tap(find.text('Seguimiento de entrega'));
       await tester.pumpAndSettle();
       expect(find.text('Seguimiento de entrega'), findsOneWidget);
       expect(find.text('Enviada'), findsOneWidget);
