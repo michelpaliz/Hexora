@@ -93,6 +93,10 @@ class ClientMissingInvoiceFilter extends StatelessWidget {
                         backgroundColor: selected
                             ? cs.primary.withValues(alpha: .08)
                             : Colors.transparent,
+                        side: BorderSide(
+                            color: selected ? cs.primary : cs.outlineVariant),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 6)),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [

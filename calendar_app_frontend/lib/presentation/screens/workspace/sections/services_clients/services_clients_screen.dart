@@ -6,7 +6,6 @@ import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/service_catalog/service.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/service_catalog/service_api_client.dart';
-import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -338,7 +337,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
                   onToggleMissingCurrentMonthInvoiceOnly: (value) => setState(
                     () => _missingCurrentMonthInvoiceOnly = value,
                   ),
-                  showInlineCTA: true,
+                  showInlineCTA: false,
                   onAddTap: _openAddClientSheet,
                   showInactive: _showInactiveClients,
                   onToggleInactive: (v) =>
@@ -355,7 +354,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
                   loading: _loadingServices,
                   error: _errServices,
                   onRefresh: _loadServices,
-                  showInlineCTA: true,
+                  showInlineCTA: false,
                   onDelete: _confirmDeleteService,
                   onAddTap: _openAddServiceSheet,
                   onEdit: _openEditServiceSheet,
@@ -385,9 +384,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
     final isMobile = MediaQuery.sizeOf(context).width < 700;
     if (isMobile) return _buildMobileLayout(context);
 
@@ -404,80 +401,84 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
     return Scaffold(
       appBar: SectionAppBar(
         title: l.screenServicesClientsTitle,
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(hexoraSectionTabsHeight(context) + 8),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: HexoraSectionTabs(controller: _tab, tabs: [
-              Tab(text: clientsTabLabel),
-              Tab(text: servicesTabLabel)
-            ]),
-          ),
-        ),
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final left = TabBarView(
-            controller: _tab,
-            children: [
-              ClientsTab(
-                items: _clients,
-                loading: _loadingClients,
-                error: _errClients,
-                onRefresh: _loadClients,
-                missingCurrentMonthInvoiceOnly: _missingCurrentMonthInvoiceOnly,
-                onToggleMissingCurrentMonthInvoiceOnly: (value) => setState(
-                  () => _missingCurrentMonthInvoiceOnly = value,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 2),
+            child: Row(
+              children: [
+                Expanded(
+                  child: HexoraSectionTabs(
+                    controller: _tab,
+                    compact: true,
+                    tabs: [
+                      Tab(text: clientsTabLabel),
+                      Tab(text: servicesTabLabel),
+                    ],
+                  ),
                 ),
-                showInlineCTA: true,
-                onAddTap: _openAddClientSheet,
-                showInactive: _showInactiveClients,
-                onToggleInactive: (v) =>
-                    setState(() => _showInactiveClients = v),
-                propertyKindFilter: _propertyKindFilter,
-                propertyKindOptions: propertyKindOptions,
-                onPropertyKindChanged: (v) =>
-                    setState(() => _propertyKindFilter = v),
-                onDelete: _confirmDeleteClient,
-                onEdit: _openEditClientSheet,
-              ),
-              ServicesTab(
-                items: _services,
-                loading: _loadingServices,
-                error: _errServices,
-                onRefresh: _loadServices,
-                showInlineCTA: true,
-                onDelete: _confirmDeleteService,
-                onAddTap: _openAddServiceSheet,
-                onEdit: _openEditServiceSheet,
-              ),
-            ],
-          );
-
-          return left;
-        },
-      ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        child: SizedBox(
-          height: 56,
-          child: FilledButton.icon(
-            icon: const Icon(Icons.add),
-            label: AnimatedBuilder(
-              animation: _tab,
-              builder: (_, __) => Text(
-                _tab.index == 0 ? l.addClient : l.addService,
-                style: t.bodySmall.copyWith(
-                  color: ThemeColors.contrastOn(cs.primary),
-                  fontWeight: FontWeight.w700,
+                const SizedBox(width: 12),
+                AnimatedBuilder(
+                  animation: _tab,
+                  builder: (_, __) => FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: _tab.index == 0
+                        ? _openAddClientSheet
+                        : _openAddServiceSheet,
+                    icon: const Icon(Icons.add_rounded, size: 16),
+                    label: Text(_tab.index == 0 ? l.addClient : l.addService),
+                  ),
                 ),
-              ),
+              ],
             ),
-            onPressed: () => _tab.index == 0
-                ? _openAddClientSheet()
-                : _openAddServiceSheet(),
           ),
-        ),
+          Divider(
+              height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+          Expanded(
+            child: TabBarView(
+              controller: _tab,
+              children: [
+                ClientsTab(
+                  items: _clients,
+                  loading: _loadingClients,
+                  error: _errClients,
+                  onRefresh: _loadClients,
+                  missingCurrentMonthInvoiceOnly:
+                      _missingCurrentMonthInvoiceOnly,
+                  onToggleMissingCurrentMonthInvoiceOnly: (value) => setState(
+                    () => _missingCurrentMonthInvoiceOnly = value,
+                  ),
+                  showInlineCTA: false,
+                  onAddTap: _openAddClientSheet,
+                  showInactive: _showInactiveClients,
+                  onToggleInactive: (v) =>
+                      setState(() => _showInactiveClients = v),
+                  propertyKindFilter: _propertyKindFilter,
+                  propertyKindOptions: propertyKindOptions,
+                  onPropertyKindChanged: (v) =>
+                      setState(() => _propertyKindFilter = v),
+                  onDelete: _confirmDeleteClient,
+                  onEdit: _openEditClientSheet,
+                ),
+                ServicesTab(
+                  items: _services,
+                  loading: _loadingServices,
+                  error: _errServices,
+                  onRefresh: _loadServices,
+                  showInlineCTA: false,
+                  onDelete: _confirmDeleteService,
+                  onAddTap: _openAddServiceSheet,
+                  onEdit: _openEditServiceSheet,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

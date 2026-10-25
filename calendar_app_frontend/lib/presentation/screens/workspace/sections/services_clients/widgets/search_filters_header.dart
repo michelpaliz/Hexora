@@ -19,6 +19,7 @@ class SearchFiltersHeader extends StatefulWidget {
       required this.searchController,
       required this.onSearchChanged,
       required this.searchHint,
+      this.clearSearchTooltip,
       required this.hasFilterOptions,
       required this.hasActiveFilters,
       this.activeFilterCount = 0,
@@ -31,6 +32,7 @@ class SearchFiltersHeader extends StatefulWidget {
   final TextEditingController searchController;
   final VoidCallback onSearchChanged;
   final String searchHint;
+  final String? clearSearchTooltip;
   final bool hasFilterOptions;
   final bool hasActiveFilters;
   final int activeFilterCount;
@@ -89,8 +91,9 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                             constraints: BoxConstraints.tightFor(
                                 width: height, height: height),
                             padding: const EdgeInsets.all(8),
-                            tooltip: MaterialLocalizations.of(context)
-                                .deleteButtonTooltip,
+                            tooltip: widget.clearSearchTooltip ??
+                                MaterialLocalizations.of(context)
+                                    .deleteButtonTooltip,
                             onPressed: () {
                               widget.searchController.clear();
                               widget.onSearchChanged();

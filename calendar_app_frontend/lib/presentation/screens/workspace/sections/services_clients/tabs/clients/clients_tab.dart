@@ -104,7 +104,8 @@ class _ClientsTabState extends State<ClientsTab> {
     final searched = filtered.where(_matchesSearch).toList(growable: false);
     final flagged = widget.missingCurrentMonthInvoiceOnly
         ? searched
-            .where((c) => c.missingCurrentMonthInvoice == true)
+            .where((c) =>
+                c.isActive != false && c.missingCurrentMonthInvoice == true)
             .toList(growable: false)
         : searched;
     final activeItems =
@@ -127,13 +128,10 @@ class _ClientsTabState extends State<ClientsTab> {
     final pageItems = visible.skip(page * pageSize).take(pageSize).toList();
     final hasInvoiceFlagData =
         widget.items.any((c) => c.hasCurrentMonthInvoiceFlagData);
-    final missingInvoiceCount =
-        widget.items.where((c) => c.missingCurrentMonthInvoice == true).length;
-    final filterCountSource = widget.missingCurrentMonthInvoiceOnly
-        ? widget.items
-            .where((c) => c.missingCurrentMonthInvoice == true)
-            .toList(growable: false)
-        : widget.items;
+    final missingInvoiceCount = searched
+        .where(
+            (c) => c.isActive != false && c.missingCurrentMonthInvoice == true)
+        .length;
 
     final query = _searchCtrl.text.trim();
     final hasSearch = query.isNotEmpty;
@@ -223,7 +221,7 @@ class _ClientsTabState extends State<ClientsTab> {
           onSearchChanged: () => setState(() => _page = 0),
           searchHint: l.clientSearchHint,
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 2),
-          clientsForCounts: filterCountSource,
+          clientsForCounts: filtered,
           statusContent: ClientStatusSegments(
               value: _status,
               active: activeItems.length,
@@ -257,9 +255,7 @@ class _ClientsTabState extends State<ClientsTab> {
               ),
             ],
           ),
-          extraActiveFilterCount:
-              (widget.missingCurrentMonthInvoiceOnly ? 1 : 0) +
-                  (_status != 'all' ? 1 : 0),
+          extraActiveFilterCount: widget.missingCurrentMonthInvoiceOnly ? 1 : 0,
           propertyLabel: l.clientPropertyKindLabel,
           propertyOptions: widget.propertyKindOptions,
           propertyFilter: widget.propertyKindFilter,
@@ -364,10 +360,14 @@ class _SortChip extends StatelessWidget {
       ],
       child: Container(
         constraints: BoxConstraints(
-          minHeight:
-              MediaQuery.sizeOf(context).width >= 760 ? 32.0 : 48.0,
+          minHeight: MediaQuery.sizeOf(context).width >= 760 ? 32.0 : 48.0,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: cs.outlineVariant),
+        ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.swap_vert_rounded, size: 14, color: cs.onSurfaceVariant),
           const SizedBox(width: 5),
