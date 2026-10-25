@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/vat/vat_summary_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/expense_upload_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/expenses/import_history/expense_import_history_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/section_label.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/vat_summary_view.dart';
@@ -120,7 +121,7 @@ class _GastosModuleBody extends StatelessWidget {
         child: _GastosTab(
           isNarrow: true,
           group: group,
-          selectedSection: 'supplier_invoices',
+          selectedSection: gastosSection,
           onSectionSelected: onGastosSectionSelected,
         ),
       );
@@ -403,15 +404,36 @@ class _GastosTab extends StatelessWidget {
         .toLowerCase()
         .startsWith('es');
     if (isNarrow) {
-      return Material(
-        color: Colors.transparent,
-        child: ExpenseUploadScreen(
-          key: ValueKey('gastos-mobile-expenses-${group.id}'),
-          embedded: true,
-          listOnly: true,
-          groupId: group.id,
-          groupName: group.name,
-        ),
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            child: Row(children: [
+              Expanded(
+                  child: TextButton.icon(
+                onPressed: () => onSectionSelected('supplier_invoices'),
+                icon: const Icon(Icons.receipt_long_outlined, size: 16),
+                label: Text(isEs ? 'Facturas' : 'Invoices'),
+              )),
+              Expanded(
+                  child: TextButton.icon(
+                onPressed: () => onSectionSelected('import_history'),
+                icon: const Icon(Icons.history_rounded, size: 16),
+                label: Text(isEs ? 'Historial' : 'History'),
+              )),
+            ]),
+          ),
+          Expanded(
+              child: selectedSection == 'import_history'
+                  ? ExpenseImportHistoryScreen(groupId: group.id)
+                  : ExpenseUploadScreen(
+                      key: ValueKey('gastos-mobile-expenses-${group.id}'),
+                      embedded: true,
+                      listOnly: true,
+                      groupId: group.id,
+                      groupName: group.name,
+                    )),
+        ],
       );
     }
 
@@ -451,6 +473,11 @@ class _GastosTab extends StatelessWidget {
               label: 'OCR documentos',
             ),
             _GastosRailEntry(
+              value: 'import_history',
+              icon: Icons.history_rounded,
+              label: 'Historial de lotes',
+            ),
+            _GastosRailEntry(
               value: 'recurring_expenses',
               icon: Icons.repeat_rounded,
               label: 'Gastos recurrentes',
@@ -475,6 +502,10 @@ class _GastosTab extends StatelessWidget {
       ],
     );
     final contentChild = switch (selectedSection) {
+      'import_history' => ExpenseImportHistoryScreen(
+          key: ValueKey('gastos-import-history-${group.id}'),
+          groupId: group.id,
+        ),
       'register_expense' => ExpenseUploadScreen(
           key: ValueKey('gastos-register-expense-${group.id}'),
           embedded: true,

@@ -472,6 +472,13 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                             onPressed: () => onMenuChanged('expenses_upload'),
                           ),
                           GroupInvoicesSubMenuItem(
+                            icon: Icons.history_rounded,
+                            label: 'Historial de lotes',
+                            selected: selectedMenu == 'expenses_import_history',
+                            onPressed: () =>
+                                onMenuChanged('expenses_import_history'),
+                          ),
+                          GroupInvoicesSubMenuItem(
                             icon: Icons.store_mall_directory_outlined,
                             label: 'Proveedores',
                             selected: selectedMenu == 'providers',

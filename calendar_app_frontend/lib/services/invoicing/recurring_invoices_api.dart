@@ -181,6 +181,29 @@ class RecurringInvoicesApi {
     );
   }
 
+  Future<({List<Map<String, dynamic>> items, bool limited})> listActivity(
+      String id) async {
+    final uri = _u('/${Uri.encodeComponent(id)}/activity');
+    final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
+    return _decode<({List<Map<String, dynamic>> items, bool limited})>(
+      r,
+      url: uri,
+      method: 'GET',
+      map: (json) {
+        final items = json is Map ? json['items'] : null;
+        return (
+          items: items is List
+              ? items
+                  .whereType<Map>()
+                  .map((item) => Map<String, dynamic>.from(item))
+                  .toList()
+              : <Map<String, dynamic>>[],
+          limited: json is Map && json['limited'] == true,
+        );
+      },
+    );
+  }
+
   Future<Map<String, dynamic>> run() async {
     final uri = _u('/run');
     final r = await AuthenticatedHttpClient.post(uri, headers: _headers());
@@ -204,21 +227,6 @@ class RecurringInvoicesApi {
 
     final uri = buildRunSeriesUri(trimmedId);
     final r = await AuthenticatedHttpClient.post(uri, headers: _headers());
-    if (r.statusCode == 404 || r.statusCode == 405) {
-      final fallbackUri = _u('/run');
-      final fallback = await AuthenticatedHttpClient.post(
-        fallbackUri,
-        headers: _headers(),
-        body: jsonEncode(<String, dynamic>{'seriesId': trimmedId}),
-      );
-      return _decode<Map<String, dynamic>>(
-        fallback,
-        url: fallbackUri,
-        method: 'POST',
-        map: (j) =>
-            (j is Map) ? Map<String, dynamic>.from(j) : <String, dynamic>{},
-      );
-    }
     return _decode<Map<String, dynamic>>(
       r,
       url: uri,

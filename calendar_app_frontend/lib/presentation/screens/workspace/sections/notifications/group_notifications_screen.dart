@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_category_meta.dart';
 import 'widgets/mobile_notification.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/event_args_helper.dart';
@@ -6,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/services/groups/event/repository/i_event_repository.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/notification/notification_api_client.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
@@ -162,10 +165,12 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
     }
   }
 
-  void _openEvent(String eventId, String groupId) {
-    Navigator.of(context).pushNamed(
-      AppRoutes.groupCalendar,
-      arguments: groupId,
+  Future<void> _openEvent(String eventId, String groupId) async {
+    final event = await context.read<IEventRepository>().getEventById(eventId);
+    if (!mounted) return;
+    await Navigator.of(context).pushNamed(
+      AppRoutes.eventDetail,
+      arguments: event,
     );
   }
 
@@ -197,10 +202,10 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
     }
   }
 
-  void _openDocument(NotificationUser notification) {
+  Future<void> _openDocument(NotificationUser notification) async {
     final args = _documentRouteArgs(notification);
     if (args == null) return;
-    Navigator.of(context).pushNamed(
+    await Navigator.of(context).pushNamed(
       AppRoutes.groupInvoices,
       arguments: args,
     );
@@ -222,13 +227,13 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
         haystack.contains('zero_vat');
   }
 
-  void _openOcrReprocessResults(NotificationUser notification) {
+  Future<void> _openOcrReprocessResults(NotificationUser notification) async {
     final jobId = (notification.args['jobId'] ?? '').toString().trim();
     final groupId = (notification.args['groupId'] ?? notification.groupId)
         .toString()
         .trim();
     if (jobId.isEmpty || groupId.isEmpty) return;
-    Navigator.of(context).pushNamed(
+    await Navigator.of(context).pushNamed(
       AppRoutes.expenseOcrReprocessResults,
       arguments: ExpenseOcrReprocessResultsArgs(
         group: widget.group,
@@ -267,11 +272,12 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
           if (!notification.isRead) await _handleMarkRead(notification);
           if (!mounted) return;
           if (ocr) {
-            _openOcrReprocessResults(notification);
+            await _openOcrReprocessResults(notification);
           } else if (documentArgs != null) {
-            _openDocument(notification);
+            await _openDocument(notification);
           } else if (calendar && event.eventId != null) {
-            _openEvent(event.eventId!, event.groupId ?? notification.groupId);
+            await _openEvent(
+                event.eventId!, event.groupId ?? notification.groupId);
           }
           break;
         case NotificationDetailAction.markRead:
@@ -458,11 +464,11 @@ class _NotificationsList extends StatelessWidget {
   final List<NotificationUser> notifications;
   final ValueChanged<NotificationUser> onTap;
   final Future<void> Function(NotificationUser) onDelete;
-  final ValueChanged<NotificationUser> onConfirm;
-  final ValueChanged<NotificationUser> onNegate;
-  final ValueChanged<NotificationUser> onMarkRead;
-  final void Function(String eventId, String groupId) onOpenEvent;
-  final ValueChanged<NotificationUser> onOpenDocument;
+  final FutureOr<void> Function(NotificationUser) onConfirm;
+  final FutureOr<void> Function(NotificationUser) onNegate;
+  final FutureOr<void> Function(NotificationUser) onMarkRead;
+  final FutureOr<void> Function(String eventId, String groupId) onOpenEvent;
+  final FutureOr<void> Function(NotificationUser) onOpenDocument;
 
   @override
   Widget build(BuildContext context) {
@@ -502,11 +508,16 @@ class _NotificationsList extends StatelessWidget {
                     notification: notification,
                     onDelete: () {},
                     onDeleteAsync: () => onDelete(notification),
-                    onConfirm: () => onConfirm(notification),
-                    onNegate: () => onNegate(notification),
-                    onMarkRead: () => onMarkRead(notification),
-                    onOpenEvent: onOpenEvent,
-                    onOpenDocument: () => onOpenDocument(notification),
+                    onConfirm: () =>
+                        unawaited(Future.sync(() => onConfirm(notification))),
+                    onNegate: () =>
+                        unawaited(Future.sync(() => onNegate(notification))),
+                    onMarkRead: () =>
+                        unawaited(Future.sync(() => onMarkRead(notification))),
+                    onOpenEvent: (eventId, groupId) => unawaited(
+                        Future.sync(() => onOpenEvent(eventId, groupId))),
+                    onOpenDocument: () => unawaited(
+                        Future.sync(() => onOpenDocument(notification))),
                   ),
           ),
         ];

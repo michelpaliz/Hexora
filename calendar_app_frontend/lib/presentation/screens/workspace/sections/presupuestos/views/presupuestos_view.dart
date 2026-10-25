@@ -134,7 +134,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   final TextEditingController _budgetDiscountPercentCtrl =
       TextEditingController();
   final TextEditingController _budgetAdvancePercentCtrl =
-      TextEditingController(text: '70');
+      TextEditingController(text: '0');
   _ClientSource _clientSource = _ClientSource.existing;
   final List<LineDraft> _budgetLines = <LineDraft>[LineDraft(position: 1)];
   final List<InvoiceBlockDraft> _budgetBlocks = <InvoiceBlockDraft>[
@@ -192,16 +192,18 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   }
 
   num? get _budgetAdvancePercent =>
-      _parseBudgetDiscountInput(_budgetAdvancePercentCtrl.text);
+      _budgetAdvancePercentCtrl.text.trim().isEmpty
+          ? 0
+          : _parseBudgetDiscountInput(_budgetAdvancePercentCtrl.text);
 
   bool get _isBudgetAdvancePercentValid {
     final value = _budgetAdvancePercent;
-    return value != null && value >= 1 && value <= 100;
+    return value != null && value >= 0 && value <= 100;
   }
 
   String get _budgetAdvancePercentError => _isSpanishLocale
-      ? 'El anticipo debe estar entre 1% y 100%.'
-      : 'The advance must be between 1% and 100%.';
+      ? 'Introduce un porcentaje entre 0% y 100%. Usa 0 para no solicitar anticipo.'
+      : 'Enter a percentage between 0% and 100%. Use 0 for no advance.';
 
   void _setBudgetAdvancePercentText(String _) {
     setState(() {
@@ -518,7 +520,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     _useBudgetDiscountPercent = false;
     _budgetDiscountAmountCtrl.clear();
     _budgetDiscountPercentCtrl.clear();
-    _budgetAdvancePercentCtrl.text = '70';
+    _budgetAdvancePercentCtrl.text = '0';
     _selectedClientId = null;
     _clientNameCtrl.clear();
     _clientAddressCtrl.clear();

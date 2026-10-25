@@ -149,7 +149,7 @@ abstract class AppLocalizations {
   /// No description provided for @groups.
   ///
   /// In en, this message translates to:
-  /// **'Groups'**
+  /// **'Businesses'**
   String get groups;
 
   /// No description provided for @calendar.
@@ -173,7 +173,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupData.
   ///
   /// In en, this message translates to:
-  /// **'Group Data'**
+  /// **'Business Data'**
   String get groupData;
 
   /// No description provided for @notifications.
@@ -215,7 +215,7 @@ abstract class AppLocalizations {
   /// No description provided for @welcomeGroupView.
   ///
   /// In en, this message translates to:
-  /// **'Welcome {username} here you can see the list of groups that you are part of.'**
+  /// **'Welcome {username} here you can see the list of businesses that you are part of.'**
   String welcomeGroupView(Object username);
 
   /// No description provided for @zeroNotifications.
@@ -233,19 +233,19 @@ abstract class AppLocalizations {
   /// Note form
   ///
   /// In en, this message translates to:
-  /// **'Group name (max {maxChar} characters)  '**
+  /// **'Business name (max {maxChar} characters)  '**
   String groupName(int maxChar);
 
   /// Note form
   ///
   /// In en, this message translates to:
-  /// **'Group description (max {maxChar} characters)  '**
+  /// **'Business description (max {maxChar} characters)  '**
   String groupDescription(int maxChar);
 
   /// No description provided for @addPplGroup.
   ///
   /// In en, this message translates to:
-  /// **'Add people to your group'**
+  /// **'Add people to your business'**
   String get addPplGroup;
 
   /// No description provided for @addUser.
@@ -281,13 +281,13 @@ abstract class AppLocalizations {
   /// No description provided for @saveGroup.
   ///
   /// In en, this message translates to:
-  /// **'Save the group'**
+  /// **'Save the business'**
   String get saveGroup;
 
   /// No description provided for @addImageGroup.
   ///
   /// In en, this message translates to:
-  /// **'Add image for the group'**
+  /// **'Add image for the business'**
   String get addImageGroup;
 
   /// No description provided for @removeEvent.
@@ -299,7 +299,7 @@ abstract class AppLocalizations {
   /// No description provided for @removeGroup.
   ///
   /// In en, this message translates to:
-  /// **'Are you sure you want to remove this group ?'**
+  /// **'Are you sure you want to remove this business ?'**
   String get removeGroup;
 
   /// No description provided for @removeCalendar.
@@ -311,13 +311,13 @@ abstract class AppLocalizations {
   /// No description provided for @groupCreated.
   ///
   /// In en, this message translates to:
-  /// **'Group created successfully!'**
+  /// **'Business created successfully!'**
   String get groupCreated;
 
   /// No description provided for @failedToCreateGroup.
   ///
   /// In en, this message translates to:
-  /// **'Failed to create the group'**
+  /// **'Failed to create the business'**
   String get failedToCreateGroup;
 
   /// No description provided for @eventCreated.
@@ -335,7 +335,7 @@ abstract class AppLocalizations {
   /// No description provided for @eventAddedGroup.
   ///
   /// In en, this message translates to:
-  /// **'The event has been added to the group'**
+  /// **'The event has been added to the business'**
   String get eventAddedGroup;
 
   /// No description provided for @event.
@@ -942,16 +942,16 @@ abstract class AppLocalizations {
   /// **'The day of the event is {selectedDays} should coincide with one of the selected day/s.'**
   String errorSelectedDays(String selectedDays);
 
-  /// Textfield for the group name
+  /// Textfield for the business name
   ///
   /// In en, this message translates to:
-  /// **'Enter group name (Limit: {TITLE_MAX_LENGHT} characters) '**
+  /// **'Enter business name (Limit: {TITLE_MAX_LENGHT} characters) '**
   String textFieldGroupName(int TITLE_MAX_LENGHT);
 
-  /// Textfield for the group description
+  /// Textfield for the business description
   ///
   /// In en, this message translates to:
-  /// **'Enter group description (Limit: {DESCRIPTION_MAX_LENGHT} characters)'**
+  /// **'Enter business description (Limit: {DESCRIPTION_MAX_LENGHT} characters)'**
   String textFieldDescription(int DESCRIPTION_MAX_LENGHT);
 
   /// Concurrence for the event
@@ -971,7 +971,7 @@ abstract class AppLocalizations {
   /// No description provided for @editGroup.
   ///
   /// In en, this message translates to:
-  /// **'Edit Group'**
+  /// **'Edit Business'**
   String get editGroup;
 
   /// No description provided for @remove.
@@ -1019,19 +1019,19 @@ abstract class AppLocalizations {
   /// No description provided for @leaveGroup.
   ///
   /// In en, this message translates to:
-  /// **'Leave group'**
+  /// **'Leave business'**
   String get leaveGroup;
 
   /// No description provided for @permissionDeniedRole.
   ///
   /// In en, this message translates to:
-  /// **'You are currently a {role} of this group.'**
+  /// **'You are currently a {role} of this business.'**
   String permissionDeniedRole(Object role);
 
   /// No description provided for @putGroupImage.
   ///
   /// In en, this message translates to:
-  /// **'Put an image for the group'**
+  /// **'Put an image for the business'**
   String get putGroupImage;
 
   /// No description provided for @close.
@@ -1043,37 +1043,37 @@ abstract class AppLocalizations {
   /// No description provided for @addNewUser.
   ///
   /// In en, this message translates to:
-  /// **'Add a new user to your group'**
+  /// **'Add a new user to your business'**
   String get addNewUser;
 
   /// No description provided for @cannotRemoveYourself.
   ///
   /// In en, this message translates to:
-  /// **'You cannot remove yourself from the group'**
+  /// **'You cannot remove yourself from the business'**
   String get cannotRemoveYourself;
 
   /// No description provided for @requiredTextFields.
   ///
   /// In en, this message translates to:
-  /// **'Group name and description are required.'**
+  /// **'Business name and description are required.'**
   String get requiredTextFields;
 
   /// No description provided for @groupNameRequired.
   ///
   /// In en, this message translates to:
-  /// **'Group name cannot be empty'**
+  /// **'Business name cannot be empty'**
   String get groupNameRequired;
 
   /// No description provided for @groupEdited.
   ///
   /// In en, this message translates to:
-  /// **'Group edited successfully!'**
+  /// **'Business edited successfully!'**
   String get groupEdited;
 
   /// No description provided for @failedToEditGroup.
   ///
   /// In en, this message translates to:
-  /// **'Failed to edit the group. Please try again'**
+  /// **'Failed to edit the business. Please try again'**
   String get failedToEditGroup;
 
   /// No description provided for @searchPerson.
@@ -1091,7 +1091,7 @@ abstract class AppLocalizations {
   /// No description provided for @confirmRemovalMessage.
   ///
   /// In en, this message translates to:
-  /// **'Are you sure you want to delete this group?'**
+  /// **'Are you sure you want to delete this business?'**
   String get confirmRemovalMessage;
 
   /// No description provided for @confirmRemoval.
@@ -1103,7 +1103,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupDeletedSuccessfully.
   ///
   /// In en, this message translates to:
-  /// **'Group deleted successfully!'**
+  /// **'Business deleted successfully!'**
   String get groupDeletedSuccessfully;
 
   /// Toggle label to show inactive clients
@@ -1163,25 +1163,25 @@ abstract class AppLocalizations {
   /// No description provided for @noGroupsAvailable.
   ///
   /// In en, this message translates to:
-  /// **'NO GROUP/S FOUND/S'**
+  /// **'NO BUSINESSES FOUND'**
   String get noGroupsAvailable;
 
   /// No description provided for @noGroupsFound.
   ///
   /// In en, this message translates to:
-  /// **'No groups found'**
+  /// **'No businesses found'**
   String get noGroupsFound;
 
   /// No description provided for @noGroupsDescription.
   ///
   /// In en, this message translates to:
-  /// **'Create or join a group to get started'**
+  /// **'Create or join a business to get started'**
   String get noGroupsDescription;
 
   /// No description provided for @searchGroups.
   ///
   /// In en, this message translates to:
-  /// **'Search groups'**
+  /// **'Search businesses'**
   String get searchGroups;
 
   /// No description provided for @weatherSummarySunny.
@@ -1355,13 +1355,13 @@ abstract class AppLocalizations {
   /// No description provided for @groupNameText.
   ///
   /// In en, this message translates to:
-  /// **'Group name'**
+  /// **'Business name'**
   String get groupNameText;
 
   /// No description provided for @groupOwner.
   ///
   /// In en, this message translates to:
-  /// **'Group owner'**
+  /// **'Business owner'**
   String get groupOwner;
 
   /// No description provided for @enableRepetitiveEvents.
@@ -1481,13 +1481,13 @@ abstract class AppLocalizations {
   /// No description provided for @groupNotCreated.
   ///
   /// In en, this message translates to:
-  /// **'There was an error creating the group, try again'**
+  /// **'There was an error creating the business, try again'**
   String get groupNotCreated;
 
   /// No description provided for @questionDeleteGroup.
   ///
   /// In en, this message translates to:
-  /// **'Are you sure you want to delete this group?'**
+  /// **'Are you sure you want to delete this business?'**
   String get questionDeleteGroup;
 
   /// No description provided for @errorEventCreation.
@@ -1523,7 +1523,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupNameLabel.
   ///
   /// In en, this message translates to:
-  /// **'Group Name'**
+  /// **'Business Name'**
   String get groupNameLabel;
 
   /// No description provided for @descriptionLabel.
@@ -1649,31 +1649,31 @@ abstract class AppLocalizations {
   /// No description provided for @notificationGroupCreationMessage.
   ///
   /// In en, this message translates to:
-  /// **'You created the group: {groupName}'**
+  /// **'You created the business: {groupName}'**
   String notificationGroupCreationMessage(Object groupName);
 
   /// No description provided for @notificationJoinedGroupTitle.
   ///
   /// In en, this message translates to:
-  /// **'Welcome to the Group'**
+  /// **'Welcome to the Business'**
   String get notificationJoinedGroupTitle;
 
   /// No description provided for @notificationJoinedGroupMessage.
   ///
   /// In en, this message translates to:
-  /// **'You have joined the group: {groupName}'**
+  /// **'You have joined the business: {groupName}'**
   String notificationJoinedGroupMessage(Object groupName);
 
   /// No description provided for @notificationInvitationTitle.
   ///
   /// In en, this message translates to:
-  /// **'Group Invitation'**
+  /// **'Business Invitation'**
   String get notificationInvitationTitle;
 
   /// No description provided for @notificationInvitationMessage.
   ///
   /// In en, this message translates to:
-  /// **'You have been invited to join the group: {groupName}'**
+  /// **'You have been invited to join the business: {groupName}'**
   String notificationInvitationMessage(Object groupName);
 
   /// No description provided for @notificationInvitationDeniedTitle.
@@ -1703,25 +1703,25 @@ abstract class AppLocalizations {
   /// No description provided for @notificationGroupEditedTitle.
   ///
   /// In en, this message translates to:
-  /// **'Group Updated'**
+  /// **'Business Updated'**
   String get notificationGroupEditedTitle;
 
   /// No description provided for @notificationGroupEditedMessage.
   ///
   /// In en, this message translates to:
-  /// **'You updated the group: {groupName}'**
+  /// **'You updated the business: {groupName}'**
   String notificationGroupEditedMessage(Object groupName);
 
   /// No description provided for @notificationGroupDeletedTitle.
   ///
   /// In en, this message translates to:
-  /// **'Group Deleted'**
+  /// **'Business Deleted'**
   String get notificationGroupDeletedTitle;
 
   /// No description provided for @notificationGroupDeletedMessage.
   ///
   /// In en, this message translates to:
-  /// **'You have deleted the group: {groupName}'**
+  /// **'You have deleted the business: {groupName}'**
   String notificationGroupDeletedMessage(Object groupName);
 
   /// No description provided for @notificationUserRemovedTitle.
@@ -1757,31 +1757,31 @@ abstract class AppLocalizations {
   /// No description provided for @notificationUserLeftMessage.
   ///
   /// In en, this message translates to:
-  /// **'{userName} has left the group: {groupName}'**
+  /// **'{userName} has left the business: {groupName}'**
   String notificationUserLeftMessage(Object groupName, Object userName);
 
   /// No description provided for @notificationGroupUpdateTitle.
   ///
   /// In en, this message translates to:
-  /// **'Group Updated'**
+  /// **'Business Updated'**
   String get notificationGroupUpdateTitle;
 
   /// No description provided for @notificationGroupUpdateMessage.
   ///
   /// In en, this message translates to:
-  /// **'{editorName} updated the group: {groupName}'**
+  /// **'{editorName} updated the business: {groupName}'**
   String notificationGroupUpdateMessage(Object editorName, Object groupName);
 
   /// No description provided for @notificationGroupDeletedAllTitle.
   ///
   /// In en, this message translates to:
-  /// **'Group Deleted'**
+  /// **'Business Deleted'**
   String get notificationGroupDeletedAllTitle;
 
   /// No description provided for @notificationGroupDeletedAllMessage.
   ///
   /// In en, this message translates to:
-  /// **'The group \"{groupName}\" has been deleted by the owner.'**
+  /// **'The business \"{groupName}\" has been deleted by the owner.'**
   String notificationGroupDeletedAllMessage(Object groupName);
 
   /// No description provided for @viewDetails.
@@ -2112,7 +2112,7 @@ abstract class AppLocalizations {
   /// No description provided for @categoryGroup.
   ///
   /// In en, this message translates to:
-  /// **'Group'**
+  /// **'Business'**
   String get categoryGroup;
 
   /// No description provided for @categoryUser.
@@ -2184,7 +2184,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupMembers.
   ///
   /// In en, this message translates to:
-  /// **'Group Members'**
+  /// **'Business Members'**
   String get groupMembers;
 
   /// No description provided for @noInvitedUsersToDisplay.
@@ -2208,7 +2208,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupDescriptionLabel.
   ///
   /// In en, this message translates to:
-  /// **'Group Description'**
+  /// **'Business Description'**
   String get groupDescriptionLabel;
 
   /// No description provided for @agenda.
@@ -2322,7 +2322,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Groups'**
+  /// **'Businesses'**
   String get groupSectionTitle;
 
   /// No description provided for @clearAllTooltip.
@@ -2562,7 +2562,7 @@ abstract class AppLocalizations {
   /// No description provided for @agendaSelectGroupPrompt.
   ///
   /// In en, this message translates to:
-  /// **'Select a group to load events'**
+  /// **'Select a business to load events'**
   String get agendaSelectGroupPrompt;
 
   /// No description provided for @agendaChooseGroupButton.
@@ -2706,7 +2706,7 @@ abstract class AppLocalizations {
   /// Empty-state subtitle for clients list
   ///
   /// In en, this message translates to:
-  /// **'Add your first client to this group.'**
+  /// **'Add your first client to this business.'**
   String get addYourFirstClient;
 
   /// CTA to add a client
@@ -2874,13 +2874,13 @@ abstract class AppLocalizations {
   /// Header shown above the clients list
   ///
   /// In en, this message translates to:
-  /// **'Clients in this group'**
+  /// **'Clients in this business'**
   String get clientsSectionTitle;
 
   /// Header shown above the services list
   ///
   /// In en, this message translates to:
-  /// **'Services in this group'**
+  /// **'Services in this business'**
   String get servicesSectionTitle;
 
   /// Header for active clients subsection
@@ -3039,7 +3039,7 @@ abstract class AppLocalizations {
   /// **'Status'**
   String get sectionStatus;
 
-  /// Shows the date the group was created.
+  /// Shows the date the business was created.
   ///
   /// In en, this message translates to:
   /// **'Created on {date}'**
@@ -3051,7 +3051,7 @@ abstract class AppLocalizations {
   /// **'Members'**
   String get membersTitle;
 
-  /// Total members in group
+  /// Total members in business
   ///
   /// In en, this message translates to:
   /// **'{count, plural, one {# total} other {# total}}'**
@@ -3072,7 +3072,7 @@ abstract class AppLocalizations {
   /// No description provided for @noCalendarWarning.
   ///
   /// In en, this message translates to:
-  /// **'This group has no calendar linked yet.'**
+  /// **'This business has no calendar linked yet.'**
   String get noCalendarWarning;
 
   /// No description provided for @sectionFilters.
@@ -3138,7 +3138,7 @@ abstract class AppLocalizations {
   /// No description provided for @removeFromGroup.
   ///
   /// In en, this message translates to:
-  /// **'Remove from group'**
+  /// **'Remove from business'**
   String get removeFromGroup;
 
   /// No description provided for @roleOwner.
@@ -3246,7 +3246,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupNotificationsSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Group notifications'**
+  /// **'Business notifications'**
   String get groupNotificationsSectionTitle;
 
   /// No description provided for @updateRoleTitle.
@@ -3258,22 +3258,22 @@ abstract class AppLocalizations {
   /// No description provided for @groupNotificationsSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'See invites, reminders, and alerts scoped to this group.'**
+  /// **'See invites, reminders, and alerts scoped to this business.'**
   String get groupNotificationsSubtitle;
 
   /// No description provided for @groupNotificationsEmpty.
   ///
   /// In en, this message translates to:
-  /// **'This group doesn\'t have any notifications yet.'**
+  /// **'This business doesn\'t have any notifications yet.'**
   String get groupNotificationsEmpty;
 
   /// No description provided for @groupNotificationsError.
   ///
   /// In en, this message translates to:
-  /// **'We couldn\'t load the notifications for this group.'**
+  /// **'We couldn\'t load the notifications for this business.'**
   String get groupNotificationsError;
 
-  /// Page title for the per-group notifications screen
+  /// Page title for the per-business notifications screen
   ///
   /// In en, this message translates to:
   /// **'{groupName} notifications'**
@@ -3285,7 +3285,7 @@ abstract class AppLocalizations {
   /// **'Error'**
   String get error;
 
-  /// Placeholder text for the search bar when adding people to a group.
+  /// Placeholder text for the search bar when adding people to a business.
   ///
   /// In en, this message translates to:
   /// **'Type name or email address'**
@@ -3315,7 +3315,7 @@ abstract class AppLocalizations {
   /// **'Add People'**
   String get addPeople;
 
-  /// Short action label for adding selected people to the group.
+  /// Short action label for adding selected people to the business.
   ///
   /// In en, this message translates to:
   /// **'Add'**
@@ -3372,7 +3372,7 @@ abstract class AppLocalizations {
   /// No description provided for @nothingScheduledSoon.
   ///
   /// In en, this message translates to:
-  /// **'Nothing scheduled soon for this group.'**
+  /// **'Nothing scheduled soon for this business.'**
   String get nothingScheduledSoon;
 
   /// No description provided for @nextUp.
@@ -3384,7 +3384,7 @@ abstract class AppLocalizations {
   /// No description provided for @upcomingEventsSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Upcoming events for this group'**
+  /// **'Upcoming events for this business'**
   String get upcomingEventsSubtitle;
 
   /// No description provided for @seeAll.
@@ -3420,13 +3420,13 @@ abstract class AppLocalizations {
   /// No description provided for @nothingScheduledSoonForThisGroup.
   ///
   /// In en, this message translates to:
-  /// **'Nothing scheduled soon for this group.'**
+  /// **'Nothing scheduled soon for this business.'**
   String get nothingScheduledSoonForThisGroup;
 
   /// No description provided for @upcomingEventsForThisGroup.
   ///
   /// In en, this message translates to:
-  /// **'Upcoming events for this group'**
+  /// **'Upcoming events for this business'**
   String get upcomingEventsForThisGroup;
 
   /// No description provided for @untitled.
@@ -3618,13 +3618,13 @@ abstract class AppLocalizations {
   /// No description provided for @leaveGroupQuestion.
   ///
   /// In en, this message translates to:
-  /// **'Are you sure you want to leave this group?'**
+  /// **'Are you sure you want to leave this business?'**
   String get leaveGroupQuestion;
 
   /// No description provided for @removeMembersFirst.
   ///
   /// In en, this message translates to:
-  /// **'Please remove all members before deleting the group.'**
+  /// **'Please remove all members before deleting the business.'**
   String get removeMembersFirst;
 
   /// Snackbar text shown when the calendar finishes refreshing successfully
@@ -4603,7 +4603,7 @@ abstract class AppLocalizations {
   /// No description provided for @membersInfoAccepted.
   ///
   /// In en, this message translates to:
-  /// **'Users who are part of this group.'**
+  /// **'Users who are part of this business.'**
   String get membersInfoAccepted;
 
   /// No description provided for @membersInfoPending.
@@ -4735,7 +4735,7 @@ abstract class AppLocalizations {
   /// No description provided for @delegateNoWorkers.
   ///
   /// In en, this message translates to:
-  /// **'No other group members available'**
+  /// **'No other business members available'**
   String get delegateNoWorkers;
 
   /// No description provided for @repetition.
@@ -4819,7 +4819,7 @@ abstract class AppLocalizations {
   /// No description provided for @noGroupAvailable.
   ///
   /// In en, this message translates to:
-  /// **'No group available'**
+  /// **'No business available'**
   String get noGroupAvailable;
 
   /// No description provided for @tabDay.
@@ -4987,19 +4987,19 @@ abstract class AppLocalizations {
   /// No description provided for @groupDescriptionHint.
   ///
   /// In en, this message translates to:
-  /// **'Introduce the purpose of this group'**
+  /// **'Introduce the purpose of this business'**
   String get groupDescriptionHint;
 
   /// No description provided for @groupNameTooShort.
   ///
   /// In en, this message translates to:
-  /// **'Group name too short'**
+  /// **'Business name too short'**
   String get groupNameTooShort;
 
   /// No description provided for @groupNameHint.
   ///
   /// In en, this message translates to:
-  /// **'Input group name'**
+  /// **'Input business name'**
   String get groupNameHint;
 
   /// No description provided for @reviewUsersTitle.
@@ -5080,7 +5080,7 @@ abstract class AppLocalizations {
   /// **'User already in selection'**
   String get userAlreadyPending;
 
-  /// Toast after committing pending selections into the group.
+  /// Toast after committing pending selections into the business.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =0{No users added} =1{1 user added} other{{count} users added}}'**
@@ -5113,7 +5113,7 @@ abstract class AppLocalizations {
   /// No description provided for @createGroup.
   ///
   /// In en, this message translates to:
-  /// **'Create group'**
+  /// **'Create business'**
   String get createGroup;
 
   /// No description provided for @editImage.
@@ -5125,25 +5125,25 @@ abstract class AppLocalizations {
   /// No description provided for @tapToChangePhoto.
   ///
   /// In en, this message translates to:
-  /// **'Tap to change group photo'**
+  /// **'Tap to change business photo'**
   String get tapToChangePhoto;
 
   /// No description provided for @tapToAddPhoto.
   ///
   /// In en, this message translates to:
-  /// **'Tap to add group photo'**
+  /// **'Tap to add business photo'**
   String get tapToAddPhoto;
 
   /// No description provided for @groupSaved.
   ///
   /// In en, this message translates to:
-  /// **'Group saved'**
+  /// **'Business saved'**
   String get groupSaved;
 
   /// No description provided for @manageGroup.
   ///
   /// In en, this message translates to:
-  /// **'Manage group'**
+  /// **'Manage business'**
   String get manageGroup;
 
   /// No description provided for @hey.
@@ -5161,19 +5161,19 @@ abstract class AppLocalizations {
   /// No description provided for @ofThisGroup.
   ///
   /// In en, this message translates to:
-  /// **'of this group'**
+  /// **'of this business'**
   String get ofThisGroup;
 
   /// No description provided for @youHaveSuperPowersHere.
   ///
   /// In en, this message translates to:
-  /// **'You have super powers for this group!'**
+  /// **'You have super powers for this business!'**
   String get youHaveSuperPowersHere;
 
   /// No description provided for @roleOwnerBullet1.
   ///
   /// In en, this message translates to:
-  /// **'Change group settings and features'**
+  /// **'Change business settings and features'**
   String get roleOwnerBullet1;
 
   /// No description provided for @roleOwnerBullet2.
@@ -5197,13 +5197,13 @@ abstract class AppLocalizations {
   /// No description provided for @roleOwnerBullet5.
   ///
   /// In en, this message translates to:
-  /// **'Delete or transfer the group'**
+  /// **'Delete or transfer the business'**
   String get roleOwnerBullet5;
 
   /// No description provided for @roleCoAdminBullet1.
   ///
   /// In en, this message translates to:
-  /// **'Create, edit, and delete events for the group'**
+  /// **'Create, edit, and delete events for the business'**
   String get roleCoAdminBullet1;
 
   /// No description provided for @roleCoAdminBullet2.
@@ -5245,19 +5245,19 @@ abstract class AppLocalizations {
   /// No description provided for @groupSettingsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Group settings'**
+  /// **'Business settings'**
   String get groupSettingsTitle;
 
   /// No description provided for @groupSettingsOwnerBannerOwner.
   ///
   /// In en, this message translates to:
-  /// **'You are the owner of this group. You can manage every setting from here.'**
+  /// **'You are the owner of this business. You can manage every setting from here.'**
   String get groupSettingsOwnerBannerOwner;
 
   /// No description provided for @groupSettingsOwnerBannerNotOwner.
   ///
   /// In en, this message translates to:
-  /// **'Only the group owner can update these settings.'**
+  /// **'Only the business owner can update these settings.'**
   String get groupSettingsOwnerBannerNotOwner;
 
   /// No description provided for @groupSettingsOverviewTitle.
@@ -5269,7 +5269,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupSettingsOverviewSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'General information about this group.'**
+  /// **'General information about this business.'**
   String get groupSettingsOverviewSubtitle;
 
   /// No description provided for @groupSettingsDescriptionLabel.
@@ -5311,7 +5311,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupSettingsUserRolesSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Permissions for users in this group.'**
+  /// **'Permissions for users in this business.'**
   String get groupSettingsUserRolesSubtitle;
 
   /// No description provided for @groupSettingsNoRoles.
@@ -5365,19 +5365,19 @@ abstract class AppLocalizations {
   /// No description provided for @groupSettingsDangerZoneOwner.
   ///
   /// In en, this message translates to:
-  /// **'Deleting this group is permanent and cannot be undone.'**
+  /// **'Deleting this business is permanent and cannot be undone.'**
   String get groupSettingsDangerZoneOwner;
 
   /// No description provided for @groupSettingsDangerZoneNonOwner.
   ///
   /// In en, this message translates to:
-  /// **'Only the group owner can delete this group.'**
+  /// **'Only the business owner can delete this business.'**
   String get groupSettingsDangerZoneNonOwner;
 
   /// No description provided for @groupInfo.
   ///
   /// In en, this message translates to:
-  /// **'Group info'**
+  /// **'Business info'**
   String get groupInfo;
 
   /// No description provided for @groupInfoSubtitle.
@@ -6901,13 +6901,13 @@ abstract class AppLocalizations {
   /// No description provided for @invoiceIssueDuplicateNumberSnack.
   ///
   /// In en, this message translates to:
-  /// **'That invoice number already exists in this group. Refresh the list or edit the draft number before issuing.'**
+  /// **'That invoice number already exists in this business. Refresh the list or edit the draft number before issuing.'**
   String get invoiceIssueDuplicateNumberSnack;
 
   /// No description provided for @invoiceIssueDuplicateNumberValueSnack.
   ///
   /// In en, this message translates to:
-  /// **'Invoice number {number} already exists in this group. Refresh the list or edit the draft number before issuing.'**
+  /// **'Invoice number {number} already exists in this business. Refresh the list or edit the draft number before issuing.'**
   String invoiceIssueDuplicateNumberValueSnack(Object number);
 
   /// No description provided for @invoiceBatchIssueErrorsTitle.
@@ -7555,7 +7555,7 @@ abstract class AppLocalizations {
   /// No description provided for @clientClassificationManageHint.
   ///
   /// In en, this message translates to:
-  /// **'These options are saved for the group and can be reused when assigning types to clients.'**
+  /// **'These options are saved for the business and can be reused when assigning types to clients.'**
   String get clientClassificationManageHint;
 
   /// No description provided for @clientClassificationSaveCta.
@@ -9751,7 +9751,7 @@ abstract class AppLocalizations {
   /// No description provided for @expenseUploadBatchGroupRequired.
   ///
   /// In en, this message translates to:
-  /// **'You must select a group before importing.'**
+  /// **'You must select a business before importing.'**
   String get expenseUploadBatchGroupRequired;
 
   /// No description provided for @expenseUploadBatchImportCta.
@@ -12008,25 +12008,25 @@ abstract class AppLocalizations {
   /// No description provided for @groupPhotoUpdated.
   ///
   /// In en, this message translates to:
-  /// **'Group photo updated'**
+  /// **'Business photo updated'**
   String get groupPhotoUpdated;
 
   /// No description provided for @groupPhotoUpdateFailed.
   ///
   /// In en, this message translates to:
-  /// **'Failed to update group photo'**
+  /// **'Failed to update business photo'**
   String get groupPhotoUpdateFailed;
 
   /// No description provided for @premiumRequiredSingleGroupMessage.
   ///
   /// In en, this message translates to:
-  /// **'Your current plan allows only 1 group. Upgrade to Premium to create or join additional groups.'**
+  /// **'Your current plan allows only 1 business. Upgrade to Premium to create or join additional businesses.'**
   String get premiumRequiredSingleGroupMessage;
 
   /// No description provided for @premiumRequiredJoinGroupOnlyMessage.
   ///
   /// In en, this message translates to:
-  /// **'You are already in a group. Upgrade to Premium to join more groups.'**
+  /// **'You are already in a business. Upgrade to Premium to join more businesses.'**
   String get premiumRequiredJoinGroupOnlyMessage;
 
   /// No description provided for @managedGroupLimitCreateMessage.
@@ -12488,7 +12488,7 @@ abstract class AppLocalizations {
   /// No description provided for @roleFallbackDescOwner.
   ///
   /// In en, this message translates to:
-  /// **'Full control over the group. Can transfer ownership.'**
+  /// **'Full control over the business. Can transfer ownership.'**
   String get roleFallbackDescOwner;
 
   /// No description provided for @roleFallbackDescAdmin.
@@ -12506,7 +12506,7 @@ abstract class AppLocalizations {
   /// No description provided for @roleFallbackDescMember.
   ///
   /// In en, this message translates to:
-  /// **'Can view and participate in the group.'**
+  /// **'Can view and participate in the business.'**
   String get roleFallbackDescMember;
 
   /// No description provided for @permLabelInvite.
@@ -12524,13 +12524,13 @@ abstract class AppLocalizations {
   /// No description provided for @permLabelEditGroup.
   ///
   /// In en, this message translates to:
-  /// **'Edit group'**
+  /// **'Edit business'**
   String get permLabelEditGroup;
 
   /// No description provided for @permLabelDeleteGroup.
   ///
   /// In en, this message translates to:
-  /// **'Delete group'**
+  /// **'Delete business'**
   String get permLabelDeleteGroup;
 
   /// No description provided for @permLabelManageRoles.
@@ -12614,7 +12614,7 @@ abstract class AppLocalizations {
   /// No description provided for @permLabelGroup.
   ///
   /// In en, this message translates to:
-  /// **'Group'**
+  /// **'Business'**
   String get permLabelGroup;
 
   /// No description provided for @permLabelStatements.
@@ -12674,7 +12674,7 @@ abstract class AppLocalizations {
   /// No description provided for @roleDescOwner.
   ///
   /// In en, this message translates to:
-  /// **'Full control of the group, members, settings, and shared tools.'**
+  /// **'Full control of the business, members, settings, and shared tools.'**
   String get roleDescOwner;
 
   /// No description provided for @roleDescAdmin.
@@ -12686,13 +12686,13 @@ abstract class AppLocalizations {
   /// No description provided for @roleDescCoAdmin.
   ///
   /// In en, this message translates to:
-  /// **'Can manage most shared group operations, but cannot delete the group or outrank the owner.'**
+  /// **'Can manage most shared business operations, but cannot delete the business or outrank the owner.'**
   String get roleDescCoAdmin;
 
   /// No description provided for @roleDescMember.
   ///
   /// In en, this message translates to:
-  /// **'Can view shared group data and manage only their own allowed actions.'**
+  /// **'Can view shared business data and manage only their own allowed actions.'**
   String get roleDescMember;
 
   /// No description provided for @expenseJsonTabFlowHint.
@@ -12962,7 +12962,7 @@ abstract class AppLocalizations {
   /// No description provided for @expenseBatchLeftGroupRequired.
   ///
   /// In en, this message translates to:
-  /// **'Select a group before importing.'**
+  /// **'Select a business before importing.'**
   String get expenseBatchLeftGroupRequired;
 
   /// No description provided for @expenseBatchProgressCompleted.
@@ -14134,7 +14134,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupSettingsDeleteGroup.
   ///
   /// In en, this message translates to:
-  /// **'Delete group'**
+  /// **'Delete business'**
   String get groupSettingsDeleteGroup;
 
   /// No description provided for @agendaCompleted.

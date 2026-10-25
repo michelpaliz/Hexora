@@ -432,9 +432,13 @@ extension _GroupInvoicesBudgetsViewStepContentSection
       final advancePercentIsValid = _isBudgetAdvancePercentValid;
       final percentFormat = NumberFormat('0.##', l.localeName);
       final paymentSplitHint = advancePercentIsValid
-          ? (_isSpanishLocale
-              ? 'Anticipo ${percentFormat.format(advancePercent)}% · Pago final ${percentFormat.format(100 - advancePercent!)}%'
-              : 'Advance ${percentFormat.format(advancePercent)}% · Final payment ${percentFormat.format(100 - advancePercent!)}%')
+          ? advancePercent == 0
+              ? (_isSpanishLocale
+                  ? 'Sin anticipo · Pago final 100%'
+                  : 'No advance · Final payment 100%')
+              : (_isSpanishLocale
+                  ? 'Anticipo ${percentFormat.format(advancePercent)}% · Pago final ${percentFormat.format(100 - advancePercent!)}%'
+                  : 'Advance ${percentFormat.format(advancePercent)}% · Final payment ${percentFormat.format(100 - advancePercent!)}%')
           : null;
       // ── Step 1: Detalles (date, currency, notes) ─────────────────────────
       return Column(
@@ -592,8 +596,8 @@ extension _GroupInvoicesBudgetsViewStepContentSection
                       onChanged: _setBudgetAdvancePercentText,
                       decoration: InputDecoration(
                         labelText: _isSpanishLocale
-                            ? 'Anticipo (%)'
-                            : 'Advance payment (%)',
+                            ? 'Anticipo opcional (%)'
+                            : 'Optional advance payment (%)',
                         helperText: paymentSplitHint,
                         errorText: advancePercentIsValid
                             ? null

@@ -328,6 +328,8 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
     final provinceCtrl = TextEditingController(text: currentProvince);
     final countryCtrl = TextEditingController(text: currentCountry);
     final reasonCtrl = TextEditingController();
+    final reasonFormKey = GlobalKey<FormState>();
+    final issued = (invoice.status ?? '').toLowerCase() == 'issued';
 
     final entityOptions = <String>{
       'com.de.prop',
@@ -429,13 +431,20 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                TextFormField(
-                  controller: reasonCtrl,
-                  decoration: InputDecoration(
-                    labelText: l.invoiceBillingNameReasonLabel,
-                    border: const OutlineInputBorder(),
+                Form(
+                  key: reasonFormKey,
+                  child: TextFormField(
+                    controller: reasonCtrl,
+                    decoration: InputDecoration(
+                      labelText: l.invoiceBillingNameReasonLabel,
+                      border: const OutlineInputBorder(),
+                    ),
+                    maxLines: 2,
+                    maxLength: 1000,
+                    validator: (value) => issued && (value ?? '').trim().isEmpty
+                        ? 'El motivo del cambio es obligatorio.'
+                        : null,
                   ),
-                  maxLines: 2,
                 ),
               ],
             ),
@@ -447,6 +456,7 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
             ),
             FilledButton(
               onPressed: () {
+                if (reasonFormKey.currentState?.validate() != true) return;
                 Navigator.of(context).pop({
                   'billingName': nameCtrl.text.trim(),
                   'entityType': entityCtrl.text.trim(),
@@ -521,6 +531,10 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
       );
       if (!mounted) return;
       setState(() => _currentInvoice = updated);
+      await _loadInvoiceHistory();
+      if (!widget.fullPage) await _loadInlinePdfPreview();
+      await _notifyInvoiceChanged();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l.invoiceBillingNameUpdateSuccess)),
       );

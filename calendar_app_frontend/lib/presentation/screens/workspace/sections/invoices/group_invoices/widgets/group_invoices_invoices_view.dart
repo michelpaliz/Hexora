@@ -237,6 +237,9 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                       ),
                       billingProfile: widget.billingProfile,
                       group: widget.group,
+                      onEditInvoice: widget.canEditIssued
+                          ? () => widget.onEditDraft(widget.selectedInvoice!)
+                          : null,
                       onOpenRecurringSeries: widget.onOpenRecurringSeries,
                       onInvoiceChanged: widget.onRefresh,
                     ),

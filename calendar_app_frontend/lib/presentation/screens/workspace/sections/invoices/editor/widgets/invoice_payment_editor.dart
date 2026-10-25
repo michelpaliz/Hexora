@@ -244,6 +244,10 @@ class _InvoicePaymentEditorState extends State<InvoicePaymentEditor> {
                 statusLabel(_status),
                 if (_status == 'partial' && _amountCtrl.text.isNotEmpty)
                   '${_amountCtrl.text} ${widget.invoice.currency ?? 'EUR'}',
+                if (_status != 'unpaid' && _paidAt != null) dateLabel,
+                if (_status != 'unpaid' &&
+                    widget.invoice.paymentSource == 'bank_link')
+                  isEs ? 'Transferencia bancaria' : 'Bank transfer',
               ].join(' · '),
               style: TextStyle(color: cs.onSurfaceVariant)),
           trailing: IconButton(

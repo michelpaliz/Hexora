@@ -77,6 +77,7 @@ class _GroupInvoicesView extends StatelessWidget {
               'emails' => 'Correo electrónico',
               'expenses_upload' => 'Gastos',
               'expenses_list' => 'Gastos',
+              'expenses_import_history' => 'Historial de lotes',
               'providers' => 'Proveedores',
               'vat' => 'Impuestos',
               'invoices_suspects' => Localizations.localeOf(context)
@@ -432,6 +433,7 @@ class _GroupInvoicesView extends StatelessWidget {
         activeMenu == 'expenses' ||
         activeMenu == 'expenses_upload' ||
         activeMenu == 'expenses_list' ||
+        activeMenu == 'expenses_import_history' ||
         activeMenu == 'providers' ||
         activeMenu == 'vat' ||
         activeMenu == 'budgets_list' ||

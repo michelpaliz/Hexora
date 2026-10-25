@@ -18,6 +18,7 @@ import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/sections/settings_system_config_section.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/billing_profile_inline_editor.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/domain/models/members_vm.dart';
+import 'package:hexora/presentation/screens/workspace/sections/private_documents/private_document_vault_screen.dart';
 import 'package:hexora/presentation/viewmodels/notifications/notification_view_model.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -43,6 +44,7 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
   BillingProfile? _billingProfile;
   bool _billingLoading = true;
   String? _billingError;
+  int _billingLoadGeneration = 0;
   bool _initialized = false;
 
   @override
@@ -124,19 +126,30 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
   }
 
   Future<void> _loadBillingProfile() async {
+    final groupId = widget.group.id;
+    final generation = ++_billingLoadGeneration;
     setState(() {
       _billingLoading = true;
       _billingError = null;
+      _billingProfile = null;
     });
     try {
-      final profile = await _billingApi.getByGroup(widget.group.id);
-      if (!mounted) return;
+      final profile = await _billingApi.getByGroup(groupId);
+      if (!mounted ||
+          widget.group.id != groupId ||
+          generation != _billingLoadGeneration) {
+        return;
+      }
       setState(() {
         _billingProfile = profile;
         _billingLoading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted ||
+          widget.group.id != groupId ||
+          generation != _billingLoadGeneration) {
+        return;
+      }
       setState(() {
         _billingError = e.toString();
         _billingLoading = false;
@@ -167,35 +180,47 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
       padding: const EdgeInsets.all(12),
       child: Container(
         color: isLight ? Colors.white : Colors.transparent,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 620) {
+              return Column(
                 children: [
-                  _buildSideMenu(context),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildContent(context),
+                  SizedBox(
+                    height: 190,
+                    width: double.infinity,
+                    child: _buildSideMenu(context, width: double.infinity),
                   ),
+                  const SizedBox(height: 12),
+                  Expanded(child: _buildContent(context)),
                 ],
-              ),
-            ),
-          ],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSideMenu(context),
+                const SizedBox(width: 12),
+                Expanded(child: _buildContent(context)),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildSideMenu(BuildContext context) {
+  Widget _buildSideMenu(BuildContext context, {double width = 220}) {
     final l = AppLocalizations.of(context)!;
+    final userId = context.watch<AuthProvider>().currentUser?.id ?? '';
+    final role = widget.group.userRoles[userId];
+    final canManageDocuments = widget.group.ownerId == userId ||
+        role == 'owner' ||
+        role == 'admin' ||
+        role == 'co-admin';
     final cs = Theme.of(context).colorScheme;
     final isLight = Theme.of(context).brightness == Brightness.light;
-    const menuWidth = 220.0;
-
     return SizedBox(
-      width: menuWidth,
+      width: width,
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
@@ -248,6 +273,17 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
                       onTap: () =>
                           setState(() => _selectedSection = 'notifications'),
                     ),
+                    if (canManageDocuments) ...[
+                      const SizedBox(height: 4),
+                      _buildMenuItem(
+                        context,
+                        icon: Icons.folder_copy_outlined,
+                        label: 'Documentos del negocio',
+                        selected: _selectedSection == 'documents',
+                        onTap: () =>
+                            setState(() => _selectedSection = 'documents'),
+                      ),
+                    ],
                     const SizedBox(height: 18),
                     _buildSectionHeader(
                       context,
@@ -260,7 +296,10 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
                       icon: Icons.receipt_long_rounded,
                       label: l.billingProfileTitle,
                       selected: _selectedSection == 'billing',
-                      onTap: () => setState(() => _selectedSection = 'billing'),
+                      onTap: () {
+                        if (_selectedSection != 'billing') _loadBillingProfile();
+                        setState(() => _selectedSection = 'billing');
+                      },
                     ),
                     const SizedBox(height: 18),
                     _buildSectionHeader(
@@ -409,7 +448,7 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
   }
 
   Widget _buildContent(BuildContext context) {
-    if (_selectedSection == 'billing') {
+    if (_selectedSection == 'billing' || _selectedSection == 'documents') {
       return _buildSectionContent(context);
     }
 
@@ -463,6 +502,12 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
         return const SettingsSystemConfigSection();
       case 'billing':
         return _buildBillingSection(context);
+      case 'documents':
+        return PrivateDocumentVaultScreen(
+          key: ValueKey(widget.group.id),
+          group: widget.group,
+          embedded: true,
+        );
       case 'files':
         return SettingsGeneratedFilesSection(group: widget.group);
       default:
@@ -535,7 +580,8 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
       groupId: widget.group.id,
       api: _billingApi,
       onSaved: (updated) {
-        if (!mounted) return;
+        if (!mounted || updated.groupId != widget.group.id) return;
+        ++_billingLoadGeneration;
         setState(() => _billingProfile = updated);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l.billingProfileSaved)),

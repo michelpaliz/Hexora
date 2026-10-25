@@ -123,8 +123,11 @@ class ExpensesApi {
     }
     if (archiveBytes != null && archiveBytes.isNotEmpty) {
       req.files.add(http.MultipartFile.fromBytes(
-        'archive', archiveBytes,
-        filename: (archiveName ?? '').trim().isEmpty ? 'invoices.zip' : archiveName!.trim(),
+        'archive',
+        archiveBytes,
+        filename: (archiveName ?? '').trim().isEmpty
+            ? 'invoices.zip'
+            : archiveName!.trim(),
         contentType: MediaType('application', 'zip'),
       ));
     }
@@ -805,7 +808,8 @@ class ExpensesApi {
     Uint8List? archiveBytes,
     String? archiveName,
   }) async {
-    if ((documentFilesBytes.isEmpty && (archiveBytes == null || archiveBytes.isEmpty)) ||
+    if ((documentFilesBytes.isEmpty &&
+            (archiveBytes == null || archiveBytes.isEmpty)) ||
         documentFilesBytes.length != documentFileNames.length) {
       throw ArgumentError(
         'documentFilesBytes/documentFileNames must be non-empty and have same length',
@@ -868,7 +872,41 @@ class ExpensesApi {
     return _getMap(uri);
   }
 
-  Future<Map<String, dynamic>> cancelBatchExpensePreviewJob(String jobId) async {
+  Future<List<Map<String, dynamic>>> listBatchExpensePreviewJobs(
+      String groupId) async {
+    final trimmedGroupId = groupId.trim();
+    if (trimmedGroupId.isEmpty) return const [];
+    final uri = _u(
+        '/import-json-batch/preview/jobs?groupId=${Uri.encodeQueryComponent(trimmedGroupId)}');
+    final payload = await _getMap(uri);
+    return (payload['jobs'] as List? ?? const [])
+        .whereType<Map>()
+        .map((job) => Map<String, dynamic>.from(job))
+        .toList(growable: false);
+  }
+
+  Future<Map<String, dynamic>> listExpenseImportHistory(
+    String groupId, {
+    int page = 1,
+    int limit = 20,
+  }) =>
+      _getMap(_u('/import-json-batch/preview/history', {
+        'groupId': groupId,
+        'page': '$page',
+        'limit': '$limit',
+      }));
+
+  Future<Map<String, dynamic>> getExpenseImportHistory(
+    String groupId,
+    String jobId,
+  ) =>
+      _getMap(_u(
+          '/import-json-batch/preview/history/${Uri.encodeComponent(jobId)}', {
+        'groupId': groupId,
+      }));
+
+  Future<Map<String, dynamic>> cancelBatchExpensePreviewJob(
+      String jobId) async {
     final trimmedJobId = jobId.trim();
     if (trimmedJobId.isEmpty) throw ArgumentError('jobId is required');
     final uri = _u('/import-json-batch/preview/jobs/$trimmedJobId/cancel');
@@ -877,7 +915,8 @@ class ExpensesApi {
       response,
       url: uri,
       method: 'POST',
-      map: (json) => json is Map ? Map<String, dynamic>.from(json) : <String, dynamic>{},
+      map: (json) =>
+          json is Map ? Map<String, dynamic>.from(json) : <String, dynamic>{},
     );
   }
 

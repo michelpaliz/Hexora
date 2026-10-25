@@ -189,11 +189,22 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       allowMultiple: true,
       withData: true,
       type: FileType.custom,
-      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'jpe', 'png', 'webp', 'zip'],
+      allowedExtensions: const [
+        'pdf',
+        'jpg',
+        'jpeg',
+        'jpe',
+        'png',
+        'webp',
+        'zip'
+      ],
     );
     final files = picked?.files ?? const <PlatformFile>[];
     if (files.isEmpty) return;
-    if (!mounted || _batchSubmitting || _batchStartingJob || _hasRunningBatchJob) return;
+    if (!mounted ||
+        _batchSubmitting ||
+        _batchStartingJob ||
+        _hasRunningBatchJob) return;
     await _applyBatchUploadSelection(
       [
         for (final file in files)
@@ -886,6 +897,8 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
   }
 
   Future<void> _resumeCachedBatchJobIfNeeded() async {
+    final recentJobs = await _loadRecentBatchJobs();
+    if (!mounted) return;
     if (_hasTrackedBatchJob) {
       if (_hasRunningBatchJob) {
         _startBatchJobPolling();
@@ -893,7 +906,22 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       return;
     }
     final restored = _restoreCachedBatchJobSnapshot();
-    if (!restored) {
+    final cachedJob = restored
+        ? recentJobs
+            .where((job) => _batchJobText(job['jobId']) == _batchJobId)
+            .firstOrNull
+        : null;
+    if (restored && cachedJob != null && cachedJob['canResume'] != true) {
+      _resetBatchJobTracking();
+    }
+    if (!_hasTrackedBatchJob) {
+      final resumable =
+          recentJobs.where((job) => job['canResume'] == true).firstOrNull;
+      if (resumable != null) {
+        await _openRecentBatchJob(resumable);
+        return;
+      }
+      if (_recentBatchJobsError == null) return;
       final persisted = await _restorePersistedBatchJobMapping();
       if (!persisted || !mounted) return;
     }
@@ -904,10 +932,53 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       resultPayload: _batchJobResult,
     );
     if (_isExpenseBatchJobTerminal(restoredStatus)) {
-      await _discardBatchIfAlreadyImported();
+      if (_batchJobResult == null) await _fetchBatchJobResult(silent: true);
       return;
     }
     _startBatchJobPolling();
+  }
+
+  Future<List<Map<String, dynamic>>> _loadRecentBatchJobs() async {
+    final groupId = resolveGroupId().trim();
+    if (groupId.isEmpty) return const [];
+    if (mounted) setState(() => _recentBatchJobsLoading = true);
+    try {
+      final jobs = await _api.listBatchExpensePreviewJobs(groupId);
+      if (mounted)
+        setState(() {
+          _recentBatchJobs = jobs;
+          _recentBatchJobsError = null;
+        });
+      return jobs;
+    } catch (error) {
+      if (mounted)
+        setState(() => _recentBatchJobsError = _friendlyNetworkError(error));
+      return const [];
+    } finally {
+      if (mounted) setState(() => _recentBatchJobsLoading = false);
+    }
+  }
+
+  Future<void> _openRecentBatchJob(Map<String, dynamic> job) async {
+    if (job['canResume'] != true) return;
+    final jobId = _batchJobText(job['jobId']);
+    if (jobId.isEmpty) return;
+    setState(() {
+      _resetBatchJobTracking();
+      _batchDocumentBytes.clear();
+      _batchDocumentNames.clear();
+      clearBatchArchive();
+      _batchJobId = jobId;
+      _batchBackgroundJobId = _batchJobText(job['backgroundJobId']);
+      _batchArchiveName = _batchJobText(job['sourceArchiveName']).isEmpty
+          ? null
+          : _batchJobText(job['sourceArchiveName']);
+      _batchJobStatus = Map<String, dynamic>.from(job);
+      _batchError = null;
+    });
+    _cacheBatchJobSnapshot();
+    await _pollBatchJobStatus();
+    if (_hasRunningBatchJob) _startBatchJobPolling();
   }
 
   Future<void> _inspectSelectedBatchArchive() async {
@@ -918,7 +989,8 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
     if (groupId.isEmpty) {
       setState(() {
         _batchArchiveInspecting = false;
-        _batchArchiveInspectionError = 'Selecciona un grupo para inspeccionar el ZIP.';
+        _batchArchiveInspectionError =
+            'Selecciona un grupo para inspeccionar el ZIP.';
       });
       return;
     }
@@ -973,7 +1045,8 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       return;
     }
 
-    if ((_batchDocumentBytes.isEmpty || _batchDocumentNames.isEmpty) && _batchArchiveBytes == null) {
+    if ((_batchDocumentBytes.isEmpty || _batchDocumentNames.isEmpty) &&
+        _batchArchiveBytes == null) {
       setState(() => _batchError = 'Upload at least 1 document first.');
       return;
     }
@@ -981,9 +1054,11 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
     if (_batchArchiveBytes != null &&
         (_batchArchiveInspecting ||
             _batchArchiveInspection == null ||
-            _batchJobInt(_batchArchiveInspection?['compatibleDocuments']) == 0 ||
+            _batchJobInt(_batchArchiveInspection?['compatibleDocuments']) ==
+                0 ||
             _batchArchiveInspection?['blocked'] == true)) {
-      setState(() => _batchError = 'No hay documentos ZIP compatibles confirmados para analizar. Revisa el desglose del archivo.');
+      setState(() => _batchError =
+          'No hay documentos ZIP compatibles confirmados para analizar. Revisa el desglose del archivo.');
       return;
     }
 
@@ -1000,7 +1075,9 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       _batchSubmitting = true;
       _batchStartingJob = true;
       _batchError = null;
-      _batchVerifyMessage = _batchArchiveBytes == null ? 'Subiendo documentos...' : 'Subiendo y extrayendo facturas del ZIP...';
+      _batchVerifyMessage = _batchArchiveBytes == null
+          ? 'Subiendo documentos...'
+          : 'Subiendo y extrayendo facturas del ZIP...';
       _batchErrorsExpanded = false;
     });
     _logExpenseAttempt(
@@ -1036,11 +1113,13 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
         _batchSkippedDetails = <String>{
           ..._batchSkippedDetails,
           ...(response['extractionWarnings'] is List
-              ? response['extractionWarnings'] as List
-              : const []).map((e) => e.toString()),
+                  ? response['extractionWarnings'] as List
+                  : const [])
+              .map((e) => e.toString()),
         }.toList();
         final count = _batchJobInt(response['totalFiles']);
-        _batchVerifyMessage = '$count facturas encontradas. Procesando en segundo plano.';
+        _batchVerifyMessage =
+            '$count facturas encontradas. Procesando en segundo plano.';
         _batchSubmitting = false;
         _batchStartingJob = false;
       });

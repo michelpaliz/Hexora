@@ -34,6 +34,7 @@ class _PrivateDocumentVaultScreenState
 
   List<PrivateDocument> _documents = const [];
   bool _loading = true;
+  int _loadVersion = 0;
   String? _error;
   String _categoryFilter = 'all';
   String _statusFilter = 'all';
@@ -43,6 +44,15 @@ class _PrivateDocumentVaultScreenState
     super.initState();
     _search.addListener(() => setState(() {}));
     _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant PrivateDocumentVaultScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.group.id != widget.group.id) {
+      _documents = const [];
+      _load();
+    }
   }
 
   @override
@@ -57,19 +67,23 @@ class _PrivateDocumentVaultScreenState
       .startsWith('es');
 
   Future<void> _load() async {
+    final loadVersion = ++_loadVersion;
+    final groupId = widget.group.id;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final docs = await _api.list(groupId: widget.group.id);
-      if (!mounted) return;
+      final docs = await _api.list(groupId: groupId);
+      if (!mounted || loadVersion != _loadVersion || widget.group.id != groupId) return;
       setState(() => _documents = docs);
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || loadVersion != _loadVersion || widget.group.id != groupId) return;
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && loadVersion == _loadVersion && widget.group.id == groupId) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -117,12 +131,19 @@ class _PrivateDocumentVaultScreenState
       groupId: widget.group.id,
       document: document,
     );
-    if (result == PrivateDocumentDetailResult.changed) _load();
+    if (mounted && result == PrivateDocumentDetailResult.changed) _load();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isNarrow = MediaQuery.sizeOf(context).width < 760;
+    return LayoutBuilder(
+      builder: (context, constraints) =>
+          _buildForWidth(context, constraints.maxWidth),
+    );
+  }
+
+  Widget _buildForWidth(BuildContext context, double width) {
+    final isNarrow = width < 760;
     final title = _isEs ? 'Documentos privados' : 'Private documents';
     final body = FolderPanel(
       title: title,
@@ -189,29 +210,37 @@ class _PrivateDocumentVaultScreenState
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _search,
-                  decoration: InputDecoration(
-                    hintText:
-                        isEs ? 'Buscar documentos...' : 'Search documents...',
-                    prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                    isDense: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final search = TextField(
+                controller: _search,
+                decoration: InputDecoration(
+                  hintText:
+                      isEs ? 'Buscar documentos...' : 'Search documents...',
+                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                  isDense: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              FilledButton.icon(
+              );
+              final upload = FilledButton.icon(
                 onPressed: _openUploadDialog,
                 icon: const Icon(Icons.upload_file_rounded, size: 18),
                 label: Text(isEs ? 'Subir documento' : 'Upload document'),
-              ),
-            ],
+              );
+              if (constraints.maxWidth < 430) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [search, const SizedBox(height: 8), upload],
+                );
+              }
+              return Row(children: [
+                Expanded(child: search),
+                const SizedBox(width: 10),
+                upload,
+              ]);
+            },
           ),
         ),
         Padding(
@@ -519,6 +548,22 @@ class _DocumentListTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
+                    Text(
+                      [
+                        document.fileName,
+                        if (document.uploadedByName != null)
+                          '${isEs ? "Subido por" : "Uploaded by"} ${document.uploadedByName}',
+                        if (document.createdAt != null)
+                          DateFormat('dd/MM/yyyy HH:mm')
+                              .format(document.createdAt!.toLocal()),
+                        if (document.fileReplacedAt != null)
+                          '${isEs ? "Archivo reemplazado" : "File replaced"} ${DateFormat('dd/MM/yyyy HH:mm').format(document.fileReplacedAt!.toLocal())}',
+                      ].join(' · '),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 6),
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,

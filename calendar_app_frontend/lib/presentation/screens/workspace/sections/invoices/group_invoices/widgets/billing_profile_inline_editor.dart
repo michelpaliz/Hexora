@@ -50,6 +50,8 @@ class _BillingProfileInlineEditorState
   late final TextEditingController _language;
   bool _saving = false;
   bool _logoBusy = false;
+  String? _logoPreviewSourceUrl;
+  String? _logoPreviewUrl;
   bool _hasChanges = false;
   int _completionPercent = 0;
 
@@ -75,6 +77,8 @@ class _BillingProfileInlineEditorState
     _legalName = TextEditingController(text: p?.legalName ?? '');
     _taxId = TextEditingController(text: p?.taxId ?? '');
     _logoUrl = TextEditingController(text: p?.logoUrl ?? '');
+    _logoPreviewSourceUrl = p?.logoUrl;
+    _logoPreviewUrl = p?.logoPreviewUrl;
     _street = TextEditingController(text: p?.addressStreet ?? '');
     _extra = TextEditingController(text: p?.addressExtra ?? '');
     _city = TextEditingController(text: p?.addressCity ?? '');
@@ -117,6 +121,8 @@ class _BillingProfileInlineEditorState
     _legalName.text = p?.legalName ?? '';
     _taxId.text = p?.taxId ?? '';
     _logoUrl.text = p?.logoUrl ?? '';
+    _logoPreviewSourceUrl = p?.logoUrl;
+    _logoPreviewUrl = p?.logoPreviewUrl;
     _street.text = p?.addressStreet ?? '';
     _extra.text = p?.addressExtra ?? '';
     _city.text = p?.addressCity ?? '';
@@ -193,7 +199,7 @@ class _BillingProfileInlineEditorState
             sameNullable(initial.website, _website.text) &&
             sameNullable(initial.iban, _iban.text) &&
             (normNullable(_currency.text) ?? 'EUR') == initial.currency &&
-            (num.tryParse(_vatRate.text.trim()) ?? 21) == initial.vatRate &&
+            _parsedVatRate() == initial.vatRate &&
             sameNullable(initial.language, _language.text));
 
     final nextCompletion = _calculateCompletionPercent();
@@ -267,6 +273,7 @@ class _BillingProfileInlineEditorState
   Future<void> _pickLogo() async {
     final l = AppLocalizations.of(context)!;
     if (!mounted) return;
+    if (widget.initial == null) return;
 
     final picked = await showDialog<PlatformFile>(
       context: context,
@@ -375,6 +382,8 @@ class _BillingProfileInlineEditorState
         bytes: picked.bytes!,
       );
       if (!mounted) return;
+      _logoPreviewSourceUrl = updated.logoUrl;
+      _logoPreviewUrl = updated.logoPreviewUrl;
       _logoUrl.text = updated.logoUrl ?? '';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l.billingLogoUploadSuccess)),
@@ -392,12 +401,16 @@ class _BillingProfileInlineEditorState
     }
   }
 
+  num? _parsedVatRate() => num.tryParse(
+        _vatRate.text.trim().replaceAll(',', '.'),
+      );
+
   Future<void> _save() async {
     final l = AppLocalizations.of(context)!;
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      final vat = num.tryParse(_vatRate.text.trim()) ?? 21;
+      final vat = _parsedVatRate()!;
 
       String? normNullable(String? s) {
         final v = s?.trim() ?? '';
@@ -866,14 +879,19 @@ class _BillingProfileInlineEditorState
               valueListenable: _logoUrl,
               builder: (_, v, __) {
                 final url = v.text.trim();
+                final displayUrl = url == _logoPreviewSourceUrl
+                    ? (_logoPreviewUrl ?? url)
+                    : url;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ── Preview area ─────────────────────────────────────
                     GestureDetector(
                       onTap: url.isEmpty
-                          ? (_logoBusy ? null : _pickLogo)
-                          : () => _showLogoDialog(url),
+                          ? (_logoBusy || widget.initial == null
+                              ? null
+                              : _pickLogo)
+                          : () => _showLogoDialog(displayUrl),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         height: 128,
@@ -904,7 +922,9 @@ class _BillingProfileInlineEditorState
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'Toca para subir logo',
+                                    widget.initial == null
+                                        ? 'Guarda el perfil para subir un logo'
+                                        : 'Toca para subir logo',
                                     style: t.bodySmall.copyWith(
                                       color: cs.onSurfaceVariant
                                           .withValues(alpha: 0.55),
@@ -919,7 +939,7 @@ class _BillingProfileInlineEditorState
                                   Padding(
                                     padding: const EdgeInsets.all(12),
                                     child: Image.network(
-                                      url,
+                                      displayUrl,
                                       fit: BoxFit.contain,
                                       errorBuilder: (_, __, ___) => Center(
                                         child: Icon(
@@ -971,7 +991,9 @@ class _BillingProfileInlineEditorState
                       children: [
                         Expanded(
                           child: FilledButton.tonalIcon(
-                            onPressed: _logoBusy ? null : _pickLogo,
+                            onPressed: _logoBusy || widget.initial == null
+                                ? null
+                                : _pickLogo,
                             icon: _logoBusy
                                 ? const SizedBox(
                                     width: 16,
@@ -994,7 +1016,7 @@ class _BillingProfileInlineEditorState
                           Tooltip(
                             message: 'Ver a tamaño completo',
                             child: IconButton.outlined(
-                              onPressed: () => _showLogoDialog(url),
+                              onPressed: () => _showLogoDialog(displayUrl),
                               icon: const Icon(
                                 Icons.open_in_full_rounded,
                                 size: 18,
@@ -1123,6 +1145,8 @@ class _BillingProfileInlineEditorState
               controller: _street,
               label: l.addressStreet,
               icon: Icons.home_outlined,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null,
             ),
             const SizedBox(height: 10),
             textField(
@@ -1137,6 +1161,9 @@ class _BillingProfileInlineEditorState
                     child: textField(
                       controller: _city,
                       label: l.addressCity,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? l.fieldIsRequired
+                          : null,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1144,6 +1171,9 @@ class _BillingProfileInlineEditorState
                     child: textField(
                       controller: _province,
                       label: l.addressProvince,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? l.fieldIsRequired
+                          : null,
                     ),
                   ),
                 ],
@@ -1152,11 +1182,15 @@ class _BillingProfileInlineEditorState
               textField(
                 controller: _city,
                 label: l.addressCity,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null,
               ),
               const SizedBox(height: 10),
               textField(
                 controller: _province,
                 label: l.addressProvince,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null,
               ),
             ],
             const SizedBox(height: 10),
@@ -1168,6 +1202,9 @@ class _BillingProfileInlineEditorState
                       controller: _postal,
                       label: l.addressPostalCode,
                       keyboardType: TextInputType.number,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? l.fieldIsRequired
+                          : null,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1187,6 +1224,8 @@ class _BillingProfileInlineEditorState
                 controller: _postal,
                 label: l.addressPostalCode,
                 keyboardType: TextInputType.number,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null,
               ),
               const SizedBox(height: 10),
               textField(
@@ -1246,7 +1285,7 @@ class _BillingProfileInlineEditorState
                             ? null
                             : () {
                                 final current =
-                                    num.tryParse(_vatRate.text.trim()) ?? 21;
+                                    _parsedVatRate() ?? 21;
                                 final next = (current - 1).clamp(0, 100);
                                 _vatRate.text = next.toString();
                               },
@@ -1260,6 +1299,12 @@ class _BillingProfileInlineEditorState
                           keyboardType: const TextInputType.numberWithOptions(
                               decimal: true),
                           helper: l.billingTaxRateHelper,
+                          validator: (_) {
+                            final vat = _parsedVatRate();
+                            return vat == null || !vat.isFinite || vat < 0 || vat > 100
+                                ? 'Introduce un IVA entre 0 y 100'
+                                : null;
+                          },
                         ),
                       ),
                       IconButton(
@@ -1267,7 +1312,7 @@ class _BillingProfileInlineEditorState
                             ? null
                             : () {
                                 final current =
-                                    num.tryParse(_vatRate.text.trim()) ?? 21;
+                                    _parsedVatRate() ?? 21;
                                 final next = (current + 1).clamp(0, 100);
                                 _vatRate.text = next.toString();
                               },

@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:hexora/models/calendar/calendar.dart';
 import 'package:hexora/models/groups/permissions/group_permissions_response.dart';
@@ -44,7 +44,7 @@ abstract class IGroupRepository {
   // Media
   Future<void> uploadAndCommitGroupPhoto({
     required String groupId,
-    required File file,
+    required Uint8List bytes,
   });
 
   Future<Group> setBusinessHours(

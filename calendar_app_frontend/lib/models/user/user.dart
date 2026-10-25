@@ -3,6 +3,8 @@
 import 'package:hexora/models/user/user_equality.dart';
 import 'package:hexora/models/user/user_json_mapper.dart';
 
+const _unchanged = Object();
+
 class User {
   String _id;
   String name; // legal / full name
@@ -66,15 +68,15 @@ class User {
   User copyWith({
     String? id,
     String? name,
-    String? displayName,
+    Object? displayName = _unchanged,
     String? email,
     String? userName,
     bool? emailVerified,
-    String? bio,
-    String? phoneNumber,
-    String? location,
-    String? photoUrl,
-    String? photoBlobName,
+    Object? bio = _unchanged,
+    Object? phoneNumber = _unchanged,
+    Object? location = _unchanged,
+    Object? photoUrl = _unchanged,
+    Object? photoBlobName = _unchanged,
     List<String>? groupIds,
     List<String>? sharedCalendars,
     List<String>? notifications,
@@ -83,17 +85,25 @@ class User {
     return User(
       id: id ?? _id,
       name: name ?? this.name,
-      displayName: displayName ?? this.displayName,
+      displayName: identical(displayName, _unchanged)
+          ? this.displayName
+          : displayName as String?,
       email: email ?? _email,
       userName: userName ?? this.userName,
       emailVerified: emailVerified ?? this.emailVerified,
-      bio: bio ?? this.bio,
-      phoneNumber: phoneNumber ?? this.phoneNumber,
-      location: location ?? this.location,
+      bio: identical(bio, _unchanged) ? this.bio : bio as String?,
+      phoneNumber: identical(phoneNumber, _unchanged)
+          ? this.phoneNumber
+          : phoneNumber as String?,
+      location:
+          identical(location, _unchanged) ? this.location : location as String?,
       autoStatementImportEnabled:
           autoStatementImportEnabled ?? this.autoStatementImportEnabled,
-      photoUrl: photoUrl ?? this.photoUrl,
-      photoBlobName: photoBlobName ?? this.photoBlobName,
+      photoUrl:
+          identical(photoUrl, _unchanged) ? this.photoUrl : photoUrl as String?,
+      photoBlobName: identical(photoBlobName, _unchanged)
+          ? this.photoBlobName
+          : photoBlobName as String?,
       groupIds: groupIds ?? this.groupIds,
       sharedCalendars: sharedCalendars ?? _calendarsIds,
       notifications: notifications ?? _notificationsIds,

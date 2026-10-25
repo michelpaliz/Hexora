@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:pdfrx/pdfrx.dart';
 
-/// Native PDF rendering shared by expenses, invoices, receipts and quotes.
+/// In-app PDF rendering shared by native apps and mobile web browsers.
 class PdfInlinePreview extends StatelessWidget {
   const PdfInlinePreview({
     super.key,

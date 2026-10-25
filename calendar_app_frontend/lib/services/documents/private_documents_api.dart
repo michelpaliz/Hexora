@@ -110,20 +110,6 @@ class PrivateDocumentsApi {
     );
   }
 
-  Future<String> _requireAuthToken() async {
-    final headers = await AuthenticatedHttpClient.authorizedHeaders(
-      includeJsonContentType: false,
-    );
-    final auth = headers['Authorization'] ?? '';
-    if (auth.trim().isEmpty) {
-      throw PrivateDocumentsApiException(
-        statusCode: 401,
-        message: 'Not authenticated',
-      );
-    }
-    return auth;
-  }
-
   Future<List<PrivateDocument>> list({
     required String groupId,
     String? category,
@@ -134,8 +120,9 @@ class PrivateDocumentsApi {
         'category': category.trim(),
       if (status != null && status.trim().isNotEmpty) 'status': status.trim(),
     };
-    final uri =
-        query.isEmpty ? _u(groupId) : _u(groupId).replace(queryParameters: query);
+    final uri = query.isEmpty
+        ? _u(groupId)
+        : _u(groupId).replace(queryParameters: query);
     final r = await AuthenticatedHttpClient.get(uri, headers: _headers());
     return _decodeList(r).map(PrivateDocument.fromJson).toList(growable: false);
   }
@@ -148,7 +135,9 @@ class PrivateDocumentsApi {
       _u(groupId, '/${documentId.trim()}'),
       headers: _headers(),
     );
-    return PrivateDocument.fromJson(_decodeMap(r));
+    final body = _decodeMap(r);
+    return PrivateDocument.fromJson(
+        Map<String, dynamic>.from(body['document'] as Map));
   }
 
   /// Backend issues a private Azure download URL valid for five minutes.
@@ -182,28 +171,29 @@ class PrivateDocumentsApi {
     List<String>? tags,
     List<String>? counterparties,
   }) async {
-    final auth = await _requireAuthToken();
-    final req = http.MultipartRequest('POST', _u(groupId));
-    req.headers['Authorization'] = auth;
-    req.files.add(
-      http.MultipartFile.fromBytes('file', bytes, filename: fileName),
-    );
-    req.fields['category'] = category;
-    req.fields['status'] = status;
-    if ((title ?? '').trim().isNotEmpty) req.fields['title'] = title!.trim();
-    if (expiryDate != null) {
-      req.fields['expiryDate'] = expiryDate.toIso8601String();
-    }
-    if ((notes ?? '').trim().isNotEmpty) req.fields['notes'] = notes!.trim();
-    if (tags != null && tags.isNotEmpty) {
-      req.fields['tags'] = jsonEncode(tags);
-    }
-    if (counterparties != null && counterparties.isNotEmpty) {
-      req.fields['counterparties'] = jsonEncode(counterparties);
-    }
-    final streamed = await req.send();
-    final response = await http.Response.fromStream(streamed);
-    return PrivateDocument.fromJson(_decodeMap(response));
+    final response = await AuthenticatedHttpClient.sendMultipart((_) {
+      final req = http.MultipartRequest('POST', _u(groupId));
+      req.files.add(
+        http.MultipartFile.fromBytes('file', bytes, filename: fileName),
+      );
+      req.fields['category'] = category;
+      req.fields['status'] = status;
+      if ((title ?? '').trim().isNotEmpty) req.fields['title'] = title!.trim();
+      if (expiryDate != null) {
+        req.fields['expiryDate'] = expiryDate.toIso8601String();
+      }
+      if ((notes ?? '').trim().isNotEmpty) req.fields['notes'] = notes!.trim();
+      if (tags != null && tags.isNotEmpty) {
+        req.fields['tags'] = jsonEncode(tags);
+      }
+      if (counterparties != null && counterparties.isNotEmpty) {
+        req.fields['counterparties'] = jsonEncode(counterparties);
+      }
+      return req;
+    });
+    final body = _decodeMap(response);
+    return PrivateDocument.fromJson(
+        Map<String, dynamic>.from(body['document'] as Map));
   }
 
   Future<PrivateDocument> update({
@@ -234,7 +224,30 @@ class PrivateDocumentsApi {
       headers: _headers(),
       body: jsonEncode(payload),
     );
-    return PrivateDocument.fromJson(_decodeMap(r));
+    final body = _decodeMap(r);
+    return PrivateDocument.fromJson(
+        Map<String, dynamic>.from(body['document'] as Map));
+  }
+
+  Future<PrivateDocument> replaceFile({
+    required String groupId,
+    required String documentId,
+    required List<int> bytes,
+    required String fileName,
+  }) async {
+    final response = await AuthenticatedHttpClient.sendMultipart((_) {
+      final req = http.MultipartRequest(
+        'PATCH',
+        _u(groupId, '/${documentId.trim()}/file'),
+      );
+      req.files
+          .add(http.MultipartFile.fromBytes('file', bytes, filename: fileName));
+      return req;
+    });
+    final body = _decodeMap(response);
+    return PrivateDocument.fromJson(
+      Map<String, dynamic>.from(body['document'] as Map),
+    );
   }
 
   Future<void> remove({

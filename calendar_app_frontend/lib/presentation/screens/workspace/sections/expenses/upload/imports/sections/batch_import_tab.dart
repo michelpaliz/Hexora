@@ -4,6 +4,108 @@
 part of '../../expense_upload_screen.dart';
 
 extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
+  Widget _buildRecentBatchJobs(ColorScheme cs) {
+    final jobs = _recentBatchJobs
+        .take(_recentBatchJobsExpanded ? 5 : 1)
+        .toList(growable: false);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          const Expanded(
+              child: Text('Lotes recientes',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
+          if (_recentBatchJobs.length > 1)
+            TextButton(
+              onPressed: () => _updateImportState(
+                  () => _recentBatchJobsExpanded = !_recentBatchJobsExpanded),
+              child: Text(_recentBatchJobsExpanded
+                  ? 'Mostrar menos'
+                  : 'Ver todos (${_recentBatchJobs.length})'),
+            ),
+          IconButton(
+            tooltip: 'Actualizar lotes',
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.refresh, size: 17),
+            onPressed: _recentBatchJobsLoading ? null : _loadRecentBatchJobs,
+          ),
+        ]),
+        if (_recentBatchJobsLoading && jobs.isEmpty)
+          const LinearProgressIndicator(minHeight: 2)
+        else if (_recentBatchJobsError != null && jobs.isEmpty)
+          Text('No se pudo cargar el historial: $_recentBatchJobsError',
+              style: TextStyle(fontSize: 11, color: cs.error))
+        else if (jobs.isEmpty)
+          Text(
+              'Los ZIP aparecen aqui tras pulsar «Confirmar y analizar». Si solo seleccionaste el archivo, vuelve a elegirlo.',
+              style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant))
+        else
+          for (final job in jobs) ...[
+            Builder(builder: (context) {
+              final fileNames = (job['fileNames'] as List? ?? const [])
+                  .map((name) => name.toString())
+                  .where((name) => name.isNotEmpty);
+              final archiveName = _batchJobText(job['sourceArchiveName']);
+              final count = _batchJobInt(job['totalFiles']);
+              final title = archiveName.isNotEmpty
+                  ? archiveName
+                  : 'Lote de $count facturas';
+              final created =
+                  DateTime.tryParse(_batchJobText(job['createdAt']));
+              final date = created == null
+                  ? ''
+                  : DateFormat.yMMMd('es').add_Hm().format(created.toLocal());
+              final status = _batchJobText(job['status']);
+              final statusLabel = switch (status) {
+                'completed' => 'Analizado',
+                'processing' => 'Procesando',
+                'queued' || 'staging' => 'En cola',
+                'failed' => 'Error',
+                'cancelled' => 'Cancelado',
+                _ => status,
+              };
+              final firstFile =
+                  fileNames.isEmpty ? '' : ' · ${fileNames.first}';
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(children: [
+                  Icon(Icons.folder_zip_outlined, size: 16, color: cs.primary),
+                  const SizedBox(width: 7),
+                  Expanded(
+                      child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 11, fontWeight: FontWeight.w600)),
+                      Text(
+                          '$date · $statusLabel$firstFile${job['canResume'] == true ? '' : ' · archivo temporal no disponible'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 10, color: cs.onSurfaceVariant)),
+                    ],
+                  )),
+                  if (job['canResume'] == true)
+                    TextButton(
+                        onPressed: () => _openRecentBatchJob(job),
+                        child: const Text('Abrir')),
+                ]),
+              );
+            }),
+          ],
+      ]),
+    );
+  }
+
   String _zipReasonLabel(String code) => switch (code) {
         'system_file' => 'Metadatos del sistema',
         'unsupported_type' => 'Formato no compatible',
@@ -37,8 +139,12 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
     final error = _batchArchiveInspectionError;
     if (error != null) {
       return Row(children: [
-        Expanded(child: Text('No se pudo inspeccionar el ZIP: $error', style: TextStyle(color: cs.error, fontSize: 12))),
-        TextButton(onPressed: inspectSelectedBatchArchive, child: const Text('Reintentar')),
+        Expanded(
+            child: Text('No se pudo inspeccionar el ZIP: $error',
+                style: TextStyle(color: cs.error, fontSize: 12))),
+        TextButton(
+            onPressed: inspectSelectedBatchArchive,
+            child: const Text('Reintentar')),
       ]);
     }
     final inspection = _batchArchiveInspection;
@@ -58,75 +164,120 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
       final code = (entry['exclusionCode'] ?? 'unsupported_type').toString();
       reasons[code] = (reasons[code] ?? 0) + 1;
     }
-    final textStyle = Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12);
+    final textStyle =
+        Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12);
     return ConstrainedBox(
       constraints: const BoxConstraints(maxHeight: 280),
-      child: SingleChildScrollView(child: Container(
-      margin: const EdgeInsets.only(top: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Wrap(spacing: 14, runSpacing: 3, children: [
-          Text('$entryCount entradas', style: textStyle),
-          Text('$fileCount archivos · ${entryCount - fileCount} carpetas', style: textStyle),
-          Text('$compatible compatibles', style: textStyle?.copyWith(fontWeight: FontWeight.w700, color: cs.primary)),
-          Text('$omitted omitidos', style: textStyle),
-        ]),
-        if (reasons.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(reasons.entries.map((entry) => '${_zipReasonLabel(entry.key)}: ${entry.value}').join(' · '),
-              style: textStyle?.copyWith(color: cs.onSurfaceVariant)),
-        ],
-        if (compatible == 0 || blocked) ...[
-          const SizedBox(height: 5),
-          Text(blocked
-              ? 'El ZIP contiene entradas no seguras, dañadas o comprimidas internamente. No se puede analizar.'
-              : 'No hay documentos compatibles para analizar. Revisa los motivos y selecciona otro ZIP.',
-              style: textStyle?.copyWith(color: cs.onSurface, fontWeight: FontWeight.w600)),
-        ],
-        ExpansionTile(
-          dense: true,
-          tilePadding: EdgeInsets.zero,
-          childrenPadding: EdgeInsets.zero,
-          title: Text('Ver detalle de archivos', style: textStyle?.copyWith(fontWeight: FontWeight.w600)),
-          children: [
-            Row(children: [
-              Expanded(flex: 5, child: Text('Ruta', style: textStyle?.copyWith(fontWeight: FontWeight.w700))),
-              Expanded(flex: 2, child: Text('Tipo', style: textStyle?.copyWith(fontWeight: FontWeight.w700))),
-              Expanded(flex: 3, child: Text('Resultado', style: textStyle?.copyWith(fontWeight: FontWeight.w700))),
-            ]),
-            const Divider(height: 8),
-            SizedBox(
-              height: entries.length > 4 ? 144 : entries.length * 36.0,
-              child: ListView.builder(
-                itemCount: entries.length,
-                itemBuilder: (context, index) {
-                  final entry = entries[index];
-                  final path = (entry['filename'] ?? '').toString();
-                  final status = entry['entryType'] == 'directory'
-                      ? 'Carpeta'
-                      : entry['compatible'] == true
-                          ? 'Listo para analizar'
-                          : _zipReasonLabel((entry['exclusionCode'] ?? '').toString());
-                  return SizedBox(height: 36, child: Row(children: [
-                    Expanded(flex: 5, child: Tooltip(message: path, child: Text(path, maxLines: 1, overflow: TextOverflow.ellipsis, style: textStyle))),
-                    Expanded(flex: 2, child: Text(_zipTypeLabel((entry['detectedType'] ?? '').toString()), style: textStyle)),
-                    Expanded(flex: 3, child: Tooltip(
-                      message: (entry['exclusionReason'] ?? status).toString(),
-                      child: Text(status, maxLines: 2, overflow: TextOverflow.ellipsis, style: textStyle),
-                    )),
-                  ]));
-                },
-              ),
-            ),
-          ],
+      child: SingleChildScrollView(
+          child: Container(
+        margin: const EdgeInsets.only(top: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
         ),
-      ]),
-    )),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Wrap(spacing: 14, runSpacing: 3, children: [
+            Text('$entryCount entradas', style: textStyle),
+            Text('$fileCount archivos · ${entryCount - fileCount} carpetas',
+                style: textStyle),
+            Text('$compatible compatibles',
+                style: textStyle?.copyWith(
+                    fontWeight: FontWeight.w700, color: cs.primary)),
+            Text('$omitted omitidos', style: textStyle),
+          ]),
+          if (reasons.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+                reasons.entries
+                    .map((entry) =>
+                        '${_zipReasonLabel(entry.key)}: ${entry.value}')
+                    .join(' · '),
+                style: textStyle?.copyWith(color: cs.onSurfaceVariant)),
+          ],
+          if (compatible == 0 || blocked) ...[
+            const SizedBox(height: 5),
+            Text(
+                blocked
+                    ? 'El ZIP contiene entradas no seguras, dañadas o comprimidas internamente. No se puede analizar.'
+                    : 'No hay documentos compatibles para analizar. Revisa los motivos y selecciona otro ZIP.',
+                style: textStyle?.copyWith(
+                    color: cs.onSurface, fontWeight: FontWeight.w600)),
+          ],
+          ExpansionTile(
+            dense: true,
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.zero,
+            title: Text('Ver detalle de archivos',
+                style: textStyle?.copyWith(fontWeight: FontWeight.w600)),
+            children: [
+              Row(children: [
+                Expanded(
+                    flex: 5,
+                    child: Text('Ruta',
+                        style:
+                            textStyle?.copyWith(fontWeight: FontWeight.w700))),
+                Expanded(
+                    flex: 2,
+                    child: Text('Tipo',
+                        style:
+                            textStyle?.copyWith(fontWeight: FontWeight.w700))),
+                Expanded(
+                    flex: 3,
+                    child: Text('Resultado',
+                        style:
+                            textStyle?.copyWith(fontWeight: FontWeight.w700))),
+              ]),
+              const Divider(height: 8),
+              SizedBox(
+                height: entries.length > 4 ? 144 : entries.length * 36.0,
+                child: ListView.builder(
+                  itemCount: entries.length,
+                  itemBuilder: (context, index) {
+                    final entry = entries[index];
+                    final path = (entry['filename'] ?? '').toString();
+                    final status = entry['entryType'] == 'directory'
+                        ? 'Carpeta'
+                        : entry['compatible'] == true
+                            ? 'Listo para analizar'
+                            : _zipReasonLabel(
+                                (entry['exclusionCode'] ?? '').toString());
+                    return SizedBox(
+                        height: 36,
+                        child: Row(children: [
+                          Expanded(
+                              flex: 5,
+                              child: Tooltip(
+                                  message: path,
+                                  child: Text(path,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: textStyle))),
+                          Expanded(
+                              flex: 2,
+                              child: Text(
+                                  _zipTypeLabel(
+                                      (entry['detectedType'] ?? '').toString()),
+                                  style: textStyle)),
+                          Expanded(
+                              flex: 3,
+                              child: Tooltip(
+                                message: (entry['exclusionReason'] ?? status)
+                                    .toString(),
+                                child: Text(status,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: textStyle),
+                              )),
+                        ]));
+                  },
+                ),
+              ),
+            ],
+          ),
+        ]),
+      )),
     );
   }
 
@@ -170,10 +321,11 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
           hasTrackedJob && jobTotalFiles > 0 ? jobTotalFiles : selectedCount;
       final remainingSlots =
           (maxBatchDocs - headerLoadedCount).clamp(0, maxBatchDocs);
-      final totalBytes = batchArchiveBytes?.length ?? batchDocumentBytes.fold<int>(
-        0,
-        (sum, bytes) => sum + bytes.length,
-      );
+      final totalBytes = batchArchiveBytes?.length ??
+          batchDocumentBytes.fold<int>(
+            0,
+            (sum, bytes) => sum + bytes.length,
+          );
       final backendProgress = _batchJobDouble(_batchJobStatus?['progress']);
       final uploadRatio = hasTrackedJob
           ? (backendProgress > 0
@@ -287,8 +439,10 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
       Widget executionPanel = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _buildRecentBatchJobs(cs),
           if (_batchStartingJob && batchArchiveName != null) ...[
-            Text('Subiendo y extrayendo facturas del ZIP…', style: Theme.of(context).textTheme.bodySmall),
+            Text('Subiendo y extrayendo facturas del ZIP…',
+                style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 4),
             const LinearProgressIndicator(minHeight: 3),
             const SizedBox(height: 6),
@@ -345,7 +499,8 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
           ],
           if (batchArchiveName != null) ...[
             const SizedBox(height: 6),
-            Text('ZIP: $batchArchiveName', style: Theme.of(context).textTheme.bodySmall),
+            Text('ZIP: $batchArchiveName',
+                style: Theme.of(context).textTheme.bodySmall),
             _buildZipInspectionPanel(cs),
           ],
           if (jobActive && !batchSubmitting) ...[
@@ -479,7 +634,9 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
                     (batchArchiveBytes != null &&
                         !_batchArchiveInspecting &&
                         _batchArchiveInspection?['blocked'] != true &&
-                        _batchJobInt(_batchArchiveInspection?['compatibleDocuments']) > 0)),
+                        _batchJobInt(_batchArchiveInspection?[
+                                'compatibleDocuments']) >
+                            0)),
             jobActive: jobActive,
             jobCompleted: jobCompleted,
             jobFailed: jobFailed,
@@ -489,22 +646,23 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
             skippedCount: jobSkippedCount,
             onPickDocuments: pickBatchDocuments,
             onImport: submitBatchImport,
-            onClearSelection: batchDocumentNames.isEmpty && batchArchiveName == null
-                ? null
-                : () => _updateImportState(() {
-                      _resetBatchJobTracking(
-                        clearResult: true,
-                        clearCache: true,
-                      );
-                      batchDocumentBytes.clear();
-                      batchDocumentNames.clear();
-                      clearBatchArchive();
-                      _batchSkippedDetails.clear();
-                      _batchVerifyMessage = null;
-                      _batchError = null;
-                      _batchDetectedInvoices = 0;
-                      _batchFileFilterIndex = 0;
-                    }),
+            onClearSelection:
+                batchDocumentNames.isEmpty && batchArchiveName == null
+                    ? null
+                    : () => _updateImportState(() {
+                          _resetBatchJobTracking(
+                            clearResult: true,
+                            clearCache: true,
+                          );
+                          batchDocumentBytes.clear();
+                          batchDocumentNames.clear();
+                          clearBatchArchive();
+                          _batchSkippedDetails.clear();
+                          _batchVerifyMessage = null;
+                          _batchError = null;
+                          _batchDetectedInvoices = 0;
+                          _batchFileFilterIndex = 0;
+                        }),
           ),
           const SizedBox(height: 16),
           Expanded(child: executionPanel),
@@ -563,7 +721,9 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
                   ? null
                   : pickBatchDocuments,
               icon: Icons.picture_as_pdf_outlined,
-              label: Localizations.localeOf(context).languageCode == 'es' ? 'Elegir facturas o ZIP' : 'Choose invoices or ZIP',
+              label: Localizations.localeOf(context).languageCode == 'es'
+                  ? 'Elegir facturas o ZIP'
+                  : 'Choose invoices or ZIP',
             ),
             const SizedBox(height: 6),
           ],

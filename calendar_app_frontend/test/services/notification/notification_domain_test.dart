@@ -39,8 +39,42 @@ class _FakeNotificationApiClient extends NotificationApiClient {
 }
 
 void main() {
-  NotificationUser notice(String id, {bool read = false}) =>
-      NotificationUser.fromJson({'id': id, 'isRead': read});
+  NotificationUser notice(String id,
+          {bool read = false, String groupId = 'group'}) =>
+      NotificationUser.fromJson({'id': id, 'isRead': read, 'groupId': groupId});
+
+  test(
+      'business refresh removes a stale unread badge without touching other businesses',
+      () async {
+    final domain = NotificationDomain();
+    addTearDown(domain.dispose);
+    await domain.addInboundNotification(notice('a', groupId: 'business-a'));
+    await domain.addInboundNotification(notice('b', groupId: 'business-b'));
+    domain.replaceGroupNotifications('business-a', [
+      notice('a', read: true, groupId: 'business-a'),
+    ]);
+    expect(
+        domain.notifications
+            .where((n) => n.groupId == 'business-a' && !n.isRead),
+        isEmpty);
+    expect(
+        domain.notifications
+            .where((n) => n.groupId == 'business-b' && !n.isRead)
+            .length,
+        1);
+    expect(domain.notificationIds.toSet(), {'a', 'b'});
+  });
+
+  test('a late initial fetch cannot overwrite a newer business refresh',
+      () async {
+    final domain =
+        NotificationDomain(notificationService: _FakeNotificationApiClient());
+    addTearDown(domain.dispose);
+    final pending = domain.initNotifications(['1']);
+    domain.replaceGroupNotifications('group', [notice('1', read: true)]);
+    await pending;
+    expect(domain.notifications.single.isRead, isTrue);
+  });
 
   test('successful refresh removes remote deletions and updates counts',
       () async {

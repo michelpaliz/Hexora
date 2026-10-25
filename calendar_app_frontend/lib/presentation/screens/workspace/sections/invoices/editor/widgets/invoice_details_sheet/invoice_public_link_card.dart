@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class InvoicePublicLinkCard extends StatefulWidget {
   const InvoicePublicLinkCard({super.key, required this.invoiceId});
@@ -104,6 +106,29 @@ class _InvoicePublicLinkCardState extends State<InvoicePublicLinkCard> {
     }
   }
 
+  Future<void> _activate() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final result = await _api.activatePublicLink(widget.invoiceId);
+      if (mounted) {
+        setState(() {
+          _url = result['url']?.toString();
+          _hasLink = result['hasLink'] == true;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error =
+            'No se pudo activar el QR. Comprueba tus permisos.');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -118,7 +143,7 @@ class _InvoicePublicLinkCardState extends State<InvoicePublicLinkCard> {
         Text('Factura digital', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 4),
         const Text(
-            'El QR del PDF abre el estado de pago actualizado. No sustituye al QR fiscal.',
+            'Escanea el QR para ver el estado de pago actual. No sustituye al QR fiscal.',
             style: TextStyle(fontSize: 12)),
         if (_loading)
           const Padding(
@@ -131,11 +156,40 @@ class _InvoicePublicLinkCardState extends State<InvoicePublicLinkCard> {
                   style: TextStyle(color: cs.error, fontSize: 12))),
         if (!_loading && _error == null) ...[
           const SizedBox(height: 8),
+          if (_url != null)
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: cs.outlineVariant),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: QrImageView(
+                    data: _url!,
+                    version: QrVersions.auto,
+                    size: 128,
+                    padding: const EdgeInsets.all(7),
+                  ),
+                ),
+                const SizedBox(
+                  width: 190,
+                  child: Text(
+                    'Este enlace siempre muestra el pago registrado más reciente. El PDF ya enviado no cambia.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          if (_url != null) const SizedBox(height: 8),
           Text(
               _url == null
                   ? (_hasLink
                       ? 'Enlace revocado.'
-                      : 'Esta factura se emitió antes de activar el QR digital.')
+                      : 'Esta factura aún no tiene un QR digital.')
                   : _url!,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -155,6 +209,20 @@ class _InvoicePublicLinkCardState extends State<InvoicePublicLinkCard> {
                         },
                   icon: const Icon(Icons.copy_outlined, size: 17),
                   label: const Text('Copiar enlace')),
+              TextButton.icon(
+                  onPressed: _busy
+                      ? null
+                      : () async {
+                          final uri = Uri.tryParse(_url!);
+                          if (uri == null || !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('No se pudo abrir el enlace')));
+                            }
+                          }
+                        },
+                  icon: const Icon(Icons.open_in_new, size: 17),
+                  label: const Text('Abrir')),
               TextButton(
                   onPressed: _busy ? null : () => _change(revoke: true),
                   child: const Text('Revocar')),
@@ -164,7 +232,12 @@ class _InvoicePublicLinkCardState extends State<InvoicePublicLinkCard> {
             ] else if (_hasLink)
               TextButton(
                   onPressed: _busy ? null : () => _change(revoke: false),
-                  child: const Text('Regenerar enlace')),
+                  child: const Text('Regenerar enlace'))
+            else
+              TextButton.icon(
+                  onPressed: _busy ? null : _activate,
+                  icon: const Icon(Icons.qr_code_2, size: 17),
+                  label: const Text('Activar QR')),
           ]),
         ],
       ]),

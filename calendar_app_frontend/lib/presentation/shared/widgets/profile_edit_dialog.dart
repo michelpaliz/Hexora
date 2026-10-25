@@ -122,16 +122,17 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
         headers: const {'Content-Type': 'application/json'},
         body: jsonEncode({'blobName': result.blobName}),
       );
-
-      final json = resp.statusCode == 200
-          ? jsonDecode(resp.body) as Map<String, dynamic>
-          : null;
+      if (resp.statusCode != 200) {
+        throw StateError(
+            'Photo save failed (${resp.statusCode}): ${resp.body}');
+      }
+      final json = jsonDecode(resp.body) as Map<String, dynamic>;
 
       if (!mounted) return;
 
       final updated = _localUser.copyWith(
-        photoUrl: json?['photoUrl'] ?? result.photoUrl,
-        photoBlobName: json?['photoBlobName'] ?? result.blobName,
+        photoUrl: json['photoUrl'] ?? result.photoUrl,
+        photoBlobName: json['photoBlobName'] ?? result.blobName,
       );
 
       setState(() {
@@ -372,9 +373,8 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
         return true;
       }
 
-      final dynamic decoded = response.body.isNotEmpty
-          ? jsonDecode(response.body)
-          : null;
+      final dynamic decoded =
+          response.body.isNotEmpty ? jsonDecode(response.body) : null;
       final serverMessage = decoded is Map<String, dynamic>
           ? (decoded['message']?.toString() ?? decoded['error']?.toString())
           : null;

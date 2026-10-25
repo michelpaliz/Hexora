@@ -69,7 +69,6 @@ class _UserChip extends StatelessWidget {
     GroupRole.member,
     GroupRole.coAdmin,
     GroupRole.admin,
-    GroupRole.owner,
   ];
 
   @override

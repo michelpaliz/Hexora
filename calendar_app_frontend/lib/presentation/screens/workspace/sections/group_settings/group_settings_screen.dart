@@ -322,7 +322,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                 _buildInfoRow(
                   context,
                   icon: Icons.business,
-                  label: 'Nombre del grupo',
+                  label: 'Nombre del negocio',
                   value: widget.group.name,
                 ),
                 const SizedBox(height: 16),

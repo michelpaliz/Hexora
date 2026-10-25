@@ -119,6 +119,62 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     }
   }
 
+  Widget _paymentBadge(BuildContext context) {
+    final invoice = widget.invoice;
+    final status = (invoice.paymentStatus ?? 'unpaid').toLowerCase();
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final paid = status == 'paid';
+    final partial = status == 'partial';
+    final label = paid
+        ? (isEs ? 'Pagada' : 'Paid')
+        : partial
+            ? (isEs ? 'Parcial' : 'Partial')
+            : (isEs ? 'Pendiente' : 'Unpaid');
+    final color = paid
+        ? const Color(0xFF27724B)
+        : Theme.of(context).colorScheme.onSurfaceVariant;
+    final date = invoice.paidAt == null
+        ? null
+        : DateFormat.yMMMd(Localizations.localeOf(context).toString())
+            .format(invoice.paidAt!.toLocal());
+    final amount = invoice.paidAmount == null
+        ? null
+        : NumberFormat.currency(
+            locale: Localizations.localeOf(context).toString(),
+            symbol: invoice.currency?.toUpperCase() == 'EUR'
+                ? '€'
+                : (invoice.currency ?? '€'),
+          ).format(invoice.paidAmount);
+    final source = invoice.paymentSource == 'bank_link'
+        ? (isEs ? 'Transferencia bancaria' : 'Bank transfer')
+        : null;
+    final details = [
+      label,
+      if (amount != null && status != 'unpaid') amount,
+      if (date != null) date,
+      if (source != null) source
+    ].join(' · ');
+    final visibleLabel = date == null || status == 'unpaid'
+        ? label
+        : '$label · ${DateFormat('d MMM', Localizations.localeOf(context).toString()).format(invoice.paidAt!.toLocal())}';
+    return Tooltip(
+      message: details,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.09),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(visibleLabel,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            )),
+      ),
+    );
+  }
+
   Widget _buildMobileCard(AppLocalizations l, AppTypography t, ColorScheme cs,
       String total, String date) {
     final inv = widget.invoice;
@@ -131,6 +187,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       statusLabel: inv.isDraft ? l.statusDraft : l.statusIssued,
       onTap: widget.onTap,
       badges: [
+        _paymentBadge(context),
         DeliveryStatusBadge(
           status: inv.deliveryStatus,
           channel: inv.deliveryChannel,
@@ -482,6 +539,8 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                               feminine: true,
                             ),
                           ),
+                          const SizedBox(width: 6),
+                          _paymentBadge(context),
                           const SizedBox(width: 6),
 
                           // Action buttons

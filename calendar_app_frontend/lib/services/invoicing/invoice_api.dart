@@ -762,6 +762,12 @@ class InvoicesApi {
     return _decode<Map<String, dynamic>>(r, (j) => Map<String, dynamic>.from(j));
   }
 
+  Future<Map<String, dynamic>> activatePublicLink(String id) async {
+    final r = await AuthenticatedHttpClient.post(
+      _u('/$id/public-link/activate'), headers: _headers());
+    return _decode<Map<String, dynamic>>(r, (j) => Map<String, dynamic>.from(j));
+  }
+
   Future<Map<String, dynamic>> revokePublicLink(String id) async {
     final r = await AuthenticatedHttpClient.post(
       _u('/$id/public-link/revoke'), headers: _headers());

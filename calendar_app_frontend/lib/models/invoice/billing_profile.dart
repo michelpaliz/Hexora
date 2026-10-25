@@ -4,6 +4,7 @@ class BillingProfile {
   final String legalName;
   final String taxId;
   final String? logoUrl;
+  final String? logoPreviewUrl;
   final String? addressStreet;
   final String? addressExtra;
   final String? addressCity;
@@ -26,6 +27,7 @@ class BillingProfile {
     required this.legalName,
     required this.taxId,
     this.logoUrl,
+    this.logoPreviewUrl,
     this.addressStreet,
     this.addressExtra,
     this.addressCity,
@@ -49,6 +51,7 @@ class BillingProfile {
     String? legalName,
     String? taxId,
     String? logoUrl,
+    String? logoPreviewUrl,
     String? addressStreet,
     String? addressExtra,
     String? addressCity,
@@ -71,6 +74,7 @@ class BillingProfile {
       legalName: legalName ?? this.legalName,
       taxId: taxId ?? this.taxId,
       logoUrl: logoUrl ?? this.logoUrl,
+      logoPreviewUrl: logoPreviewUrl ?? this.logoPreviewUrl,
       addressStreet: addressStreet ?? this.addressStreet,
       addressExtra: addressExtra ?? this.addressExtra,
       addressCity: addressCity ?? this.addressCity,
@@ -103,6 +107,7 @@ class BillingProfile {
       legalName: (json['legalName'] ?? '').toString(),
       taxId: (json['taxId'] ?? '').toString(),
       logoUrl: json['logoUrl']?.toString(),
+      logoPreviewUrl: json['logoPreviewUrl']?.toString(),
       addressStreet: json['addressStreet']?.toString(),
       addressExtra: json['addressExtra']?.toString(),
       addressCity: json['addressCity']?.toString(),

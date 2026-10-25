@@ -251,7 +251,7 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
     final unreadNotifications = context
         .watch<NotificationDomain>()
         .notifications
-        .where((n) => !n.isRead)
+        .where((n) => n.groupId == state.group.id && !n.isRead)
         .length;
 
     final sectionItems = [

@@ -213,6 +213,10 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
       }
       final data = await _viewModel.fetchNotificationsForGroup(widget.group.id);
       if (!mounted) return;
+      context.read<NotificationDomain>().replaceGroupNotifications(
+            widget.group.id,
+            data,
+          );
       NotificationUser? selected = _selected;
       if (data.isEmpty) {
         selected = null;

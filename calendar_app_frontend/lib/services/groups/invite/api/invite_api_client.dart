@@ -23,6 +23,14 @@ class InvitationApiClient {
     );
   }
 
+  Invitation _actionInvitation(http.Response res) {
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final invitation = body['invitation'];
+    return Invitation.fromJson(
+      invitation is Map<String, dynamic> ? invitation : body,
+    );
+  }
+
   Future<Invitation> create({
     required String groupId,
     String? email,
@@ -84,7 +92,7 @@ class InvitationApiClient {
       headers: _headers(token: token),
       body: jsonEncode({'note': note}),
     );
-    if (res.statusCode == 200) return Invitation.fromJson(jsonDecode(res.body));
+    if (res.statusCode == 200) return _actionInvitation(res);
     _throwApiError(res, 'Failed to accept invitation');
   }
 
@@ -94,7 +102,7 @@ class InvitationApiClient {
       headers: _headers(token: token),
       body: jsonEncode({'reason': reason}),
     );
-    if (res.statusCode == 200) return Invitation.fromJson(jsonDecode(res.body));
+    if (res.statusCode == 200) return _actionInvitation(res);
     _throwApiError(res, 'Failed to decline invitation');
   }
 
@@ -104,7 +112,7 @@ class InvitationApiClient {
       headers: _headers(token: token),
       body: jsonEncode({}),
     );
-    if (res.statusCode == 200) return Invitation.fromJson(jsonDecode(res.body));
+    if (res.statusCode == 200) return _actionInvitation(res);
     _throwApiError(res, 'Failed to resend invitation');
   }
 
@@ -114,7 +122,7 @@ class InvitationApiClient {
       headers: _headers(token: token),
       body: jsonEncode({'reason': reason}),
     );
-    if (res.statusCode == 200) return Invitation.fromJson(jsonDecode(res.body));
+    if (res.statusCode == 200) return _actionInvitation(res);
     _throwApiError(res, 'Failed to revoke invitation');
   }
 }

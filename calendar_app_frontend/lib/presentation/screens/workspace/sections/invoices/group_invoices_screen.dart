@@ -34,6 +34,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/expense_upload_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/expenses/import_history/expense_import_history_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/prompt_clipboard_helper.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/billing_profile_inline_editor.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/client_classifications_view.dart';

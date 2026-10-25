@@ -7,11 +7,11 @@
     "clientImageInvalid": "Choose a JPEG, PNG or WebP image up to 5 MB.",
     "clientImageSaveFailed": "Client details saved, but the image could not be saved. Please try again.",
     "darkMode": "Dark Mode",
-    "groups": "Groups",
+    "groups": "Businesses",
     "calendar": "Calendar",
     "settings": "Settings",
     "logout": "Log out",
-    "groupData": "Group Data",
+    "groupData": "Business Data",
   "notifications": "Notifications",
     "goodMorning": "Good Morning",
     "goodAfternoon": "Good Afternoon",
@@ -24,9 +24,9 @@
     "@changeView": {
         "description": "Change View"
     },
-    "welcomeGroupView": "Welcome {username} here you can see the list of groups that you are part of.",
+    "welcomeGroupView": "Welcome {username} here you can see the list of businesses that you are part of.",
     "@welcome": {
-        "description": "Welcome to the group view",
+        "description": "Welcome to the business view",
         "placeholders": {
             "username": {
                 "type": "String"
@@ -35,7 +35,7 @@
     },
     "zeroNotifications": "You're all caught up",
     "goToCalendar": "Go to the calendar",
-    "groupName": "Group name (max {maxChar} characters)  ",
+    "groupName": "Business name (max {maxChar} characters)  ",
     "@groupName": {
         "description": "Note form",
         "placeholders": {
@@ -44,7 +44,7 @@
             }
         }
     },
-    "groupDescription": "Group description (max {maxChar} characters)  ",
+    "groupDescription": "Business description (max {maxChar} characters)  ",
     "@groupDescription": {
         "description": "Note form",
         "placeholders": {
@@ -53,22 +53,22 @@
             }
         }
     },
-    "addPplGroup": "Add people to your group",
+    "addPplGroup": "Add people to your business",
     "addUser": "Add user",
     "addEvent": "Add event",
     "administrator": "Administrator",
     "coAdministrator": "Co-Administrator",
     "member": "Member",
-    "saveGroup": "Save the group",
-    "addImageGroup": "Add image for the group",
+    "saveGroup": "Save the business",
+    "addImageGroup": "Add image for the business",
     "removeEvent": "Are you sure you want to remove this event ?",
-    "removeGroup": "Are you sure you want to remove this group ?",
+    "removeGroup": "Are you sure you want to remove this business ?",
     "removeCalendar": "Are you sure you want to remove this calendar ?",
-    "groupCreated": "Group created successfully!",
-    "failedToCreateGroup": "Failed to create the group",
+    "groupCreated": "Business created successfully!",
+    "failedToCreateGroup": "Failed to create the business",
     "eventCreated": "The event has been created",
     "eventEdited": "The event has been edited",
-    "eventAddedGroup": "The event has been added to the group",
+    "eventAddedGroup": "The event has been added to the business",
     "event": "Event",
     "chooseEventColor": "Choose the color of the event:",
     "errorEventNote": "Event note cannot be empty!",
@@ -268,18 +268,18 @@
             }
         }
     },
-    "textFieldGroupName": "Enter group name (Limit: {TITLE_MAX_LENGHT} characters) ",
+    "textFieldGroupName": "Enter business name (Limit: {TITLE_MAX_LENGHT} characters) ",
     "@textFieldGroupName": {
-        "description": "Textfield for the group name",
+        "description": "Textfield for the business name",
         "placeholders": {
             "TITLE_MAX_LENGHT": {
                 "type": "int"
             }
         }
     },
-    "textFieldDescription": "Enter group description (Limit: {DESCRIPTION_MAX_LENGHT} characters)",
+    "textFieldDescription": "Enter business description (Limit: {DESCRIPTION_MAX_LENGHT} characters)",
     "@textFieldDescription": {
-        "description": "Textfield for the group description",
+        "description": "Textfield for the business description",
         "placeholders": {
             "DESCRIPTION_MAX_LENGHT": {
                 "type": "int"
@@ -310,7 +310,7 @@
             }
         }
     },
-    "editGroup": "Edit Group",
+    "editGroup": "Edit Business",
     "remove": "Remove",
     "confirm": "Confirm",
     "cancel": "Cancel",
@@ -318,21 +318,21 @@
     "removeConfirmation": "Confirm to remove",
     "permissionDenied": "Permission Denied",
     "permissionDeniedInf": "You are not an administrator to remove this item.",
-    "leaveGroup": "Leave group",
-    "permissionDeniedRole": "You are currently a {role} of this group.",
-    "putGroupImage": "Put an image for the group",
+    "leaveGroup": "Leave business",
+    "permissionDeniedRole": "You are currently a {role} of this business.",
+    "putGroupImage": "Put an image for the business",
     "close": "close",
-    "addNewUser": "Add a new user to your group",
-    "cannotRemoveYourself": "You cannot remove yourself from the group",
-    "requiredTextFields": "Group name and description are required.",
-    "groupNameRequired": "Group name cannot be empty",
-    "groupEdited": "Group edited successfully!",
-    "failedToEditGroup": "Failed to edit the group. Please try again",
+    "addNewUser": "Add a new user to your business",
+    "cannotRemoveYourself": "You cannot remove yourself from the business",
+    "requiredTextFields": "Business name and description are required.",
+    "groupNameRequired": "Business name cannot be empty",
+    "groupEdited": "Business edited successfully!",
+    "failedToEditGroup": "Failed to edit the business. Please try again",
     "searchPerson": "Search by user name",
     "delete": "Delete",
-    "confirmRemovalMessage": "Are you sure you want to delete this group?",
+    "confirmRemovalMessage": "Are you sure you want to delete this business?",
   "confirmRemoval": "Confirm Removal",
-  "groupDeletedSuccessfully": "Group deleted successfully!",
+  "groupDeletedSuccessfully": "Business deleted successfully!",
   "showInactiveClients": "Show inactive clients",
   "@showInactiveClients": {
     "description": "Toggle label to show inactive clients"
@@ -390,10 +390,10 @@
       "reason": {}
     }
   },
-    "noGroupsAvailable": "NO GROUP/S FOUND/S",
-    "noGroupsFound": "No groups found",
-    "noGroupsDescription": "Create or join a group to get started",
-    "searchGroups": "Search groups",
+  "noGroupsAvailable": "NO BUSINESSES FOUND",
+    "noGroupsFound": "No businesses found",
+    "noGroupsDescription": "Create or join a business to get started",
+    "searchGroups": "Search businesses",
     "weatherSummarySunny": "Sunny",
     "weatherSummaryPartlyCloudy": "Partly cloudy",
     "weatherSummaryCloudyWithRain": "Cloudy with rain",
@@ -422,8 +422,8 @@
     "saturday": "Saturday",
     "sunday": "sunday",
     "save": "Save changes",
-    "groupNameText": "Group name",
-    "groupOwner": "Group owner",
+    "groupNameText": "Business name",
+    "groupOwner": "Business owner",
     "enableRepetitiveEvents": "Enable repetitive events",
     "passwordChangedSuccessfully": "Password changed successfully",
     "currentPasswordIncorrect": "Current password is incorrect. Please try again.",
@@ -451,14 +451,14 @@
     "userNameRequired": "User name is required",
     "emailRequired": "Email is required",
     "passwordLength": "Password maximum length is 6 characters",
-    "groupNotCreated": "There was an error creating the group, try again",
-    "questionDeleteGroup": "Are you sure you want to delete this group?",
+    "groupNotCreated": "There was an error creating the business, try again",
+    "questionDeleteGroup": "Are you sure you want to delete this business?",
     "errorEventCreation": "Error occurred while creating the event, try again later",
     "eventEditFailed": "Error occurred while editing the event, try again later",
     "noEventsFoundForDate": "Events not found for this date, try again later.",
     "confirmDelete": "Are you sure you want to remove this event ?",
     "confirmDeleteDescription": "Remove event.",
-    "groupNameLabel": "Group Name",
+    "groupNameLabel": "Business Name",
     "descriptionLabel": "Description",
     "refresh": "Refreshing screen ...",
     "accepted": "Accepted",
@@ -482,29 +482,29 @@
     "groupLast30Days": "Last 30 days",
     "groupOlder": "Older",
     "notificationGroupCreationTitle": "Congratulations!",
-    "notificationGroupCreationMessage": "You created the group: {groupName}",
-    "notificationJoinedGroupTitle": "Welcome to the Group",
-    "notificationJoinedGroupMessage": "You have joined the group: {groupName}",
-    "notificationInvitationTitle": "Group Invitation",
-    "notificationInvitationMessage": "You have been invited to join the group: {groupName}",
+    "notificationGroupCreationMessage": "You created the business: {groupName}",
+    "notificationJoinedGroupTitle": "Welcome to the Business",
+    "notificationJoinedGroupMessage": "You have joined the business: {groupName}",
+    "notificationInvitationTitle": "Business Invitation",
+    "notificationInvitationMessage": "You have been invited to join the business: {groupName}",
     "notificationInvitationDeniedTitle": "Invitation Declined",
     "notificationInvitationDeniedMessage": "{userName} declined the invitation to join {groupName}",
     "notificationUserAcceptedTitle": "User Joined",
     "notificationUserAcceptedMessage": "{userName} has accepted the invitation to join {groupName}",
-    "notificationGroupEditedTitle": "Group Updated",
-    "notificationGroupEditedMessage": "You updated the group: {groupName}",
-    "notificationGroupDeletedTitle": "Group Deleted",
-    "notificationGroupDeletedMessage": "You have deleted the group: {groupName}",
+    "notificationGroupEditedTitle": "Business Updated",
+    "notificationGroupEditedMessage": "You updated the business: {groupName}",
+    "notificationGroupDeletedTitle": "Business Deleted",
+    "notificationGroupDeletedMessage": "You have deleted the business: {groupName}",
     "notificationUserRemovedTitle": "User Removed",
     "notificationUserRemovedMessage": "You have been removed from {groupName} by {adminName}",
     "notificationAdminUserRemovedTitle": "User Removed",
     "notificationAdminUserRemovedMessage": "{userName} was removed from {groupName}",
     "notificationUserLeftTitle": "User Left",
-    "notificationUserLeftMessage": "{userName} has left the group: {groupName}",
-    "notificationGroupUpdateTitle": "Group Updated",
-    "notificationGroupUpdateMessage": "{editorName} updated the group: {groupName}",
-    "notificationGroupDeletedAllTitle": "Group Deleted",
-    "notificationGroupDeletedAllMessage": "The group \"{groupName}\" has been deleted by the owner.",
+    "notificationUserLeftMessage": "{userName} has left the business: {groupName}",
+    "notificationGroupUpdateTitle": "Business Updated",
+    "notificationGroupUpdateMessage": "{editorName} updated the business: {groupName}",
+    "notificationGroupDeletedAllTitle": "Business Deleted",
+    "notificationGroupDeletedAllMessage": "The business \"{groupName}\" has been deleted by the owner.",
     "viewDetails": "View Details",
     "editEvent": "Edit Event",
     "eventDayNotIncludedWarning": "Warning: The event starts on {day}, but this day is not selected in the recurrence pattern.",
@@ -641,7 +641,7 @@
             }
         }
     },
-    "categoryGroup": "Group",
+    "categoryGroup": "Business",
     "categoryUser": "User",
     "categorySystem": "System",
     "categoryOther": "Other",
@@ -653,7 +653,7 @@
     "passwordRecoverySuccess": "A password reset request has been noted. Please contact support or check your account settings.",
     "endDateMustBeAfterStartDate": "End date must be after the start date",
     "pleaseSelectAtLeastOneUser": "Please select at least one user",
-    "groupMembers": "Group Members",
+    "groupMembers": "Business Members",
     "noInvitedUsersToDisplay": "No invited users to display.",
     "userRemovedSuccessfully": "User {userName} removed successfully.",
     "@userRemovedSuccessfully": {
@@ -673,7 +673,7 @@
             }
         }
     },
-    "groupDescriptionLabel": "Group Description",
+    "groupDescriptionLabel": "Business Description",
     "agenda": "Agenda",
     "today": "Today",
     "tomorrow": "Tomorrow",
@@ -692,7 +692,7 @@
     "notAuthenticatedOrUserMissing": "Not authenticated or user missing",
     "noUserLoaded": "No user loaded",
     "motivationSectionTitle": "Motivation",
-    "groupSectionTitle": "Groups",
+    "groupSectionTitle": "Businesses",
     "clearAllTooltip": "Clear all notifications",
     "@@locale": "en",
     "clearAll": "Clear all",
@@ -733,7 +733,7 @@
     "resetPasswordSuccessTitle": "Password reset successfully",
     "resetPasswordSuccessBody": "Your password has been updated. You can now sign in with your new password.",
     "noUpcomingHint": "Try another category or extend the range.",
-    "agendaSelectGroupPrompt": "Select a group to load events",
+    "agendaSelectGroupPrompt": "Select a business to load events",
     "agendaChooseGroupButton": "Choose",
     "hi": "Hi",
     "completed": "Completed",
@@ -767,7 +767,7 @@
     "@noClientsYet": {
         "description": "Empty-state title for clients list"
     },
-    "addYourFirstClient": "Add your first client to this group.",
+    "addYourFirstClient": "Add your first client to this business.",
     "@addYourFirstClient": {
         "description": "Empty-state subtitle for clients list"
     },
@@ -884,11 +884,11 @@
     "@tabServices": {
         "description": "Tab label for Services"
     },
-    "clientsSectionTitle": "Clients in this group",
+    "clientsSectionTitle": "Clients in this business",
     "@clientsSectionTitle": {
         "description": "Header shown above the clients list"
     },
-    "servicesSectionTitle": "Services in this group",
+    "servicesSectionTitle": "Services in this business",
     "@servicesSectionTitle": {
         "description": "Header shown above the services list"
     },
@@ -1013,7 +1013,7 @@
     "sectionStatus": "Status",
     "createdOnDay": "Created on {date}",
     "@createdOnDay": {
-        "description": "Shows the date the group was created.",
+        "description": "Shows the date the business was created.",
         "placeholders": {
             "date": {
                 "type": "String"
@@ -1023,7 +1023,7 @@
     "membersTitle": "Members",
     "membersSubtitle": "{count, plural, one {# total} other {# total}}",
     "@membersSubtitle": {
-        "description": "Total members in group",
+        "description": "Total members in business",
         "placeholders": {
             "count": {
                 "type": "int"
@@ -1032,7 +1032,7 @@
     },
     "servicesClientsTitle": "Services & Clients",
     "servicesClientsSubtitle": "Create and manage services/clients",
-    "noCalendarWarning": "This group has no calendar linked yet.",
+    "noCalendarWarning": "This business has no calendar linked yet.",
     "sectionFilters": "Filters",
     "noMembersTitle": "No members",
     "noMembersMatchFilters": "No members match these filters.",
@@ -1050,7 +1050,7 @@
     "viewProfile": "View profile",
     "message": "Message",
     "changeRole": "Change role",
-    "removeFromGroup": "Remove from group",
+    "removeFromGroup": "Remove from business",
     "roleOwner": "Owner",
     "roleAdmin": "Admin",
     "roleMember": "Member",
@@ -1095,15 +1095,15 @@
   "@clearedAllNotifications": {
     "description": "Message shown after successfully clearing all notifications."
   },
-  "groupNotificationsSectionTitle": "Group notifications",
+  "groupNotificationsSectionTitle": "Business notifications",
   "updateRoleTitle": "Update role",
   "saveChanges": "Save changes",
-  "groupNotificationsSubtitle": "See invites, reminders, and alerts scoped to this group.",
-  "groupNotificationsEmpty": "This group doesn't have any notifications yet.",
-  "groupNotificationsError": "We couldn't load the notifications for this group.",
+  "groupNotificationsSubtitle": "See invites, reminders, and alerts scoped to this business.",
+  "groupNotificationsEmpty": "This business doesn't have any notifications yet.",
+  "groupNotificationsError": "We couldn't load the notifications for this business.",
   "groupNotificationsTitle": "{groupName} notifications",
   "@groupNotificationsTitle": {
-    "description": "Page title for the per-group notifications screen",
+    "description": "Page title for the per-business notifications screen",
     "placeholders": {
       "groupName": {
         "type": "String"
@@ -1116,7 +1116,7 @@
     },
     "typeNameOrEmail": "Type name or email address",
     "@typeNameOrEmail": {
-        "description": "Placeholder text for the search bar when adding people to a group."
+        "description": "Placeholder text for the search bar when adding people to a business."
     },
     "noMatchesForX": "No matches found for \"{query}\"",
     "@noMatchesForX": {
@@ -1142,7 +1142,7 @@
     },
     "add": "Add",
     "@add": {
-        "description": "Short action label for adding selected people to the group."
+        "description": "Short action label for adding selected people to the business."
     },
     "jobTitle": "Job title",
     "addPhoto": "Add a photo",
@@ -1152,9 +1152,9 @@
     "simpleEvent": "Simple event",
     "loadingUpcoming": "Loading upcoming…",
     "noUpcomingEvents": "No upcoming events",
-    "nothingScheduledSoon": "Nothing scheduled soon for this group.",
+    "nothingScheduledSoon": "Nothing scheduled soon for this business.",
     "nextUp": "Next up",
-    "upcomingEventsSubtitle": "Upcoming events for this group",
+    "upcomingEventsSubtitle": "Upcoming events for this business",
     "seeAll": "See all",
     "untitledEvent": "(untitled)",
     "userId": "User ID",
@@ -1176,8 +1176,8 @@
             }
         }
     },
-    "nothingScheduledSoonForThisGroup": "Nothing scheduled soon for this group.",
-    "upcomingEventsForThisGroup": "Upcoming events for this group",
+    "nothingScheduledSoonForThisGroup": "Nothing scheduled soon for this business.",
+    "upcomingEventsForThisGroup": "Upcoming events for this business",
     "untitled": "(untitled)",
     "allTypes": "All",
     "simpleEvents": "Simple",
@@ -1209,8 +1209,8 @@
     "preferencesSectionTitle": "Preferences",
     "appVersionLabel": "App version",
     "roleCoAdmin":"Co-Administrator",
-  "leaveGroupQuestion": "Are you sure you want to leave this group?",
-  "removeMembersFirst": "Please remove all members before deleting the group.",
+  "leaveGroupQuestion": "Are you sure you want to leave this business?",
+  "removeMembersFirst": "Please remove all members before deleting the business.",
   "refreshSuccess": "Calendar refreshed",
   "@refreshSuccess": {
     "description": "Snackbar text shown when the calendar finishes refreshing successfully"
@@ -1448,7 +1448,7 @@
   "tipPullToRefresh": "Pull down to refresh",
   "addWorker": "Add worker",
   "addWorkerSubtitle": "Create a worker profile to start tracking hours and pay.",
-"membersInfoAccepted": "Users who are part of this group.",
+"membersInfoAccepted": "Users who are part of this business.",
 "membersInfoPending": "Invitations sent and awaiting acceptance.",
 "membersInfoNotAccepted": "Invites that were declined, revoked, or expired.",
 "contact": "Contact",
@@ -1472,7 +1472,7 @@
     "assignedUsers": "Assigned users",
     "delegateVisit": "Assign workers",
     "delegateVisitHint": "Choose who will carry out this visit",
-    "delegateNoWorkers": "No other group members available",
+    "delegateNoWorkers": "No other business members available",
   "repetition": "Repetition",
 
 
@@ -1495,7 +1495,7 @@
   "newEvent": "New Event",
   
   "calendarTitle": "Calendar",
-  "noGroupAvailable": "No group available",
+  "noGroupAvailable": "No business available",
   "tabDay": "Day",
   "tabWeek": "Week",
   "tabMonth": "Month",
@@ -1527,9 +1527,9 @@
   "@monthYearFormat": {
     "placeholders": { "month": {}, "year": {} }
   },
-  "groupDescriptionHint": "Introduce the purpose of this group",
-  "groupNameTooShort": "Group name too short",
-  "groupNameHint":"Input group name",
+  "groupDescriptionHint": "Introduce the purpose of this business",
+  "groupNameTooShort": "Business name too short",
+  "groupNameHint":"Input business name",
   "reviewUsersTitle": "Members — Review & Roles",
   "tabUpdateRoles": "Update roles",
   "tabAddUsers": "Add users",
@@ -1558,7 +1558,7 @@
 
   "selectedCommitted": "{count, plural, =0{No users added} =1{1 user added} other{{count} users added}}",
   "@selectedCommitted": {
-    "description": "Toast after committing pending selections into the group.",
+    "description": "Toast after committing pending selections into the business.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -1570,23 +1570,23 @@
   "addUsersHelperText":"Search and stage members to be added. You can set roles per user before uploading changes.",
   "updateRolesHelperText": "Review members and adjust roles. Tap a card to change the role.",
           "membersHelperText": "Browse members by status, review invites, and manage roles.",
-          "createGroup": "Create group",
+          "createGroup": "Create business",
             "editImage": "Edit",
-  "tapToChangePhoto": "Tap to change group photo",
-  "tapToAddPhoto": "Tap to add group photo",
-  "groupSaved": "Group saved",
-  "manageGroup": "Manage group",
+  "tapToChangePhoto": "Tap to change business photo",
+  "tapToAddPhoto": "Tap to add business photo",
+  "groupSaved": "Business saved",
+  "manageGroup": "Manage business",
   "hey": "Hey",
   "youAreThe": "you are the",
-  "ofThisGroup": "of this group",
-  "youHaveSuperPowersHere": "You have super powers for this group!",
-  "roleOwnerBullet1": "Change group settings and features",
+  "ofThisGroup": "of this business",
+  "youHaveSuperPowersHere": "You have super powers for this business!",
+  "roleOwnerBullet1": "Change business settings and features",
   "roleOwnerBullet2": "Manage billing and subscription",
   "roleOwnerBullet3": "Add or remove co-admins and members",
   "roleOwnerBullet4": "View and edit all calendars and events",
-  "roleOwnerBullet5": "Delete or transfer the group",
+  "roleOwnerBullet5": "Delete or transfer the business",
 
-  "roleCoAdminBullet1": "Create, edit, and delete events for the group",
+  "roleCoAdminBullet1": "Create, edit, and delete events for the business",
   "roleCoAdminBullet2": "Manage services and clients",
   "roleCoAdminBullet3": "Invite or remove members (except the owner)",
   "roleCoAdminBullet4": "Configure notifications and work hours",
@@ -1594,18 +1594,18 @@
   "roleMemberBullet1": "See your assigned events",
   "roleMemberBullet2": "Mark visits or tasks as done",
   "roleMemberBullet3": "Add notes and comments",
-  "groupSettingsTitle": "Group settings",
-  "groupSettingsOwnerBannerOwner": "You are the owner of this group. You can manage every setting from here.",
-  "groupSettingsOwnerBannerNotOwner": "Only the group owner can update these settings.",
+  "groupSettingsTitle": "Business settings",
+  "groupSettingsOwnerBannerOwner": "You are the owner of this business. You can manage every setting from here.",
+  "groupSettingsOwnerBannerNotOwner": "Only the business owner can update these settings.",
   "groupSettingsOverviewTitle": "Overview",
-  "groupSettingsOverviewSubtitle": "General information about this group.",
+  "groupSettingsOverviewSubtitle": "General information about this business.",
   "groupSettingsDescriptionLabel": "Description",
   "groupSettingsNoDescription": "No description provided",
   "groupSettingsOwnerIdLabel": "Owner ID",
   "groupSettingsCreatedOnLabel": "Created on",
   "groupSettingsMemberCountLabel": "Member count",
   "groupSettingsUserRolesTitle": "User roles",
-  "groupSettingsUserRolesSubtitle": "Permissions for users in this group.",
+  "groupSettingsUserRolesSubtitle": "Permissions for users in this business.",
   "groupSettingsNoRoles": "No specific roles assigned yet.",
   "groupSettingsUserIdLabel": "User ID:",
   "groupSettingsRoleLabel": "Role:",
@@ -1614,9 +1614,9 @@
   "groupSettingsInvitationsInfo": "Invitations are managed separately.",
   "groupSettingsViewInvitations": "View invitations",
   "groupSettingsDangerZoneTitle": "Danger zone",
-  "groupSettingsDangerZoneOwner": "Deleting this group is permanent and cannot be undone.",
-  "groupSettingsDangerZoneNonOwner": "Only the group owner can delete this group.",
-  "groupInfo": "Group info",
+  "groupSettingsDangerZoneOwner": "Deleting this business is permanent and cannot be undone.",
+  "groupSettingsDangerZoneNonOwner": "Only the business owner can delete this business.",
+  "groupInfo": "Business info",
   "groupInfoSubtitle": "Name, description and basic details",
   "notificationsSubtitle": "Alerts, reminders and preferences",
 
@@ -1930,8 +1930,8 @@
   "@invoiceBatchIssuePartialSnack": {
     "placeholders": {"issued": {}, "failed": {}}
   },
-  "invoiceIssueDuplicateNumberSnack": "That invoice number already exists in this group. Refresh the list or edit the draft number before issuing.",
-  "invoiceIssueDuplicateNumberValueSnack": "Invoice number {number} already exists in this group. Refresh the list or edit the draft number before issuing.",
+  "invoiceIssueDuplicateNumberSnack": "That invoice number already exists in this business. Refresh the list or edit the draft number before issuing.",
+  "invoiceIssueDuplicateNumberValueSnack": "Invoice number {number} already exists in this business. Refresh the list or edit the draft number before issuing.",
   "invoiceBatchIssueErrorsTitle": "Errors",
   "invoiceDraftOpenFailed": "Could not open draft: {reason}",
   "@invoiceDraftOpenFailed": {
@@ -2061,7 +2061,7 @@
   "clientClassificationManageCta": "Manage",
   "clientClassificationManageTitle": "Manage saved options",
   "clientAddOptionHint": "Add option (max 50)",
-  "clientClassificationManageHint": "These options are saved for the group and can be reused when assigning types to clients.",
+  "clientClassificationManageHint": "These options are saved for the business and can be reused when assigning types to clients.",
   "clientClassificationSaveCta": "Save",
   "clientClassificationSavedSnack": "Options saved",
   "clientClassificationRebuildCta": "Rebuild",
@@ -2661,7 +2661,7 @@
   "expenseUploadBatchVerificationTitle": "Verification",
   "expenseUploadBatchWaiting": "Waiting for import...",
   "expenseUploadBatchImportTitle": "Import",
-  "expenseUploadBatchGroupRequired": "You must select a group before importing.",
+  "expenseUploadBatchGroupRequired": "You must select a business before importing.",
   "expenseUploadBatchImportCta": "Import Expenses",
   "expenseUploadTabByProvider": "By provider",
   "expenseUploadTabProviders": "Providers",
@@ -3150,10 +3150,10 @@
   "insightsChatExportError": "Could not export to Excel",
   "insightsChatExportUnsupported": "File download is not available on this platform",
   "systemConfigMenuLabel": "System configuration",
-  "groupPhotoUpdated": "Group photo updated",
-  "groupPhotoUpdateFailed": "Failed to update group photo",
-  "premiumRequiredSingleGroupMessage": "Your current plan allows only 1 group. Upgrade to Premium to create or join additional groups.",
-  "premiumRequiredJoinGroupOnlyMessage": "You are already in a group. Upgrade to Premium to join more groups.",
+  "groupPhotoUpdated": "Business photo updated",
+  "groupPhotoUpdateFailed": "Failed to update business photo",
+  "premiumRequiredSingleGroupMessage": "Your current plan allows only 1 business. Upgrade to Premium to create or join additional businesses.",
+  "premiumRequiredJoinGroupOnlyMessage": "You are already in a business. Upgrade to Premium to join more businesses.",
   "managedGroupLimitCreateMessage": "You already manage 2 businesses. Leave or become a worker in one before creating another.",
   "managedGroupLimitJoinMessage": "You already manage 2 businesses. You can still join as a worker, but you cannot accept another administrator or co-administrator role.",
   "upgradeToPremium": "Upgrade to Premium",
@@ -3272,14 +3272,14 @@
   "rolesYourRoleBadge": "Your role",
   "rolesLoadError": "Could not load permissions",
   "rolesRetryButton": "Retry",
-  "roleFallbackDescOwner": "Full control over the group. Can transfer ownership.",
+  "roleFallbackDescOwner": "Full control over the business. Can transfer ownership.",
   "roleFallbackDescAdmin": "Can manage members, roles, billing and settings.",
   "roleFallbackDescCoAdmin": "Can invite members and manage the calendar and events.",
-  "roleFallbackDescMember": "Can view and participate in the group.",
+  "roleFallbackDescMember": "Can view and participate in the business.",
   "permLabelInvite": "Invite",
   "permLabelKick": "Remove members",
-  "permLabelEditGroup": "Edit group",
-  "permLabelDeleteGroup": "Delete group",
+  "permLabelEditGroup": "Edit business",
+  "permLabelDeleteGroup": "Delete business",
   "permLabelManageRoles": "Manage roles",
   "permLabelViewBilling": "View billing",
   "permLabelManageInvoices": "Invoices",
@@ -3293,7 +3293,7 @@
   "permLabelViewReports": "Reports",
   "permLabelManageSettings": "Settings",
   "permLabelTransferOwnership": "Transfer ownership",
-  "permLabelGroup": "Group",
+  "permLabelGroup": "Business",
   "permLabelStatements": "Statements",
   "permLabelCalendar": "Calendar",
   "permLabelEvents": "Events",
@@ -3303,10 +3303,10 @@
   "permLabelReports": "Reports",
   "permLabelSettings": "Settings",
   "permLabelMembers": "Members",
-  "roleDescOwner": "Full control of the group, members, settings, and shared tools.",
+  "roleDescOwner": "Full control of the business, members, settings, and shared tools.",
   "roleDescAdmin": "Legacy elevated manager role. Treated like a co-admin for frontend guidance.",
-  "roleDescCoAdmin": "Can manage most shared group operations, but cannot delete the group or outrank the owner.",
-  "roleDescMember": "Can view shared group data and manage only their own allowed actions.",
+  "roleDescCoAdmin": "Can manage most shared business operations, but cannot delete the business or outrank the owner.",
+  "roleDescMember": "Can view shared business data and manage only their own allowed actions.",
 
   "expenseJsonTabFlowHint": "Paste the JSON and attach the invoice to import.",
   "expenseJsonTabPickJsonFile": "JSON file",
@@ -3358,7 +3358,7 @@
   "expenseBatchLeftClearCta": "Clear selection",
   "expenseBatchLeftCompleted": "Batch completed",
   "expenseBatchLeftImportCta": "Import expenses",
-  "expenseBatchLeftGroupRequired": "Select a group before importing.",
+  "expenseBatchLeftGroupRequired": "Select a business before importing.",
 
   "expenseBatchProgressCompleted": "Import completed",
   "expenseBatchProgressFailed": "Import failed",
@@ -3640,7 +3640,7 @@
   "@groupSettingsPendingCount": {"placeholders": {"count": {"type": "int"}}},
   "groupSettingsDeleteNamePrompt": "Type “{name}” to confirm permanent deletion. This cannot be undone.",
   "@groupSettingsDeleteNamePrompt": {"placeholders": {"name": {"type": "String"}}},
-  "groupSettingsDeleteGroup": "Delete group",
+  "groupSettingsDeleteGroup": "Delete business",
   "agendaCompleted": "Completed",
   "agendaEmptyDay": "No jobs for this day. Select another date or All."
 }

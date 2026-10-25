@@ -43,7 +43,7 @@ extension _GroupInvoicesBudgetsViewPayloadSection
         includeDraftPlaceholders: includeDraftPlaceholders,
       ),
       'totals': _buildBudgetDiscountTotalsPayload(),
-      'advancePercent': _budgetAdvancePercent ?? 70,
+      'advancePercent': _budgetAdvancePercent ?? 0,
     };
   }
 
@@ -581,10 +581,13 @@ extension _GroupInvoicesBudgetsViewPayloadSection
     payload = _budgetPayloadData(payload);
     _applyBudgetDiscountPayload(payload);
     final advancePercent = _parseBudgetDiscountInput(
-      (payload['advancePercent'] ?? 70).toString(),
+      (payload.containsKey('advancePercent')
+              ? payload['advancePercent'] ?? 0
+              : 70)
+          .toString(),
     );
     final safeAdvancePercent =
-        advancePercent != null && advancePercent >= 1 && advancePercent <= 100
+        advancePercent != null && advancePercent >= 0 && advancePercent <= 100
             ? advancePercent
             : 70;
     _budgetAdvancePercentCtrl.text =

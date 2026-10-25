@@ -62,4 +62,25 @@ void main() {
     });
     expect(original.name, 'Calendar Member');
   });
+
+  test('copyWith can clear optional profile fields', () {
+    final original = User.fromJson({
+      ...profile(),
+      'bio': 'Old bio',
+      'phoneNumber': '123',
+      'location': 'Denia',
+    });
+
+    final cleared = original.copyWith(
+      displayName: null,
+      bio: null,
+      phoneNumber: null,
+      location: null,
+    );
+
+    expect(cleared.displayName, isNull);
+    expect(cleared.bio, isNull);
+    expect(cleared.phoneNumber, isNull);
+    expect(cleared.location, isNull);
+  });
 }

@@ -62,7 +62,8 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
         return;
       }
       for (var i = 0;
-          i < files.length && i < _ExpenseUploadScreenStateBase._maxBatchDocuments;
+          i < files.length &&
+              i < _ExpenseUploadScreenStateBase._maxBatchDocuments;
           i++) {
         final file = files[i];
         final fileName = names[i];
@@ -70,8 +71,7 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
           if (fileName.toLowerCase().endsWith('.zip') &&
               await controller.getFileSize(file) >
                   _ExpenseUploadScreenStateBase._maxBatchArchiveSizeBytes) {
-            droppedFiles.add(
-                (fileName: fileName, fileBytes: Uint8List(0)));
+            droppedFiles.add((fileName: fileName, fileBytes: Uint8List(0)));
             continue;
           }
           if (!fileName.toLowerCase().endsWith('.zip') &&
@@ -261,12 +261,12 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
               onDropFiles: _handleWebDropFiles,
             ),
           ),
-          IgnorePointer(child: content),
+          IgnorePointer(child: SingleChildScrollView(child: content)),
         ],
       );
     }
 
-    return content;
+    return SingleChildScrollView(child: content);
   }
 }
 

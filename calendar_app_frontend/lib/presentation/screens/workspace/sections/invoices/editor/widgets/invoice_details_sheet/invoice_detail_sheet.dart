@@ -42,6 +42,7 @@ class InvoiceDetailSheet extends StatefulWidget {
   final Group group;
   final ValueChanged<String>? onOpenRecurringSeries;
   final VoidCallback? onInvoiceChanged;
+  final VoidCallback? onEditInvoice;
 
   final bool fullPage;
 
@@ -54,6 +55,7 @@ class InvoiceDetailSheet extends StatefulWidget {
     required this.group,
     this.onOpenRecurringSeries,
     this.onInvoiceChanged,
+    this.onEditInvoice,
   });
 
   @override
@@ -204,6 +206,18 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
             label: Text(l.invoicePreviewCta),
           ),
           const SizedBox(height: 12),
+        ],
+        if ((invoice.status ?? '').toLowerCase() == 'issued' &&
+            widget.onEditInvoice != null) ...[
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: widget.onEditInvoice,
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              label: Text(isEs ? 'Modificar factura emitida' : 'Edit issued invoice'),
+            ),
+          ),
+          const SizedBox(height: 4),
         ],
         // Sheet title
         Padding(

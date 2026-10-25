@@ -143,7 +143,13 @@ class _ExpenseBatchPreviewItem {
       id: tempId.isNotEmpty ? tempId : '${fileName}_$index',
       tempId: tempId,
       fileName: fileName,
-      originalPath: _batchJobFirstText([raw['originalPath'], raw['sourceDocument'] is Map ? (raw['sourceDocument'] as Map)['originalPath'] : null, fileName]),
+      originalPath: _batchJobFirstText([
+        raw['originalPath'],
+        raw['sourceDocument'] is Map
+            ? (raw['sourceDocument'] as Map)['originalPath']
+            : null,
+        fileName
+      ]),
       status: status.isEmpty ? 'needs_review' : status,
       prediction: raw['prediction'] is Map
           ? Map<String, dynamic>.from(raw['prediction'] as Map)
@@ -509,6 +515,10 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   Map<String, dynamic>? _batchJobResult;
   Map<String, dynamic>? _batchConfirmResult;
   List<_ExpenseBatchPreviewItem> _batchPreviewItems = [];
+  List<Map<String, dynamic>> _recentBatchJobs = [];
+  bool _recentBatchJobsLoading = false;
+  bool _recentBatchJobsExpanded = false;
+  String? _recentBatchJobsError;
   Timer? _batchJobPollTimer;
 
   static const int _maxBatchDocuments = 200;
@@ -2121,14 +2131,16 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                       if (jobTotal > 0) return jobTotal;
                       return _batchArchiveName == null
                           ? _batchDocumentNames.length
-                          : _batchJobInt(_batchArchiveInspection?['compatibleDocuments']);
+                          : _batchJobInt(
+                              _batchArchiveInspection?['compatibleDocuments']);
                     })(),
                     maxDocuments:
                         _ExpenseUploadScreenStateBase._maxBatchDocuments,
-                    totalBytes: _batchArchiveBytes?.length ?? _batchDocumentBytes.fold<int>(
-                      0,
-                      (sum, bytes) => sum + bytes.length,
-                    ),
+                    totalBytes: _batchArchiveBytes?.length ??
+                        _batchDocumentBytes.fold<int>(
+                          0,
+                          (sum, bytes) => sum + bytes.length,
+                        ),
                     submitting: _batchSubmitting ||
                         _batchGeneratingJson ||
                         batchJobActive,
@@ -2142,7 +2154,9 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                             (_batchArchiveBytes != null &&
                                 !_batchArchiveInspecting &&
                                 _batchArchiveInspection?['blocked'] != true &&
-                                _batchJobInt(_batchArchiveInspection?['compatibleDocuments']) > 0)),
+                                _batchJobInt(_batchArchiveInspection?[
+                                        'compatibleDocuments']) >
+                                    0)),
                     jobActive: batchJobActive,
                     jobCompleted: batchJobCompleted,
                     jobFailed: batchJobStatus == 'failed',
@@ -2152,22 +2166,23 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                         _batchJobInt(_batchJobStatus?['duplicateCount']),
                     onPickDocuments: pickBatchDocuments,
                     onImport: submitBatchImport,
-                    onClearSelection: _batchDocumentNames.isEmpty && _batchArchiveName == null
-                        ? null
-                        : () => setState(() {
-                              _resetBatchJobTracking(
-                                clearResult: true,
-                                clearCache: true,
-                              );
-                              _batchDocumentBytes.clear();
-                              _batchDocumentNames.clear();
-                              clearBatchArchive();
-                              _batchSkippedDetails.clear();
-                              _batchVerifyMessage = null;
-                              _batchError = null;
-                              _batchDetectedInvoices = 0;
-                              _batchFileFilterIndex = 0;
-                            }),
+                    onClearSelection:
+                        _batchDocumentNames.isEmpty && _batchArchiveName == null
+                            ? null
+                            : () => setState(() {
+                                  _resetBatchJobTracking(
+                                    clearResult: true,
+                                    clearCache: true,
+                                  );
+                                  _batchDocumentBytes.clear();
+                                  _batchDocumentNames.clear();
+                                  clearBatchArchive();
+                                  _batchSkippedDetails.clear();
+                                  _batchVerifyMessage = null;
+                                  _batchError = null;
+                                  _batchDetectedInvoices = 0;
+                                  _batchFileFilterIndex = 0;
+                                }),
                   ),
                 ],
                 SizedBox(height: batchJobCompleted ? 6 : 10),
@@ -2487,6 +2502,7 @@ class ExpenseUploadScreenState extends _ExpenseUploadScreenStateBase
     _batchArchiveInspectionError = null;
     _batchArchiveInspecting = false;
   }
+
   @override
   String? get batchError => _batchError;
   @override
