@@ -19,6 +19,7 @@ class InvoiceListItem extends StatefulWidget {
   final Invoice invoice;
   final GroupClient client;
   final VoidCallback? onTap;
+  final VoidCallback? onPreview;
   final VoidCallback? onDelete;
   final VoidCallback? onEdit;
   final VoidCallback? onIssue;
@@ -41,6 +42,7 @@ class InvoiceListItem extends StatefulWidget {
     required this.invoice,
     required this.client,
     this.onTap,
+    this.onPreview,
     this.onDelete,
     this.onEdit,
     this.onIssue,
@@ -182,6 +184,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                 setState(() => _detailsExpanded = !_detailsExpanded);
               }
               if (value == 'edit') widget.onEdit?.call();
+              if (value == 'download') _downloadPdf();
               if (value == 'delete') widget.onDelete?.call();
             },
             itemBuilder: (_) => [
@@ -192,7 +195,23 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                     : (isEs ? 'Seguimiento de entrega' : 'Delivery tracking')),
               ),
               if (widget.onEdit != null)
-                NavigationPopupMenuItem(value: 'edit', child: Text(l.edit)),
+                NavigationPopupMenuItem(
+                  value: 'edit',
+                  child: Row(children: [
+                    const Icon(Icons.edit_outlined, size: 16),
+                    const SizedBox(width: 8),
+                    Text(l.edit),
+                  ]),
+                ),
+              NavigationPopupMenuItem(
+                value: 'download',
+                enabled: !_downloadingPdf,
+                child: Row(children: [
+                  const Icon(Icons.download_rounded, size: 16),
+                  const SizedBox(width: 8),
+                  Text(isEs ? 'Descargar PDF' : 'Download PDF'),
+                ]),
+              ),
               if (widget.onDelete != null)
                 NavigationPopupMenuItem(
                     value: 'delete',
@@ -379,20 +398,15 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       selected: widget.selected,
       onTap: widget.onTap,
       previewLabel: isEs ? 'Vista previa' : 'Preview',
-      quickActionSlots: 2,
+      quickActionSlots: 1,
       quickActions: [
-        if (widget.onEdit != null)
+        if (widget.onPreview != null)
           CompactDocumentQuickAction(
-            icon: Icons.edit_outlined,
-            tooltip: l.edit,
-            onPressed: widget.onEdit,
+            icon: Icons.visibility_outlined,
+            tooltip: isEs ? 'Vista previa' : 'Preview',
+            onPressed: widget.onPreview,
+            opensPreviewDrawer: true,
           ),
-        CompactDocumentQuickAction(
-          icon: Icons.download_rounded,
-          tooltip: isEs ? 'Descargar PDF' : 'Download PDF',
-          busy: _downloadingPdf,
-          onPressed: _downloadPdf,
-        ),
       ],
       status: Row(mainAxisSize: MainAxisSize.min, children: [
         Flexible(
@@ -415,18 +429,31 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
         ),
       ]),
       actions: [
+        if (widget.onEdit != null)
+          CompactDocumentAction(
+            l.edit,
+            widget.onEdit,
+            icon: Icons.edit_outlined,
+          ),
+        CompactDocumentAction(
+          isEs ? 'Descargar PDF' : 'Download PDF',
+          _downloadingPdf ? null : _downloadPdf,
+          icon: Icons.download_rounded,
+        ),
         CompactDocumentAction(
             _detailsExpanded
                 ? (isEs ? 'Ocultar seguimiento' : 'Hide delivery tracking')
                 : (isEs ? 'Seguimiento de entrega' : 'Delivery tracking'),
-            () => setState(() => _detailsExpanded = !_detailsExpanded)),
+            () => setState(() => _detailsExpanded = !_detailsExpanded),
+            icon: Icons.local_shipping_outlined),
         if (widget.onIssue != null)
           CompactDocumentAction(l.invoiceIssueCta, widget.onIssue),
         if (widget.onInspectRecurrence != null)
           CompactDocumentAction(isEs ? 'Ver recurrencia' : 'Recurrence',
               widget.onInspectRecurrence),
         if (widget.onDelete != null)
-          CompactDocumentAction(l.delete, widget.onDelete, destructive: true),
+          CompactDocumentAction(l.delete, widget.onDelete,
+              destructive: true, icon: Icons.delete_outline_rounded),
       ],
       details: !_detailsExpanded
           ? null

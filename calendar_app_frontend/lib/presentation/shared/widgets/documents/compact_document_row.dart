@@ -122,10 +122,11 @@ _DocumentColumnLayout _documentColumnLayout(
 
 class CompactDocumentAction {
   const CompactDocumentAction(this.label, this.onPressed,
-      {this.destructive = false});
+      {this.destructive = false, this.icon});
   final String label;
   final VoidCallback? onPressed;
   final bool destructive;
+  final IconData? icon;
 }
 
 /// Always-visible icon action (e.g. download, edit). Replaces the default
@@ -503,10 +504,30 @@ class CompactDocumentRow extends StatelessWidget {
                                     NavigationPopupMenuItem(
                                         value: i,
                                         enabled: actions[i].onPressed != null,
-                                        child: Text(actions[i].label,
-                                            style: actions[i].destructive
-                                                ? TextStyle(color: cs.error)
-                                                : null))
+                                        child: Row(
+                                          children: [
+                                            if (actions[i].icon != null) ...[
+                                              Icon(
+                                                actions[i].icon,
+                                                size: 16,
+                                                color: actions[i].destructive
+                                                    ? cs.error
+                                                    : null,
+                                              ),
+                                              const SizedBox(width: 8),
+                                            ],
+                                            Expanded(
+                                              child: Text(
+                                                actions[i].label,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: actions[i].destructive
+                                                    ? TextStyle(color: cs.error)
+                                                    : null,
+                                              ),
+                                            ),
+                                          ],
+                                        ))
                                 ]),
                       ),
                     ))

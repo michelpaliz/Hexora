@@ -605,6 +605,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                                         )
                                     : null,
                                 onTap: () => widget.onTap(inv),
+                                onPreview: () => widget.onTap(inv),
                                 onDelete: widget.onDelete == null
                                     ? null
                                     : () => widget.onDelete!(inv),

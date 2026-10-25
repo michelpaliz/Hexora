@@ -52,6 +52,7 @@ void main() {
                                 issueDate: DateTime(2026, 9, 26)),
                             client: client,
                             onTap: () => calls.add('details'),
+                            onPreview: () => calls.add('preview'),
                             onEdit: () => calls.add('edit'),
                             onIssue: () => calls.add('issue'),
                             onDelete: () => calls.add('delete'),
@@ -89,24 +90,38 @@ void main() {
           await tester.pumpAndSettle();
         }
 
-        // The row is the only primary details action. Edit and download stay
-        // visible, while delivery tracking and other secondary actions remain
-        // in the overflow menu.
+        // Row selection and the dedicated preview action stay separate. Edit,
+        // download, delivery tracking, and other secondary actions live in the
+        // overflow menu.
         await tester.tap(find.text('336-26'));
         await tester.pumpAndSettle();
         expect(calls.where((call) => call == 'details').length, 1);
         await tester.tap(find.descendant(
             of: find.byType(CompactDocumentRow).at(0),
-            matching: find.byTooltip(l.edit)));
+            matching: find.byTooltip('Vista previa')));
+        expect(calls.where((call) => call == 'preview').length, 1);
+        expect(
+            find.descendant(
+                of: find.byType(CompactDocumentRow).at(0),
+                matching: find.byTooltip(l.edit)),
+            findsNothing);
+        await select(0, l.edit);
         expect(calls.where((call) => call == 'details').length, 1);
         await tester.tap(find.descendant(
             of: find.byType(CompactDocumentRow).at(1),
             matching: find.byTooltip(l.download)));
+        await tester.tap(find.descendant(
+            of: find.byType(CompactDocumentRow).at(0),
+            matching: find.byType(PopupMenuButton<int>)));
+        await tester.pumpAndSettle();
+        expect(find.text('Descargar PDF'), findsOneWidget);
+        await tester.tap(find.byType(ModalBarrier).last);
+        await tester.pumpAndSettle();
         expect(
             find.descendant(
                 of: find.byType(CompactDocumentRow).at(0),
                 matching: find.byIcon(Icons.visibility_outlined)),
-            findsNothing);
+            findsOneWidget);
         await select(0, l.invoiceIssueCta);
         await select(0, 'Ver recurrencia');
         await select(0, l.delete);
@@ -122,6 +137,7 @@ void main() {
             containsAll([
               'edit',
               'details',
+              'preview',
               'issue',
               'recurrence',
               'delete',
