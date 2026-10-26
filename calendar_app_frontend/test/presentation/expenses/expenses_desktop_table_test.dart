@@ -63,15 +63,39 @@ void main() {
     expect(find.byTooltip('Vista compacta'), findsOneWidget);
     expect(find.byTooltip('Vista extendida'), findsOneWidget);
     expect(find.byTooltip('Vista previa'), findsNWidgets(2));
-    expect(find.byTooltip('OCR / Revisar documento'), findsNWidgets(2));
     expect(find.byTooltip('Editar gasto'), findsNWidgets(2));
-    expect(find.byTooltip('Eliminar gasto'), findsNWidgets(2));
+    expect(find.byTooltip('OCR / Revisar documento'), findsNothing);
+    expect(find.byTooltip('Eliminar gasto'), findsNothing);
+    expect(find.text('Resumen de gastos'), findsNothing);
+    expect(find.text('Según filtros activos'), findsNothing);
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('expense-desktop-toolbar')))
+          .height,
+      44,
+    );
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('expense-summary-strip')))
+          .height,
+      40,
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('expense-table-header'))).height,
+      36,
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('expense-row-one'))).height,
+      inInclusiveRange(44, 48),
+    );
+    expect(
+      find.byTooltip('Proveedor con un nombre extraordinariamente largo'),
+      findsOneWidget,
+    );
 
     final actionCenters = [
       'Vista previa',
-      'OCR / Revisar documento',
       'Editar gasto',
-      'Eliminar gasto',
       'Más acciones',
     ]
         .map((tooltip) => tester.getCenter(find.byTooltip(tooltip).first))
@@ -85,7 +109,36 @@ void main() {
       expect(actionCenters[index].dx, greaterThan(actionCenters[index - 1].dx));
     }
 
-    await tester.tap(find.byTooltip('Eliminar gasto').first);
+    await tester.tap(find.text('Estado IVA').first);
+    await tester.pumpAndSettle();
+    final vatDialog = find.byType(Dialog);
+    final verifiedFilter = find
+        .descendant(
+          of: vatDialog,
+          matching: find.text('Verificado'),
+        )
+        .first;
+    await tester.tap(verifiedFilter);
+    await tester.pump();
+    expect(find.byKey(const ValueKey('vat-filter-loading')), findsOneWidget);
+    await tester.tap(verifiedFilter);
+    await tester.pump();
+    await tester.tapAt(const Offset(1300, 700));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final firstMoreMenu = find
+        .ancestor(
+          of: find.byTooltip('Más acciones').first,
+          matching: find.byWidgetPredicate(
+            (widget) => widget is PopupMenuButton<String>,
+          ),
+        )
+        .first;
+    await tester.tap(firstMoreMenu);
+    await tester.pumpAndSettle();
+    expect(find.text('OCR / Revisar documento'), findsOneWidget);
+    expect(find.text('Eliminar gasto'), findsOneWidget);
+    await tester.tap(find.text('Eliminar gasto'));
     await tester.pumpAndSettle();
     expect(find.text('Proveedor con un nombre extraordinariamente largo'),
         findsWidgets);
@@ -109,9 +162,9 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byTooltip('Vista previa'), findsNothing);
-    expect(find.byTooltip('OCR / Revisar documento'), findsOneWidget);
     expect(find.byTooltip('Editar gasto'), findsOneWidget);
-    expect(find.byTooltip('Eliminar gasto'), findsOneWidget);
+    expect(find.byTooltip('OCR / Revisar documento'), findsNothing);
+    expect(find.byTooltip('Eliminar gasto'), findsNothing);
     expect(find.byTooltip('Más acciones'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
@@ -157,14 +210,24 @@ void main() {
     }
 
     await pumpTab(canDelete: false);
-    final disabledDelete = find.descendant(
-      of: find.byTooltip('Eliminar gasto'),
-      matching: find.byType(TextButton),
-    );
-    expect(tester.widget<TextButton>(disabledDelete).onPressed, isNull);
+    Finder moreMenu() => find
+        .ancestor(
+          of: find.byTooltip('Más acciones'),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is PopupMenuButton<String>,
+          ),
+        )
+        .first;
+    await tester.tap(moreMenu());
+    await tester.pumpAndSettle();
+    expect(find.text('Eliminar gasto'), findsNothing);
+    await tester.tapAt(const Offset(1000, 600));
+    await tester.pumpAndSettle();
 
     await pumpTab(canDelete: true);
-    await tester.tap(find.byTooltip('Eliminar gasto'));
+    await tester.tap(moreMenu());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Eliminar gasto'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Eliminar gasto').last);
     await tester.pumpAndSettle();

@@ -43,13 +43,19 @@ class _ConversationPaneState extends State<_ConversationPane> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
     final messages = [...widget.thread.messages]..sort((a, b) {
         final aDate = a.date ?? DateTime.fromMillisecondsSinceEpoch(0);
         final bDate = b.date ?? DateTime.fromMillisecondsSinceEpoch(0);
         return _newestFirst ? bDate.compareTo(aDate) : aDate.compareTo(bDate);
       });
+    final newestMessageId = widget.thread.messages.isEmpty
+        ? null
+        : ([
+            ...widget.thread.messages
+          ]..sort((a, b) => (b.date ?? DateTime.fromMillisecondsSinceEpoch(0))
+                .compareTo(a.date ?? DateTime.fromMillisecondsSinceEpoch(0))))
+            .first
+            .id;
 
     String resolvedSubject = widget.thread.subject.trim();
     if (resolvedSubject.isEmpty) {
@@ -63,8 +69,6 @@ class _ConversationPaneState extends State<_ConversationPane> {
     }
     final subject =
         resolvedSubject.isEmpty ? l.mailDetailNoSubject : resolvedSubject;
-    final participants = widget.thread.participants.join(', ').trim();
-
     String replyRecipientDisplay(MailMessage message) {
       final isSent = message.folderEnum == MailFolder.sent ||
           (message.folderEnum == null && widget.folder == MailFolder.sent);
@@ -83,65 +87,28 @@ class _ConversationPaneState extends State<_ConversationPane> {
 
     return Column(
       children: [
-        // ── Compact sticky subject bar ────────────────────────────
+        // Outside the scrolling list so the compact thread header stays put.
         if (!widget.hideSubjectBar)
-          Container(
-            padding: const EdgeInsets.fromLTRB(12, 6, 10, 6),
-            decoration: BoxDecoration(
-              color: cs.surface,
-              border: Border(
-                bottom: BorderSide(
-                  color: cs.outlineVariant.withValues(alpha: 0.3),
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    subject,
-                    style: t.bodySmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: cs.onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (participants.isNotEmpty) ...[
-                  const SizedBox(width: 10),
-                  Text(
-                    participants,
-                    style: t.bodySmall.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ],
-            ),
+          _ConversationHeader(
+            subject: subject,
+            messageCount: messages.length,
+            newestFirst: _newestFirst,
+            onSortChanged: (value) {
+              if (value == _newestFirst) return;
+              setState(() => _newestFirst = value);
+            },
           ),
-        // ── Message list + sticky reply composer ─────────────────
         Expanded(
           child: Column(
             children: [
-              _MessageListToolbar(
-                messageCount: messages.length,
-                newestFirst: _newestFirst,
-                onChanged: (value) {
-                  if (value == _newestFirst) return;
-                  setState(() => _newestFirst = value);
-                },
-              ),
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(10, 4, 10, 4),
+                  padding: const EdgeInsets.fromLTRB(10, 3, 10, 4),
                   itemCount: messages.length,
                   itemBuilder: (context, index) => _MessageCard(
+                    key: ValueKey(messages[index].id),
                     message: messages[index],
+                    initiallyExpanded: messages[index].id == newestMessageId,
                     onReply: () => widget.onStartReply(messages[index]),
                     onDownloadAttachment: widget.onDownloadAttachment,
                   ),
@@ -168,18 +135,20 @@ class _ConversationPaneState extends State<_ConversationPane> {
   }
 }
 
-// ── Message list toolbar (count + sort order) ─────────────────────────────────
+// ── Sticky conversation header ───────────────────────────────────────────────
 
-class _MessageListToolbar extends StatelessWidget {
-  const _MessageListToolbar({
+class _ConversationHeader extends StatelessWidget {
+  const _ConversationHeader({
+    required this.subject,
     required this.messageCount,
     required this.newestFirst,
-    required this.onChanged,
+    required this.onSortChanged,
   });
 
+  final String subject;
   final int messageCount;
   final bool newestFirst;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool> onSortChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -187,21 +156,56 @@ class _MessageListToolbar extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
+    return Container(
+      key: const ValueKey('mail-conversation-header'),
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.3),
+          ),
+        ),
+      ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: Text(
-              l.mailConversationMessageCount(messageCount),
-              style: t.bodySmall.copyWith(
-                color: cs.onSurfaceVariant,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  subject,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurface,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  l.mailConversationMessageCount(messageCount),
+                  maxLines: 1,
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
-          _SortOrderToggle(newestFirst: newestFirst, onChanged: onChanged),
+          if (messageCount > 1) ...[
+            const SizedBox(width: 10),
+            _SortOrderToggle(
+              newestFirst: newestFirst,
+              onChanged: onSortChanged,
+            ),
+          ],
         ],
       ),
     );
@@ -220,66 +224,58 @@ class _SortOrderToggle extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
 
-    Widget segment({
-      required bool value,
-      required IconData icon,
-      required String label,
-    }) {
-      final selected = newestFirst == value;
-      return InkWell(
-        onTap: selected ? null : () => onChanged(value),
-        borderRadius: BorderRadius.circular(999),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-          decoration: BoxDecoration(
-            color: selected ? cs.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 12,
-                color: selected ? cs.onPrimary : cs.onSurfaceVariant,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: t.bodySmall.copyWith(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? cs.onPrimary : cs.onSurfaceVariant,
-                ),
-              ),
-            ],
+    final label = newestFirst
+        ? l.mailConversationSortNewestFirst
+        : l.mailConversationSortOldestFirst;
+    return PopupMenuButton<bool>(
+      key: const ValueKey('mail-conversation-sort'),
+      tooltip: label,
+      initialValue: newestFirst,
+      onSelected: onChanged,
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: true,
+          child: Text(l.mailConversationSortNewestFirst),
+        ),
+        PopupMenuItem(
+          value: false,
+          child: Text(l.mailConversationSortOldestFirst),
+        ),
+      ],
+      child: Container(
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 9),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.5),
           ),
         ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          segment(
-            value: true,
-            icon: Icons.arrow_downward_rounded,
-            label: l.mailConversationSortNewestFirst,
-          ),
-          segment(
-            value: false,
-            icon: Icons.arrow_upward_rounded,
-            label: l.mailConversationSortOldestFirst,
-          ),
-        ],
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              newestFirst
+                  ? Icons.arrow_downward_rounded
+                  : Icons.arrow_upward_rounded,
+              size: 14,
+              color: cs.onSurfaceVariant,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: t.bodySmall.copyWith(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(width: 3),
+            Icon(Icons.expand_more_rounded,
+                size: 15, color: cs.onSurfaceVariant),
+          ],
+        ),
       ),
     );
   }
@@ -291,11 +287,13 @@ class _MessageCard extends StatefulWidget {
   const _MessageCard({
     super.key,
     required this.message,
+    required this.initiallyExpanded,
     required this.onReply,
     required this.onDownloadAttachment,
   });
 
   final MailMessage message;
+  final bool initiallyExpanded;
   final VoidCallback onReply;
   final ValueChanged<MailAttachment> onDownloadAttachment;
 
@@ -304,9 +302,17 @@ class _MessageCard extends StatefulWidget {
 }
 
 class _MessageCardState extends State<_MessageCard> {
+  late bool _expanded;
   bool _showQuoted = false;
   bool _showSignature = false;
   bool _showLegal = false;
+  bool _showComplete = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _expanded = widget.initiallyExpanded;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -336,7 +342,10 @@ class _MessageCardState extends State<_MessageCard> {
     final hasHtml = htmlBody != null && htmlBody.isNotEmpty;
     final rawBody = hasHtml ? htmlBody : (textBody ?? '');
 
-    final htmlSplit = hasHtml ? _splitHtmlAtLegal(rawBody) : null;
+    final htmlQuoteSplit = hasHtml ? _splitHtmlAtQuoted(rawBody) : null;
+    final quotedHtml = htmlQuoteSplit?.quoted ?? '';
+    final htmlSplit =
+        hasHtml ? _splitHtmlAtLegal(htmlQuoteSplit?.main ?? rawBody) : null;
     final mainHtml = htmlSplit?.main ?? rawBody;
     final legalHtml = htmlSplit?.legal ?? '';
 
@@ -348,12 +357,15 @@ class _MessageCardState extends State<_MessageCard> {
     final legalText = split.legal;
 
     final hasLegal = legalHtml.isNotEmpty || legalText.isNotEmpty;
+    final hasQuoted = quotedHtml.isNotEmpty || quoted.isNotEmpty;
+    final hasCompactSections = hasLegal || hasQuoted || signature.isNotEmpty;
+    final preview = _messagePreview(message);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         color: cs.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
         boxShadow: [
           BoxShadow(
@@ -367,248 +379,307 @@ class _MessageCardState extends State<_MessageCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Header zone ──────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 12, 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _SenderAvatar(address: fromLabel),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _MessageHeaderLayout(
-                        sender: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              fromLabel,
-                              style: t.bodySmall.copyWith(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                color: cs.onSurface,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (showFromAddressOnly) ...[
-                              const SizedBox(height: 1),
-                              Text(
-                                fromAddressOnly,
-                                style: t.bodySmall.copyWith(
-                                  color: cs.onSurfaceVariant,
-                                  fontSize: 11,
+          Semantics(
+            button: true,
+            expanded: _expanded,
+            child: InkWell(
+              key: ValueKey('mail-message-header-${message.id}'),
+              onTap: () => setState(() => _expanded = !_expanded),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(8),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 10, 9),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SenderAvatar(address: fromLabel),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _MessageHeaderLayout(
+                            sender: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  fromLabel,
+                                  style: t.bodySmall.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                    color: cs.onSurface,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                                if (showFromAddressOnly) ...[
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    fromAddressOnly,
+                                    style: t.bodySmall.copyWith(
+                                      color: cs.onSurfaceVariant,
+                                      fontSize: 11,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
+                            ),
+                            date: Text(
+                              dateLabel,
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          if (_expanded) ...[
+                            const SizedBox(height: 5),
+                            _MetaChipRow(
+                              label: l.mailDetailToLabel,
+                              addresses: toAddresses,
+                            ),
+                            if (ccAddresses.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              _MetaChipRow(
+                                label: 'CC',
+                                addresses: ccAddresses,
                               ),
                             ],
-                          ],
-                        ),
-                        date: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: cs.surfaceContainerHighest
-                                .withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            dateLabel,
-                            style: t.bodySmall.copyWith(
-                              color: cs.onSurfaceVariant,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
+                          ] else if (preview.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              preview,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                                fontSize: 11,
+                              ),
                             ),
-                          ),
-                        ),
+                          ],
+                        ],
                       ),
-                      const SizedBox(height: 5),
-                      _MetaChipRow(
-                        label: l.mailDetailToLabel,
-                        addresses: toAddresses,
-                      ),
-                      if (ccAddresses.isNotEmpty) ...[
-                        const SizedBox(height: 3),
-                        _MetaChipRow(
-                          label: 'CC',
-                          addresses: ccAddresses,
-                        ),
-                      ],
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      _expanded ? Icons.expand_less : Icons.expand_more,
+                      size: 18,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-          Divider(
-            height: 1,
-            color: cs.outlineVariant.withValues(alpha: 0.25),
-          ),
-          // ── Body zone ────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 760),
-              child: DefaultTextStyle(
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurface,
-                  height: 1.6,
-                  fontSize: 14,
+          if (_expanded) ...[
+            Divider(
+              height: 1,
+              color: cs.outlineVariant.withValues(alpha: 0.25),
+            ),
+            // ── Body zone ────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: DefaultTextStyle(
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurface,
+                    height: 1.35,
+                    fontSize: 14,
+                  ),
+                  child: hasHtml
+                      ? MailHtmlContent(
+                          html: _showComplete ? rawBody : mainHtml,
+                          textColor: cs.onSurface,
+                          linkColor: cs.primary,
+                          fontFamily: t.bodySmall.fontFamily,
+                          fontSize: 14,
+                          lineHeight: 1.35,
+                          paragraphSpacing: 4,
+                        )
+                      : Text(
+                          _showComplete
+                              ? rawBody
+                              : (mainText.isEmpty ? rawBody : mainText),
+                        ),
                 ),
+              ),
+            ),
+            if (hasCompactSections)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
+                child: TextButton.icon(
+                  key: ValueKey('mail-complete-${message.id}'),
+                  onPressed: () =>
+                      setState(() => _showComplete = !_showComplete),
+                  icon: Icon(
+                    _showComplete
+                        ? Icons.compress_rounded
+                        : Icons.open_in_full_rounded,
+                    size: 14,
+                  ),
+                  label: Text(
+                    _showComplete
+                        ? l.mailConversationViewCompact
+                        : l.mailConversationViewComplete,
+                  ),
+                ),
+              ),
+            // ── Legal notice (if detected) ───────────────────────────
+            if (!_showComplete && hasLegal)
+              _LegalSection(
+                isOpen: _showLegal,
+                showLabel: l.mailLegalNoticeShow,
+                hideLabel: l.mailLegalNoticeHide,
+                onToggle: () => setState(() => _showLegal = !_showLegal),
                 child: hasHtml
                     ? MailHtmlContent(
-                        html: mainHtml,
-                        textColor: cs.onSurface,
+                        html: legalHtml,
+                        textColor: cs.onSurfaceVariant,
                         linkColor: cs.primary,
                         fontFamily: t.bodySmall.fontFamily,
-                        fontSize: 14,
-                        lineHeight: 1.6,
-                        paragraphSpacing: 12,
-                      )
-                    : Text(mainText.isEmpty ? rawBody : mainText),
-              ),
-            ),
-          ),
-          // ── Legal notice (if detected) ───────────────────────────
-          if (hasLegal)
-            _LegalSection(
-              isOpen: _showLegal,
-              showLabel: l.mailLegalNoticeShow,
-              hideLabel: l.mailLegalNoticeHide,
-              onToggle: () => setState(() => _showLegal = !_showLegal),
-              child: hasHtml
-                  ? MailHtmlContent(
-                      html: legalHtml,
-                      textColor: cs.onSurfaceVariant,
-                      linkColor: cs.primary,
-                      fontFamily: t.bodySmall.fontFamily,
-                      fontSize: 11,
-                      lineHeight: 1.4,
-                      paragraphSpacing: 6,
-                    )
-                  : Text(
-                      legalText,
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
-                        height: 1.4,
                         fontSize: 11,
-                      ),
-                    ),
-            ),
-          // ── Quoted messages ──────────────────────────────────────
-          if (!hasHtml && quoted.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-              child: _CollapsedSection(
-                title: l.mailConversationPreviousMessage(1),
-                isOpen: _showQuoted,
-                onToggle: () => setState(() => _showQuoted = !_showQuoted),
-                child: Text(
-                  quoted,
-                  style: t.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
-                    height: 1.4,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ),
-          // ── Signature ────────────────────────────────────────────
-          if (!hasHtml && signature.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-              child: _CollapsedSection(
-                title: l.mailConversationSignature,
-                isOpen: _showSignature,
-                onToggle: () =>
-                    setState(() => _showSignature = !_showSignature),
-                child: Text(
-                  signature,
-                  style: t.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
-                    height: 1.4,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ),
-          // ── Attachments ──────────────────────────────────────────
-          if (message.attachments.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Divider(
-                    height: 1,
-                    color: cs.outlineVariant.withValues(alpha: 0.25),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.attach_file_rounded,
-                        size: 13,
-                        color: cs.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        l.mailDetailAttachmentsLabel,
+                        lineHeight: 1.4,
+                        paragraphSpacing: 6,
+                      )
+                    : Text(
+                        legalText,
                         style: t.bodySmall.copyWith(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
+                          color: cs.onSurfaceVariant,
+                          height: 1.4,
+                          fontSize: 11,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  ...message.attachments.map(
-                    (a) => _AttachmentRow(
-                      attachment: a,
-                      onDownload: () => widget.onDownloadAttachment(a),
+              ),
+            // ── Quoted messages ──────────────────────────────────────
+            if (!_showComplete && hasQuoted)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+                child: _CollapsedSection(
+                  title: _showQuoted
+                      ? l.mailConversationHideQuoted
+                      : l.mailConversationShowQuoted,
+                  isOpen: _showQuoted,
+                  onToggle: () => setState(() => _showQuoted = !_showQuoted),
+                  child: hasHtml
+                      ? MailHtmlContent(
+                          html: quotedHtml,
+                          textColor: cs.onSurfaceVariant,
+                          linkColor: cs.primary,
+                          fontFamily: t.bodySmall.fontFamily,
+                          fontSize: 12,
+                          lineHeight: 1.35,
+                          paragraphSpacing: 4,
+                        )
+                      : Text(
+                          quoted,
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant,
+                            height: 1.35,
+                            fontSize: 12,
+                          ),
+                        ),
+                ),
+              ),
+            // ── Signature ────────────────────────────────────────────
+            if (!_showComplete && !hasHtml && signature.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+                child: _CollapsedSection(
+                  title: l.mailConversationSignature,
+                  isOpen: _showSignature,
+                  onToggle: () =>
+                      setState(() => _showSignature = !_showSignature),
+                  child: Text(
+                    signature,
+                    style: t.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.4,
+                      fontSize: 12,
                     ),
                   ),
-                ],
-              ),
-            ),
-          // Desktop quick actions; mobile uses the conversation action bar.
-          if (MediaQuery.sizeOf(context).width >= 650)
-            Container(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withValues(alpha: 0.2),
-                border: Border(
-                  top: BorderSide(
-                    color: cs.outlineVariant.withValues(alpha: 0.25),
-                  ),
-                ),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(12),
-                  bottomRight: Radius.circular(12),
                 ),
               ),
-              child: Row(
-                children: [
-                  _ActionChipBtn(
-                    icon: Icons.reply_rounded,
-                    label: l.mailConversationReply,
-                    onTap: widget.onReply,
-                  ),
-                  const SizedBox(width: 6),
-                  _ActionChipBtn(
-                    icon: Icons.reply_all_rounded,
-                    label: l.mailConversationReplyAll,
-                  ),
-                  const SizedBox(width: 6),
-                  _ActionChipBtn(
-                    icon: Icons.forward_rounded,
-                    label: l.mailConversationForward,
-                  ),
-                ],
+            // ── Attachments ──────────────────────────────────────────
+            if (message.attachments.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Divider(
+                      height: 1,
+                      color: cs.outlineVariant.withValues(alpha: 0.25),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.attach_file_rounded,
+                          size: 13,
+                          color: cs.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          l.mailDetailAttachmentsLabel,
+                          style: t.bodySmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    ...message.attachments.map(
+                      (a) => _AttachmentRow(
+                        attachment: a,
+                        onDownload: () => widget.onDownloadAttachment(a),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+            // Desktop quick actions; mobile uses the conversation action bar.
+            if (MediaQuery.sizeOf(context).width >= 650)
+              Container(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.2),
+                  border: Border(
+                    top: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(12),
+                    bottomRight: Radius.circular(12),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    _ActionChipBtn(
+                      icon: Icons.reply_rounded,
+                      label: l.mailConversationReply,
+                      onTap: widget.onReply,
+                    ),
+                    const SizedBox(width: 6),
+                    _ActionChipBtn(
+                      icon: Icons.reply_all_rounded,
+                      label: l.mailConversationReplyAll,
+                    ),
+                    const SizedBox(width: 6),
+                    _ActionChipBtn(
+                      icon: Icons.forward_rounded,
+                      label: l.mailConversationForward,
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ],
       ),
     );
@@ -1194,9 +1265,7 @@ _BodySplit _splitBody(String body) {
     if (!inQuote && !inSignature && !inLegal) {
       if (legalPatterns.any((p) => p.hasMatch(line))) {
         inLegal = true;
-      } else if (line.startsWith('>') ||
-          line.contains('escribió:') ||
-          line.contains('wrote:')) {
+      } else if (_isQuotedTextBoundary(line)) {
         inQuote = true;
       } else if (line == '--' || line == '__') {
         inSignature = true;
@@ -1219,6 +1288,70 @@ _BodySplit _splitBody(String body) {
     signature.join('\n').trim(),
     legal.join('\n').trim(),
   );
+}
+
+bool _isQuotedTextBoundary(String line) {
+  final value = line.trim();
+  if (value.startsWith('>')) return true;
+  return RegExp(
+        r'^(?:On .+ wrote:|El .+ escribió:)\s*$',
+        caseSensitive: false,
+      ).hasMatch(value) ||
+      RegExp(
+        r'^-{2,}\s*(?:Original Message|Mensaje original)\s*-{2,}$',
+        caseSensitive: false,
+      ).hasMatch(value);
+}
+
+/// Splits only at well-known quoted-history markers. The complete-message
+/// control remains available in case a provider uses an unusual structure.
+({String main, String quoted}) _splitHtmlAtQuoted(String html) {
+  final patterns = <RegExp>[
+    RegExp(
+      r'''<(?:div|section)\b[^>]*(?:class|id)\s*=\s*["'][^"']*(?:gmail_quote|yahoo_quoted|moz-cite-prefix|divRplyFwdMsg|replyForwardMsg)[^"']*["']''',
+      caseSensitive: false,
+    ),
+    RegExp(
+      r'''<blockquote\b[^>]*type\s*=\s*["']?cite["']?''',
+      caseSensitive: false,
+    ),
+  ];
+  var splitAt = html.length;
+  for (final pattern in patterns) {
+    final match = pattern.firstMatch(html);
+    if (match != null && match.start < splitAt) splitAt = match.start;
+  }
+  if (splitAt == html.length) return (main: html, quoted: '');
+  return (
+    main: html.substring(0, splitAt).trim(),
+    quoted: html.substring(splitAt).trim(),
+  );
+}
+
+String _messagePreview(MailMessage message) {
+  var value = (message.snippet ?? '').trim();
+  if (value.isEmpty) value = (message.textBody ?? '').trim();
+  if (value.isEmpty) value = (message.htmlBody ?? '').trim();
+  if (value.isEmpty) return '';
+
+  value = value
+      .replaceAll(
+        RegExp(
+          r'<(?:style|script)\b[^>]*>[\s\S]*?</(?:style|script)>',
+          caseSensitive: false,
+        ),
+        ' ',
+      )
+      .replaceAll(RegExp(r'<[^>]+>'), ' ')
+      .replaceAll('&nbsp;', ' ')
+      .replaceAll('&amp;', '&')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&quot;', '"')
+      .replaceAll('&#39;', "'")
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  return value.length > 140 ? '${value.substring(0, 140)}…' : value;
 }
 
 /// Splits raw HTML at the first detected legal/disclaimer block.

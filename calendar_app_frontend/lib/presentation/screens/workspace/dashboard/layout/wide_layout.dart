@@ -325,13 +325,7 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
         groupId: state.group.id,
         memberIds: memberIds.toList(),
         groupRoles: state.group.userRoles,
-        onOpenWorkers: () {
-          Navigator.pushNamed(
-            context,
-            AppRoutes.groupTimeTracking,
-            arguments: state.group,
-          );
-        },
+        onOpenWorkers: () => state.openSection(Sections.workers),
       ),
       profile: UserProfilePopup(
         user: user,

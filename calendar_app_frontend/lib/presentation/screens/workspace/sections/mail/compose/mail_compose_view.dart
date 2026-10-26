@@ -184,86 +184,116 @@ class _MailComposeView extends StatelessWidget {
     }
 
     if (isWideEmbedded) {
-      final composeHeader = SizedBox(
-        key: const ValueKey('mail-compose-editor-header'),
-        height: 48,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            if (state.widget.onClose != null || Navigator.of(context).canPop())
-              IconButton(
-                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-                onPressed: state.widget.onClose ??
-                    () => Navigator.of(context).maybePop(),
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 16),
-                style: IconButton.styleFrom(
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  minimumSize: const Size(32, 32),
-                ),
-              ),
-            Expanded(
-              child: Text(
-                l.mailComposeTitle,
-                style: t.bodySmall.copyWith(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-      final desktopBody = Padding(
-        padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
-        child:
-            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Expanded(
-              child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                Expanded(
-                  flex: 9,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: NavigationSurface(
-                      key: const ValueKey('mail-compose-options-surface'),
-                      builder: (context) =>
-                          _InlineInvoiceFlowPanel(state: state),
-                    ),
+      Widget composeHeader(BuildContext headerContext) {
+        final headerTypography = AppTypography.of(headerContext);
+        final headerColors = Theme.of(headerContext).colorScheme;
+        return SizedBox(
+          key: const ValueKey('mail-compose-editor-header'),
+          height: 48,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (state.widget.onClose != null ||
+                  Navigator.of(context).canPop())
+                IconButton(
+                  tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                  onPressed: state.widget.onClose ??
+                      () => Navigator.of(context).maybePop(),
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 16),
+                  style: IconButton.styleFrom(
+                    foregroundColor: headerColors.onSurface,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    minimumSize: const Size(32, 32),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 11,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      composeHeader,
-                      Expanded(
-                        child: Container(
-                          key: const ValueKey('mail-compose-editor-surface'),
-                          decoration: BoxDecoration(
-                            color: cs.surface,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: cs.outlineVariant.withValues(alpha: .4),
-                            ),
+              Expanded(
+                child: Text(
+                  l.mailComposeTitle,
+                  style: headerTypography.bodySmall.copyWith(
+                    color: headerColors.onSurface,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      final desktopBody = ColoredBox(
+        key: const ValueKey('mail-compose-desktop-frame'),
+        color: AppDarkColors.sidebar,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                    Expanded(
+                      flex: 9,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: NavigationSurface(
+                          key: const ValueKey('mail-compose-options-surface'),
+                          builder: (navigationContext) => Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 10),
+                                child: composeHeader(navigationContext),
+                              ),
+                              Divider(
+                                height: 1,
+                                color: Theme.of(navigationContext)
+                                    .colorScheme
+                                    .outlineVariant
+                                    .withValues(alpha: .35),
+                              ),
+                              Expanded(
+                                child: _InlineInvoiceFlowPanel(state: state),
+                              ),
+                            ],
                           ),
-                          child: content,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ])),
-          const SizedBox(height: 10),
-          _ComposeBottomBar(
-              sending: state._sending,
-              enabled: canSend,
-              onSend: state._send,
-              label: state._sending ? l.mailComposeSending : sendLabel,
-              disabledHint: disabledSendHint),
-        ]),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 11,
+                      child: Container(
+                        key: const ValueKey('mail-compose-editor-surface'),
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          color: cs.surface,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: cs.outlineVariant.withValues(alpha: .4),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(child: content),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ])),
+              const SizedBox(height: 10),
+              _ComposeBottomBar(
+                  sending: state._sending,
+                  enabled: canSend,
+                  onSend: state._send,
+                  label: state._sending ? l.mailComposeSending : sendLabel,
+                  disabledHint: disabledSendHint),
+            ],
+          ),
+        ),
       );
       if (state.widget.embedded) return desktopBody;
       return Scaffold(body: SafeArea(child: desktopBody));

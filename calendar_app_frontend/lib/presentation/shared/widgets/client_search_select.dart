@@ -13,6 +13,7 @@ class ClientSearchSelect extends StatefulWidget {
   final String defaultPropertyKind;
   final double maxListHeight;
   final bool showAdvancedFilters;
+  final bool compact;
 
   const ClientSearchSelect({
     super.key,
@@ -23,6 +24,7 @@ class ClientSearchSelect extends StatefulWidget {
     this.defaultPropertyKind = 'comunidad de propietarios',
     this.maxListHeight = 520,
     this.showAdvancedFilters = true,
+    this.compact = false,
   });
 
   @override
@@ -154,17 +156,23 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
             itemBuilder: (_, i) {
               final client = filtered[i];
               final selected = client.id == widget.selectedClientId;
-              final meta = <String>[
-                if ((client.email ?? '').isNotEmpty) client.email!,
-                if ((client.phone ?? '').isNotEmpty) client.phone!,
-                if ((client.propertyKind ?? '').isNotEmpty)
-                  client.propertyKind!,
-              ].join(' - ');
+              final email = (client.email ?? '').trim();
+              final meta = widget.compact
+                  ? email
+                  : <String>[
+                      if (email.isNotEmpty) email,
+                      if ((client.phone ?? '').isNotEmpty) client.phone!,
+                      if ((client.propertyKind ?? '').isNotEmpty)
+                        client.propertyKind!,
+                    ].join(' - ');
               return SizedBox(
-                height: 52,
+                key: ValueKey('client-select-row-${client.id}'),
+                height: widget.compact ? 46 : 52,
                 child: ListItemCard(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: widget.compact ? 3 : 5,
+                  ),
                   leading: CircleAvatar(
                     radius: 14,
                     backgroundColor: cs.primary.withValues(alpha: 0.1),
@@ -179,13 +187,39 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                       ),
                     ),
                   ),
-                  title: client.name,
+                  titleWidget: Tooltip(
+                    message: client.name,
+                    child: Text(
+                      client.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodySmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                  ),
                   titleStyle: t.bodySmall.copyWith(
                     fontWeight: FontWeight.w800,
                     fontSize: 12,
                     color: cs.onSurface,
                   ),
-                  subtitle: meta.isEmpty ? null : meta,
+                  subtitleWidget: meta.isEmpty
+                      ? null
+                      : Tooltip(
+                          message: meta,
+                          child: Text(
+                            meta,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.bodySmall.copyWith(
+                              fontSize: 10,
+                              color: cs.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                   subtitleStyle: t.bodySmall.copyWith(
                     fontSize: 10,
                     color: cs.onSurfaceVariant,
@@ -286,9 +320,10 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                         });
                       }
                     : null,
+                moveSummaryIntoFilters: widget.compact,
               ),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: widget.compact ? 2 : 6),
             listSlot,
           ],
         );

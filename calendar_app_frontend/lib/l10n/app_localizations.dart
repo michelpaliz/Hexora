@@ -10931,6 +10931,30 @@ abstract class AppLocalizations {
   /// **'Signature'**
   String get mailConversationSignature;
 
+  /// No description provided for @mailConversationShowQuoted.
+  ///
+  /// In en, this message translates to:
+  /// **'Show quoted content'**
+  String get mailConversationShowQuoted;
+
+  /// No description provided for @mailConversationHideQuoted.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide quoted content'**
+  String get mailConversationHideQuoted;
+
+  /// No description provided for @mailConversationViewComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'View complete message'**
+  String get mailConversationViewComplete;
+
+  /// No description provided for @mailConversationViewCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Show compact view'**
+  String get mailConversationViewCompact;
+
   /// No description provided for @mailConversationReply.
   ///
   /// In en, this message translates to:
@@ -10964,7 +10988,7 @@ abstract class AppLocalizations {
   /// Message count shown above a thread's conversation list.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, one {# message} other {# messages}}'**
+  /// **'{count, plural, one {1 message} other {{count} messages}}'**
   String mailConversationMessageCount(int count);
 
   /// No description provided for @mailLegalNoticeShow.

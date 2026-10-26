@@ -2892,12 +2892,16 @@
     }
   },
   "mailConversationSignature": "Signature",
+  "mailConversationShowQuoted": "Show quoted content",
+  "mailConversationHideQuoted": "Hide quoted content",
+  "mailConversationViewComplete": "View complete message",
+  "mailConversationViewCompact": "Show compact view",
   "mailConversationReply": "Reply",
   "mailConversationReplyAll": "Reply all",
   "mailConversationForward": "Forward",
   "mailConversationSortNewestFirst": "Newest first",
   "mailConversationSortOldestFirst": "Oldest first",
-  "mailConversationMessageCount": "{count, plural, one {# message} other {# messages}}",
+  "mailConversationMessageCount": "{count, plural, one {1 message} other {{count} messages}}",
   "@mailConversationMessageCount": {
     "description": "Message count shown above a thread's conversation list.",
     "placeholders": {

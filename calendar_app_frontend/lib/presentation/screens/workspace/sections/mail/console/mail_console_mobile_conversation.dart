@@ -45,29 +45,12 @@ class _MobileConversation extends StatelessWidget {
             itemCount: newestFirst.length,
             itemBuilder: (context, index) {
               final message = newestFirst[index];
-              final card = _MessageCard(
+              return _MessageCard(
                   key: ValueKey(message.id),
                   message: message,
+                  initiallyExpanded: index == 0,
                   onReply: () => pane.onStartReply(message),
                   onDownloadAttachment: pane.onDownloadAttachment);
-              if (index == 0) return card;
-              return Card(
-                  child: ExpansionTile(
-                key: PageStorageKey('mail-message-${message.id}'),
-                title: Text(message.fromAddress,
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                subtitle: Text(message.snippet ?? message.subject,
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                children: [
-                  card,
-                  Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: OutlinedButton.icon(
-                          onPressed: () => pane.onStartReply(message),
-                          icon: const Icon(Icons.reply_rounded),
-                          label: Text(l.mailConversationReply)))
-                ],
-              ));
             },
           )),
           if (newestFirst.isNotEmpty)

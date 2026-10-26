@@ -27,6 +27,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('Adjuntar facturas'), findsOneWidget);
+    expect(
+      find.text('Selecciona el cliente y las facturas que quieres enviar.'),
+      findsNothing,
+    );
+    expect(
+      tester
+          .getSize(
+            find.byKey(const ValueKey('mail-attachment-compact-header')),
+          )
+          .height,
+      40,
+    );
+    expect(
+      tester
+          .getSize(
+            find.byKey(const ValueKey('mail-attachment-inline-stepper')),
+          )
+          .height,
+      32,
+    );
+    expect(find.text('Continuar'), findsOneWidget);
     final send = find
         .ancestor(
             of: find.text('Enviar correo'),
@@ -42,7 +63,7 @@ void main() {
             find.byKey(const ValueKey('mail-compose-editor-header')),
           )
           .dx,
-      greaterThan(
+      lessThan(
         tester.getTopLeft(find.text('Adjuntar facturas')).dx,
       ),
     );
@@ -58,6 +79,19 @@ void main() {
           .first,
     );
     expect(optionsBackground.color, AppDarkColors.sidebar);
+    final desktopFrame = tester.widget<ColoredBox>(
+      find.byKey(const ValueKey('mail-compose-desktop-frame')),
+    );
+    expect(desktopFrame.color, AppDarkColors.sidebar);
+    final editorSurface = tester.widget<Container>(
+      find.byKey(const ValueKey('mail-compose-editor-surface')),
+    );
+    expect(
+      (editorSurface.decoration! as BoxDecoration).color,
+      Theme.of(tester.element(find.byKey(
+        const ValueKey('mail-compose-editor-surface'),
+      ))).colorScheme.surface,
+    );
     final context = tester.element(
       find.byKey(const ValueKey('mail-compose-subject-input-surface')),
     );

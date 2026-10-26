@@ -42,6 +42,7 @@ class ClientsSearchFilters extends StatelessWidget {
   final String? statusValue;
   final ValueChanged<String>? onStatusChanged;
   final bool inactiveValueMeansHidden;
+  final bool moveSummaryIntoFilters;
 
   const ClientsSearchFilters({
     super.key,
@@ -79,6 +80,7 @@ class ClientsSearchFilters extends StatelessWidget {
     this.statusValue,
     this.onStatusChanged,
     this.inactiveValueMeansHidden = false,
+    this.moveSummaryIntoFilters = false,
   });
 
   @override
@@ -182,41 +184,55 @@ class ClientsSearchFilters extends StatelessWidget {
             ]),
           if (additionalFilters != null) additionalFilters!,
         ]);
+    final filterBody = LayoutBuilder(builder: (context, constraints) {
+      final width = constraints.maxWidth >= 520
+          ? (constraints.maxWidth - 12) / 2
+          : constraints.maxWidth;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (moveSummaryIntoFilters) ...[
+            summary,
+            if (hasEntityFilters || hasPropertyFilters)
+              const SizedBox(height: 8),
+          ],
+          Wrap(spacing: 12, runSpacing: 8, children: [
+            if (hasEntityFilters)
+              SizedBox(
+                  width: width,
+                  child: _ClassificationDropdown(
+                      label: entityLabel!,
+                      options: entityOptions,
+                      selected: entityFilter,
+                      onSelect: onToggleEntity!,
+                      onClear: onClearEntity!)),
+            if (hasPropertyFilters)
+              SizedBox(
+                  width: width,
+                  child: _ClassificationDropdown(
+                      label: propertyLabel!,
+                      options: propertyOptions,
+                      selected: propertyFilter,
+                      onSelect: onToggleProperty!,
+                      onClear: onClearProperty!)),
+          ]),
+        ],
+      );
+    });
+
     return SearchFiltersHeader(
       searchController: searchController,
       onSearchChanged: onSearchChanged,
       searchHint: searchHint,
-      hasFilterOptions: hasEntityFilters || hasPropertyFilters,
+      hasFilterOptions: hasEntityFilters ||
+          hasPropertyFilters ||
+          (moveSummaryIntoFilters && (hasInactiveToggle || showCounts)),
       hasActiveFilters: activeFilterCount > 0,
       activeFilterCount: activeFilterCount,
       padding: padding,
       autoExpandWhenActive: autoExpandWhenActive,
-      persistentContent: summary,
-      filtersContent: LayoutBuilder(builder: (context, constraints) {
-        final width = constraints.maxWidth >= 520
-            ? (constraints.maxWidth - 12) / 2
-            : constraints.maxWidth;
-        return Wrap(spacing: 12, runSpacing: 8, children: [
-          if (hasEntityFilters)
-            SizedBox(
-                width: width,
-                child: _ClassificationDropdown(
-                    label: entityLabel!,
-                    options: entityOptions,
-                    selected: entityFilter,
-                    onSelect: onToggleEntity!,
-                    onClear: onClearEntity!)),
-          if (hasPropertyFilters)
-            SizedBox(
-                width: width,
-                child: _ClassificationDropdown(
-                    label: propertyLabel!,
-                    options: propertyOptions,
-                    selected: propertyFilter,
-                    onSelect: onToggleProperty!,
-                    onClear: onClearProperty!)),
-        ]);
-      }),
+      persistentContent: moveSummaryIntoFilters ? null : summary,
+      filtersContent: filterBody,
       onClearFilters: () {
         if (onClearFilters != null) {
           onClearFilters!();

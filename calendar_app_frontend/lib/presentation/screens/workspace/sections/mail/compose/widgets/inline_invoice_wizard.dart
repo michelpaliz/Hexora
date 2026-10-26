@@ -852,84 +852,111 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
         invoicesLabel,
         isSpanish ? 'Revisar' : 'Review',
       ];
-      // Build interleaved list: step — connector — step — connector — step
       final items = <Widget>[];
       for (var i = 0; i < steps.length; i++) {
         final active = _step == i;
         final complete = i < _step;
         final canTap = i <= _step || i == _step + 1;
         items.add(
-          GestureDetector(
-            onTap: canTap ? () => _tryGoToStep(i, l) : null,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 28,
-                  height: 28,
+          Semantics(
+            button: true,
+            selected: active,
+            label: '${steps[i]}, ${i + 1} ${isSpanish ? 'de' : 'of'} 3',
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: canTap ? () => _tryGoToStep(i, l) : null,
+                borderRadius: BorderRadius.circular(8),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  height: 30,
+                  padding: const EdgeInsets.symmetric(horizontal: 7),
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: (active || complete)
-                        ? cs.primary
-                        : cs.surfaceContainerHighest,
+                    color: active
+                        ? cs.primary.withValues(alpha: .14)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: (active || complete)
-                          ? cs.primary
-                          : cs.outlineVariant.withValues(alpha: 0.5),
-                      width: active ? 2 : 1,
+                      color: active
+                          ? cs.primary.withValues(alpha: .65)
+                          : Colors.transparent,
                     ),
                   ),
-                  child: Center(
-                    child: complete
-                        ? Icon(Icons.check_rounded,
-                            size: 14, color: cs.onPrimary)
-                        : Text(
-                            '${i + 1}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color:
-                                  active ? cs.onPrimary : cs.onSurfaceVariant,
-                            ),
-                          ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 18,
+                        height: 18,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: active || complete
+                              ? cs.primary
+                              : cs.surfaceContainerHighest,
+                        ),
+                        child: complete
+                            ? Icon(Icons.check_rounded,
+                                size: 12, color: cs.onPrimary)
+                            : Text(
+                                '${i + 1}',
+                                style: t.bodySmall.copyWith(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: active
+                                      ? cs.onPrimary
+                                      : cs.onSurfaceVariant,
+                                ),
+                              ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        steps[i],
+                        style: t.bodySmall.copyWith(
+                          fontSize: 11,
+                          fontWeight:
+                              active ? FontWeight.w700 : FontWeight.w600,
+                          color: active
+                              ? cs.primary
+                              : complete
+                                  ? cs.onSurface
+                                  : cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  steps[i],
-                  style: t.bodySmall.copyWith(
-                    fontSize: 10,
-                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                    color: active
-                        ? cs.primary
-                        : complete
-                            ? cs.onSurface
-                            : cs.onSurfaceVariant,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         );
         if (i < steps.length - 1) {
-          final lineComplete = i < _step;
           items.add(
-            Expanded(
-              child: Container(
-                height: 1.5,
-                margin: const EdgeInsets.only(bottom: 18),
-                color: lineComplete
-                    ? cs.primary.withValues(alpha: 0.6)
-                    : cs.outlineVariant.withValues(alpha: 0.35),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                size: 14,
+                color: i < _step
+                    ? cs.primary
+                    : cs.onSurfaceVariant.withValues(alpha: .7),
               ),
             ),
           );
         }
       }
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: items,
+      return SizedBox(
+        key: const ValueKey('mail-attachment-inline-stepper'),
+        height: 32,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerEnd,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: items,
+          ),
+        ),
       );
     }
 
@@ -980,6 +1007,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
           },
           useDefaultPropertyKind: false,
           maxListHeight: 320,
+          compact: true,
         );
       }
 
@@ -1439,77 +1467,62 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     return Container(
       decoration: BoxDecoration(
         color: cs.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
       ),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: cs.primaryContainer.withValues(alpha: 0.65),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.attach_file_rounded,
-                  size: 18,
-                  color: cs.primary,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isSpanish ? 'Adjuntar facturas' : 'Attach invoices',
-                      style: t.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      isSpanish
-                          ? 'Selecciona el cliente y las facturas que quieres enviar.'
-                          : 'Select the client and invoices you want to send.',
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          stepHeader(),
-          const SizedBox(height: 10),
-          Expanded(child: stepBody()),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              OutlinedButton(
-                onPressed: _step == 0 ? null : () => setState(() => _step -= 1),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: cs.onSurface,
-                  side: BorderSide(
-                    color: _step == 0
-                        ? cs.outlineVariant.withValues(alpha: 0.4)
-                        : cs.outlineVariant,
+          SizedBox(
+            key: const ValueKey('mail-attachment-compact-header'),
+            height: 40,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.attach_file_rounded,
+                    size: 16,
+                    color: cs.primary,
                   ),
                 ),
-                child:
-                    Text(MaterialLocalizations.of(context).backButtonTooltip),
+                const SizedBox(width: 8),
+                Text(
+                  isSpanish ? 'Adjuntar facturas' : 'Attach invoices',
+                  style: t.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: stepHeader(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Expanded(child: stepBody()),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              HexoraButton(
+                onPressed: _step == 0 ? null : () => setState(() => _step -= 1),
+                label: isSpanish ? 'Atrás' : 'Back',
+                size: HexoraButtonSize.standard,
+                variant: HexoraButtonVariant.secondary,
               ),
               const Spacer(),
-              FilledButton(
+              HexoraButton(
                 onPressed: () {
                   if (_step < 2) {
                     _tryGoToStep(_step + 1, l);
@@ -1527,11 +1540,10 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                     title: _selectionAppliedTitle(l),
                   );
                 },
-                child: Text(
-                  _step < 2
-                      ? MaterialLocalizations.of(context).nextPageTooltip
-                      : MaterialLocalizations.of(context).okButtonLabel,
-                ),
+                label: _step < 2
+                    ? (isSpanish ? 'Continuar' : 'Continue')
+                    : (isSpanish ? 'Adjuntar' : 'Attach'),
+                size: HexoraButtonSize.standard,
               ),
             ],
           ),

@@ -21,7 +21,13 @@ import 'package:hexora/l10n/app_localizations.dart';
 class _Mail extends ChangeNotifier implements MailDomain {
   _Mail({this.detail, this.threads = const []});
   final List<MailThread> threads;
-  final MailThreadDetail? detail;
+  MailThreadDetail? detail;
+
+  void updateDetail(MailThreadDetail value) {
+    detail = value;
+    notifyListeners();
+  }
+
   @override
   MailThreadsState get threadsState => MailThreadsState(threads: threads);
   @override
@@ -201,6 +207,111 @@ void main() {
     groups.dispose();
     client.close();
   });
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+        'conversation collapses older and quoted content in $brightness',
+        (tester) async {
+      FlutterSecureStorage.setMockInitialValues({});
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final mail = _Mail(
+        detail: MailThreadDetail(
+          threadKey: 'thread-1',
+          subject: 'Re: Envío de factura',
+          messages: [
+            MailMessage(
+              id: 'older',
+              date: DateTime(2026, 9, 10),
+              from: const MailAddress(address: 'older@example.com'),
+              textBody: 'Older full body',
+              snippet: 'Older preview',
+            ),
+            MailMessage(
+              id: 'newest',
+              date: DateTime(2026, 9, 11),
+              from: const MailAddress(address: 'newest@example.com'),
+              htmlBody:
+                  '<p>Latest body</p><div class="gmail_quote"><p>Quoted history secret</p></div>',
+            ),
+          ],
+        ),
+      );
+      final auth = _Auth();
+      final groups = _Groups();
+      final client = MockClient((_) async => http.Response('[]', 200));
+      await tester.pumpWidget(MultiProvider(
+        providers: [
+          ChangeNotifierProvider<MailDomain>.value(value: mail),
+          ChangeNotifierProvider<AuthService>.value(value: auth),
+          ChangeNotifierProvider<GroupDomain>.value(value: groups),
+          Provider<http.Client>.value(value: client),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.forPlatform(
+            brightness,
+            platform: TargetPlatform.windows,
+          ),
+          locale: const Locale('es'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const MailConsoleScreen(initialThreadKey: 'thread-1'),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.byKey(const ValueKey('mail-conversation-sort')), findsOneWidget);
+      expect(
+        tester
+            .getSize(
+              find.byKey(const ValueKey('mail-conversation-header')),
+            )
+            .height,
+        48,
+      );
+      expect(find.text('Re: Envío de factura'), findsOneWidget);
+      expect(find.text('2 mensajes'), findsOneWidget);
+      expect(find.text('Latest body'), findsOneWidget);
+      expect(find.text('Older full body'), findsNothing);
+      expect(find.text('Older preview'), findsOneWidget);
+      expect(find.text('Quoted history secret'), findsNothing);
+
+      await tester.tap(find.text('Mostrar contenido citado'));
+      await tester.pumpAndSettle();
+      expect(find.text('Quoted history secret'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('mail-message-header-older')));
+      await tester.pumpAndSettle();
+      expect(find.text('Older full body'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      mail.updateDetail(MailThreadDetail(
+        threadKey: 'thread-1',
+        subject: 'Single message thread',
+        messages: [
+          MailMessage(
+            id: 'newest',
+            date: DateTime(2026, 9, 11),
+            from: const MailAddress(address: 'newest@example.com'),
+            textBody: 'Only message',
+          ),
+        ],
+      ));
+      await tester.pumpAndSettle();
+      expect(find.text('1 mensaje'), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('mail-conversation-sort')), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      mail.dispose();
+      auth.dispose();
+      groups.dispose();
+      client.close();
+    });
+  }
 
   for (final fail in [false, true]) {
     testWidgets(

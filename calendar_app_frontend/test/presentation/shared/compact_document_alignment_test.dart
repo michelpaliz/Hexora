@@ -187,6 +187,7 @@ void main() {
               issueDate: DateTime(2026, 10, 26),
             ),
             client: GroupClient(id: 'client-1', name: 'SueÃ±o de Denia IV'),
+            showClient: false,
             onPreview: () {},
             visibleFinancialColumns: const {
               HexoraFinancialColumn.date,
@@ -208,6 +209,27 @@ void main() {
     expect(find.text('Emitida'), findsOneWidget);
     expect(find.text('Enviada'), findsOneWidget);
     expect(find.text('26 oct 2026'), findsOneWidget);
+    final row = find.byType(CompactDocumentRow);
+    final centerY = tester
+        .getCenter(find.descendant(
+            of: row, matching: find.byIcon(Icons.description_outlined)))
+        .dy;
+    for (final key in [
+      'document-compact-identity-column',
+      'document-status-column',
+      'document-delivery-column',
+      'document-payment-column',
+      'document-date-column',
+      'document-amount-column',
+      'document-actions-column',
+    ]) {
+      expect(
+        tester.getCenter(find.byKey(ValueKey(key))).dy,
+        closeTo(centerY, .5),
+        reason: '$key must share the compact row centerline',
+      );
+    }
+    expect(tester.getSize(row).height, inInclusiveRange(44, 52));
     expect(tester.takeException(), isNull);
   });
 }

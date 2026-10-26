@@ -159,6 +159,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   Timer? _bulkReprocessPollTimer;
   Timer? _searchDebounce;
   int _summaryRequestVersion = 0;
+  int _columnFilterFeedbackVersion = 0;
+  final ValueNotifier<bool> _columnFilterBusy = ValueNotifier(false);
 
   @override
   void initState() {
@@ -212,6 +214,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   void dispose() {
     _bulkReprocessPollTimer?.cancel();
     _searchDebounce?.cancel();
+    _columnFilterBusy.dispose();
     _tabs.dispose();
     _searchController.dispose();
     _desktopToolbarScrollController.removeListener(_syncToolbarScrollState);
@@ -705,10 +708,11 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     }
   }
 
-  void _reloadActiveSummary() {
+  Future<void> _reloadActiveSummary() {
+    if (widget.groupId.trim().isEmpty) return Future<void>.value();
     final key = _selectedQuarterFilter ?? 0;
     _summary.remove(key);
-    _loadSummary(key);
+    return _loadSummary(key);
   }
 
   void _updateExpenseColumnFilters(VoidCallback change) {
@@ -1771,6 +1775,9 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       _vatColumnStates.isNotEmpty;
 
   void _resetExpenseFilters() {
+    _searchDebounce?.cancel();
+    _columnFilterFeedbackVersion++;
+    _columnFilterBusy.value = false;
     _searchController.clear();
     setState(() {
       _searchQuery = '';
@@ -1906,7 +1913,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         final isWide = constraints.maxWidth >= 760;
         final decoration = BoxDecoration(
           color: cs.surface,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: cs.outlineVariant.withValues(alpha: 0.32),
           ),
@@ -2004,7 +2011,9 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         }
 
         return Container(
-          padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
+          key: const ValueKey('expense-desktop-toolbar'),
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
           decoration: decoration,
           child: Row(
             children: [
@@ -2114,10 +2123,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         ],
       );
     } else {
-      content = Wrap(
-        spacing: 12,
-        runSpacing: 6,
-        crossAxisAlignment: WrapCrossAlignment.center,
+      content = Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -2129,7 +2136,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
               ),
               const SizedBox(width: 5),
               Text(
-                '$count ${count == 1 ? 'gasto' : 'gastos'}',
+                '$count ${isSpanish ? (count == 1 ? 'gasto' : 'gastos') : (count == 1 ? 'expense' : 'expenses')}',
                 style: t.bodySmall.copyWith(
                   color: cs.onSurface,
                   fontSize: 12,
@@ -2138,11 +2145,20 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
               ),
             ],
           ),
+          const SizedBox(width: 12),
           divider(),
-          metric(isSpanish ? 'Base' : 'Sub', _formatMoney(subtotal)),
+          const SizedBox(width: 12),
+          metric(
+            isSpanish ? 'Base' : 'Taxable base',
+            _formatMoney(subtotal),
+          ),
+          const SizedBox(width: 12),
           divider(),
+          const SizedBox(width: 12),
           metric('IVA', _formatMoney(taxSum)),
+          const SizedBox(width: 12),
           divider(),
+          const SizedBox(width: 12),
           _SummaryTotalChip(
             formattedValue: _formatMoney(total),
             currency: currency,
@@ -2153,39 +2169,23 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     }
 
     return Container(
+      key: const ValueKey('expense-summary-strip'),
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Text(
-                isSpanish ? 'Resumen de gastos' : 'Expense summary',
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurface,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                isSpanish ? 'Según filtros activos' : 'Based on active filters',
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontSize: 11,
-                ),
-              ),
-            ],
+        border: Border(
+          bottom: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.24),
           ),
-          const SizedBox(height: 6),
-          content,
-        ],
+        ),
+      ),
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: content,
+        ),
       ),
     );
   }

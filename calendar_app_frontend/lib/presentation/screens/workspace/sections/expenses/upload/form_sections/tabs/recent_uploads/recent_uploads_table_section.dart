@@ -7,8 +7,9 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
   static const double _baseWidth = 118;
   static const double _vatWidth = 96;
   static const double _totalWidth = 124;
+  static const double _totalStatusGap = 14;
   static const double _vatStateWidth = 142;
-  static const double _actionsWidth = 198;
+  static const double _actionsWidth = 112;
 
   double get _expenseTableWidth =>
       _supplierWidth +
@@ -23,18 +24,35 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
           ? _vatWidth
           : 0) +
       (_visibleFinancialColumns.contains(HexoraFinancialColumn.total)
-          ? _totalWidth
+          ? _totalWidth + _totalStatusGap
           : 0) +
       _vatStateWidth +
       _actionsWidth +
       32;
 
-  void _applyExpenseColumnFilter(VoidCallback change) {
+  void _applyExpenseColumnFilter(
+    VoidCallback change, {
+    bool refreshImmediately = false,
+  }) {
+    final feedbackVersion = ++_columnFilterFeedbackVersion;
+    _columnFilterBusy.value = true;
     _updateExpenseColumnFilters(change);
     _searchDebounce?.cancel();
     _searchDebounce = Timer(
-      const Duration(milliseconds: 300),
-      _reloadActiveSummary,
+      refreshImmediately ? Duration.zero : const Duration(milliseconds: 300),
+      () async {
+        final feedbackTimer = Stopwatch()..start();
+        await _reloadActiveSummary();
+        final remainingFeedback =
+            const Duration(milliseconds: 250) - feedbackTimer.elapsed;
+        if (remainingFeedback > Duration.zero) {
+          await Future<void>.delayed(remainingFeedback);
+        }
+        if (!mounted || feedbackVersion != _columnFilterFeedbackVersion) {
+          return;
+        }
+        _columnFilterBusy.value = false;
+      },
     );
   }
 
@@ -102,7 +120,8 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
 
   Widget _buildExpenseTableHeader(ColorScheme cs, bool isSpanish) {
     return Container(
-      height: 38,
+      key: const ValueKey('expense-table-header'),
+      height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       color: cs.surfaceContainerHighest.withValues(alpha: .24),
       child: Row(children: [
@@ -180,7 +199,7 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
               _vatColumnMax = max?.toDouble();
             }),
           ),
-        if (_visibleFinancialColumns.contains(HexoraFinancialColumn.total))
+        if (_visibleFinancialColumns.contains(HexoraFinancialColumn.total)) ...[
           _amountHeader(
             'Total',
             _totalWidth,
@@ -193,6 +212,8 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
               _totalColumnMax = max?.toDouble();
             }),
           ),
+          const SizedBox(width: _totalStatusGap),
+        ],
         HexoraFilterableHeaderCell(
           label: isSpanish ? 'Estado IVA' : 'VAT status',
           width: _vatStateWidth,
@@ -355,12 +376,50 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            isSpanish ? 'Estado IVA' : 'VAT status',
-            style: Theme.of(context)
-                .textTheme
-                .titleSmall
-                ?.copyWith(fontWeight: FontWeight.w700),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  isSpanish ? 'Estado IVA' : 'VAT status',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              ValueListenableBuilder<bool>(
+                valueListenable: _columnFilterBusy,
+                builder: (context, busy, _) => AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 150),
+                  child: busy
+                      ? Row(
+                          key: const ValueKey('vat-filter-loading'),
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox.square(
+                              dimension: 13,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              isSpanish ? 'Actualizando…' : 'Updating…',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                            ),
+                          ],
+                        )
+                      : const SizedBox.shrink(
+                          key: ValueKey('vat-filter-idle'),
+                        ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           HexoraMultiSelectFilter(
@@ -369,6 +428,7 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
             labelFor: (value) => _vatStateLabel(value, isSpanish),
             onChanged: (values) => _applyExpenseColumnFilter(
               () => _vatColumnStates = values,
+              refreshImmediately: true,
             ),
           ),
           const SizedBox(height: 8),
@@ -379,6 +439,7 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
                   ? null
                   : () => _applyExpenseColumnFilter(
                         () => _vatColumnStates = <String>{},
+                        refreshImmediately: true,
                       ),
               icon: const Icon(Icons.filter_alt_off_outlined, size: 15),
               label: Text(isSpanish ? 'Limpiar' : 'Clear'),
@@ -391,8 +452,8 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
 
   String _vatStateLabel(String state, bool isSpanish) => switch (state) {
         'verified' => isSpanish ? 'Verificado' : 'Verified',
-        'zero' => isSpanish ? 'IVA 0 / pendiente' : 'VAT 0 / pending',
-        'review' => isSpanish ? 'Revisar' : 'Review',
+        'zero' => isSpanish ? 'IVA 0' : 'VAT 0',
+        'review' => isSpanish ? 'Pendiente de revisión' : 'Pending review',
         'processing' => isSpanish ? 'Procesando' : 'Processing',
         'error' => 'Error',
         'missingDocument' => isSpanish ? 'Sin documento' : 'No document',
@@ -439,8 +500,9 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
         onTap: () => _selectExpense(item),
         hoverColor: cs.primary.withValues(alpha: .05),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 48),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          key: ValueKey('expense-row-$id'),
+          constraints: const BoxConstraints(minHeight: 46),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           child: Row(children: [
             SizedBox(
               width: _supplierWidth,
@@ -448,7 +510,7 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
                 message: vendor,
                 child: Row(children: [
                   CircleAvatar(
-                    radius: 14,
+                    radius: 13,
                     backgroundColor: cs.primaryContainer.withValues(alpha: .55),
                     child: Text(
                       vendor.isEmpty ? '?' : vendor[0].toUpperCase(),
@@ -495,12 +557,15 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
               ),
             if (_visibleFinancialColumns.contains(HexoraFinancialColumn.vat))
               HexoraFinancialCell(value: _expenseVat(item), width: _vatWidth),
-            if (_visibleFinancialColumns.contains(HexoraFinancialColumn.total))
+            if (_visibleFinancialColumns
+                .contains(HexoraFinancialColumn.total)) ...[
               HexoraFinancialCell(
                 value: _expenseAmount(item),
                 total: true,
                 width: _totalWidth,
               ),
+              const SizedBox(width: _totalStatusGap),
+            ],
             SizedBox(
               width: _vatStateWidth,
               child: Align(
@@ -600,8 +665,8 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
         onTap: () => _selectExpense(item),
         hoverColor: cs.primary.withValues(alpha: .05),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 58),
-          padding: const EdgeInsetsDirectional.fromSTEB(10, 6, 6, 6),
+          constraints: const BoxConstraints(minHeight: 52),
+          padding: const EdgeInsetsDirectional.fromSTEB(10, 4, 6, 4),
           decoration: selected
               ? BoxDecoration(
                   border: BorderDirectional(
@@ -742,7 +807,10 @@ class _ExpenseActionGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final hasOcrAction = onOcr != null || reprocessing;
+    final hasDeleteAction = onDelete != null || deleting;
+    final hasMoreActions =
+        hasOcrAction || hasDeleteAction || onOpenOriginal != null;
     final actions = <Widget>[
       if (showPreview)
         HexoraButton.iconOnly(
@@ -753,46 +821,92 @@ class _ExpenseActionGroup extends StatelessWidget {
           onPressed: previewEnabled ? onPreview : null,
         ),
       HexoraButton.iconOnly(
-        icon: Icons.document_scanner_outlined,
-        tooltip: reprocessing
-            ? (isSpanish ? 'Releyendo documento…' : 'Reviewing document…')
-            : (isSpanish ? 'OCR / Revisar documento' : 'OCR / Review document'),
-        size: HexoraButtonSize.compact,
-        variant: HexoraButtonVariant.ghost,
-        loading: reprocessing,
-        accentColor: const Color(0xFFD97706),
-        onPressed: onOcr,
-      ),
-      HexoraButton.iconOnly(
         icon: Icons.edit_outlined,
         tooltip: isSpanish ? 'Editar gasto' : 'Edit expense',
         size: HexoraButtonSize.compact,
         variant: HexoraButtonVariant.ghost,
         onPressed: onEdit,
       ),
-      HexoraButton.iconOnly(
-        icon: Icons.delete_outline_rounded,
-        tooltip: isSpanish ? 'Eliminar gasto' : 'Delete expense',
-        size: HexoraButtonSize.compact,
-        variant: HexoraButtonVariant.ghost,
-        accentColor: cs.error,
-        loading: deleting,
-        onPressed: onDelete,
-      ),
       PopupMenuButton<String>(
-        enabled: onOpenOriginal != null,
-        tooltip: isSpanish ? 'Más acciones' : 'More actions',
+        enabled: hasMoreActions,
         padding: EdgeInsets.zero,
-        onSelected: (_) => onOpenOriginal?.call(),
+        onSelected: (value) {
+          switch (value) {
+            case 'ocr':
+              onOcr?.call();
+              break;
+            case 'delete':
+              onDelete?.call();
+              break;
+            case 'open-original':
+              onOpenOriginal?.call();
+              break;
+          }
+        },
         itemBuilder: (_) => [
-          PopupMenuItem(
-            value: 'open-original',
-            child: Row(children: [
-              const Icon(Icons.open_in_new_rounded, size: 16),
-              const SizedBox(width: 8),
-              Text(isSpanish ? 'Abrir documento original' : 'Open original'),
-            ]),
-          ),
+          if (hasOcrAction)
+            PopupMenuItem(
+              value: 'ocr',
+              enabled: onOcr != null && !reprocessing,
+              child: Row(children: [
+                reprocessing
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.document_scanner_outlined, size: 16),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    reprocessing
+                        ? (isSpanish
+                            ? 'Releyendo documento…'
+                            : 'Reviewing document…')
+                        : (isSpanish
+                            ? 'OCR / Revisar documento'
+                            : 'OCR / Review document'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ]),
+            ),
+          if (onOpenOriginal != null)
+            PopupMenuItem(
+              value: 'open-original',
+              child: Row(children: [
+                const Icon(Icons.open_in_new_rounded, size: 16),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    isSpanish ? 'Abrir documento original' : 'Open original',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ]),
+            ),
+          if (hasDeleteAction)
+            PopupMenuItem(
+              value: 'delete',
+              enabled: onDelete != null && !deleting,
+              child: Row(children: [
+                deleting
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        Icons.delete_outline_rounded,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(isSpanish ? 'Eliminar gasto' : 'Delete expense'),
+                ),
+              ]),
+            ),
         ],
         child: IgnorePointer(
           child: HexoraButton.iconOnly(
@@ -800,7 +914,7 @@ class _ExpenseActionGroup extends StatelessWidget {
             tooltip: isSpanish ? 'Más acciones' : 'More actions',
             size: HexoraButtonSize.compact,
             variant: HexoraButtonVariant.ghost,
-            onPressed: onOpenOriginal == null ? null : () {},
+            onPressed: hasMoreActions ? () {} : null,
           ),
         ),
       ),

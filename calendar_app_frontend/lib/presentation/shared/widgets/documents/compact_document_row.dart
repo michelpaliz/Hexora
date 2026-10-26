@@ -23,6 +23,7 @@ const _expandedTableWidth = 1080.0;
 const _compactActionSlot = 32.0;
 const _actionGap = 4.0;
 const _totalActionGap = 16.0;
+const _compactCellHeight = 44.0;
 // The compact identity/client cell may truncate, but keeping it at 112 px
 // lets the status, delivery, payment and date columns remain useful in the
 // standard two-pane invoice workspace.
@@ -489,22 +490,26 @@ class CompactDocumentRow extends StatelessWidget {
                     fontWeight: FontWeight.w400,
                     color: cs.onSurfaceVariant,
                     fontFeatures: HexoraTypography.numericFeatures));
+            final showSecondarySummary = secondaryLabel.isNotEmpty ||
+                (!showStatusColumn && status != null);
             final summary = Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   titleLine,
-                  Row(children: [
-                    Expanded(child: metadataText),
-                    if (dateInMetadata && dateWarningTooltip != null) ...[
-                      const SizedBox(width: 3),
-                      dateWarningIcon(),
-                    ],
-                    if (!showStatusColumn && status != null) ...[
-                      const SizedBox(width: 6),
-                      Flexible(child: status!),
-                    ],
-                  ]),
+                  if (showSecondarySummary)
+                    Row(children: [
+                      if (secondaryLabel.isNotEmpty)
+                        Expanded(child: metadataText),
+                      if (dateInMetadata && dateWarningTooltip != null) ...[
+                        const SizedBox(width: 3),
+                        dateWarningIcon(),
+                      ],
+                      if (!showStatusColumn && status != null) ...[
+                        if (secondaryLabel.isNotEmpty) const SizedBox(width: 6),
+                        Flexible(child: status!),
+                      ],
+                    ]),
                   if (stacked && columns.contains(HexoraFinancialColumn.date))
                     Row(children: [
                       Text(
@@ -750,99 +755,153 @@ class CompactDocumentRow extends StatelessWidget {
               );
             }
             return Column(mainAxisSize: MainAxisSize.min, children: [
-              Row(children: [
-                if (layout.expanded) ...[
-                  SizedBox(
-                    key: const ValueKey('document-identity-column'),
-                    width: layout.invoice,
-                    child: Row(children: [
-                      Icon(icon,
-                          size: 16,
-                          color: selected ? cs.primary : cs.onSurfaceVariant),
-                      const SizedBox(width: 8),
-                      Expanded(child: titleLine),
-                    ]),
-                  ),
-                  SizedBox(
-                      key: const ValueKey('document-client-column'),
-                      width: layout.client,
-                      child: Tooltip(
-                        message: metadata,
-                        child: metadataText,
-                      )),
-                ] else ...[
-                  // Blue is reserved for selection and primary actions.
-                  Icon(icon,
-                      size: 16,
-                      color: selected ? cs.primary : cs.onSurfaceVariant),
-                  const SizedBox(width: 8),
-                  Expanded(child: summary),
-                ],
-                if (!stacked) ...[
-                  if (!layout.expanded) const SizedBox(width: 8),
-                  if (showStatusColumn) ...[
-                    if (layout.spacer > 0) SizedBox(width: layout.spacer),
-                    SizedBox(
-                        key: const ValueKey('document-status-column'),
-                        width: layout.status,
-                        child: Align(
-                            alignment: AlignmentDirectional.center,
-                            child: status)),
-                  ],
-                  if (showDeliveryColumn && delivery != null)
-                    SizedBox(
-                      key: const ValueKey('document-delivery-column'),
-                      width: layout.delivery,
-                      child: Align(
-                        alignment: AlignmentDirectional.center,
-                        child: delivery,
-                      ),
-                    ),
-                  if (columns.contains(HexoraFinancialColumn.payment))
-                    SizedBox(
-                      key: const ValueKey('document-payment-column'),
-                      width: layout.payment,
-                      child: Align(
-                        alignment: AlignmentDirectional.center,
-                        child: payment ?? const SizedBox.shrink(),
-                      ),
-                    ),
-                  if (columns.contains(HexoraFinancialColumn.date))
-                    SizedBox(
-                      width: layout.date,
-                      child: Row(children: [
-                        Expanded(
-                          child: HexoraDateCell(
-                            value: date,
-                            width: double.infinity,
+              ConstrainedBox(
+                  constraints: BoxConstraints(
+                      minHeight: stacked ? 0 : _compactCellHeight),
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        if (layout.expanded) ...[
+                          SizedBox(
+                            key: const ValueKey('document-identity-column'),
+                            width: layout.invoice,
+                            height: _compactCellHeight,
+                            child: Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Icon(icon,
+                                        size: 16,
+                                        color: selected
+                                            ? cs.primary
+                                            : cs.onSurfaceVariant),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: titleLine),
+                                  ]),
+                            ),
                           ),
-                        ),
-                        if (dateWarningTooltip != null) ...[
-                          const SizedBox(width: 3),
-                          dateWarningIcon(),
-                          const SizedBox(width: 3),
+                          SizedBox(
+                              key: const ValueKey('document-client-column'),
+                              width: layout.client,
+                              height: _compactCellHeight,
+                              child: Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Tooltip(
+                                  message: metadata,
+                                  child: metadataText,
+                                ),
+                              )),
+                        ] else ...[
+                          // Blue is reserved for selection and primary actions.
+                          Icon(icon,
+                              size: 16,
+                              color:
+                                  selected ? cs.primary : cs.onSurfaceVariant),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            key: const ValueKey(
+                                'document-compact-identity-column'),
+                            child: Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: summary,
+                            ),
+                          ),
                         ],
-                      ]),
-                    ),
-                  if (columns.contains(HexoraFinancialColumn.taxableBase))
-                    HexoraFinancialCell(value: taxableBase, width: layout.base),
-                  if (columns.contains(HexoraFinancialColumn.vat))
-                    HexoraFinancialCell(value: vat, width: layout.vat),
-                  if (columns.contains(HexoraFinancialColumn.total))
-                    SizedBox(
-                        key: const ValueKey('document-amount-column'),
-                        width: layout.total,
-                        child: Align(
-                            alignment: AlignmentDirectional.centerEnd,
-                            child: amountWidget)),
-                  if (layout.totalActionGap > 0)
-                    SizedBox(width: layout.totalActionGap),
-                  SizedBox(
-                      key: const ValueKey('document-actions-column'),
-                      width: layout.actions,
-                      child: Center(child: actionsWidget)),
-                ],
-              ]),
+                        if (!stacked) ...[
+                          if (!layout.expanded) const SizedBox(width: 8),
+                          if (showStatusColumn) ...[
+                            if (layout.spacer > 0)
+                              SizedBox(width: layout.spacer),
+                            SizedBox(
+                                key: const ValueKey('document-status-column'),
+                                width: layout.status,
+                                height: _compactCellHeight,
+                                child: Align(
+                                    alignment: AlignmentDirectional.center,
+                                    child: status)),
+                          ],
+                          if (showDeliveryColumn && delivery != null)
+                            SizedBox(
+                              key: const ValueKey('document-delivery-column'),
+                              width: layout.delivery,
+                              height: _compactCellHeight,
+                              child: Align(
+                                alignment: AlignmentDirectional.center,
+                                child: delivery,
+                              ),
+                            ),
+                          if (columns.contains(HexoraFinancialColumn.payment))
+                            SizedBox(
+                              key: const ValueKey('document-payment-column'),
+                              width: layout.payment,
+                              height: _compactCellHeight,
+                              child: Align(
+                                alignment: AlignmentDirectional.center,
+                                child: payment ?? const SizedBox.shrink(),
+                              ),
+                            ),
+                          if (columns.contains(HexoraFinancialColumn.date))
+                            SizedBox(
+                              key: const ValueKey('document-date-column'),
+                              width: layout.date,
+                              height: _compactCellHeight,
+                              child: Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                        child: HexoraDateCell(
+                                          value: date,
+                                          width: double.infinity,
+                                        ),
+                                      ),
+                                      if (dateWarningTooltip != null) ...[
+                                        const SizedBox(width: 3),
+                                        dateWarningIcon(),
+                                        const SizedBox(width: 3),
+                                      ],
+                                    ]),
+                              ),
+                            ),
+                          if (columns
+                              .contains(HexoraFinancialColumn.taxableBase))
+                            SizedBox(
+                              height: _compactCellHeight,
+                              child: Align(
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: HexoraFinancialCell(
+                                    value: taxableBase, width: layout.base),
+                              ),
+                            ),
+                          if (columns.contains(HexoraFinancialColumn.vat))
+                            SizedBox(
+                              height: _compactCellHeight,
+                              child: Align(
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: HexoraFinancialCell(
+                                    value: vat, width: layout.vat),
+                              ),
+                            ),
+                          if (columns.contains(HexoraFinancialColumn.total))
+                            SizedBox(
+                                key: const ValueKey('document-amount-column'),
+                                width: layout.total,
+                                height: _compactCellHeight,
+                                child: Align(
+                                    alignment: AlignmentDirectional.centerEnd,
+                                    child: amountWidget)),
+                          if (layout.totalActionGap > 0)
+                            SizedBox(width: layout.totalActionGap),
+                          SizedBox(
+                              key: const ValueKey('document-actions-column'),
+                              width: layout.actions,
+                              height: _compactCellHeight,
+                              child: Center(child: actionsWidget)),
+                        ],
+                      ])),
               if (stacked)
                 Row(children: [
                   Expanded(

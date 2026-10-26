@@ -6111,6 +6111,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mailConversationSignature => 'Signature';
 
   @override
+  String get mailConversationShowQuoted => 'Show quoted content';
+
+  @override
+  String get mailConversationHideQuoted => 'Hide quoted content';
+
+  @override
+  String get mailConversationViewComplete => 'View complete message';
+
+  @override
+  String get mailConversationViewCompact => 'Show compact view';
+
+  @override
   String get mailConversationReply => 'Reply';
 
   @override
@@ -6130,8 +6142,8 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# messages',
-      one: '# message',
+      other: '$count messages',
+      one: '1 message',
     );
     return '$_temp0';
   }

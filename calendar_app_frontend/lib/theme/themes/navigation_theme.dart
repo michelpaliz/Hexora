@@ -112,6 +112,8 @@ ThemeData navigationTheme(ThemeData base) =>
         secondaryContainer: AppDarkColors.surfaceHover,
         onSecondaryContainer: AppDarkColors.textPrimary,
         surface: AppDarkColors.sidebar,
+        surfaceContainerLowest: AppDarkColors.sidebar,
+        surfaceContainerLow: AppDarkColors.surface,
         surfaceContainer: AppDarkColors.surface,
         surfaceContainerHigh: AppDarkColors.surfaceHover,
         onSurface: AppDarkColors.textPrimary,

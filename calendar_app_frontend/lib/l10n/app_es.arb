@@ -2861,12 +2861,16 @@
     }
   },
   "mailConversationSignature": "Firma",
+  "mailConversationShowQuoted": "Mostrar contenido citado",
+  "mailConversationHideQuoted": "Ocultar contenido citado",
+  "mailConversationViewComplete": "Ver mensaje completo",
+  "mailConversationViewCompact": "Mostrar vista compacta",
   "mailConversationReply": "Responder",
   "mailConversationReplyAll": "Responder a todos",
   "mailConversationForward": "Reenviar",
   "mailConversationSortNewestFirst": "Más recientes primero",
   "mailConversationSortOldestFirst": "Más antiguos primero",
-  "mailConversationMessageCount": "{count, plural, one {# mensaje} other {# mensajes}}",
+  "mailConversationMessageCount": "{count, plural, one {1 mensaje} other {{count} mensajes}}",
   "@mailConversationMessageCount": {
     "description": "Message count shown above a thread's conversation list.",
     "placeholders": {

@@ -6176,6 +6176,18 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mailConversationSignature => 'Firma';
 
   @override
+  String get mailConversationShowQuoted => 'Mostrar contenido citado';
+
+  @override
+  String get mailConversationHideQuoted => 'Ocultar contenido citado';
+
+  @override
+  String get mailConversationViewComplete => 'Ver mensaje completo';
+
+  @override
+  String get mailConversationViewCompact => 'Mostrar vista compacta';
+
+  @override
   String get mailConversationReply => 'Responder';
 
   @override
@@ -6195,8 +6207,8 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# mensajes',
-      one: '# mensaje',
+      other: '$count mensajes',
+      one: '1 mensaje',
     );
     return '$_temp0';
   }
