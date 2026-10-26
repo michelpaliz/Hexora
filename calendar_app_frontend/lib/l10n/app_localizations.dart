@@ -13142,19 +13142,19 @@ abstract class AppLocalizations {
   /// No description provided for @expenseTotalsUseSummaryLabel.
   ///
   /// In en, this message translates to:
-  /// **'Use document summary'**
+  /// **'Amount source'**
   String get expenseTotalsUseSummaryLabel;
 
   /// No description provided for @expenseTotalsSummaryMode.
   ///
   /// In en, this message translates to:
-  /// **'Totals extracted from summary'**
+  /// **'From document'**
   String get expenseTotalsSummaryMode;
 
   /// No description provided for @expenseTotalsCalculateMode.
   ///
   /// In en, this message translates to:
-  /// **'Calculate from lines'**
+  /// **'From lines'**
   String get expenseTotalsCalculateMode;
 
   /// No description provided for @expenseTotalsSummaryHelp.

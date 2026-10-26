@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
-class ExpenseProviderPicker extends StatelessWidget {
+class ExpenseProviderPicker extends StatefulWidget {
   final List<Map<String, dynamic>> providers;
   final String? selectedProviderId;
   final String? providersError;
   final bool loading;
   final ValueChanged<String?> onSelectProvider;
+  final bool manualMode;
+  final VoidCallback? onManualMode;
 
   const ExpenseProviderPicker({
     super.key,
@@ -15,259 +17,396 @@ class ExpenseProviderPicker extends StatelessWidget {
     required this.providersError,
     required this.loading,
     required this.onSelectProvider,
+    this.manualMode = false,
+    this.onManualMode,
   });
+
+  @override
+  State<ExpenseProviderPicker> createState() => _ExpenseProviderPickerState();
+}
+
+class _ExpenseProviderPickerState extends State<ExpenseProviderPicker> {
+  late final TextEditingController _searchController;
+  late final FocusNode _focusNode;
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController(text: _selectedLabel());
+    _focusNode = FocusNode();
+  }
+
+  @override
+  void didUpdateWidget(covariant ExpenseProviderPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_focusNode.hasFocus &&
+        (oldWidget.selectedProviderId != widget.selectedProviderId ||
+            oldWidget.manualMode != widget.manualMode)) {
+      _searchController.text = _selectedLabel();
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  String _providerId(Map<String, dynamic> provider) =>
+      (provider['id'] ?? provider['_id'] ?? provider['providerId'] ?? '')
+          .toString();
+
+  String _providerName(Map<String, dynamic> provider) => (provider['name'] ??
+          provider['providerName'] ??
+          provider['vendorName'] ??
+          '-')
+      .toString();
+
+  String _providerTaxId(Map<String, dynamic> provider) => (provider['taxId'] ??
+          provider['taxIdentifier'] ??
+          provider['nif'] ??
+          provider['cif'] ??
+          provider['vatNumber'] ??
+          '')
+      .toString()
+      .trim();
+
+  String _selectedLabel() {
+    if (widget.manualMode) return 'Proveedor manual';
+    final id = (widget.selectedProviderId ?? '').trim();
+    if (id.isEmpty) return '';
+    final provider = widget.providers.cast<Map<String, dynamic>?>().firstWhere(
+          (item) => item != null && _providerId(item) == id,
+          orElse: () => null,
+        );
+    return provider == null ? '' : _providerName(provider);
+  }
+
+  String _fold(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll(RegExp('[áàäâ]'), 'a')
+        .replaceAll(RegExp('[éèëê]'), 'e')
+        .replaceAll(RegExp('[íìïî]'), 'i')
+        .replaceAll(RegExp('[óòöô]'), 'o')
+        .replaceAll(RegExp('[úùüû]'), 'u')
+        .replaceAll('ñ', 'n');
+  }
+
+  bool _matches(Map<String, dynamic> provider, String query) {
+    final folded = _fold(query.trim());
+    if (folded.isEmpty) return true;
+    final searchable = [
+      _providerName(provider),
+      _providerTaxId(provider),
+      provider['reference'],
+      provider['code'],
+      provider['providerCode'],
+    ].whereType<Object>().map((value) => value.toString()).join(' ');
+    return _fold(searchable).contains(folded);
+  }
+
+  Iterable<Map<String, dynamic>> _options(String query) =>
+      widget.providers.where((provider) => _matches(provider, query));
+
+  void _select(Map<String, dynamic> provider) {
+    final id = _providerId(provider);
+    if (id.isEmpty) return;
+    _searchController.text = _providerName(provider);
+    _query = '';
+    _focusNode.unfocus();
+    widget.onSelectProvider(id);
+  }
+
+  void _enterManual() {
+    _searchController.text = 'Proveedor manual';
+    _query = '';
+    _focusNode.unfocus();
+    if (widget.onManualMode != null) {
+      widget.onManualMode!();
+    } else {
+      widget.onSelectProvider(null);
+    }
+  }
+
+  Future<void> _openMobilePicker() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (sheetContext) => _ProviderPickerSheet(
+        providers: widget.providers,
+        selectedProviderId: widget.selectedProviderId,
+        onSelect: (provider) {
+          _select(provider);
+          Navigator.of(sheetContext).pop();
+        },
+        onManual: () {
+          _enterManual();
+          Navigator.of(sheetContext).pop();
+        },
+        matches: _matches,
+        providerId: _providerId,
+        providerName: _providerName,
+        providerTaxId: _providerTaxId,
+      ),
+    );
+  }
+
+  InputDecoration _decoration(BuildContext context, {required String hint}) {
+    final cs = Theme.of(context).colorScheme;
+    return InputDecoration(
+      labelText: 'Proveedor',
+      hintText: hint,
+      isDense: true,
+      filled: true,
+      fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.18),
+      prefixIcon:
+          Icon(Icons.search_rounded, size: 17, color: cs.onSurfaceVariant),
+      prefixIconConstraints: const BoxConstraints(minWidth: 38, minHeight: 38),
+      suffixIcon: widget.loading
+          ? const Padding(
+              padding: EdgeInsets.all(11),
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          : Icon(Icons.expand_more_rounded, color: cs.onSurfaceVariant),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide:
+            BorderSide(color: cs.outlineVariant.withValues(alpha: 0.45)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide:
+            BorderSide(color: cs.outlineVariant.withValues(alpha: 0.38)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: cs.primary.withValues(alpha: 0.7)),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      constraints: const BoxConstraints(minHeight: 40),
+    );
+  }
+
+  Widget _providerRow(
+    BuildContext context,
+    Map<String, dynamic> provider, {
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final ts = Theme.of(context).textTheme;
+    final name = _providerName(provider);
+    final taxId = _providerTaxId(provider);
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        color:
+            selected ? cs.primary.withValues(alpha: 0.08) : Colors.transparent,
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 11,
+              backgroundColor: selected
+                  ? cs.primary.withValues(alpha: 0.16)
+                  : cs.surfaceContainerHighest,
+              child: Text(
+                name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase(),
+                style: ts.labelMedium?.copyWith(
+                  color: selected ? cs.primary : cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  text: name,
+                  children: taxId.isEmpty
+                      ? null
+                      : [
+                          TextSpan(
+                            text: '  ·  $taxId',
+                            style: ts.bodySmall?.copyWith(
+                              fontSize: 11,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                  style: ts.bodyMedium?.copyWith(
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  ),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (selected)
+              Icon(Icons.check_rounded, size: 18, color: cs.primary),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final ts = Theme.of(context).textTheme;
+    final narrow = MediaQuery.sizeOf(context).width < 600;
+    final hint = l.localeName.toLowerCase().startsWith('es')
+        ? 'Buscar por nombre, NIF/CIF o referencia'
+        : 'Search by name, tax ID or reference';
+    final hasNoResults = _query.trim().isNotEmpty && _options(_query).isEmpty;
 
-    final selected = providers.firstWhere(
-      (p) =>
-          (p['id'] ?? p['_id'] ?? p['providerId'])?.toString() ==
-          selectedProviderId,
-      orElse: () => const <String, dynamic>{},
-    );
-    final selectedName = selected.isEmpty
-        ? l.expenseUploadProviderManualOption
-        : (selected['name']?.toString() ?? l.expenseUploadProviderManualOption);
-    final hasRealProvider = selectedProviderId != null && selected.isNotEmpty;
-
-    Future<void> openPicker() async {
-      await showModalBottomSheet<void>(
-        context: context,
-        showDragHandle: true,
-        isScrollControlled: true,
-        useSafeArea: true,
-        backgroundColor: cs.surface,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (ctx) => _ProviderPickerSheet(
-          providers: providers,
-          selectedProviderId: selectedProviderId,
-          onSelect: (id) {
-            onSelectProvider(id);
-            Navigator.of(ctx).pop();
-          },
-        ),
+    if (narrow) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: widget.loading ? null : _openMobilePicker,
+            borderRadius: BorderRadius.circular(8),
+            child: IgnorePointer(
+              child: TextField(
+                controller: _searchController,
+                readOnly: true,
+                decoration: _decoration(context, hint: hint),
+              ),
+            ),
+          ),
+          if (widget.providersError != null) ...[
+            const SizedBox(height: 5),
+            Text(widget.providersError!,
+                style: TextStyle(color: cs.error, fontSize: 12)),
+          ],
+        ],
       );
     }
 
-    final isSpanish = l.localeName.toLowerCase().startsWith('es');
-    final heading = Row(
-      children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: cs.primaryContainer.withValues(alpha: 0.42),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(Icons.storefront_outlined, size: 19, color: cs.primary),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                isSpanish ? 'Proveedor' : 'Supplier',
-                style: ts.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: cs.onSurface,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                isSpanish
-                    ? 'Selecciona un proveedor o introduce sus datos manualmente.'
-                    : 'Select a supplier or enter its details manually.',
-                style: ts.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-    final modeSelector = Container(
-      height: 36,
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.65),
-        ),
-        borderRadius: BorderRadius.circular(9),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Expanded(
-            child: _ProviderModeButton(
-              label: isSpanish ? 'Proveedor existente' : 'Saved supplier',
-              icon: Icons.storefront_outlined,
-              selected: hasRealProvider,
-              onPressed: loading ? null : openPicker,
-            ),
-          ),
-          VerticalDivider(
-            width: 1,
-            thickness: 1,
-            color: cs.outlineVariant.withValues(alpha: 0.65),
-          ),
-          Expanded(
-            child: _ProviderModeButton(
-              label: isSpanish ? 'Proveedor manual' : 'Manual supplier',
-              icon: Icons.edit_outlined,
-              selected: !hasRealProvider,
-              onPressed: loading ? null : () => onSelectProvider(null),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            if (constraints.maxWidth < 680) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  heading,
-                  const SizedBox(height: 10),
-                  modeSelector,
-                ],
-              );
-            }
-            return Row(
-              children: [
-                Expanded(child: heading),
-                const SizedBox(width: 12),
-                SizedBox(width: 350, child: modeSelector),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 14),
-        // ── Trigger button ──
-        Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(10),
-            onTap: loading ? null : openPicker,
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 42),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.4),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.search_rounded,
-                      size: 18, color: cs.onSurfaceVariant),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      hasRealProvider
-                          ? selectedName
-                          : (isSpanish
-                              ? 'Buscar proveedor por nombre, NIF o referencia...'
-                              : 'Search supplier by name, tax ID or reference...'),
-                      style: ts.bodyMedium?.copyWith(
-                        fontSize: 13,
-                        color: hasRealProvider
-                            ? cs.onSurface
-                            : cs.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.unfold_more_rounded,
-                    size: 18,
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (providersError != null) ...[
-          const SizedBox(height: 6),
-          Text(
-            providersError!,
-            style: TextStyle(color: cs.error, fontSize: 12),
-          ),
-        ],
-        if (loading)
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: LinearProgressIndicator(
-              minHeight: 2,
-              color: cs.primary.withValues(alpha: 0.5),
-              backgroundColor: Colors.transparent,
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-// ── Sheet ─────────────────────────────────────────────────────────────────────
-
-class _ProviderModeButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback? onPressed;
-
-  const _ProviderModeButton({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onPressed,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        padding: const EdgeInsets.symmetric(horizontal: 13),
-        color: selected
-            ? cs.primaryContainer.withValues(alpha: 0.48)
-            : Colors.transparent,
-        child: Row(
+    return RawAutocomplete<Map<String, dynamic>>(
+      textEditingController: _searchController,
+      focusNode: _focusNode,
+      displayStringForOption: _providerName,
+      optionsBuilder: (value) => _options(value.text),
+      onSelected: _select,
+      fieldViewBuilder: (context, controller, focusNode, onSubmit) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(icon, size: 15, color: selected ? cs.primary : cs.onSurface),
-            const SizedBox(width: 7),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                color: selected ? cs.primary : cs.onSurface,
+            TextField(
+              controller: controller,
+              focusNode: focusNode,
+              enabled: !widget.loading,
+              style: const TextStyle(fontSize: 13),
+              decoration: _decoration(context, hint: hint),
+              onTap: () {
+                if (!_focusNode.hasFocus) _focusNode.requestFocus();
+                if (_query.isEmpty) controller.clear();
+              },
+              onChanged: (value) => setState(() => _query = value),
+              onSubmitted: (_) => onSubmit(),
+            ),
+            if (hasNoResults)
+              Padding(
+                padding: const EdgeInsets.only(top: 3),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'No se encontraron proveedores',
+                        style:
+                            TextStyle(color: cs.onSurfaceVariant, fontSize: 11),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _enterManual,
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(0, 30),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      child: const Text('Introducir manualmente'),
+                    ),
+                  ],
+                ),
+              ),
+            if (widget.providersError != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 5, left: 2),
+                child: Text(widget.providersError!,
+                    style: TextStyle(color: cs.error, fontSize: 12)),
+              ),
+          ],
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        final rows = options.toList(growable: false);
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 6,
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 320),
+              child: SizedBox(
+                width: 420,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        itemCount: rows.length,
+                        itemBuilder: (context, index) {
+                          final provider = rows[index];
+                          return Builder(
+                            builder: (context) => _providerRow(
+                              context,
+                              provider,
+                              selected: _providerId(provider) ==
+                                      widget.selectedProviderId ||
+                                  AutocompleteHighlightedOption.of(context) ==
+                                      index,
+                              onTap: () => onSelected(provider),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    Divider(
+                        height: 1,
+                        color: cs.outlineVariant.withValues(alpha: 0.4)),
+                    TextButton.icon(
+                      onPressed: _enterManual,
+                      icon: const Icon(Icons.edit_outlined, size: 16),
+                      label: const Text('Introducir proveedor manualmente'),
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size.fromHeight(40),
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -275,12 +414,22 @@ class _ProviderModeButton extends StatelessWidget {
 class _ProviderPickerSheet extends StatefulWidget {
   final List<Map<String, dynamic>> providers;
   final String? selectedProviderId;
-  final ValueChanged<String?> onSelect;
+  final ValueChanged<Map<String, dynamic>> onSelect;
+  final VoidCallback onManual;
+  final bool Function(Map<String, dynamic>, String) matches;
+  final String Function(Map<String, dynamic>) providerId;
+  final String Function(Map<String, dynamic>) providerName;
+  final String Function(Map<String, dynamic>) providerTaxId;
 
   const _ProviderPickerSheet({
     required this.providers,
     required this.selectedProviderId,
     required this.onSelect,
+    required this.onManual,
+    required this.matches,
+    required this.providerId,
+    required this.providerName,
+    required this.providerTaxId,
   });
 
   @override
@@ -288,293 +437,111 @@ class _ProviderPickerSheet extends StatefulWidget {
 }
 
 class _ProviderPickerSheetState extends State<_ProviderPickerSheet> {
+  final _searchController = TextEditingController();
   String _query = '';
-  late final TextEditingController _searchCtrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _searchCtrl = TextEditingController();
-  }
 
   @override
   void dispose() {
-    _searchCtrl.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
-  List<Map<String, dynamic>> get _filtered {
-    final q = _query.toLowerCase().trim();
-    if (q.isEmpty) return widget.providers;
-    return widget.providers.where((p) {
-      final name = (p['name'] ?? '').toString().toLowerCase();
-      return name.contains(q);
-    }).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final ts = Theme.of(context).textTheme;
-    final filtered = _filtered;
-    final totalCount = widget.providers.length;
-
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.7,
-      minChildSize: 0.4,
-      maxChildSize: 0.92,
-      builder: (_, scrollController) {
-        return Column(
-          children: [
-            // ── Header ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 16, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          l.expenseUploadProviderSearchPlaceholder,
-                          style: ts.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 1),
-                        Text(
-                          '$totalCount proveedores',
-                          style: ts.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded, size: 20),
-                    style: IconButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // ── Search field ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-              child: TextField(
-                controller: _searchCtrl,
-                autofocus: true,
-                style: const TextStyle(fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: 'Buscar por nombre…',
-                  hintStyle: TextStyle(
-                    fontSize: 13,
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.5),
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search_rounded,
-                    size: 18,
-                    color: cs.onSurfaceVariant,
-                  ),
-                  prefixIconConstraints:
-                      const BoxConstraints(minWidth: 40, minHeight: 40),
-                  suffixIcon: _query.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.close, size: 16),
-                          onPressed: () {
-                            _searchCtrl.clear();
-                            setState(() => _query = '');
-                          },
-                          padding: EdgeInsets.zero,
-                          constraints:
-                              const BoxConstraints(minWidth: 36, minHeight: 36),
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.25),
-                  isDense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.4),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(
-                      color: cs.primary.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ),
-                onChanged: (v) => setState(() => _query = v.trim()),
-              ),
-            ),
-
-            Divider(
-              height: 1,
-              color: cs.outlineVariant.withValues(alpha: 0.2),
-            ),
-
-            // ── List ──
-            Expanded(
-              child: filtered.isEmpty && _query.isNotEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.search_off_rounded,
-                            size: 36,
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.4),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Sin resultados para "$_query"',
-                            style: ts.bodySmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      controller: scrollController,
-                      padding: const EdgeInsets.only(top: 4, bottom: 16),
-                      // +1 for "manual" option at top
-                      itemCount: filtered.length + 1,
-                      itemBuilder: (_, index) {
-                        if (index == 0) {
-                          return _ProviderRow(
-                            initial: null,
-                            name: l.expenseUploadProviderManualOption,
-                            isManual: true,
-                            isSelected: widget.selectedProviderId == null,
-                            onTap: () => widget.onSelect(null),
-                            cs: cs,
-                            ts: ts,
-                          );
-                        }
-                        final p = filtered[index - 1];
-                        final id = (p['id'] ?? p['_id'] ?? p['providerId'])
-                            ?.toString();
-                        final name = p['name']?.toString() ?? '-';
-                        return _ProviderRow(
-                          initial: name.trim().isEmpty
-                              ? '?'
-                              : name.trim()[0].toUpperCase(),
-                          name: name,
-                          isManual: false,
-                          isSelected:
-                              id != null && id == widget.selectedProviderId,
-                          onTap: id == null ? null : () => widget.onSelect(id),
-                          cs: cs,
-                          ts: ts,
-                        );
-                      },
-                    ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-// ── Row ───────────────────────────────────────────────────────────────────────
-
-class _ProviderRow extends StatelessWidget {
-  final String? initial;
-  final String name;
-  final bool isManual;
-  final bool isSelected;
-  final VoidCallback? onTap;
-  final ColorScheme cs;
-  final TextTheme ts;
-
-  const _ProviderRow({
-    required this.initial,
-    required this.name,
-    required this.isManual,
-    required this.isSelected,
-    required this.onTap,
-    required this.cs,
-    required this.ts,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final avatarBg = isSelected
-        ? cs.primary.withValues(alpha: 0.15)
-        : cs.surfaceContainerHighest.withValues(alpha: 0.5);
-    final avatarFg = isSelected ? cs.primary : cs.onSurfaceVariant;
-
-    return InkWell(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        color: isSelected
-            ? cs.primary.withValues(alpha: 0.06)
-            : Colors.transparent,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            // Avatar
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: avatarBg,
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: isManual
-                  ? Icon(Icons.edit_outlined, size: 15, color: avatarFg)
-                  : Text(
-                      initial ?? '?',
-                      style: ts.bodySmall?.copyWith(
-                        fontSize: 13,
+    final filtered = widget.providers
+        .where((provider) => widget.matches(provider, _query))
+        .toList(growable: false);
+    return SizedBox(
+      height: MediaQuery.sizeOf(context).height * .72,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text('Seleccionar proveedor',
+                      style: ts.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: avatarFg,
-                      ),
-                    ),
-            ),
-            const SizedBox(width: 12),
-            // Name
-            Expanded(
-              child: Text(
-                name,
-                style: ts.bodyMedium?.copyWith(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  color: isSelected ? cs.primary : cs.onSurface,
+                      )),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                IconButton(
+                  tooltip: 'Cerrar',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'Buscar por nombre, NIF/CIF o referencia',
+                prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                isDense: true,
+                constraints: const BoxConstraints(minHeight: 40),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onChanged: (value) => setState(() => _query = value),
+            ),
+          ),
+          Expanded(
+            child: filtered.isEmpty
+                ? Center(
+                    child: Text('No se encontraron proveedores',
+                        style: ts.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        )),
+                  )
+                : ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final provider = filtered[index];
+                      final selected = widget.providerId(provider) ==
+                          widget.selectedProviderId;
+                      return ListTile(
+                        dense: true,
+                        leading: CircleAvatar(
+                          radius: 15,
+                          child: Text(widget.providerName(provider).isEmpty
+                              ? '?'
+                              : widget.providerName(provider)[0].toUpperCase()),
+                        ),
+                        title: Text(widget.providerName(provider),
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: widget.providerTaxId(provider).isEmpty
+                            ? null
+                            : Text(widget.providerTaxId(provider),
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                        trailing: selected
+                            ? Icon(Icons.check_rounded, color: cs.primary)
+                            : null,
+                        onTap: () => widget.onSelect(provider),
+                      );
+                    },
+                  ),
+          ),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: widget.onManual,
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('Introducir proveedor manualmente'),
+                ),
               ),
             ),
-            // Checkmark
-            if (isSelected) ...[
-              const SizedBox(width: 8),
-              Icon(Icons.check_circle_rounded, size: 18, color: cs.primary),
-            ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

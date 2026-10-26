@@ -5,7 +5,6 @@ import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/o
 class _ExpenseDiscountTypeScale {
   static const fieldLabel = 12.0;
   static const fieldValue = 13.0;
-  static const helper = 12.0;
 }
 
 class ExpenseDocumentDiscountFields extends StatelessWidget {
@@ -15,6 +14,7 @@ class ExpenseDocumentDiscountFields extends StatelessWidget {
   final ExpenseDocumentDiscountPreview? preview;
   final String? helperError;
   final bool compactSummary;
+  final bool showPreview;
 
   const ExpenseDocumentDiscountFields({
     super.key,
@@ -24,6 +24,7 @@ class ExpenseDocumentDiscountFields extends StatelessWidget {
     this.preview,
     this.helperError,
     this.compactSummary = false,
+    this.showPreview = true,
   });
 
   InputDecoration _decor(
@@ -38,13 +39,13 @@ class ExpenseDocumentDiscountFields extends StatelessWidget {
       prefixIcon: icon == null ? null : Icon(icon, size: 16),
       prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(
           color: cs.outlineVariant.withValues(alpha: 0.5),
         ),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(
           color: cs.outlineVariant.withValues(alpha: 0.4),
         ),
@@ -52,6 +53,7 @@ class ExpenseDocumentDiscountFields extends StatelessWidget {
       filled: true,
       fillColor: cs.surfaceContainer,
       isDense: true,
+      constraints: const BoxConstraints(minHeight: 40),
       contentPadding: icon != null
           ? const EdgeInsets.symmetric(horizontal: 4, vertical: 10)
           : const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -119,17 +121,21 @@ class ExpenseDocumentDiscountFields extends StatelessWidget {
                 },
               ),
             ),
+            Tooltip(
+              message:
+                  'Puedes editar importe o porcentaje; el otro valor se sincroniza automÃ¡ticamente.',
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Icon(
+                  Icons.info_outline_rounded,
+                  size: 17,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ),
           ],
         ),
-        const SizedBox(height: 6),
-        Text(
-          'Puedes editar importe o porcentaje. El otro valor se sincroniza para facilitar la revision.',
-          style: ts.bodySmall?.copyWith(
-            color: cs.onSurfaceVariant,
-            fontSize: _ExpenseDiscountTypeScale.helper,
-          ),
-        ),
-        if (showDiscount) ...[
+        if (showPreview && showDiscount) ...[
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.all(10),

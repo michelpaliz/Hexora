@@ -48,9 +48,26 @@ extension _ExpenseJsonImportTab on _ExpenseUploadImportTabsSection {
       lockToLines: false,
       validationError: jsonSummaryValidationError,
       onSummaryModeChanged: (value) => _updateImportState(() {
+        if (!value) {
+          _jsonSummaryTotalsDraft = _captureTotals(
+            _jsonBaseController,
+            _jsonTaxController,
+            _jsonTotalController,
+          );
+        }
         _jsonUseSummaryTotals = value;
         if (_jsonUseSummaryTotals) {
-          _syncJsonSummaryControllers(_ExpenseDocumentTotalField.total);
+          final saved = _jsonSummaryTotalsDraft;
+          if (saved != null) {
+            _restoreTotals(
+              saved,
+              _jsonBaseController,
+              _jsonTaxController,
+              _jsonTotalController,
+            );
+          } else {
+            _syncJsonSummaryControllers(_ExpenseDocumentTotalField.total);
+          }
         }
       }),
       onBaseChanged: (_) {

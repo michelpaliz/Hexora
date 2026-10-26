@@ -1971,6 +1971,7 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
         _jsonTaxController.clear();
         _jsonTotalController.clear();
         _jsonUseSummaryTotals = false;
+        _jsonSummaryTotalsDraft = null;
         _jsonAdvancedExpanded = false;
         _jsonSettlement.setExpenseType(ExpenseDocumentType.standard);
         _jsonSettlement.advancePercentController.clear();

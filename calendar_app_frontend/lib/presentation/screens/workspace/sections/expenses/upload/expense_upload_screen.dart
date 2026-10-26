@@ -22,6 +22,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/p
 import 'package:hexora/presentation/shared/jobs/ocr_import_job_mapping_store.dart';
 import 'package:hexora/presentation/shared/jobs/ocr_import_jobs_store.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/buttons.dart';
+import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:intl/intl.dart';
@@ -479,6 +480,8 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   final _jsonDocumentDiscount = ExpenseDocumentDiscountDraft();
   bool _manualUseSummaryTotals = false;
   bool _jsonUseSummaryTotals = false;
+  ({String base, String tax, String total})? _manualSummaryTotalsDraft;
+  ({String base, String tax, String total})? _jsonSummaryTotalsDraft;
   bool _syncingManualSummaryTotals = false;
   bool _syncingJsonSummaryTotals = false;
   List<Map<String, dynamic>>? _vatBreakdown;
@@ -1121,6 +1124,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     Map<String, dynamic> expense, {
     bool allowAutoMode = false,
   }) {
+    if (allowAutoMode) _jsonSummaryTotalsDraft = null;
     final total = ExpenseFormHelpers.parseNum(expense['total']);
     final tax = ExpenseFormHelpers.parseNum(
           expense['taxTotal'] ?? expense['vatTotal'] ?? expense['tax'],
@@ -1426,6 +1430,102 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     if (picked == null) return;
     setState(() {
       controller.text = picked;
+    });
+  }
+
+  ({String base, String tax, String total}) _captureTotals(
+    TextEditingController base,
+    TextEditingController tax,
+    TextEditingController total,
+  ) =>
+      (base: base.text, tax: tax.text, total: total.text);
+
+  void _restoreTotals(
+    ({String base, String tax, String total}) snapshot,
+    TextEditingController base,
+    TextEditingController tax,
+    TextEditingController total,
+  ) {
+    _syncingManualSummaryTotals = true;
+    _syncingJsonSummaryTotals = true;
+    base.text = snapshot.base;
+    tax.text = snapshot.tax;
+    total.text = snapshot.total;
+    _syncingManualSummaryTotals = false;
+    _syncingJsonSummaryTotals = false;
+  }
+
+  bool get _hasManualExpenseDraft {
+    return _fileBytes != null ||
+        (_selectedProviderId ?? '').isNotEmpty ||
+        _lines.isNotEmpty ||
+        [
+          _vendorController,
+          _issueDateController,
+          _baseTotalController,
+          _totalController,
+          _vendorTaxIdController,
+          _invoiceNumberController,
+          _dueDateController,
+          _taxTotalController,
+          _notesController,
+          _clientIdController,
+        ].any((controller) => controller.text.trim().isNotEmpty);
+  }
+
+  Future<void> _cancelManualExpenseDraft() async {
+    if (_submitting) return;
+    if (_hasManualExpenseDraft) {
+      final discard = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Descartar cambios'),
+          content: const Text(
+            'Se limpiarán los datos introducidos y el documento seleccionado.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Seguir editando'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Descartar'),
+            ),
+          ],
+        ),
+      );
+      if (discard != true || !mounted) return;
+    }
+
+    for (final line in _lines) {
+      line.dispose();
+    }
+    setState(() {
+      _lines.clear();
+      _fileName = null;
+      _fileBytes = null;
+      _selectedProviderId = null;
+      _vendorController.clear();
+      _issueDateController.clear();
+      _baseTotalController.clear();
+      _totalController.clear();
+      _vendorTaxIdController.clear();
+      _invoiceNumberController.clear();
+      _dueDateController.clear();
+      _taxTotalController.clear();
+      _currencyController.text = 'EUR';
+      _notesController.clear();
+      _clientIdController.clear();
+      _manualSettlement.loadFromExpenseMap(const <String, dynamic>{});
+      _manualDocumentDiscount.loadFromExpenseMap(
+        const <String, dynamic>{},
+      );
+      _manualWithholding.loadFromExpenseMap(const <String, dynamic>{});
+      _manualUseSummaryTotals = false;
+      _manualSummaryTotalsDraft = null;
+      _vatBreakdown = null;
+      _error = null;
     });
   }
 
@@ -2007,13 +2107,30 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
       lockToLines: hasLines,
       validationError: manualSummaryValidationError,
       onSummaryModeChanged: (value) => setState(() {
+        if (!value) {
+          _manualSummaryTotalsDraft = _captureTotals(
+            _baseTotalController,
+            _taxTotalController,
+            _totalController,
+          );
+        }
         _manualUseSummaryTotals = value;
         if (!_manualUseSummaryTotals &&
             hasLines &&
             manualDiscountPreview != null) {
           _applyManualSummaryControllersFromLines(manualDiscountPreview);
         } else if (_manualUseSummaryTotals) {
-          _syncManualSummaryControllers(_ExpenseDocumentTotalField.total);
+          final saved = _manualSummaryTotalsDraft;
+          if (saved != null) {
+            _restoreTotals(
+              saved,
+              _baseTotalController,
+              _taxTotalController,
+              _totalController,
+            );
+          } else {
+            _syncManualSummaryControllers(_ExpenseDocumentTotalField.total);
+          }
         }
       }),
       onBaseChanged: (_) {
@@ -2049,12 +2166,16 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
       vatBreakdown: vatBreakdown,
       hasLines: hasLines,
       submitting: _submitting,
+      manualProvider: (_selectedProviderId ?? '').trim().isEmpty,
       onPickDate: _pickDate,
     );
     final errorsAndSubmit = ExpenseErrorsAndSubmit(
       error: _error,
       submitting: _submitting,
+      onCancel: _cancelManualExpenseDraft,
       onSubmit: _submit,
+      submitLabel:
+          l.localeName.startsWith('es') ? 'Guardar gasto' : 'Save expense',
       canSubmit: hasGroupSelected &&
           !(_manualSettlement.isFinal &&
               (_manualSettlement.selectedAdvanceExpenseId ?? '')
@@ -2130,6 +2251,60 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
           ),
         );
 
+    Widget manualDocumentPreview() {
+      final bytes = _fileBytes;
+      final name = (_fileName ?? '').toLowerCase();
+      if (bytes == null || bytes.isEmpty) {
+        return Container(
+          key: const ValueKey('expense-registration-empty-preview'),
+          constraints: const BoxConstraints(minHeight: 180),
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.16),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            l.localeName.startsWith('es')
+                ? 'Selecciona un documento para verlo junto al formulario.'
+                : 'Select a document to view it beside the form.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+          ),
+        );
+      }
+      if (name.endsWith('.pdf')) {
+        return PdfInlinePreview(
+          key: const ValueKey('expense-registration-pdf-preview'),
+          bytes: bytes,
+          height: 520,
+        );
+      }
+      if (name.endsWith('.png') ||
+          name.endsWith('.jpg') ||
+          name.endsWith('.jpeg') ||
+          name.endsWith('.jpe') ||
+          name.endsWith('.webp')) {
+        return SizedBox(
+          key: const ValueKey('expense-registration-image-preview'),
+          height: 520,
+          child: InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 8,
+            child: Image.memory(bytes, fit: BoxFit.contain),
+          ),
+        );
+      }
+      return Container(
+        constraints: const BoxConstraints(minHeight: 140),
+        alignment: Alignment.center,
+        child: Text(
+          _fileName ?? '',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      );
+    }
+
     Widget manualSidePanel({required double previewHeight}) =>
         SingleChildScrollView(
           child: Column(
@@ -2138,53 +2313,18 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
               railCard(
                 title: l.localeName.startsWith('es') ? 'Documento' : 'Document',
                 icon: Icons.description_outlined,
-                child: filePicker(height: previewHeight),
-              ),
-              const SizedBox(height: 10),
-              railCard(
-                title:
-                    l.localeName.startsWith('es') ? 'Vista previa' : 'Preview',
-                icon: Icons.visibility_outlined,
-                child: Container(
-                  constraints: const BoxConstraints(minHeight: 116),
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest.withValues(alpha: 0.20),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.description_outlined,
-                          size: 34,
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.65)),
-                      const SizedBox(height: 7),
-                      Text(
-                        _fileName == null
-                            ? (l.localeName.startsWith('es')
-                                ? 'Aquí se mostrará una vista previa del documento cuando lo subas.'
-                                : 'A preview will appear here after you upload a document.')
-                            : _fileName!,
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    filePicker(height: previewHeight),
+                    if (_fileBytes != null) ...[
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: manualDocumentPreview(),
                       ),
-                      if (_fileName != null && _fileBytes != null) ...[
-                        const SizedBox(height: 8),
-                        TextButton.icon(
-                          onPressed: _previewSelectedUploadedFile,
-                          icon: const Icon(Icons.open_in_new_rounded, size: 15),
-                          label: Text(manualPreviewLabel() ??
-                              (l.localeName.startsWith('es')
-                                  ? 'Abrir documento'
-                                  : 'Open document')),
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
               ),
               const SizedBox(height: 10),
@@ -2274,10 +2414,10 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(flex: 13, child: formFields),
-                    const SizedBox(width: 12),
+                    Expanded(flex: 9, child: formFields),
+                    const SizedBox(width: 8),
                     Expanded(
-                      flex: 7,
+                      flex: 11,
                       child: manualSidePanel(previewHeight: 250),
                     ),
                   ],

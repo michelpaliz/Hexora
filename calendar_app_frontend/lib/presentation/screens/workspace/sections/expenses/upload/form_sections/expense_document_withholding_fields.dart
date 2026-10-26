@@ -9,6 +9,8 @@ class ExpenseDocumentWithholdingFields extends StatelessWidget {
   final VoidCallback onChanged;
   final String? helperError;
   final bool compactSummary;
+  final bool showPreview;
+  final bool dense;
 
   const ExpenseDocumentWithholdingFields({
     super.key,
@@ -18,6 +20,8 @@ class ExpenseDocumentWithholdingFields extends StatelessWidget {
     this.preview,
     this.helperError,
     this.compactSummary = false,
+    this.showPreview = true,
+    this.dense = false,
   });
 
   InputDecoration _decor(
@@ -31,13 +35,13 @@ class ExpenseDocumentWithholdingFields extends StatelessWidget {
       prefixIcon: icon == null ? null : Icon(icon, size: 16),
       prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(
           color: cs.outlineVariant.withValues(alpha: 0.5),
         ),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(
           color: cs.outlineVariant.withValues(alpha: 0.4),
         ),
@@ -45,6 +49,7 @@ class ExpenseDocumentWithholdingFields extends StatelessWidget {
       filled: true,
       fillColor: cs.surfaceContainer,
       isDense: true,
+      constraints: const BoxConstraints(minHeight: 40),
       contentPadding: icon != null
           ? const EdgeInsets.symmetric(horizontal: 4, vertical: 10)
           : const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -64,6 +69,10 @@ class ExpenseDocumentWithholdingFields extends StatelessWidget {
       return ChoiceChip(
         label: Text(type.labelEs),
         selected: selected,
+        visualDensity: VisualDensity.compact,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        labelStyle: const TextStyle(fontSize: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         onSelected: enabled
             ? (_) {
                 withholding.setType(type);
@@ -77,32 +86,41 @@ class ExpenseDocumentWithholdingFields extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'RETENCION',
-          style: ts.bodySmall?.copyWith(
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-            letterSpacing: 0.8,
-          ),
+        Row(
+          children: [
+            Text(
+              'RETENCIÃ“N',
+              style: ts.bodySmall?.copyWith(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Tooltip(
+              message:
+                  'La retenciÃ³n se descuenta del total bruto para calcular el importe lÃ­quido a pagar.',
+              child: Icon(
+                Icons.info_outline_rounded,
+                size: 15,
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: dense ? 4 : 6),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: dense ? 6 : 8,
+          runSpacing: dense ? 6 : 8,
           children: [
             choiceChip(ExpenseWithholdingType.none),
             choiceChip(ExpenseWithholdingType.irpf),
             choiceChip(ExpenseWithholdingType.other),
           ],
         ),
-        const SizedBox(height: 6),
-        Text(
-          'La retencion se descuenta del total bruto para calcular el importe liquido a pagar.',
-          style: ts.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-        ),
         if (withholding.enabled) ...[
-          const SizedBox(height: 8),
+          SizedBox(height: dense ? 6 : 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -148,7 +166,7 @@ class ExpenseDocumentWithholdingFields extends StatelessWidget {
             ],
           ),
         ],
-        if (showSummary && activePreview != null) ...[
+        if (showPreview && showSummary && activePreview != null) ...[
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.all(10),

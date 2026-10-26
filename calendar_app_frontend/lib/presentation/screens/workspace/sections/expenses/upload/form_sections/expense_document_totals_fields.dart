@@ -4,8 +4,7 @@ import 'package:hexora/l10n/app_localizations.dart';
 class _ExpenseTotalsTypeScale {
   static const fieldLabel = 12.0;
   static const fieldValue = 13.0;
-  static const helper = 12.0;
-  static const title = 13.0;
+  static const title = 12.0;
 }
 
 class ExpenseDocumentTotalsFields extends StatelessWidget {
@@ -20,6 +19,7 @@ class ExpenseDocumentTotalsFields extends StatelessWidget {
   final ValueChanged<String> onTaxChanged;
   final ValueChanged<String> onTotalChanged;
   final String? validationError;
+  final Widget? financialSummary;
 
   const ExpenseDocumentTotalsFields({
     super.key,
@@ -34,13 +34,13 @@ class ExpenseDocumentTotalsFields extends StatelessWidget {
     required this.onTaxChanged,
     required this.onTotalChanged,
     this.validationError,
+    this.financialSummary,
   });
 
   InputDecoration _decor(
     String label,
     ColorScheme cs, {
     IconData? icon,
-    bool readOnly = false,
   }) {
     return InputDecoration(
       labelText: label,
@@ -48,20 +48,21 @@ class ExpenseDocumentTotalsFields extends StatelessWidget {
       prefixIcon: icon == null ? null : Icon(icon, size: 16),
       prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(
           color: cs.outlineVariant.withValues(alpha: 0.5),
         ),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(
           color: cs.outlineVariant.withValues(alpha: 0.4),
         ),
       ),
       filled: true,
-      fillColor: readOnly ? cs.surfaceContainerHigh : cs.surfaceContainer,
+      fillColor: cs.surfaceContainer,
       isDense: true,
+      constraints: const BoxConstraints(minHeight: 40),
       contentPadding: icon != null
           ? const EdgeInsets.symmetric(horizontal: 4, vertical: 10)
           : const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -73,7 +74,6 @@ class ExpenseDocumentTotalsFields extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final ts = Theme.of(context).textTheme;
     final l10n = AppLocalizations.of(context)!;
-    final readOnly = lockToLines && !useSummaryTotals;
     final helperText = useSummaryTotals
         ? l10n.expenseTotalsSummaryHelp
         : lockToLines
@@ -88,11 +88,10 @@ class ExpenseDocumentTotalsFields extends StatelessWidget {
     }) {
       return TextField(
         controller: controller,
-        enabled: enabled && !readOnly,
-        readOnly: readOnly,
+        enabled: enabled,
         style: const TextStyle(fontSize: _ExpenseTotalsTypeScale.fieldValue),
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        decoration: _decor(label, cs, icon: icon, readOnly: readOnly),
+        decoration: _decor(label, cs, icon: icon),
         onChanged: onChanged,
       );
     }
@@ -100,135 +99,115 @@ class ExpenseDocumentTotalsFields extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border:
-                Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-            color: cs.surfaceContainerHighest.withValues(
-              alpha: useSummaryTotals ? 0.20 : 0.12,
+        Row(
+          children: [
+            Text(
+              l10n.expenseTotalsUseSummaryLabel,
+              style: ts.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: cs.onSurface,
+                fontSize: _ExpenseTotalsTypeScale.title,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Tooltip(
+              message: helperText,
+              child: Icon(
+                Icons.info_outline_rounded,
+                size: 15,
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        SegmentedButton<bool>(
+          showSelectedIcon: false,
+          expandedInsets: EdgeInsets.zero,
+          style: const ButtonStyle(
+            visualDensity: VisualDensity.compact,
+            textStyle: WidgetStatePropertyAll(
+              TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+            padding: WidgetStatePropertyAll(
+              EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                l10n.expenseTotalsUseSummaryLabel,
-                style: ts.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: cs.onSurface,
-                  fontSize: _ExpenseTotalsTypeScale.title,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: SegmentedButton<bool>(
-                  showSelectedIcon: false,
-                  style: const ButtonStyle(
-                    visualDensity: VisualDensity.compact,
-                    textStyle: WidgetStatePropertyAll(
-                      TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  segments: [
-                    ButtonSegment<bool>(
-                      value: false,
-                      icon: const Icon(Icons.format_list_numbered, size: 15),
-                      label: Text(l10n.expenseTotalsCalculateMode),
-                    ),
-                    ButtonSegment<bool>(
-                      value: true,
-                      icon: const Icon(Icons.receipt_long_outlined, size: 15),
-                      label: Text(l10n.expenseTotalsSummaryMode),
-                    ),
-                  ],
-                  selected: {useSummaryTotals},
-                  onSelectionChanged: enabled
-                      ? (selection) {
-                          final next = selection.first;
-                          if (next != useSummaryTotals) {
-                            onSummaryModeChanged(next);
-                          }
-                        }
-                      : null,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                helperText,
-                style: ts.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontSize: _ExpenseTotalsTypeScale.helper,
-                ),
-              ),
-              const SizedBox(height: 10),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final wide = constraints.maxWidth >= 460;
-                  final firstRow = <Widget>[
-                    Expanded(
-                      child: textField(
-                        controller: baseController,
-                        label: l10n.expenseTotalsTaxableBase,
-                        icon: Icons.receipt_long_outlined,
-                        onChanged: onBaseChanged,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: textField(
-                        controller: taxController,
-                        label: l10n.expenseTotalsTax,
-                        icon: Icons.percent_outlined,
-                        onChanged: onTaxChanged,
-                      ),
-                    ),
-                  ];
-                  final totalField = textField(
-                    controller: totalController,
-                    label: l10n.expenseTotalsTotal,
-                    icon: Icons.payments_outlined,
-                    onChanged: onTotalChanged,
-                  );
-
-                  if (!wide) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        textField(
-                          controller: baseController,
-                          label: l10n.expenseTotalsTaxableBase,
-                          icon: Icons.receipt_long_outlined,
-                          onChanged: onBaseChanged,
-                        ),
-                        const SizedBox(height: 8),
-                        textField(
-                          controller: taxController,
-                          label: l10n.expenseTotalsTax,
-                          icon: Icons.percent_outlined,
-                          onChanged: onTaxChanged,
-                        ),
-                        const SizedBox(height: 8),
-                        totalField,
-                      ],
-                    );
+          segments: [
+            ButtonSegment<bool>(
+              value: false,
+              icon: const Icon(Icons.format_list_numbered, size: 15),
+              label: Text(l10n.expenseTotalsCalculateMode),
+            ),
+            ButtonSegment<bool>(
+              value: true,
+              icon: const Icon(Icons.receipt_long_outlined, size: 15),
+              label: Text(l10n.expenseTotalsSummaryMode),
+            ),
+          ],
+          selected: {useSummaryTotals},
+          onSelectionChanged: enabled
+              ? (selection) {
+                  final next = selection.first;
+                  if (next != useSummaryTotals) {
+                    onSummaryModeChanged(next);
                   }
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(children: firstRow),
-                      const SizedBox(height: 8),
-                      totalField,
-                    ],
-                  );
-                },
-              ),
-            ],
-          ),
+                }
+              : null,
         ),
+        if (financialSummary != null) ...[
+          const SizedBox(height: 8),
+          financialSummary!,
+        ],
+        if (useSummaryTotals) ...[
+          const SizedBox(height: 8),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 560;
+              final fields = [
+                textField(
+                  controller: baseController,
+                  label: l10n.expenseTotalsTaxableBase,
+                  icon: Icons.receipt_long_outlined,
+                  onChanged: onBaseChanged,
+                ),
+                textField(
+                  controller: taxController,
+                  label: l10n.expenseTotalsTax,
+                  icon: Icons.percent_outlined,
+                  onChanged: onTaxChanged,
+                ),
+                textField(
+                  controller: totalController,
+                  label: l10n.expenseTotalsTotal,
+                  icon: Icons.payments_outlined,
+                  onChanged: onTotalChanged,
+                ),
+              ];
+
+              if (!wide) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < fields.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 8),
+                      fields[i],
+                    ],
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  for (var i = 0; i < fields.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    Expanded(child: fields[i]),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
         if ((validationError ?? '').trim().isNotEmpty) ...[
           const SizedBox(height: 6),
           Text(

@@ -385,15 +385,19 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
                   ),
                   const SizedBox(width: 8),
                   if (totalDisplay.isNotEmpty)
-                    Text(
-                      [
-                        totalDisplay,
-                        if (currency.isNotEmpty) currency,
-                      ].join(' '),
-                      style: t.bodySmall.copyWith(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 14,
-                        color: totalColor,
+                    Tooltip(
+                      message: 'Total registrado en el gasto',
+                      child: Text(
+                        [
+                          'Registrado',
+                          totalDisplay,
+                          if (currency.isNotEmpty) currency,
+                        ].join(' · '),
+                        style: t.bodySmall.copyWith(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                          color: totalColor,
+                        ),
                       ),
                     ),
                   if (status.isNotEmpty) ...[

@@ -7424,13 +7424,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get expenseBatchErrorCopyList => 'Copiar lista';
 
   @override
-  String get expenseTotalsUseSummaryLabel => 'Usar resumen del documento';
+  String get expenseTotalsUseSummaryLabel => 'Origen de los importes';
 
   @override
-  String get expenseTotalsSummaryMode => 'Totales extraidos del resumen';
+  String get expenseTotalsSummaryMode => 'Desde documento';
 
   @override
-  String get expenseTotalsCalculateMode => 'Calcular desde lineas';
+  String get expenseTotalsCalculateMode => 'Desde líneas';
 
   @override
   String get expenseTotalsSummaryHelp =>

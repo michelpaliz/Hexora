@@ -5,14 +5,18 @@ class ExpenseErrorsAndSubmit extends StatelessWidget {
   final String? error;
   final bool submitting;
   final VoidCallback onSubmit;
+  final VoidCallback? onCancel;
   final bool canSubmit;
+  final String? submitLabel;
 
   const ExpenseErrorsAndSubmit({
     super.key,
     required this.error,
     required this.submitting,
     required this.onSubmit,
+    this.onCancel,
     this.canSubmit = true,
+    this.submitLabel,
   });
 
   @override
@@ -58,6 +62,20 @@ class ExpenseErrorsAndSubmit extends StatelessWidget {
                       ),
               ),
               const SizedBox(width: 12),
+              if (onCancel != null) ...[
+                OutlinedButton(
+                  onPressed: submitting ? null : onCancel,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 36),
+                    visualDensity: VisualDensity.compact,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(l.cancel),
+                ),
+                const SizedBox(width: 8),
+              ],
               FilledButton.icon(
                 onPressed: (submitting || !canSubmit) ? null : onSubmit,
                 style: FilledButton.styleFrom(
@@ -72,7 +90,7 @@ class ExpenseErrorsAndSubmit extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.save_outlined, size: 16),
-                label: Text(l.expenseUploadSubmitCta),
+                label: Text(submitLabel ?? l.expenseUploadSubmitCta),
               ),
             ],
           ),
