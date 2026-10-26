@@ -44,56 +44,18 @@ class WorkerDirectoryTabs extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isEs = context.isSpanishLocale;
     if (decorated) {
-      return Wrap(spacing: 10, runSpacing: 8, children: [
-        for (final partners in [false, true])
-          OutlinedButton(
-            key:
-                ValueKey(partners ? 'directory-partners' : 'directory-workers'),
-            onPressed: () => onChanged(partners),
-            style: OutlinedButton.styleFrom(
-              backgroundColor: showPartners == partners
-                  ? cs.primaryContainer.withValues(alpha: 0.4)
-                  : cs.surface,
-              foregroundColor:
-                  showPartners == partners ? cs.primary : cs.onSurface,
-              side: BorderSide(
-                  color: showPartners == partners
-                      ? cs.primary.withValues(alpha: 0.4)
-                      : cs.outlineVariant),
-              padding: EdgeInsets.symmetric(
-                  horizontal: compact ? 10 : 16, vertical: compact ? 8 : 14),
-              minimumSize: compact ? const Size(0, 36) : null,
-              visualDensity: compact ? VisualDensity.compact : null,
-              textStyle: compact
-                  ? const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)
-                  : null,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(partners ? Icons.groups_outlined : Icons.people_outline,
-                  size: compact ? 16 : 20),
-              const SizedBox(width: 8),
-              Text(partners
-                  ? (isEs ? 'Socios' : 'Partners')
-                  : (isEs ? 'Trabajadores' : 'Workers')),
-              SizedBox(width: compact ? 6 : 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
-                decoration: BoxDecoration(
-                  color: showPartners == partners
-                      ? cs.primary
-                      : cs.primaryContainer,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text('${partners ? partnerCount : workerCount}',
-                    style: TextStyle(
-                        color: showPartners == partners
-                            ? cs.onPrimary
-                            : cs.onPrimaryContainer)),
-              ),
-            ]),
-          ),
+      return Wrap(spacing: 8, runSpacing: 8, children: [
+        for (final partners in [false, true]) _buildChip(
+          key: ValueKey(partners ? 'directory-partners' : 'directory-workers'),
+          selected: showPartners == partners,
+          icon: partners ? Icons.groups_outlined : Icons.people_outline,
+          label: partners
+              ? (isEs ? 'Socios' : 'Partners')
+              : (isEs ? 'Trabajadores' : 'Workers'),
+          count: partners ? partnerCount : workerCount,
+          onTap: () => onChanged(partners),
+          cs: cs,
+        ),
       ]);
     }
     return Align(
@@ -120,6 +82,49 @@ class WorkerDirectoryTabs extends StatelessWidget {
             label: Text('${isEs ? 'Socios' : 'Partners'} ($partnerCount)'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildChip({
+    required Key key,
+    required bool selected,
+    required IconData icon,
+    required String label,
+    required int count,
+    required VoidCallback onTap,
+    required ColorScheme cs,
+  }) {
+    final bg =
+        selected ? cs.primaryContainer.withValues(alpha: .5) : cs.surface;
+    final fg = selected ? cs.primary : cs.onSurfaceVariant;
+    return InkWell(
+      key: key,
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected
+                ? cs.primary.withValues(alpha: .5)
+                : cs.outlineVariant.withValues(alpha: .4),
+          ),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 15, color: fg),
+          const SizedBox(width: 6),
+          Text(
+            '$label  $count',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              color: fg,
+            ),
+          ),
+        ]),
       ),
     );
   }

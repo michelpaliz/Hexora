@@ -3,6 +3,7 @@ import 'package:hexora/presentation/shared/widgets/insights_chat_fab.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 
 import 'dashboard_sections.dart';
 import '../state/group_dashboard_state.dart';
@@ -16,6 +17,7 @@ class BottomBar extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final isEmailSection = state.activeSection == Sections.emails;
     final compose = state.mailBarActions?.onCompose;
+    final primaryButtonStyle = ThemedButtons.button(context);
 
     return DecoratedBox(
       decoration: BoxDecoration(color: state.backdrop),
@@ -27,15 +29,15 @@ class BottomBar extends StatelessWidget {
             Expanded(
               child: isEmailSection
                   ? FilledButton.icon(
+                      style: primaryButtonStyle,
                       icon: const Icon(Icons.edit_outlined),
                       label: Text(l.mailComposeTitle),
                       onPressed: compose,
                     )
                   : FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                          textStyle: NavigationTokens.label(context),
-                          minimumSize: const Size.fromHeight(NavigationTokens.touchRowHeight)),
-                      icon: const Icon(Icons.calendar_month_rounded, size: NavigationTokens.iconSize),
+                      style: primaryButtonStyle,
+                      icon: const Icon(Icons.calendar_month_rounded,
+                          size: NavigationTokens.iconSize),
                       label: Text(l.goToCalendar),
                       onPressed: () => state.openSection('calendar'),
                     ),

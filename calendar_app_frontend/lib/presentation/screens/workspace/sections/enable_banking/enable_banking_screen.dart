@@ -217,9 +217,10 @@ class _EnableBankingViewState extends State<_EnableBankingView>
               onPressed: () => s.setStatusThreshold(value),
               style: OutlinedButton.styleFrom(
                 visualDensity: VisualDensity.compact,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                minimumSize: const Size(36, 30),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: HexoraTableTokens.cellPadding, vertical: 6),
+                minimumSize:
+                    const Size(0, HexoraDimensions.buttonCompact),
                 backgroundColor:
                     sel ? cs.primaryContainer.withValues(alpha: 0.9) : null,
               ),
@@ -231,6 +232,7 @@ class _EnableBankingViewState extends State<_EnableBankingView>
             padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
             child: FolderSectionCard(
               label: l.statementsHistoryTabTitle,
+              showTitle: false,
               leftTabOffset: 0,
               actions: [
                 Tooltip(

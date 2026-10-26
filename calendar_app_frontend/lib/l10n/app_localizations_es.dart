@@ -8001,6 +8001,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get groupSettingsDeleteGroup => 'Eliminar negocio';
 
   @override
+  String invoiceIssueChronologyError(
+      Object draftDate, Object invoiceNumber, Object issuedDate) {
+    return 'Este borrador tiene fecha $draftDate, pero la factura $invoiceNumber ya se emitió con la fecha posterior $issuedDate. Cambia la fecha del borrador antes de emitirlo.';
+  }
+
+  @override
+  String invoiceBatchIssueStoppedAfter(Object count) {
+    return 'Se emitieron $count facturas antes de que se detuviera el proceso.';
+  }
+
+  @override
   String get agendaCompleted => 'Completado';
 
   @override

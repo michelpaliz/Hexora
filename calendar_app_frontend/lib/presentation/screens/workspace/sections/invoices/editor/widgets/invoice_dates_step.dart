@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/form/form_widgets/dates_box.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -209,28 +210,21 @@ class InvoiceDatesStep extends StatelessWidget {
                   Row(
                     children: [
                       if (onBack != null)
-                        OutlinedButton.icon(
+                        HexoraButton(
                           onPressed: onBack,
-                          icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                          label: Text(isSpanish ? 'Cliente' : 'Customer'),
+                          icon: Icons.arrow_back_rounded,
+                          label: isSpanish ? 'Cliente' : 'Customer',
+                          variant: HexoraButtonVariant.secondary,
                         ),
                       const Spacer(),
                       if (onContinue != null)
-                        FilledButton.icon(
+                        HexoraButton(
                           onPressed: canContinue ? onContinue : null,
-                          icon:
-                              const Icon(Icons.arrow_forward_rounded, size: 18),
-                          label: Text(
-                            isSpanish
-                                ? 'Continuar a líneas'
-                                : 'Continue to line items',
-                          ),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 14,
-                            ),
-                          ),
+                          icon: Icons.arrow_forward_rounded,
+                          label: isSpanish
+                              ? 'Continuar a líneas'
+                              : 'Continue to line items',
+                          size: HexoraButtonSize.large,
                         ),
                     ],
                   ),

@@ -626,6 +626,6 @@ class _MonthSeparator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CompactDocumentMonthHeading(label: label);
+    return HexoraMonthSeparator(label: label);
   }
 }

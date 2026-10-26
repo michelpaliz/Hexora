@@ -6,6 +6,7 @@ import 'package:hexora/presentation/screens/workspace/dashboard/panels/notificat
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/widgets/folder_section_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 
 class SettingsGeneratedFilesSection extends StatefulWidget {
   const SettingsGeneratedFilesSection({
@@ -115,6 +116,7 @@ class _SettingsGeneratedFilesSectionState
 
     return FolderSectionCard(
       label: isEs ? 'Historial de archivos' : 'Generated files',
+      showTitle: false,
       leftTabOffset: 0,
       backgroundColor: isLight ? Colors.white : null,
       child: Padding(
@@ -136,6 +138,7 @@ class _SettingsGeneratedFilesSectionState
                   ),
                 ),
                 IconButton(
+                  style: ThemedButtons.iconAction(context),
                   onPressed: _loading ? null : _loadJobs,
                   tooltip: isEs ? 'Actualizar' : 'Refresh',
                   icon: const Icon(Icons.refresh_rounded, size: 18),
@@ -159,6 +162,10 @@ class _SettingsGeneratedFilesSectionState
                               ),
                               const SizedBox(height: 10),
                               FilledButton.tonalIcon(
+                                style: ThemedButtons.button(
+                                  context,
+                                  variant: ButtonVariant.secondary,
+                                ),
                                 onPressed: _loadJobs,
                                 icon: const Icon(Icons.refresh_rounded),
                                 label: Text(isEs ? 'Reintentar' : 'Retry'),

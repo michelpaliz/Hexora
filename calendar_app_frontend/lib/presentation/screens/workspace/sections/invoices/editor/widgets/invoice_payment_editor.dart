@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:intl/intl.dart';
 
 class InvoicePaymentEditor extends StatefulWidget {
@@ -124,6 +126,17 @@ class _InvoicePaymentEditorState extends State<InvoicePaymentEditor> {
     return num.tryParse(raw);
   }
 
+  /// Remaining balance after the entered partial payment, for display only.
+  num? get _remainingBalance {
+    if (_status != 'partial') return null;
+    final total = widget.invoice.total;
+    final paid = _parseAmount(_amountCtrl.text);
+    if (total == null || paid == null || paid <= 0 || paid >= total) {
+      return null;
+    }
+    return total - paid;
+  }
+
   Future<void> _pickDate() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -228,7 +241,7 @@ class _InvoicePaymentEditorState extends State<InvoicePaymentEditor> {
     final mobile = MediaQuery.sizeOf(context).width < 760;
     String statusLabel(String status) => switch (status) {
           'paid' => isEs ? 'Pagada' : 'Paid',
-          'partial' => isEs ? 'Pago parcial' : 'Partial payment',
+          'partial' => isEs ? 'Parcial' : 'Partial',
           _ => isEs ? 'Pendiente' : 'Unpaid',
         };
     if (mobile && widget.showSaveButton && !_editingMobile) {
@@ -267,7 +280,7 @@ class _InvoicePaymentEditorState extends State<InvoicePaymentEditor> {
         side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.7)),
       ),
       child: Padding(
-        padding: EdgeInsets.all(widget.compact ? 12 : 14),
+        padding: EdgeInsets.all(widget.compact ? 8 : 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -312,33 +325,57 @@ class _InvoicePaymentEditorState extends State<InvoicePaymentEditor> {
                       },
               )
             else
-              SegmentedButton<String>(
-                selected: {_status},
-                onSelectionChanged: _saving
-                    ? null
-                    : (value) => setState(() {
-                          _status = value.first;
-                          _error = null;
-                          _success = null;
-                          _notifyChanged();
-                        }),
-                segments: [
-                  ButtonSegment(
-                    value: 'unpaid',
-                    label: Text(isEs ? 'Pendiente' : 'Unpaid'),
-                    icon: const Icon(Icons.schedule_outlined, size: 16),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: SegmentedButton<String>(
+                  showSelectedIcon: false,
+                  style: SegmentedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    minimumSize: const Size(0, HexoraDimensions.buttonStandard),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    textStyle: const TextStyle(
+                      fontFamily: HexoraTypography.fontFamily,
+                      fontSize: HexoraTypography.label,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(HexoraDimensions.radius),
+                    ),
+                    side: BorderSide(color: cs.outlineVariant),
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: cs.onSurfaceVariant,
+                    selectedBackgroundColor: cs.primary.withValues(alpha: 0.12),
+                    selectedForegroundColor: cs.primary,
+                    iconSize: 14,
                   ),
-                  ButtonSegment(
-                    value: 'paid',
-                    label: Text(isEs ? 'Pagada' : 'Paid'),
-                    icon: const Icon(Icons.check_circle_outline, size: 16),
-                  ),
-                  ButtonSegment(
-                    value: 'partial',
-                    label: Text(isEs ? 'Pago parcial' : 'Partial'),
-                    icon: const Icon(Icons.pie_chart_outline, size: 16),
-                  ),
-                ],
+                  selected: {_status},
+                  onSelectionChanged: _saving
+                      ? null
+                      : (value) => setState(() {
+                            _status = value.first;
+                            _error = null;
+                            _success = null;
+                            _notifyChanged();
+                          }),
+                  segments: [
+                    ButtonSegment(
+                      value: 'unpaid',
+                      label: Text(isEs ? 'Pendiente' : 'Unpaid'),
+                      icon: const Icon(Icons.schedule_outlined, size: 14),
+                    ),
+                    ButtonSegment(
+                      value: 'paid',
+                      label: Text(isEs ? 'Pagada' : 'Paid'),
+                      icon: const Icon(Icons.check_circle_outline, size: 14),
+                    ),
+                    ButtonSegment(
+                      value: 'partial',
+                      label: Text(isEs ? 'Parcial' : 'Partial'),
+                      icon: const Icon(Icons.pie_chart_outline, size: 14),
+                    ),
+                  ],
+                ),
               ),
             if (_status == 'partial') ...[
               const SizedBox(height: 12),
@@ -355,8 +392,23 @@ class _InvoicePaymentEditorState extends State<InvoicePaymentEditor> {
                   suffixText: widget.invoice.currency ?? 'EUR',
                   isDense: true,
                 ),
-                onChanged: (_) => _notifyChanged(),
+                onChanged: (_) {
+                  setState(() {});
+                  _notifyChanged();
+                },
               ),
+              if (_remainingBalance != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '${isEs ? 'Resto pendiente' : 'Remaining'}: '
+                  '${_formatAmount(_remainingBalance!)} '
+                  '${widget.invoice.currency ?? 'EUR'}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
             ],
             if (_status != 'unpaid') ...[
               const SizedBox(height: 12),
@@ -365,15 +417,16 @@ class _InvoicePaymentEditorState extends State<InvoicePaymentEditor> {
                 runSpacing: 10,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  OutlinedButton.icon(
+                  HexoraButton(
                     onPressed: _saving
                         ? null
                         : () async {
                             await _pickDate();
                             _notifyChanged();
                           },
-                    icon: const Icon(Icons.event_outlined, size: 16),
-                    label: Text(dateLabel),
+                    icon: Icons.event_outlined,
+                    label: dateLabel,
+                    variant: HexoraButtonVariant.secondary,
                   ),
                   SizedBox(
                     width: mobile ? double.infinity : 220,
@@ -425,20 +478,16 @@ class _InvoicePaymentEditorState extends State<InvoicePaymentEditor> {
                 alignment: WrapAlignment.end,
                 children: [
                   if (mobile)
-                    TextButton(
+                    HexoraButton(
                       onPressed: _saving ? null : _cancelMobileEdit,
-                      child: Text(l.cancel),
+                      label: l.cancel,
+                      variant: HexoraButtonVariant.ghost,
                     ),
-                  FilledButton.icon(
-                    onPressed: _saving ? null : _save,
-                    icon: _saving
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.save_outlined, size: 16),
-                    label: Text(isEs ? 'Guardar cambios' : 'Save changes'),
+                  HexoraButton(
+                    onPressed: _save,
+                    icon: Icons.save_outlined,
+                    label: isEs ? 'Guardar cambios' : 'Save changes',
+                    loading: _saving,
                   ),
                 ],
               ),

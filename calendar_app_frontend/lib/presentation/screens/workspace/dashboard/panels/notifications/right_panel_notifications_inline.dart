@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/downloads/download_job.dart';
@@ -30,6 +32,8 @@ import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dash
 import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
 import 'package:hexora/presentation/utils/errors/group_membership_error_mapper.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/premium_upgrade_dialog.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/presentation/viewmodels/notifications/notification_view_model.dart';
 import 'package:hexora/presentation/shared/jobs/ocr_import_jobs_store.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -110,15 +114,10 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
         width: 32,
         height: 32,
         child: IconButton(
+          style: ThemedButtons.iconAction(context),
           padding: EdgeInsets.zero,
           visualDensity: VisualDensity.compact,
           constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-          style: IconButton.styleFrom(
-            backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.38),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
           splashRadius: 16,
           iconSize: 16,
           icon: Icon(
@@ -146,10 +145,9 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                 Text(label,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(fontWeight: FontWeight.w600)),
+                    style: NavigationTokens.label(context).copyWith(
+                      fontWeight: FontWeight.w600,
+                    )),
                 if (subtitle != null)
                   Text(subtitle,
                       style: Theme.of(context)
@@ -165,18 +163,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
       constraints: const BoxConstraints(minWidth: 280, maxWidth: 320),
       position: PopupMenuPosition.under,
       offset: const Offset(0, 6),
-      elevation: 4,
-      surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: cs.outlineVariant)),
-      style: IconButton.styleFrom(
-        minimumSize: const Size(36, 36),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        backgroundColor: cs.primaryContainer.withValues(alpha: .4),
-        foregroundColor: cs.primary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
+      style: ThemedButtons.iconAction(context, color: cs.primary),
       icon: _markingAllRead
           ? const SizedBox(
               width: 16,
@@ -253,6 +240,12 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
         jobNotifications = const <JobNotification>[];
       }
       final data = await _viewModel.fetchNotificationsForGroup(widget.group.id);
+      // Refresh domain so the nav-bar badge count reflects the server's
+      // current read state (domain may be stale from the initial app load).
+      final user = _viewModel.userDomain.user;
+      if (user != null) {
+        unawaited(_viewModel.fetchAndUpdateNotifications(user));
+      }
       if (!mounted) return;
       context.read<NotificationDomain>().replaceGroupNotifications(
             widget.group.id,
@@ -998,6 +991,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                               !_ocrJobsMode &&
                               effectiveSelected != null)
                             IconButton(
+                              style: ThemedButtons.iconAction(context),
                               tooltip: MaterialLocalizations.of(context)
                                   .closeButtonTooltip,
                               icon: const Icon(Icons.close, size: 18),
@@ -1177,6 +1171,10 @@ class _OcrNotificationsSummary extends StatelessWidget {
           ),
           if (onMarkAllRead != null)
             TextButton(
+              style: ThemedButtons.button(
+                context,
+                variant: ButtonVariant.ghost,
+              ),
               onPressed: onMarkAllRead,
               child: const Text('Marcar leidas'),
             ),
@@ -1273,6 +1271,10 @@ class _OcrJobRow extends StatelessWidget {
                 ],
                 const Spacer(),
                 TextButton(
+                  style: ThemedButtons.button(
+                    context,
+                    variant: ButtonVariant.ghost,
+                  ),
                   onPressed: onOpen,
                   child: Text(_jobActionLabel(job.status)),
                 ),
@@ -1349,6 +1351,7 @@ class _OcrJobDetailsPanel extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
+              style: ThemedButtons.button(context),
               onPressed: onOpen,
               icon: const Icon(Icons.open_in_new_rounded),
               label: Text(_jobActionLabel(item.status)),

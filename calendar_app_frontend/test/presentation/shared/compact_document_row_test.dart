@@ -8,6 +8,7 @@ import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/invoice_row_item.dart';
 import 'package:hexora/presentation/screens/workspace/sections/receipts/widgets/receipt_list_item.dart';
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
 
 void main() {
@@ -149,4 +150,61 @@ void main() {
       });
     }
   }
+
+  testWidgets('narrow desktop pane stacks columns without overflow',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1400, 900);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('es'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: 610,
+              child: CompactDocumentRow(
+                title: 'Factura recurrente',
+                metadata: 'Cliente de prueba',
+                amount: '1.573,00 EUR',
+                previewLabel: 'Vista previa',
+                onPreview: () {},
+                status: const Text('Activa'),
+                delivery: const Text('Enviada'),
+                showDeliveryColumn: true,
+                payment: const Text('Pendiente'),
+                date: DateTime(2026, 11, 24),
+                primaryActionWidth: 80,
+                primaryAction: const Text('Emitir'),
+                quickActionSlots: 2,
+                quickActions: [
+                  CompactDocumentQuickAction(
+                    icon: Icons.edit_outlined,
+                    tooltip: 'Editar',
+                    onPressed: () {},
+                  ),
+                ],
+                actions: [
+                  CompactDocumentAction('Eliminar', () {}),
+                ],
+                visibleFinancialColumns: const {
+                  HexoraFinancialColumn.payment,
+                  HexoraFinancialColumn.date,
+                  HexoraFinancialColumn.total,
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
 }

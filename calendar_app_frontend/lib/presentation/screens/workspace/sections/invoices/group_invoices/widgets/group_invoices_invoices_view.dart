@@ -15,6 +15,8 @@ import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/invoicing/recurring_invoices_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_sheet.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/invoice_delivery_utils.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/invoice_issue_error_message.dart';
 import 'invoice_row_item.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/date_range_filter_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';
@@ -45,7 +47,7 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
   final VoidCallback? onClearSelection;
   final ValueChanged<Invoice> onDeleteInvoice;
   final ValueChanged<Invoice> onEditDraft;
-  final ValueChanged<Invoice> onIssueDraft;
+  final Future<void> Function(Invoice invoice) onIssueDraft;
   final ValueChanged<List<Invoice>>? onIssueAllDrafts;
   final VoidCallback onCreateInvoice;
   final VoidCallback onRefresh;
@@ -55,6 +57,7 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
   final bool? issueAllDraftsLoading;
   final int initialTabIndex;
   final ValueChanged<String>? onOpenRecurringSeries;
+  final VoidCallback? onOpenDeliveryRecord;
   final ValueChanged<InvoiceDateFilterState>? onIssuedDateFilterChanged;
   final Future<void> Function(List<Invoice>)? onDownloadFiltered;
   final Future<void> Function(List<Invoice>)? onDownloadExcelFiltered;
@@ -83,6 +86,7 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
     this.issueAllDraftsLoading = false,
     this.initialTabIndex = 0,
     this.onOpenRecurringSeries,
+    this.onOpenDeliveryRecord,
     this.onIssuedDateFilterChanged,
     this.onDownloadFiltered,
     this.onDownloadExcelFiltered,
@@ -241,7 +245,12 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                     ),
                     billingProfile: widget.billingProfile,
                     group: widget.group,
+                    onEditInvoice: widget.selectedInvoice!.isDraft
+                        ? () => widget.onEditDraft(widget.selectedInvoice!)
+                        : null,
+                    onIssueInvoice: widget.onIssueDraft,
                     onOpenRecurringSeries: widget.onOpenRecurringSeries,
+                    onOpenDeliveryRecord: widget.onOpenDeliveryRecord,
                     onInvoiceChanged: widget.onRefresh,
                     onClose: widget.onClearSelection,
                     onPrevious: selectedIndex > 0

@@ -4,6 +4,71 @@
 part of '../../expense_upload_screen.dart';
 
 extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
+  Widget _buildRecentBatchJobs(ColorScheme cs) {
+    final jobs = _recentBatchJobs
+        .take(_recentBatchJobsExpanded ? 5 : 1)
+        .toList(growable: false);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          const Expanded(
+              child: Text('Lotes recientes',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
+          if (_recentBatchJobs.length > 1)
+            TextButton(
+              onPressed: () => _updateImportState(
+                  () => _recentBatchJobsExpanded = !_recentBatchJobsExpanded),
+              child: Text(_recentBatchJobsExpanded
+                  ? 'Mostrar menos'
+                  : 'Ver todos (${_recentBatchJobs.length})'),
+            ),
+          IconButton(
+            tooltip: 'Actualizar lotes',
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.refresh, size: 17),
+            onPressed: _recentBatchJobsLoading ? null : _loadRecentBatchJobs,
+          ),
+        ]),
+        if (_recentBatchJobsLoading && jobs.isEmpty)
+          const LinearProgressIndicator(minHeight: 2)
+        else if (_recentBatchJobsError != null && jobs.isEmpty)
+          Text('No se pudo cargar el historial: $_recentBatchJobsError',
+              style: TextStyle(fontSize: 11, color: cs.error))
+        else if (jobs.isEmpty)
+          Text('Los ZIP aparecen aqui tras pulsar «Confirmar y analizar».',
+              style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant))
+        else
+          for (final job in jobs)
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading:
+                  Icon(Icons.folder_zip_outlined, size: 16, color: cs.primary),
+              title: Text(
+                  _batchJobText(job['sourceArchiveName']).isEmpty
+                      ? 'Lote de ${_batchJobText(job['totalFiles'])} facturas'
+                      : _batchJobText(job['sourceArchiveName']),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+              subtitle: Text(_batchJobText(job['status']),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              trailing: job['canResume'] == true
+                  ? TextButton(
+                      onPressed: () => _openRecentBatchJob(job),
+                      child: const Text('Abrir'))
+                  : null,
+            ),
+      ]),
+    );
+  }
+
   Widget _buildBatchImportTab(AppLocalizations l,
       {bool showInlineControls = true}) {
     {
@@ -250,10 +315,12 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
           if (jobActive && !batchSubmitting) ...[
             Align(
               alignment: Alignment.centerRight,
-              child: TextButton.icon(
+              child: HexoraButton(
                 onPressed: cancelBatchPreviewJob,
-                icon: const Icon(Icons.close_rounded, size: 16),
-                label: const Text('Cancelar lote'),
+                icon: Icons.close_rounded,
+                label: 'Cancelar lote',
+                variant: HexoraButtonVariant.ghost,
+                size: HexoraButtonSize.compact,
               ),
             ),
           ],
@@ -278,13 +345,52 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
                     onToggleExpanded: () => _updateImportState(() {
                       batchArchiveFilesExpanded = !batchArchiveFilesExpanded;
                     }),
-                    onCancel: () => _updateImportState(() {
-                      clearBatchArchive();
-                      _batchSkippedDetails.clear();
-                      _batchVerifyMessage = null;
-                      _batchError = null;
-                    }),
-                    onReplace: pickBatchDocuments,
+                    onRemove: () async {
+                      final isEs =
+                          Localizations.localeOf(context).languageCode == 'es';
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (dialogCtx) => AlertDialog(
+                          title: Row(children: [
+                            Icon(Icons.delete_outline_rounded,
+                                size: 20,
+                                color: Theme.of(dialogCtx).colorScheme.error),
+                            const SizedBox(width: 8),
+                            Text(isEs ? 'Eliminar ZIP' : 'Remove ZIP'),
+                          ]),
+                          content: Text(
+                            isEs
+                                ? 'Se eliminará "${batchArchiveName!}" y todos los documentos pendientes detectados de esta sesión de importación. No se eliminarán los registros ya importados en contabilidad.'
+                                : 'The file "${batchArchiveName!}" and all pending detected documents will be removed from this import session. Already-imported accounting records will not be deleted.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.of(dialogCtx).pop(false),
+                              child: Text(isEs ? 'Cancelar' : 'Cancel'),
+                            ),
+                            FilledButton(
+                              onPressed: () =>
+                                  Navigator.of(dialogCtx).pop(true),
+                              style: FilledButton.styleFrom(
+                                backgroundColor:
+                                    Theme.of(dialogCtx).colorScheme.error,
+                              ),
+                              child: Text(isEs ? 'Eliminar' : 'Remove'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true) {
+                        _updateImportState(() {
+                          clearBatchArchive();
+                          _batchSkippedDetails.clear();
+                          _batchVerifyMessage = null;
+                          _batchError = null;
+                        });
+                      }
+                    },
+                    onReplace: pickBatchZip,
                     onConfirm: submitBatchImport,
                     onRetry: inspectSelectedBatchArchive,
                   )

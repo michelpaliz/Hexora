@@ -9,10 +9,12 @@ extension _InvoiceListLayout on _InvoicesTabListState {
         : widget.invoices;
     final searchQuery = _searchText.trim().toLowerCase();
     final invoiceQuery = _invoiceNumberQuery.trim().toLowerCase();
+    // ignore: unused_local_variable
     final hasColumnFilters = searchQuery.isNotEmpty ||
         invoiceQuery.isNotEmpty ||
         _selectedClientNames.isNotEmpty ||
         _selectedLifecycleStatuses.isNotEmpty ||
+        _selectedDeliveryStatuses.isNotEmpty ||
         _selectedPaymentStatuses.isNotEmpty ||
         _baseRange.active ||
         _vatRange.active ||
@@ -30,6 +32,11 @@ extension _InvoiceListLayout on _InvoicesTabListState {
       if (_selectedLifecycleStatuses.isNotEmpty &&
           !_selectedLifecycleStatuses
               .contains(_normalizedLifecycleStatus(inv))) {
+        return false;
+      }
+      if (_selectedDeliveryStatuses.isNotEmpty &&
+          !_selectedDeliveryStatuses
+              .contains(normalizeDeliveryStatus(inv.deliveryStatus))) {
         return false;
       }
       if (_selectedPaymentStatuses.isNotEmpty &&
@@ -81,6 +88,9 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                 .compareTo(_normalizedClientName(b, l)),
             _InvoiceColumnSort.status => _normalizedLifecycleStatus(a)
                 .compareTo(_normalizedLifecycleStatus(b)),
+            _InvoiceColumnSort.delivery =>
+              normalizeDeliveryStatus(a.deliveryStatus)
+                  .compareTo(normalizeDeliveryStatus(b.deliveryStatus)),
             _InvoiceColumnSort.payment => _normalizedPaymentStatus(a)
                 .compareTo(_normalizedPaymentStatus(b)),
             _InvoiceColumnSort.date => (_invoiceDate(a) ?? DateTime(9999))
@@ -126,6 +136,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
         invoiceQuery.isNotEmpty ||
         _selectedClientNames.isNotEmpty ||
         _selectedLifecycleStatuses.isNotEmpty ||
+        _selectedDeliveryStatuses.isNotEmpty ||
         _selectedPaymentStatuses.isNotEmpty ||
         _baseRange.active ||
         _vatRange.active ||
@@ -165,6 +176,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
               final issueAllForeground = cs.onTertiaryContainer;
               final issueAllBorder = cs.tertiary.withValues(alpha: 0.32);
 
+              // ignore: unused_element
               Widget sortButton({
                 required InvoiceSortBy value,
                 required String label,
@@ -230,6 +242,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                 );
               }
 
+              // ignore: unused_element
               Widget clientNameSortButton() {
                 final active = _clientNameSortEnabled;
                 final isAsc = _clientNameSortDir == InvoiceSortDir.asc;
@@ -342,35 +355,6 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                     )
                   : null;
 
-              final labelActions = <Widget>[
-                if (hasColumnFilters)
-                  TextButton.icon(
-                    onPressed: _clearColumnFilters,
-                    icon: const Icon(Icons.filter_alt_off_outlined, size: 15),
-                    label:
-                        Text(isSpanish ? 'Limpiar filtros' : 'Clear filters'),
-                  ),
-                if (issueAllButton != null) issueAllButton,
-                sortButton(
-                  value: InvoiceSortBy.date,
-                  label: l.date,
-                  tooltip: l.date,
-                ),
-                sortButton(
-                  value: InvoiceSortBy.number,
-                  label: l.invoiceSortByNumberLabel,
-                  tooltip: l.invoiceSortByNumberLabel,
-                ),
-                if (widget.allowClientNameSort) clientNameSortButton(),
-                HexoraColumnVisibilityMenu(
-                  moduleKey: 'facturas',
-                  availableColumns:
-                      _InvoicesTabListState._availableFinancialColumns,
-                  visibleColumns: _visibleFinancialColumns,
-                  onChanged: _setVisibleFinancialColumns,
-                ),
-              ];
-
               if (widget.showSummaryTotals) {
                 return _InvoiceSummaryTotalsBar(
                   count: visible.length,
@@ -386,31 +370,12 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                       : usesLocalSummary
                           ? null
                           : _summaryError,
-                  fromDate: _fromDate,
-                  toDate: _toDate,
-                  quickRange: _quickRange,
-                  sortActions: labelActions,
+                  visibleColumns: _visibleFinancialColumns,
+                  onColumnsChanged: _setVisibleFinancialColumns,
                   unlinkedOnly: _unlinkedOnly,
                   paymentSuggestionsLoading: _paymentSuggestionsLoading,
                   searchQuery: _searchText,
                   onSearchChanged: _setGlobalSearchDebounced,
-                  onDateRangeSelected: (value) {
-                    if (value == DateQuickRange.month) {
-                      _setRangeDays(30);
-                    } else if (value == DateQuickRange.quarter) {
-                      _setRangeMonths(3);
-                    } else if (value == DateQuickRange.custom) {
-                      _pickCustomDateRange();
-                    } else {
-                      _updateInvoiceListState(() {
-                        _fromDate = null;
-                        _toDate = null;
-                        _quickRange = DateQuickRange.none;
-                      });
-                      _notifyDateFilterChanged();
-                      _refreshFilteredData();
-                    }
-                  },
                   onHeaderAction: (action) {
                     switch (action) {
                       case _InvoiceHeaderAction.toggleUnlinked:
@@ -435,38 +400,8 @@ extension _InvoiceListLayout on _InvoicesTabListState {
 
               return Row(
                 children: [
-                  _InvoiceFiltersMenu(
-                    sortActions: [
-                      sortButton(
-                          value: InvoiceSortBy.date,
-                          label: l.date,
-                          tooltip: l.date),
-                      sortButton(
-                          value: InvoiceSortBy.number,
-                          label: l.invoiceSortByNumberLabel,
-                          tooltip: l.invoiceSortByNumberLabel),
-                      if (widget.allowClientNameSort) clientNameSortButton(),
-                    ],
-                    quickRange: _quickRange,
-                    fromDate: _fromDate,
-                    toDate: _toDate,
-                    onSelected: (value) {
-                      if (value == DateQuickRange.month) {
-                        _setRangeDays(30);
-                      } else if (value == DateQuickRange.quarter) {
-                        _setRangeMonths(3);
-                      } else if (value == DateQuickRange.custom) {
-                        _pickCustomDateRange();
-                      } else {
-                        _updateInvoiceListState(() {
-                          _fromDate = null;
-                          _toDate = null;
-                          _quickRange = DateQuickRange.none;
-                        });
-                        _notifyDateFilterChanged();
-                        _refreshFilteredData();
-                      }
-                    },
+                  const DocumentLayoutSelector(
+                    key: ValueKey('invoice-layout-selector'),
                   ),
                   const SizedBox(width: 8),
                   HexoraColumnVisibilityMenu(
@@ -508,8 +443,10 @@ extension _InvoiceListLayout on _InvoicesTabListState {
           CompactDocumentTableHeader(
             identityLabel: 'Factura',
             visibleFinancialColumns: _visibleFinancialColumns,
-            actionsWidth: 96,
-            previewActionInFullView: false,
+            showDeliveryColumn: true,
+            // Preview and overflow use two compact 32px slots with a 4px gap.
+            // Keep the header reservation identical to each row.
+            actionsWidth: 68,
             headerBuilder: (context, column, label, width, numeric) =>
                 _buildInvoiceColumnHeader(
               context,
@@ -571,6 +508,8 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                         final hasUnknownClientError =
                             _hasUnknownDraftClient(inv, client, l);
                         final hasMonthWarning = _hasInvoiceMonthWarning(inv);
+                        final chronologyConflict =
+                            invoiceChronologyConflict(inv, widget.invoices);
                         return Padding(
                           key: ValueKey(inv.id),
                           padding: EdgeInsets.zero,
@@ -594,6 +533,12 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                                 monthWarningTooltip: hasMonthWarning
                                     ? _invoiceMonthWarningTooltip(inv, l)
                                     : null,
+                                dateWarningTooltip: chronologyConflict == null
+                                    ? null
+                                    : invoiceChronologyConflictMessage(
+                                        chronologyConflict,
+                                        l,
+                                      ),
                                 onInspectRecurrence: hasUnknownClientError &&
                                         (inv.recurringSeriesId
                                                 ?.trim()

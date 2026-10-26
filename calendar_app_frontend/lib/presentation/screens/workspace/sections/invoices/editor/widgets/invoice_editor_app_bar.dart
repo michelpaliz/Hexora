@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 
 class InvoiceEditorAppBar extends StatelessWidget
     implements PreferredSizeWidget {
@@ -36,9 +37,11 @@ class InvoiceEditorAppBar extends StatelessWidget
             )
           : null,
       actions: [
-        TextButton(
-          onPressed: saving ? null : onSaveDraft,
-          child: Text(saving ? l.saving : l.invoiceSaveDraftCta),
+        HexoraButton(
+          onPressed: onSaveDraft,
+          label: l.invoiceSaveDraftCta,
+          variant: HexoraButtonVariant.ghost,
+          loading: saving,
         ),
       ],
     );

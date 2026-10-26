@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
-import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -124,10 +124,9 @@ class _ChangeUsernameDialogState extends State<_ChangeUsernameDialog> {
           ),
           child: Text(l.cancel),
         ),
-        ElevatedButton(
-          style: ThemedButtons.button(context),
+        HexoraButton(
           onPressed: canSave ? () => Navigator.pop(context, username) : null,
-          child: Text(l.save),
+          label: l.save,
         ),
       ],
     );

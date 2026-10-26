@@ -1748,14 +1748,15 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     ];
 
     final content = ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       children: [
         FolderSectionCard(
           label: l.statementsAllDataTitle,
+          showTitle: false,
           leftTabOffset: 0,
           rightTabOffset: 0,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

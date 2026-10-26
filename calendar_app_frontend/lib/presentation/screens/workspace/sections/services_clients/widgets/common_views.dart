@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 class EmptyView extends StatelessWidget {
@@ -35,9 +36,9 @@ class EmptyView extends StatelessWidget {
             Text(subtitle, textAlign: TextAlign.center),
             if (cta != null && onPressed != null) ...[
               const SizedBox(height: 16),
-              FilledButton.icon(
-                icon: const Icon(Icons.add),
-                label: Text(cta!),
+              HexoraButton(
+                icon: Icons.add,
+                label: cta!,
                 onPressed: onPressed,
               ),
             ],
@@ -68,10 +69,11 @@ class ErrorView extends StatelessWidget {
             const SizedBox(height: 8),
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 16),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+            HexoraButton(
+              icon: Icons.refresh,
+              label: 'Retry',
               onPressed: () => onRetry(),
+              variant: HexoraButtonVariant.secondary,
             ),
           ],
         ),

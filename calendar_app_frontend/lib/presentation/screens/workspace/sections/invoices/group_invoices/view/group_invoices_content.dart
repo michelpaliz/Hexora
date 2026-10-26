@@ -91,6 +91,7 @@ class _GroupInvoicesContent extends StatelessWidget {
                       client: state._inlineClientEditing,
                       existingClients: state._clients,
                       closeOnSave: false,
+                      showInlineHeader: false,
                       onCancel: state._closeInlineClientEditor,
                       onSaved: state._handleInlineClientSaved,
                       onOpenExisting: state._openInlineClientEditor,
@@ -392,6 +393,8 @@ class _GroupInvoicesContent extends StatelessWidget {
           state._recurringSeriesToOpen = seriesId;
           state._selectedMenu = 'recurring';
         }),
+        onOpenDeliveryRecord: () =>
+            state._updateView(() => state._selectedMenu = 'emails'),
         canEditIssued: state.canEditIssuedInvoices(context),
         showHeaderTabs: false,
       );
@@ -434,6 +437,8 @@ class _GroupInvoicesContent extends StatelessWidget {
           state._recurringSeriesToOpen = seriesId;
           state._selectedMenu = 'recurring';
         }),
+        onOpenDeliveryRecord: () =>
+            state._updateView(() => state._selectedMenu = 'emails'),
         canEditIssued: state.canEditIssuedInvoices(context),
         showHeaderTabs: false,
       );
@@ -466,6 +471,8 @@ class _GroupInvoicesContent extends StatelessWidget {
         state._recurringSeriesToOpen = seriesId;
         state._selectedMenu = 'recurring';
       }),
+      onOpenDeliveryRecord: () =>
+          state._updateView(() => state._selectedMenu = 'emails'),
       canEditIssued: state.canEditIssuedInvoices(context),
       showHeaderTabs: false,
     );

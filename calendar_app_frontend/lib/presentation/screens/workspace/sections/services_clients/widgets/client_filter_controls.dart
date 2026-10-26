@@ -75,48 +75,39 @@ class ClientMissingInvoiceFilter extends StatelessWidget {
             ? 'Clientes activos sin factura emitida este mes. Pulsa para filtrar la lista.'
             : 'Active clients without an invoice issued this month. Click to filter the list.');
     return ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400),
+        constraints: BoxConstraints(
+            maxWidth: 400,
+            minHeight: clientFilterControlHeight(context, desktop: 32)),
         child: Semantics(
             selected: selected,
             child: Tooltip(
                 message: count == null
                     ? l.clientInvoiceStatusUnavailableTitle
                     : explanation,
-                child: TextButton(
-                    onPressed: onTap,
-                    key: const ValueKey('client-missing-month-invoice-filter'),
-                    style: TextButton.styleFrom(
-                        minimumSize: Size(
-                            0, clientFilterControlHeight(context, desktop: 32)),
-                        foregroundColor:
-                            selected ? cs.primary : cs.onSurfaceVariant,
-                        backgroundColor: selected
-                            ? cs.primary.withValues(alpha: .08)
-                            : Colors.transparent,
-                        side: BorderSide(
-                            color: selected ? cs.primary : cs.outlineVariant),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 6)),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(
-                          selected
-                              ? Icons.check_circle_outline
-                              : Icons.receipt_long_outlined,
-                          size: 16,
-                          color:
-                              !selected && (count ?? 0) > 0 ? cs.error : null),
-                      const SizedBox(width: 6),
-                      Flexible(
-                          child: Text(label,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelMedium
-                                  ?.copyWith(
-                                      color: selected
-                                          ? cs.primary
-                                          : cs.onSurfaceVariant))),
-                    ])))));
+                child: FilterChip(
+                  key: const ValueKey('client-missing-month-invoice-filter'),
+                  selected: selected,
+                  onSelected: onTap == null ? null : (_) => onTap!(),
+                  showCheckmark: false,
+                  avatar: Icon(
+                      selected
+                          ? Icons.check_circle_outline
+                          : Icons.receipt_long_outlined,
+                      size: 16,
+                      color: !selected && (count ?? 0) > 0 ? cs.error : null),
+                  label: Text(label,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: selected ? cs.primary : cs.onSurfaceVariant)),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  side: BorderSide(
+                      color: selected ? cs.primary : cs.outlineVariant),
+                  backgroundColor: Colors.transparent,
+                  selectedColor: cs.primary.withValues(alpha: .08),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ))));
   }
 }

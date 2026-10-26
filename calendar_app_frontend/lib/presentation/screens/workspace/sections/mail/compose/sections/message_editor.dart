@@ -13,6 +13,7 @@ Widget _composeMessageEditor(
       builder: (context, _) {
         final focused = state._bodyFocus.hasFocus;
         return Container(
+          key: const ValueKey('mail-compose-body-input-surface'),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
             color: inputDecoration.fillColor ?? cs.surface,
@@ -34,7 +35,7 @@ Widget _composeMessageEditor(
             ),
           ),
           constraints: BoxConstraints(
-            minHeight: isWideEmbedded ? 300 : 180,
+            minHeight: isWideEmbedded ? 380 : 180,
           ),
           child: DefaultTextStyle(
             style: t.bodySmall.copyWith(

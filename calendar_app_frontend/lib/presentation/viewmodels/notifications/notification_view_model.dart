@@ -176,12 +176,16 @@ class NotificationViewModel {
     }
     notification.isRead = true;
 
-    final updated = notificationDomain.notifications.map((n) {
-      if (n.id == notification.id) {
-        n.isRead = true;
-      }
-      return n;
-    }).toList();
+    final domainList = notificationDomain.notifications;
+    final inDomain = domainList.any((n) => n.id == notification.id);
+    final updated = inDomain
+        ? domainList.map((n) {
+            if (n.id == notification.id) n.isRead = true;
+            return n;
+          }).toList()
+        // Notification came from a group fetch and isn't in the user-level
+        // domain list. Add it as already-read so the badge stays accurate.
+        : [...domainList, notification];
     await notificationDomain.updateNotificationStream(updated);
   }
 }

@@ -163,7 +163,11 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
     return _series.where((s) {
       if (_statusFilter != 'all') {
         final status = (s['status'] ?? '').toString().toLowerCase();
-        if (status != _statusFilter) return false;
+        if (_statusFilter == 'inactive') {
+          if (status == 'active') return false;
+        } else if (status != _statusFilter) {
+          return false;
+        }
       }
       if (_clientFilter != null && _clientFilter!.isNotEmpty) {
         final rawClient =

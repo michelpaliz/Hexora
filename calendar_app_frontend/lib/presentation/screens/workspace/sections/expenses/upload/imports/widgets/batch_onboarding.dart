@@ -223,23 +223,33 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
               FilledButton.icon(
                 onPressed: widget.onPickDocuments,
                 style: FilledButton.styleFrom(
-                  minimumSize: const Size(220, 44),
+                  minimumSize: const Size(0, HexoraDimensions.buttonLarge),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: HexoraDimensions.space * 2),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9),
+                    borderRadius:
+                        BorderRadius.circular(HexoraDimensions.radius),
                   ),
                 ),
-                icon: const Icon(Icons.upload_file_outlined, size: 18),
+                icon: const Icon(Icons.upload_file_outlined,
+                    size: HexoraDimensions.buttonIconSize),
                 label: Text(isEs ? 'Seleccionar archivos' : 'Select files'),
               ),
               OutlinedButton.icon(
                 onPressed: widget.onPickZip,
                 style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(195, 44),
+                  minimumSize: const Size(0, HexoraDimensions.buttonLarge),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: HexoraDimensions.space * 2),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9),
+                    borderRadius:
+                        BorderRadius.circular(HexoraDimensions.radius),
                   ),
                 ),
-                icon: const Icon(Icons.folder_outlined, size: 18),
+                icon: const Icon(Icons.folder_outlined,
+                    size: HexoraDimensions.buttonIconSize),
                 label: Text(isEs ? 'Seleccionar un ZIP' : 'Select a ZIP'),
               ),
             ],

@@ -2277,6 +2277,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         CompactDocumentColumn.identity => _budgetNumberFilter.isNotEmpty,
         CompactDocumentColumn.client => _budgetClientFilters.isNotEmpty,
         CompactDocumentColumn.status => _budgetStatusFilters.isNotEmpty,
+        CompactDocumentColumn.delivery => false,
         CompactDocumentColumn.date =>
           _budgetFromDate != null || _budgetToDate != null,
         CompactDocumentColumn.taxableBase => _budgetBaseRange.active,
@@ -2293,6 +2294,8 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
             _budgetClientFilters = {};
           case CompactDocumentColumn.status:
             _budgetStatusFilters = {};
+          case CompactDocumentColumn.delivery:
+            break;
           case CompactDocumentColumn.date:
             _budgetFromDate = null;
             _budgetToDate = null;
@@ -2865,23 +2868,31 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                 children: [
                   Row(
                     children: [
-                      HexoraDocumentStatusTabs(
-                        selectedIndex: _budgetsTabIndex,
-                        onSelected: (index) =>
-                            setState(() => _budgetsTabIndex = index),
-                        tabs: [
-                          HexoraDocumentStatusTab(
-                            label: _isSpanishLocale ? 'Borradores' : 'Drafts',
-                            count: filteredDrafts.length,
-                            icon: Icons.edit_note_outlined,
-                          ),
-                          HexoraDocumentStatusTab(
-                            label:
-                                _isSpanishLocale ? 'Presupuestos' : 'Proposals',
-                            count: filteredIssuedBudgets.length,
-                            icon: Icons.task_alt_outlined,
-                          ),
-                        ],
+                      const DocumentLayoutSelector(
+                        key: ValueKey('budget-layout-selector'),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        fit: FlexFit.loose,
+                        child: HexoraDocumentStatusTabs(
+                          selectedIndex: _budgetsTabIndex,
+                          onSelected: (index) =>
+                              setState(() => _budgetsTabIndex = index),
+                          tabs: [
+                            HexoraDocumentStatusTab(
+                              label: _isSpanishLocale ? 'Borradores' : 'Drafts',
+                              count: filteredDrafts.length,
+                              icon: Icons.edit_note_outlined,
+                            ),
+                            HexoraDocumentStatusTab(
+                              label: _isSpanishLocale
+                                  ? 'Presupuestos'
+                                  : 'Proposals',
+                              count: filteredIssuedBudgets.length,
+                              icon: Icons.task_alt_outlined,
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(width: 12),
                       const Spacer(),
@@ -2972,7 +2983,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                                       itemBuilder: (_, i) {
                                         final item = items[i];
                                         if (item is String) {
-                                          return CompactDocumentMonthHeading(
+                                          return HexoraMonthSeparator(
                                               label: item);
                                         }
                                         return budgetListCard(

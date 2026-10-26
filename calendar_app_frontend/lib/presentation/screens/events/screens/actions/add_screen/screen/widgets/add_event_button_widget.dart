@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 
 class AddEventButtonWidget extends StatelessWidget {
   final Future<void> Function() onAddEvent;
@@ -12,13 +13,11 @@ class AddEventButtonWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      child: ElevatedButton.icon(
+      child: HexoraButton(
         onPressed: onAddEvent,
-        icon: const Icon(Icons.add),
-        label: const Text('Add Event'),
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-        ),
+        icon: Icons.add,
+        label: 'Add Event',
+        size: HexoraButtonSize.large,
       ),
     );
   }

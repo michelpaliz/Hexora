@@ -4,6 +4,7 @@ import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../presentation/routes/app_routes.dart';
@@ -51,22 +52,27 @@ Widget menuItem(
   IconData iconData,
   bool selected,
 ) {
-  return Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-    child: SidebarItem(icon: iconData, label: _getTranslatedTitle(context, section),
-      isSelected: selected, collapsed: false, onTap: () {
-        switch (section) {
-          case DrawerSections.calendar:
-            Navigator.pushNamed(context, AppRoutes.homePage);
-            break;
-          case DrawerSections.settings:
-            Navigator.pushNamed(context, AppRoutes.settings);
-            break;
-          case DrawerSections.logOut:
-            _handleLogout(context);
-            break;
-        }
-      },
-));
+  return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      child: SidebarItem(
+        icon: iconData,
+        label: _getTranslatedTitle(context, section),
+        isSelected: selected,
+        collapsed: false,
+        onTap: () {
+          switch (section) {
+            case DrawerSections.calendar:
+              Navigator.pushNamed(context, AppRoutes.homePage);
+              break;
+            case DrawerSections.settings:
+              Navigator.pushNamed(context, AppRoutes.settings);
+              break;
+            case DrawerSections.logOut:
+              _handleLogout(context);
+              break;
+          }
+        },
+      ));
 }
 
 String _getTranslatedTitle(BuildContext context, DrawerSections section) {
@@ -105,8 +111,6 @@ Future<void> _handleLogout(BuildContext context) async {
 Future<bool> showLogOutDialog(BuildContext context) {
   final loc = AppLocalizations.of(context)!;
   final t = AppTypography.of(context);
-  final cs = Theme.of(context).colorScheme;
-
   final dialogBg = ThemeColors.cardBg(context);
   final onDialog = ThemeColors.textPrimary(context);
 
@@ -130,18 +134,15 @@ Future<bool> showLogOutDialog(BuildContext context) {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            style: TextButton.styleFrom(foregroundColor: cs.secondary),
+            style: ThemedButtons.button(
+              ctx,
+              variant: ButtonVariant.ghost,
+            ),
             child: Text(loc.cancel, style: t.buttonText),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: cs.primary,
-              foregroundColor: ThemeColors.contrastOn(cs.primary),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
+            style: ThemedButtons.button(ctx),
             child: Text(loc.logout, style: t.buttonText),
           ),
         ],

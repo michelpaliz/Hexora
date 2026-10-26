@@ -18,6 +18,7 @@ import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/w
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker_account_setup_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/create_time_entry_screen.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:intl/intl.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/l10n/build_context_locale.dart';
@@ -449,6 +450,10 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                         Text(
                             '${((_activeTotals?['totalHours'] as num?) ?? 0).toStringAsFixed(1)} h'),
                         TextButton.icon(
+                            style: ThemedButtons.button(
+                              context,
+                              variant: ButtonVariant.ghost,
+                            ),
                             onPressed: _openPayrollHistoryDialog,
                             icon: const Icon(Icons.history_rounded, size: 16),
                             label: Text(isEs ? 'Historial' : 'History')),
@@ -462,28 +467,10 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
           const SizedBox(width: 8),
           const Icon(Icons.expand_more_rounded, size: 18),
         ]),
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(0, 34),
-          visualDensity: VisualDensity.compact,
-          textStyle: const TextStyle(fontSize: 13),
-          foregroundColor: cs.onSurface,
-          side: BorderSide(color: cs.outlineVariant.withValues(alpha: .55)),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
       ),
       const SizedBox(width: 12),
       IconButton.outlined(
         tooltip: isEs ? 'Mes anterior' : 'Previous month',
-        style: IconButton.styleFrom(
-          minimumSize: const Size(34, 34),
-          padding: EdgeInsets.zero,
-          visualDensity: VisualDensity.compact,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
-          side: BorderSide(color: cs.outlineVariant.withValues(alpha: .55)),
-        ),
         onPressed:
             _activeTotalsLoading || (_totalsYear == 2018 && _totalsMonth == 1)
                 ? null
@@ -493,14 +480,6 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
       const SizedBox(width: 6),
       IconButton.outlined(
         tooltip: isEs ? 'Mes siguiente' : 'Next month',
-        style: IconButton.styleFrom(
-          minimumSize: const Size(34, 34),
-          padding: EdgeInsets.zero,
-          visualDensity: VisualDensity.compact,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
-          side: BorderSide(color: cs.outlineVariant.withValues(alpha: .55)),
-        ),
         onPressed:
             _activeTotalsLoading || (_totalsYear == 2100 && _totalsMonth == 12)
                 ? null
@@ -849,6 +828,10 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                   Align(
                       alignment: Alignment.centerLeft,
                       child: TextButton.icon(
+                        style: ThemedButtons.button(
+                          context,
+                          variant: ButtonVariant.ghost,
+                        ),
                         onPressed: () => setState(() {
                           _showWorkerForm = false;
                         }),
@@ -906,11 +889,16 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
             alignment: WrapAlignment.center,
             children: [
               FilledButton.icon(
+                style: ThemedButtons.button(context),
                 onPressed: _workers.isEmpty ? null : _addSharedHours,
                 icon: const Icon(Icons.add_circle_outline_rounded),
                 label: Text(isEs ? 'Registro manual' : 'Manual entry'),
               ),
               FilledButton.tonalIcon(
+                style: ThemedButtons.button(
+                  context,
+                  variant: ButtonVariant.secondary,
+                ),
                 onPressed: () async {
                   final imported = await TimeTrackingExcelImportDialog.show(
                     context,
@@ -958,6 +946,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                   style: t.bodySmall, textAlign: TextAlign.center),
               const SizedBox(height: 12),
               FilledButton(
+                style: ThemedButtons.button(context),
                 onPressed: _toggling ? null : _enable,
                 child: Text(l.enableTrackingCta),
               ),
@@ -973,7 +962,11 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
           children: [
             Text(_error!, style: t.bodySmall.copyWith(color: Colors.red)),
             const SizedBox(height: 8),
-            FilledButton(onPressed: _load, child: Text(l.refresh)),
+            FilledButton(
+              style: ThemedButtons.button(context),
+              onPressed: _load,
+              child: Text(l.refresh),
+            ),
           ],
         ),
       );
@@ -1164,6 +1157,7 @@ class _PayrollHistoryDialogState extends State<_PayrollHistoryDialog> {
             ),
             const SizedBox(height: 12),
             FilledButton.icon(
+              style: ThemedButtons.button(context),
               onPressed: _load,
               icon: const Icon(Icons.refresh_rounded, size: 16),
               label: Text(l.refresh),
@@ -1525,6 +1519,7 @@ class _PayrollHistoryDialogState extends State<_PayrollHistoryDialog> {
           ),
           // Year prev/next navigation
           IconButton(
+            style: ThemedButtons.iconAction(context),
             icon: const Icon(Icons.chevron_left_rounded),
             iconSize: 20,
             visualDensity: VisualDensity.compact,
@@ -1543,6 +1538,7 @@ class _PayrollHistoryDialogState extends State<_PayrollHistoryDialog> {
             ),
           ),
           IconButton(
+            style: ThemedButtons.iconAction(context),
             icon: const Icon(Icons.chevron_right_rounded),
             iconSize: 20,
             visualDensity: VisualDensity.compact,
@@ -1562,6 +1558,7 @@ class _PayrollHistoryDialogState extends State<_PayrollHistoryDialog> {
             )
           else
             IconButton(
+              style: ThemedButtons.iconAction(context),
               tooltip: l.refresh,
               onPressed: _load,
               icon: const Icon(Icons.refresh_rounded),
@@ -1577,6 +1574,10 @@ class _PayrollHistoryDialogState extends State<_PayrollHistoryDialog> {
       ),
       actions: [
         TextButton(
+          style: ThemedButtons.button(
+            context,
+            variant: ButtonVariant.ghost,
+          ),
           onPressed: () => Navigator.of(context).pop(),
           child: Text(l.close),
         ),

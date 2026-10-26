@@ -7,6 +7,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/s
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_editor_app_bar.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_dates_step.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/form/invoice_content_section.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_editor_components.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_client_step.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';

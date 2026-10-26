@@ -1,7 +1,7 @@
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'dart:async';
 import 'dart:typed_data';
-import 'dart:ui' show PointerDeviceKind;
+import 'dart:ui' show FontFeature, PointerDeviceKind;
 
 import 'package:flutter/material.dart';
 import 'package:hexora/services/expenses/expenses_api.dart';
@@ -16,7 +16,9 @@ import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/e
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/operations/form_helpers.dart';
 import 'package:hexora/presentation/shared/utils/formatting/money_format_utils.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
-import 'package:hexora/presentation/shared/widgets/hexora_resizable_split.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/shared/jobs/vat_ocr_reprocess_job_store.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -29,6 +31,7 @@ part 'recent_uploads/recent_uploads_editor_section.dart';
 part 'recent_uploads/recent_uploads_mobile_section.dart';
 part 'recent_uploads/recent_uploads_item_widgets.dart';
 part 'recent_uploads/recent_uploads_preview_section.dart';
+part 'recent_uploads/recent_uploads_table_section.dart';
 
 enum _ExpenseListSortOption {
   newest,
@@ -37,6 +40,12 @@ enum _ExpenseListSortOption {
   amountLowToHigh,
   vendorAz,
   vendorZa,
+  invoiceAz,
+  invoiceZa,
+  baseHighToLow,
+  baseLowToHigh,
+  vatHighToLow,
+  vatLowToHigh,
 }
 
 enum _ExpenseFileTypeFilter { all, pdf, image, other }
@@ -77,6 +86,7 @@ class ExpenseRecentUploadsTab extends StatefulWidget {
   final bool previewLoading;
   final String? previewError;
   final String groupId;
+  final bool canDeleteExpenses;
 
   const ExpenseRecentUploadsTab({
     super.key,
@@ -89,6 +99,7 @@ class ExpenseRecentUploadsTab extends StatefulWidget {
     required this.previewLoading,
     required this.previewError,
     required this.groupId,
+    this.canDeleteExpenses = true,
   });
 
   @override
@@ -110,6 +121,22 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   bool _showOnlyDuplicateInvoiceIds = false;
   bool _showOnlyPotentialDuplicates = false;
   bool _showOnlyZeroVat = false;
+  String _vendorColumnQuery = '';
+  String _invoiceColumnQuery = '';
+  DateTimeRange? _dateColumnRange;
+  double? _baseColumnMin;
+  double? _baseColumnMax;
+  double? _vatColumnMin;
+  double? _vatColumnMax;
+  double? _totalColumnMin;
+  double? _totalColumnMax;
+  Set<String> _vatColumnStates = <String>{};
+  Set<HexoraFinancialColumn> _visibleFinancialColumns = {
+    HexoraFinancialColumn.date,
+    HexoraFinancialColumn.taxableBase,
+    HexoraFinancialColumn.vat,
+    HexoraFinancialColumn.total,
+  };
   int _mobilePanelIndex = 0;
   int _editorPanelIndex = 0;
   StateSetter? _editorRouteSetState;
@@ -126,6 +153,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   final Map<String, Uint8List> _pdfPreviewCache = {};
   final Map<String, Future<Uint8List?>> _pdfPreviewInflight = {};
   final Set<String> _reprocessingExpenseIds = <String>{};
+  final Set<String> _deletingExpenseIds = <String>{};
   bool _bulkReprocessingVat = false;
   Map<String, dynamic>? _bulkReprocessJob;
   Timer? _bulkReprocessPollTimer;
@@ -146,8 +174,17 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     _ensureLoaded(_tabs.index + 1);
     _scheduleAutoEditIfNeeded();
     _resumeBulkReprocessJob();
+    _restoreExpenseColumns();
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _syncToolbarScrollState());
+  }
+
+  Future<void> _restoreExpenseColumns() async {
+    final columns = await HexoraColumnVisibilityStore.load(
+      'expenses',
+      _visibleFinancialColumns,
+    );
+    if (mounted) setState(() => _visibleFinancialColumns = columns);
   }
 
   @override
@@ -279,13 +316,14 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         search: _searchQuery,
         fileType: _selectedFileType.name,
         zeroVat: _showOnlyZeroVat,
-        expenseIds:
-            (_showOnlyDuplicateInvoiceIds || _showOnlyPotentialDuplicates)
-                ? _visibleUploads
-                    .map((item) => (item['id'] ?? '').trim())
-                    .where((id) => id.isNotEmpty)
-                    .toList(growable: false)
-                : null,
+        expenseIds: (_showOnlyDuplicateInvoiceIds ||
+                _showOnlyPotentialDuplicates ||
+                _hasActiveExpenseColumnFilters)
+            ? _visibleUploads
+                .map((item) => (item['id'] ?? '').trim())
+                .where((id) => id.isNotEmpty)
+                .toList(growable: false)
+            : null,
       );
       if (!mounted || requestVersion != _summaryRequestVersion) return;
       setState(() => _summary[quarter] = items);
@@ -443,6 +481,26 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     return taxNum != null && taxNum.abs() < 0.0001;
   }
 
+  String _expenseVatState(Map<String, String> item) {
+    if (_hasDuplicateInvoiceId(item) || _hasPotentialDuplicateSignature(item)) {
+      return 'review';
+    }
+    final status = (item['status'] ?? '').toLowerCase();
+    if (status.contains('error') ||
+        status.contains('failed') ||
+        status.contains('fall')) {
+      return 'error';
+    }
+    if (_hasZeroVat(item)) return 'zero';
+    if (status.contains('pending') ||
+        status.contains('process') ||
+        status.contains('proces')) {
+      return 'processing';
+    }
+    if ((item['file'] ?? '').trim().isEmpty) return 'missingDocument';
+    return 'verified';
+  }
+
   static bool _itemMatchesFileType(
       Map<String, String> item, _ExpenseFileTypeFilter type) {
     if (type == _ExpenseFileTypeFilter.all) return true;
@@ -484,6 +542,43 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         return false;
       }
       if (_showOnlyZeroVat && !_hasZeroVat(item)) return false;
+      final vendorQuery = _vendorColumnQuery.toLowerCase().trim();
+      if (vendorQuery.isNotEmpty &&
+          !(item['vendor'] ?? '').toLowerCase().contains(vendorQuery)) {
+        return false;
+      }
+      final invoiceQuery = _invoiceColumnQuery.toLowerCase().trim();
+      if (invoiceQuery.isNotEmpty &&
+          !(item['invoice'] ?? '').toLowerCase().contains(invoiceQuery)) {
+        return false;
+      }
+      final itemDate = _expenseDate(item);
+      if (_dateColumnRange != null &&
+          (itemDate == null ||
+              itemDate.isBefore(_dateColumnRange!.start) ||
+              itemDate.isAfter(DateTime(
+                _dateColumnRange!.end.year,
+                _dateColumnRange!.end.month,
+                _dateColumnRange!.end.day,
+                23,
+                59,
+                59,
+              )))) {
+        return false;
+      }
+      final total = _expenseAmount(item);
+      final vat = _expenseVat(item);
+      final base = _expenseBase(item);
+      if (_baseColumnMin != null && base < _baseColumnMin!) return false;
+      if (_baseColumnMax != null && base > _baseColumnMax!) return false;
+      if (_vatColumnMin != null && vat < _vatColumnMin!) return false;
+      if (_vatColumnMax != null && vat > _vatColumnMax!) return false;
+      if (_totalColumnMin != null && total < _totalColumnMin!) return false;
+      if (_totalColumnMax != null && total > _totalColumnMax!) return false;
+      if (_vatColumnStates.isNotEmpty &&
+          !_vatColumnStates.contains(_expenseVatState(item))) {
+        return false;
+      }
       if (q.isNotEmpty) {
         final vendor = (item['vendor'] ?? '').toLowerCase();
         final invoice = (item['invoice'] ?? '').toLowerCase();
@@ -616,6 +711,10 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     _loadSummary(key);
   }
 
+  void _updateExpenseColumnFilters(VoidCallback change) {
+    setState(change);
+  }
+
   void _onSearchChanged(String value) {
     setState(() => _searchQuery = value.trim());
     _searchDebounce?.cancel();
@@ -637,6 +736,162 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     if (isMobile && _mobilePanelIndex != 1) {
       setState(() => _mobilePanelIndex = 1);
     }
+  }
+
+  Future<void> _confirmDeleteExpense(Map<String, String> item) async {
+    final id = (item['id'] ?? '').trim();
+    if (id.isEmpty ||
+        !widget.canDeleteExpenses ||
+        _deletingExpenseIds.contains(id)) {
+      return;
+    }
+    final isSpanish =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
+    final vendor = (item['vendor'] ?? '').trim();
+    final invoice = (item['invoice'] ?? '').trim();
+    final currency = (item['currency'] ?? '').trim();
+    final total = _formatAmountOrText(item['total'] ?? '');
+    String? deleteError;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final deleting = _deletingExpenseIds.contains(id);
+
+          Future<void> delete() async {
+            if (_deletingExpenseIds.contains(id)) return;
+            setState(() => _deletingExpenseIds.add(id));
+            setDialogState(() => deleteError = null);
+            try {
+              await widget.onDeleteExpense(id);
+              if (!mounted || !dialogContext.mounted) return;
+              Navigator.of(dialogContext).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    isSpanish
+                        ? 'Gasto eliminado correctamente.'
+                        : 'Expense deleted successfully.',
+                  ),
+                ),
+              );
+            } catch (_) {
+              if (!mounted || !dialogContext.mounted) return;
+              setState(() => _deletingExpenseIds.remove(id));
+              setDialogState(() {
+                deleteError = isSpanish
+                    ? 'No se pudo eliminar el gasto. Puede estar vinculado a registros contables o fiscales protegidos.'
+                    : 'The expense could not be deleted. It may be linked to protected accounting or tax records.';
+              });
+            }
+          }
+
+          return AlertDialog(
+            icon: Icon(Icons.delete_outline_rounded,
+                color: Theme.of(dialogContext).colorScheme.error),
+            title: Text(isSpanish ? 'Eliminar gasto' : 'Delete expense'),
+            content: SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isSpanish
+                          ? 'Esta acción eliminará el gasto y su documento asociado. No se puede deshacer.'
+                          : 'This will delete the expense and its associated document. This action cannot be undone.',
+                    ),
+                    const SizedBox(height: 14),
+                    _deleteExpenseDetail(
+                      dialogContext,
+                      isSpanish ? 'Proveedor' : 'Supplier',
+                      vendor.isEmpty
+                          ? (isSpanish ? 'Sin proveedor' : 'No supplier')
+                          : vendor,
+                    ),
+                    if (invoice.isNotEmpty)
+                      _deleteExpenseDetail(
+                        dialogContext,
+                        isSpanish ? 'Nº factura' : 'Invoice no.',
+                        invoice,
+                      ),
+                    _deleteExpenseDetail(
+                      dialogContext,
+                      'Total',
+                      [total, currency]
+                          .where((value) => value.isNotEmpty)
+                          .join(' '),
+                    ),
+                    if (deleteError != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        deleteError!,
+                        style: TextStyle(
+                          color: Theme.of(dialogContext).colorScheme.error,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              HexoraButton(
+                label: isSpanish ? 'Cancelar' : 'Cancel',
+                variant: HexoraButtonVariant.secondary,
+                onPressed:
+                    deleting ? null : () => Navigator.of(dialogContext).pop(),
+              ),
+              HexoraButton(
+                label: MediaQuery.textScalerOf(dialogContext).scale(14) > 20
+                    ? (isSpanish ? 'Eliminar' : 'Delete')
+                    : (isSpanish ? 'Eliminar gasto' : 'Delete expense'),
+                variant: HexoraButtonVariant.danger,
+                loading: deleting,
+                onPressed: deleting ? null : delete,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (mounted && _deletingExpenseIds.contains(id)) {
+      setState(() => _deletingExpenseIds.remove(id));
+    }
+  }
+
+  Widget _deleteExpenseDetail(
+    BuildContext context,
+    String label,
+    String value,
+  ) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 92,
+            child: Text(
+              label,
+              style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _scheduleAutoEditIfNeeded() {
@@ -692,6 +947,18 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
           return _compareByVendor(a, b, descending: false);
         case _ExpenseListSortOption.vendorZa:
           return _compareByVendor(a, b, descending: true);
+        case _ExpenseListSortOption.invoiceAz:
+          return _compareByText(a, b, 'invoice');
+        case _ExpenseListSortOption.invoiceZa:
+          return _compareByText(a, b, 'invoice', descending: true);
+        case _ExpenseListSortOption.baseHighToLow:
+          return _compareNumeric(a, b, _expenseBase, descending: true);
+        case _ExpenseListSortOption.baseLowToHigh:
+          return _compareNumeric(a, b, _expenseBase);
+        case _ExpenseListSortOption.vatHighToLow:
+          return _compareNumeric(a, b, _expenseVat, descending: true);
+        case _ExpenseListSortOption.vatLowToHigh:
+          return _compareNumeric(a, b, _expenseVat);
         case _ExpenseListSortOption.newest:
           return _compareByNewestFirst(a, b);
       }
@@ -745,6 +1012,27 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     return _compareStable(a, b);
   }
 
+  int _compareByText(
+    Map<String, String> a,
+    Map<String, String> b,
+    String key, {
+    bool descending = false,
+  }) {
+    final result =
+        (a[key] ?? '').toLowerCase().compareTo((b[key] ?? '').toLowerCase());
+    return descending ? -result : result;
+  }
+
+  int _compareNumeric(
+    Map<String, String> a,
+    Map<String, String> b,
+    double Function(Map<String, String>) value, {
+    bool descending = false,
+  }) {
+    final result = value(a).compareTo(value(b));
+    return descending ? -result : result;
+  }
+
   int _compareDates(DateTime? a, DateTime? b) {
     if (a == null && b == null) return 0;
     if (a == null) return 1;
@@ -760,6 +1048,14 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
 
   double _expenseAmount(Map<String, String> item) {
     return _parseMoney((item['total'] ?? '').trim()) ?? 0;
+  }
+
+  double _expenseVat(Map<String, String> item) =>
+      _parseMoney((item['tax'] ?? '').trim()) ?? 0;
+
+  double _expenseBase(Map<String, String> item) {
+    final subtotal = _parseMoney((item['subtotal'] ?? '').trim());
+    return subtotal ?? _expenseAmount(item) - _expenseVat(item);
   }
 
   String _expenseVendor(Map<String, String> item) {
@@ -791,6 +1087,18 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         return 'A-Z';
       case _ExpenseListSortOption.vendorZa:
         return 'Z-A';
+      case _ExpenseListSortOption.invoiceAz:
+        return isSpanish ? 'Factura A-Z' : 'Invoice A-Z';
+      case _ExpenseListSortOption.invoiceZa:
+        return isSpanish ? 'Factura Z-A' : 'Invoice Z-A';
+      case _ExpenseListSortOption.baseHighToLow:
+        return 'Base ↓';
+      case _ExpenseListSortOption.baseLowToHigh:
+        return 'Base ↑';
+      case _ExpenseListSortOption.vatHighToLow:
+        return 'IVA ↓';
+      case _ExpenseListSortOption.vatLowToHigh:
+        return 'IVA ↑';
     }
   }
 
@@ -839,53 +1147,23 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
           }
           return _buildMobileExpenseList(l, t, cs, visibleUploads);
         }
-        final isWide = constraints.maxWidth >= 1100;
         final base = _editingExpense == null
-            ? (isWide
-                ? HexoraResizableSplit(
-                    preferenceKey: 'expenses_invoice_split_fraction_v1',
-                    initialFraction: 0.60,
-                    minStartWidth: 520,
-                    minEndWidth: 340,
-                    handleWidth: 10,
-                    start: _buildListSection(
-                      l,
-                      t,
-                      cs,
-                      visibleUploads,
-                    ),
-                    end: _buildPreviewPanel(
-                      l,
-                      t,
-                      cs,
-                      selectedVisibleExpense,
-                    ),
-                  )
-                : Column(
-                    children: [
-                      _buildMobilePanelTabs(t, cs),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: IndexedStack(
-                          index: _mobilePanelIndex,
-                          children: [
-                            _buildListSection(
-                              l,
-                              t,
-                              cs,
-                              visibleUploads,
-                            ),
-                            _buildPreviewPanel(
-                              l,
-                              t,
-                              cs,
-                              selectedVisibleExpense,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ))
+            ? DocumentSplitView(
+                storageKey: 'expenses_workspace_v1',
+                selectionKey: selectedVisibleExpense?['id'],
+                initialListFraction: 0.60,
+                minListWidth: 520,
+                minPreviewWidth: 340,
+                splitBreakpoint: 1100,
+                drawerBreakpoint: 760,
+                list: _buildListSection(l, t, cs, visibleUploads),
+                preview: _buildPreviewPanel(
+                  l,
+                  t,
+                  cs,
+                  selectedVisibleExpense,
+                ),
+              )
             : _buildListSection(l, t, cs, visibleUploads);
         return Stack(
           children: [
@@ -960,6 +1238,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     _editorRouteSetState?.call(() {});
   }
 
+  // Kept for the editor's legacy tablet route while that flow is migrated.
+  // ignore: unused_element
   Widget _buildMobilePanelTabs(AppTypography t, ColorScheme cs) {
     Widget tab({
       required int index,
@@ -1475,7 +1755,20 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       _selectedFileType != _ExpenseFileTypeFilter.all ||
       _showOnlyDuplicateInvoiceIds ||
       _showOnlyPotentialDuplicates ||
-      _showOnlyZeroVat;
+      _showOnlyZeroVat ||
+      _hasActiveExpenseColumnFilters;
+
+  bool get _hasActiveExpenseColumnFilters =>
+      _vendorColumnQuery.trim().isNotEmpty ||
+      _invoiceColumnQuery.trim().isNotEmpty ||
+      _dateColumnRange != null ||
+      _baseColumnMin != null ||
+      _baseColumnMax != null ||
+      _vatColumnMin != null ||
+      _vatColumnMax != null ||
+      _totalColumnMin != null ||
+      _totalColumnMax != null ||
+      _vatColumnStates.isNotEmpty;
 
   void _resetExpenseFilters() {
     _searchController.clear();
@@ -1487,8 +1780,18 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       _showOnlyDuplicateInvoiceIds = false;
       _showOnlyPotentialDuplicates = false;
       _showOnlyZeroVat = false;
+      _vendorColumnQuery = '';
+      _invoiceColumnQuery = '';
+      _dateColumnRange = null;
+      _baseColumnMin = null;
+      _baseColumnMax = null;
+      _vatColumnMin = null;
+      _vatColumnMax = null;
+      _totalColumnMin = null;
+      _totalColumnMax = null;
+      _vatColumnStates = <String>{};
     });
-    _ensureLoaded(0);
+    _reloadActiveSummary();
   }
 
   Widget _buildListSection(
@@ -1500,8 +1803,10 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     final isSpanish =
         Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
 
-    return Column(
-      children: [
+    return Builder(builder: (listContext) {
+      final mode = DocumentWorkspaceScope.maybeOf(listContext)?.mode;
+      final useFullTable = mode == DocumentViewMode.list;
+      return Column(children: [
         _buildCompactListToolbar(l, t, cs, isSpanish),
         const SizedBox(height: 8),
         _buildExpenseResultsAmountStrip(t, cs, isSpanish),
@@ -1564,21 +1869,27 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                     ],
                   ),
                 )
-              : ListView.separated(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  itemCount: visibleUploads.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 4),
-                  itemBuilder: (_, index) => _buildExpenseCard(
-                    visibleUploads[index],
-                    l,
-                    t,
-                    cs,
-                    index,
-                  ),
-                ),
+              : useFullTable
+                  ? _buildExpenseTable(visibleUploads, l, t, cs, isSpanish)
+                  : ListView.separated(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      itemCount: visibleUploads.length,
+                      separatorBuilder: (_, __) => Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: cs.outlineVariant.withValues(alpha: .28),
+                      ),
+                      itemBuilder: (_, index) => _buildExpenseSplitRow(
+                        visibleUploads[index],
+                        l,
+                        t,
+                        cs,
+                        isSpanish,
+                      ),
+                    ),
         ),
-      ],
-    );
+      ]);
+    });
   }
 
   Widget _buildCompactListToolbar(
@@ -1615,11 +1926,23 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                 children: [
                   _buildQuarterFilterBar(t, cs, isSpanish),
                   const SizedBox(width: 8),
+                  HexoraColumnVisibilityMenu(
+                    moduleKey: 'expenses',
+                    availableColumns: const {
+                      HexoraFinancialColumn.date,
+                      HexoraFinancialColumn.taxableBase,
+                      HexoraFinancialColumn.vat,
+                      HexoraFinancialColumn.total,
+                    },
+                    visibleColumns: _visibleFinancialColumns,
+                    onChanged: (columns) => setState(
+                      () => _visibleFinancialColumns = columns,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   if (_zeroVatItemCount > 0) ...[
                     _buildVatReprocessButton(cs, t, isSpanish),
-                    const SizedBox(width: 8),
                   ],
-                  _buildSummaryBar(l, t, cs, isSpanish, embedded: true),
                 ],
               ),
             ),
@@ -1666,7 +1989,13 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
             decoration: decoration,
             child: Column(
               children: [
-                _buildSearchBar(cs, isSpanish, compact: true),
+                Row(children: [
+                  const DocumentLayoutSelector(),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildSearchBar(cs, isSpanish, compact: true),
+                  ),
+                ]),
                 const SizedBox(height: 7),
                 controlsRow(),
               ],
@@ -1679,6 +2008,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
           decoration: decoration,
           child: Row(
             children: [
+              const DocumentLayoutSelector(),
+              const SizedBox(width: 8),
               SizedBox(
                 width: (constraints.maxWidth * 0.30).clamp(260.0, 380.0),
                 child: _buildSearchBar(cs, isSpanish, compact: true),
@@ -3109,8 +3440,24 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                                   ? null
                                   : () async {
                                       setDialogState(() => deleting = true);
-                                      for (final id in deleteIds.toList()) {
-                                        await widget.onDeleteExpense(id);
+                                      try {
+                                        for (final id in deleteIds.toList()) {
+                                          await widget.onDeleteExpense(id);
+                                        }
+                                      } catch (_) {
+                                        if (!mounted || !context.mounted) {
+                                          return;
+                                        }
+                                        setDialogState(() => deleting = false);
+                                        ScaffoldMessenger.of(this.context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'No se pudieron eliminar todos los gastos seleccionados.',
+                                            ),
+                                          ),
+                                        );
+                                        return;
                                       }
                                       if (!mounted) return;
                                       if (context.mounted) {
@@ -3152,6 +3499,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
 
   // ── Summary Bar ──
 
+  // Legacy inline variant retained for the mobile/editor composition.
+  // ignore: unused_element
   Widget _buildSummaryBar(
     AppLocalizations l,
     AppTypography t,
@@ -3424,6 +3773,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     );
   }
 
+  // Legacy rich-card implementation kept temporarily for editor migrations.
+  // ignore: unused_element
   Widget _buildExpenseCard(
     Map<String, String> item,
     AppLocalizations l,
@@ -3783,8 +4134,9 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                     size: 16,
                   ),
                   color: cs.onSurfaceVariant,
-                  onPressed:
-                      id.isEmpty ? null : () => widget.onDeleteExpense(id),
+                  onPressed: id.isEmpty || !widget.canDeleteExpenses
+                      ? null
+                      : () => _confirmDeleteExpense(item),
                 ),
               ],
             ),

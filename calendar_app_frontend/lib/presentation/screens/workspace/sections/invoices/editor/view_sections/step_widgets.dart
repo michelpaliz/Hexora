@@ -131,18 +131,12 @@ class _InvoiceFlowTopBar extends StatelessWidget {
         ),
       ],
     );
-    final backButton = OutlinedButton.icon(
+    final backButton = HexoraButton(
       key: const Key('invoice-flow-back'),
       onPressed: onBack,
-      icon: const Icon(Icons.arrow_back_rounded, size: 18),
-      label: Text(backLabel),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: cs.primary,
-        side: BorderSide(color: cs.outlineVariant),
-        minimumSize: const Size(0, 38),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        shape: const StadiumBorder(),
-      ),
+      icon: Icons.arrow_back_rounded,
+      label: backLabel,
+      variant: HexoraButtonVariant.secondary,
     );
 
     return LayoutBuilder(

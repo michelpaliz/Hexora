@@ -26,6 +26,7 @@ import 'package:hexora/presentation/screens/workspace/sections/mail/widgets/mail
 import 'package:hexora/presentation/screens/workspace/sections/mail/mail_compose_screen.dart';
 import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';

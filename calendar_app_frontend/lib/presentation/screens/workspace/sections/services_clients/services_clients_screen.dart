@@ -7,6 +7,7 @@ import 'package:hexora/models/service_catalog/service.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/service_catalog/service_api_client.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import 'sheets/add_client_sheet/add_client_sheet.dart';
@@ -185,13 +186,14 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
         title: Text(l.remove),
         content: Text(l.removeClientConfirm(client.name)),
         actions: [
-          TextButton(
+          HexoraButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l.cancel),
+            label: l.cancel,
+            variant: HexoraButtonVariant.ghost,
           ),
-          FilledButton(
+          HexoraButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l.remove),
+            label: l.remove,
           ),
         ],
       ),
@@ -233,13 +235,14 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
         title: Text(l.remove),
         content: Text(l.removeServiceConfirm(service.name)),
         actions: [
-          TextButton(
+          HexoraButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l.cancel),
+            label: l.cancel,
+            variant: HexoraButtonVariant.ghost,
           ),
-          FilledButton(
+          HexoraButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l.remove),
+            label: l.remove,
           ),
         ],
       ),
@@ -274,7 +277,6 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
   }
 
   Widget _buildMobileLayout(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
 
     final propertyKindOptions = _clients
@@ -316,12 +318,9 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
       ),
       body: Column(
         children: [
-          Material(
-            color: cs.surface,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-              child: tabBar,
-            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 2),
+            child: tabBar,
           ),
           Expanded(
             child: TabBarView(
@@ -369,13 +368,15 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
         minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
         child: AnimatedBuilder(
           animation: _tab,
-          builder: (_, __) => FilledButton.icon(
-            style:
-                FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-            onPressed:
-                _tab.index == 0 ? _openAddClientSheet : _openAddServiceSheet,
-            icon: const Icon(Icons.add),
-            label: Text(_tab.index == 0 ? l.addClient : l.addService),
+          builder: (_, __) => SizedBox(
+            width: double.infinity,
+            child: HexoraButton(
+              icon: Icons.add,
+              label: _tab.index == 0 ? l.addClient : l.addService,
+              onPressed:
+                  _tab.index == 0 ? _openAddClientSheet : _openAddServiceSheet,
+              size: HexoraButtonSize.large,
+            ),
           ),
         ),
       ),
@@ -405,7 +406,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 2, 16, 2),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 1),
             child: Row(
               children: [
                 Expanded(
@@ -421,24 +422,18 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
                 const SizedBox(width: 12),
                 AnimatedBuilder(
                   animation: _tab,
-                  builder: (_, __) => FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(0, 36),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
+                  builder: (_, __) => HexoraButton(
+                    icon: Icons.add_rounded,
+                    label: _tab.index == 0 ? l.addClient : l.addService,
                     onPressed: _tab.index == 0
                         ? _openAddClientSheet
                         : _openAddServiceSheet,
-                    icon: const Icon(Icons.add_rounded, size: 16),
-                    label: Text(_tab.index == 0 ? l.addClient : l.addService),
+                    size: HexoraButtonSize.standard,
                   ),
                 ),
               ],
             ),
           ),
-          Divider(
-              height: 1, color: Theme.of(context).colorScheme.outlineVariant),
           Expanded(
             child: TabBarView(
               controller: _tab,

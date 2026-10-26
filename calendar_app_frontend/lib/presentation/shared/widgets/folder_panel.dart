@@ -1,24 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/l10n/app_localizations.dart';
-import 'package:hexora/navigation/shell/hexora_app_shell.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 
-/// Content panel with a compact contextual toolbar: a `Module / Page`
-/// breadcrumb on the left (module comes from [HexoraNavContext]) and the
-/// page's actions on the right.
+/// Content panel with an optional compact action toolbar.
 class FolderPanel extends StatelessWidget {
   final Widget child;
   final VoidCallback? onBack;
   final String? title;
 
-  /// Whether to render the contextual toolbar.
+  /// Whether contextual controls may render. A title alone does not create a
+  /// toolbar; back navigation, custom tab content, or actions are required.
   final bool showTab;
 
   /// Top padding of the content. Only applied when the toolbar is hidden;
   /// with the toolbar the content starts right below it.
   final double contentTopPadding;
 
-  /// Replaces the breadcrumb with custom content.
+  /// Optional custom content shown before the toolbar actions.
   final Widget? tabContent;
   final List<Widget>? actions;
 
@@ -45,8 +42,9 @@ class FolderPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final border = cs.outlineVariant.withValues(alpha: 0.35);
-    final label = title ?? AppLocalizations.of(context)!.workersLabel;
     final hasActions = actions != null && actions!.isNotEmpty;
+    final showToolbar =
+        showTab && (onBack != null || tabContent != null || hasActions);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -60,7 +58,7 @@ class FolderPanel extends StatelessWidget {
         final content = Padding(
           padding: EdgeInsets.fromLTRB(
             10,
-            showTab ? _contentGap : contentTopPadding,
+            showToolbar ? _contentGap : (showTab ? 0 : contentTopPadding),
             10,
             10,
           ),
@@ -77,23 +75,20 @@ class FolderPanel extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: border),
             ),
-            child: showTab
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _ContextToolbar(
-                        label: label,
-                        onBack: onBack,
-                        tabContent: tabContent,
-                        actions: hasActions ? actions! : const [],
-                        actionsSpacing: actionsSpacing,
-                        compactBreadcrumb: width < 560,
-                        borderColor: border,
-                      ),
-                      Expanded(child: content),
-                    ],
-                  )
-                : content,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (showToolbar)
+                  _ContextToolbar(
+                    onBack: onBack,
+                    tabContent: tabContent,
+                    actions: hasActions ? actions! : const [],
+                    actionsSpacing: actionsSpacing,
+                    borderColor: border,
+                  ),
+                Expanded(child: content),
+              ],
+            ),
           ),
         );
       },
@@ -103,21 +98,17 @@ class FolderPanel extends StatelessWidget {
 
 class _ContextToolbar extends StatelessWidget {
   const _ContextToolbar({
-    required this.label,
     required this.onBack,
     required this.tabContent,
     required this.actions,
     required this.actionsSpacing,
-    required this.compactBreadcrumb,
     required this.borderColor,
   });
 
-  final String label;
   final VoidCallback? onBack;
   final Widget? tabContent;
   final List<Widget> actions;
   final double actionsSpacing;
-  final bool compactBreadcrumb;
   final Color borderColor;
 
   @override
@@ -156,8 +147,7 @@ class _ContextToolbar extends StatelessWidget {
           Expanded(
             child: Align(
               alignment: Alignment.centerLeft,
-              child: tabContent ??
-                  HexoraBreadcrumb(title: label, compact: compactBreadcrumb),
+              child: tabContent ?? const SizedBox.shrink(),
             ),
           ),
           if (actions.isNotEmpty) ...[

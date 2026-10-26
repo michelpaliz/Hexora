@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 
 class DeleteGroupDialog extends StatefulWidget {
   const DeleteGroupDialog({super.key, required this.groupName});
@@ -30,12 +31,17 @@ class _DeleteGroupDialogState extends State<DeleteGroupDialog> {
       ]),
       actions: [
         TextButton(
+            style: ThemedButtons.button(
+              context,
+              variant: ButtonVariant.ghost,
+            ),
             onPressed: () => Navigator.pop(context, false),
             child: Text(l.cancel)),
         FilledButton(
-          style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError),
+          style: ThemedButtons.button(
+            context,
+            variant: ButtonVariant.danger,
+          ),
           onPressed: _enteredName == widget.groupName
               ? () => Navigator.pop(context, true)
               : null,

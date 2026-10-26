@@ -19,11 +19,15 @@ class DocumentWorkspaceScope extends InheritedWidget {
     super.key,
     required this.mode,
     required this.openPreviewDrawer,
+    this.onModeChanged,
+    this.supportsLayoutSelection = false,
     required super.child,
   });
 
   final DocumentViewMode mode;
   final VoidCallback openPreviewDrawer;
+  final ValueChanged<DocumentViewMode>? onModeChanged;
+  final bool supportsLayoutSelection;
 
   static DocumentWorkspaceScope? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<DocumentWorkspaceScope>();
@@ -31,7 +35,9 @@ class DocumentWorkspaceScope extends InheritedWidget {
   @override
   bool updateShouldNotify(DocumentWorkspaceScope oldWidget) =>
       mode != oldWidget.mode ||
-      openPreviewDrawer != oldWidget.openPreviewDrawer;
+      openPreviewDrawer != oldWidget.openPreviewDrawer ||
+      onModeChanged != oldWidget.onModeChanged ||
+      supportsLayoutSelection != oldWidget.supportsLayoutSelection;
 }
 
 /// One list + preview layout for every document module (invoices, receipts,
@@ -248,23 +254,12 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
         DocumentViewMode.split => DocumentWorkspaceScope(
             mode: DocumentViewMode.split,
             openPreviewDrawer: _openPreviewDrawer,
+            onModeChanged: _setMode,
+            supportsLayoutSelection: true,
             child: _buildSplit(width),
           ),
       };
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _ModeToolbar(
-            mode: mode,
-            listTooltip: _isEs ? 'Solo lista' : 'List only',
-            splitTooltip: _isEs ? 'Vista dividida' : 'Split view',
-            onCompact: () => _setMode(DocumentViewMode.list),
-            onRestore: () => _setMode(DocumentViewMode.split),
-          ),
-          SizedBox(height: widget.gap / 2),
-          Expanded(child: workspace),
-        ],
-      );
+      return workspace;
     });
   }
 
@@ -279,6 +274,8 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
         child: DocumentWorkspaceScope(
           mode: DocumentViewMode.list,
           openPreviewDrawer: _openPreviewDrawer,
+          onModeChanged: _setMode,
+          supportsLayoutSelection: true,
           child: widget.list,
         ),
       ),
@@ -422,24 +419,20 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
   }
 }
 
-class _ModeToolbar extends StatelessWidget {
-  const _ModeToolbar({
-    required this.mode,
-    required this.listTooltip,
-    required this.splitTooltip,
-    required this.onCompact,
-    required this.onRestore,
-  });
-
-  final DocumentViewMode mode;
-  final String listTooltip;
-  final String splitTooltip;
-  final VoidCallback onCompact;
-  final VoidCallback onRestore;
+class DocumentLayoutSelector extends StatelessWidget {
+  const DocumentLayoutSelector({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final workspace = DocumentWorkspaceScope.maybeOf(context);
+    if (workspace == null ||
+        !workspace.supportsLayoutSelection ||
+        workspace.onModeChanged == null) {
+      return const SizedBox.shrink();
+    }
     final cs = Theme.of(context).colorScheme;
+    final isEs =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
     return SizedBox(
       height: 34,
       child: Align(
@@ -458,15 +451,19 @@ class _ModeToolbar extends StatelessWidget {
             children: [
               _ModeButton(
                 icon: Icons.view_sidebar_outlined,
-                tooltip: listTooltip,
-                active: mode == DocumentViewMode.list,
-                onPressed: mode == DocumentViewMode.list ? null : onCompact,
+                tooltip: isEs ? 'Vista compacta' : 'Compact layout',
+                active: workspace.mode == DocumentViewMode.list,
+                onPressed: workspace.mode == DocumentViewMode.list
+                    ? null
+                    : () => workspace.onModeChanged!(DocumentViewMode.list),
               ),
               _ModeButton(
                 icon: Icons.splitscreen_rounded,
-                tooltip: splitTooltip,
-                active: mode == DocumentViewMode.split,
-                onPressed: mode == DocumentViewMode.split ? null : onRestore,
+                tooltip: isEs ? 'Vista extendida' : 'Extended layout',
+                active: workspace.mode == DocumentViewMode.split,
+                onPressed: workspace.mode == DocumentViewMode.split
+                    ? null
+                    : () => workspace.onModeChanged!(DocumentViewMode.split),
               ),
             ],
           ),

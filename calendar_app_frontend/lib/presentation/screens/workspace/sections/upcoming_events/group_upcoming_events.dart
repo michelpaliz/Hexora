@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/calendar/events/event.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/services/user/domain/user_agenda_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
@@ -197,7 +198,7 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
                           loc.upcomingEventsSubtitle,
                           style: TextStyle(color: onSurfaceVar),
                         ),
-                  trailing: TextButton(
+                  trailing: HexoraButton(
                     onPressed: () {
                       Navigator.pushNamed(
                         context,
@@ -205,7 +206,8 @@ class _GroupUpcomingEventsCardState extends State<GroupUpcomingEventsCard> {
                         arguments: widget.groupId,
                       );
                     },
-                    child: Text(loc.seeAll),
+                    label: loc.seeAll,
+                    variant: HexoraButtonVariant.ghost,
                   ),
                 ),
                 const Divider(height: 1),

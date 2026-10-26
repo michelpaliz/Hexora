@@ -54,6 +54,10 @@ extension _SettingsMembersRolesPart on _SettingsMembersSectionState {
           ),
           const SizedBox(height: 12),
           TextButton.icon(
+            style: ThemedButtons.button(
+              context,
+              variant: ButtonVariant.ghost,
+            ),
             onPressed: () => _updateUi(() => _permissionsFuture = null),
             icon: const Icon(Icons.refresh_rounded, size: 14),
             label: Text(l.rolesRetryButton),
@@ -109,8 +113,8 @@ extension _SettingsMembersRolesPart on _SettingsMembersSectionState {
               child: _buildRoleCard(
                 context,
                 def: def,
-                isCurrent:
-                    def.wire.toLowerCase() == data.currentUserRole.toLowerCase(),
+                isCurrent: def.wire.toLowerCase() ==
+                    data.currentUserRole.toLowerCase(),
               ),
             ),
       ],
@@ -241,7 +245,9 @@ extension _SettingsMembersRolesPart on _SettingsMembersSectionState {
                 const SizedBox(width: 7),
                 Expanded(
                   child: Text(
-                    def.label.isNotEmpty ? def.label : roleLabelOf(context, role),
+                    def.label.isNotEmpty
+                        ? def.label
+                        : roleLabelOf(context, role),
                     style: t.bodySmall.copyWith(
                       fontWeight: FontWeight.w700,
                       color: isCurrent ? color : cs.onSurface,
@@ -250,8 +256,8 @@ extension _SettingsMembersRolesPart on _SettingsMembersSectionState {
                 ),
                 if (isCurrent)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 7, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
@@ -522,12 +528,11 @@ extension _SettingsMembersRolesPart on _SettingsMembersSectionState {
       future: _permissionsFuture,
       builder: (context, snap) {
         if (!snap.hasData) return const SizedBox.shrink();
-        final def = snap.data!.roleDefinitions
-            .cast<RoleDefinition?>()
-            .firstWhere(
-              (d) => d!.wire.toLowerCase() == role.wire.toLowerCase(),
-              orElse: () => null,
-            );
+        final def =
+            snap.data!.roleDefinitions.cast<RoleDefinition?>().firstWhere(
+                  (d) => d!.wire.toLowerCase() == role.wire.toLowerCase(),
+                  orElse: () => null,
+                );
         final description = def?.description;
         if (description == null || description.isEmpty) {
           return const SizedBox.shrink();

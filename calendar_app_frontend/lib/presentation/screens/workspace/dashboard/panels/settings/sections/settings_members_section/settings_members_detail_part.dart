@@ -270,6 +270,10 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
+                  style: ThemedButtons.button(
+                    context,
+                    variant: ButtonVariant.danger,
+                  ),
                   onPressed: () => _confirmRemoveMember(context, user),
                   icon: Icon(
                     Icons.person_remove_rounded,
@@ -282,15 +286,6 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
                       color: cs.error,
                       fontWeight: FontWeight.w600,
                     ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(
-                      color: cs.error.withValues(alpha: 0.3),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                 ),
               ),

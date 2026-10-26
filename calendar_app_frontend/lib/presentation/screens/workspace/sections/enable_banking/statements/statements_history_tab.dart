@@ -142,6 +142,7 @@ class _StatementsHistoryTabState extends State<StatementsHistoryTab>
             const SizedBox(height: 10),
             FolderSectionCard(
               label: l.statementsBatchEntries,
+              showTitle: false,
               leftTabOffset: 0,
               leadingAction: IconButton(
                 tooltip: l.close,

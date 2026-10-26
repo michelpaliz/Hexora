@@ -7,15 +7,12 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
     required this.summary,
     required this.loading,
     required this.error,
-    required this.fromDate,
-    required this.toDate,
-    required this.quickRange,
-    required this.sortActions,
+    required this.visibleColumns,
+    required this.onColumnsChanged,
     required this.unlinkedOnly,
     required this.paymentSuggestionsLoading,
     required this.searchQuery,
     required this.onSearchChanged,
-    required this.onDateRangeSelected,
     required this.onHeaderAction,
     this.onMismatchTap,
     this.onDownloadFiltered,
@@ -28,15 +25,12 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
   final Map<String, dynamic>? summary;
   final bool loading;
   final String? error;
-  final DateTime? fromDate;
-  final DateTime? toDate;
-  final DateQuickRange quickRange;
-  final List<Widget> sortActions;
+  final Set<HexoraFinancialColumn> visibleColumns;
+  final ValueChanged<Set<HexoraFinancialColumn>> onColumnsChanged;
   final bool unlinkedOnly;
   final bool paymentSuggestionsLoading;
   final String searchQuery;
   final ValueChanged<String> onSearchChanged;
-  final ValueChanged<DateQuickRange> onDateRangeSelected;
   final ValueChanged<_InvoiceHeaderAction> onHeaderAction;
   final VoidCallback? onMismatchTap;
   final VoidCallback? onDownloadFiltered;
@@ -105,15 +99,17 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
               onPressed: onMismatchTap,
             ),
     );
+    const layoutSelector = DocumentLayoutSelector(
+      key: ValueKey('invoice-layout-selector'),
+    );
     final actions = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _InvoiceFiltersMenu(
-          sortActions: sortActions,
-          quickRange: quickRange,
-          fromDate: fromDate,
-          toDate: toDate,
-          onSelected: onDateRangeSelected,
+        HexoraColumnVisibilityMenu(
+          moduleKey: 'facturas',
+          availableColumns: _InvoicesTabListState._availableFinancialColumns,
+          visibleColumns: visibleColumns,
+          onChanged: onColumnsChanged,
         ),
         const SizedBox(width: 8),
         _InvoiceDownloadMenu(
@@ -179,12 +175,20 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (constraints.maxWidth < 560) ...[
-              SizedBox(width: double.infinity, child: search),
+              Row(
+                children: [
+                  layoutSelector,
+                  const SizedBox(width: 8),
+                  Expanded(child: search),
+                ],
+              ),
               const SizedBox(height: 8),
               Align(alignment: Alignment.centerRight, child: actions),
             ] else
               Row(
                 children: [
+                  layoutSelector,
+                  const SizedBox(width: 8),
                   Expanded(child: search),
                   const SizedBox(width: 8),
                   actions,
@@ -194,6 +198,8 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
         );
       }
       return Row(children: [
+        layoutSelector,
+        const SizedBox(width: 10),
         Expanded(child: search),
         const SizedBox(width: 10),
         actions,

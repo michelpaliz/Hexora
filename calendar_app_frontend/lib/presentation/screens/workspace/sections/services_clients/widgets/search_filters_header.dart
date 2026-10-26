@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 
 /// Compact visual controls retain larger targets on touch layouts.
@@ -76,7 +77,8 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                   decoration: InputDecoration(
                     hintText: widget.searchHint,
                     isDense: true,
-                    filled: false,
+                    filled: true,
+                    fillColor: cs.surfaceContainerLow,
                     constraints: BoxConstraints(minHeight: height),
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -114,15 +116,24 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
               const SizedBox(width: 8),
               Semantics(
                   expanded: _expanded,
-                  child: TextButton(
+                  child: OutlinedButton(
                       key: const ValueKey('client-advanced-filters-toggle'),
                       onPressed: () => setState(() => _expanded = !_expanded),
-                      style: TextButton.styleFrom(
+                      style: OutlinedButton.styleFrom(
                           minimumSize: Size(32,
                               clientFilterControlHeight(context, desktop: 32)),
                           foregroundColor: widget.hasActiveFilters
                               ? cs.primary
                               : cs.onSurfaceVariant,
+                          backgroundColor: widget.hasActiveFilters
+                              ? cs.primary.withValues(alpha: .06)
+                              : Colors.transparent,
+                          side: BorderSide(
+                              color: widget.hasActiveFilters
+                                  ? cs.primary.withValues(alpha: .55)
+                                  : cs.outlineVariant.withValues(alpha: .6)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
                           padding: const EdgeInsets.symmetric(horizontal: 8)),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         const Icon(Icons.tune_rounded, size: 16),
@@ -145,17 +156,11 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                   final clear = widget.hasActiveFilters &&
                           widget.showClearAction &&
                           widget.onClearFilters != null
-                      ? TextButton(
+                      ? HexoraButton(
                           onPressed: widget.onClearFilters,
-                          style: TextButton.styleFrom(
-                              minimumSize: Size(
-                                  0,
-                                  clientFilterControlHeight(context,
-                                      desktop: 32)),
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 8)),
-                          child: Text(l.clientFiltersClear,
-                              style: Theme.of(context).textTheme.labelMedium))
+                          label: l.clientFiltersClear,
+                          variant: HexoraButtonVariant.ghost,
+                          size: HexoraButtonSize.compact)
                       : null;
                   if (constraints.maxWidth < 620) {
                     return Wrap(

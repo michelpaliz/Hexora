@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/services/expenses/expenses_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/operations/form_helpers.dart';
@@ -545,13 +545,7 @@ mixin ExpenseOperationsMixin<T extends StatefulWidget> on State<T> {
         }
       });
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to delete expense.'),
-        ),
-      );
+      rethrow;
     }
   }
 }
-

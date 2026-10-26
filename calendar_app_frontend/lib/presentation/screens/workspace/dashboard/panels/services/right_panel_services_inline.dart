@@ -12,6 +12,7 @@ import 'package:hexora/presentation/screens/workspace/sections/services_clients/
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class ServicesClientsInlinePanel extends StatefulWidget {
@@ -295,10 +296,12 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
         content: Text(l.removeClientConfirm(client.name)),
         actions: [
           TextButton(
+            style: ThemedButtons.button(context, variant: ButtonVariant.ghost),
             onPressed: () => Navigator.of(context).pop(false),
             child: Text(l.cancel),
           ),
           FilledButton(
+            style: ThemedButtons.button(context, variant: ButtonVariant.danger),
             onPressed: () => Navigator.of(context).pop(true),
             child: Text(l.remove),
           ),
@@ -343,10 +346,12 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
         content: Text(l.removeServiceConfirm(service.name)),
         actions: [
           TextButton(
+            style: ThemedButtons.button(context, variant: ButtonVariant.ghost),
             onPressed: () => Navigator.of(context).pop(false),
             child: Text(l.cancel),
           ),
           FilledButton(
+            style: ThemedButtons.button(context, variant: ButtonVariant.danger),
             onPressed: () => Navigator.of(context).pop(true),
             child: Text(l.remove),
           ),
@@ -435,6 +440,7 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
                                 ])),
                             const SizedBox(width: 8),
                             FilledButton.icon(
+                                style: ThemedButtons.button(context),
                                 onPressed: _tab.index == 0
                                     ? (useSidePanel
                                         ? _startAddClient
@@ -491,20 +497,13 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
                   AnimatedBuilder(
                       animation: _tab,
                       builder: (context, _) => FilledButton.icon(
+                            style: ThemedButtons.button(context),
                             onPressed: _tab.index == 0
                                 ? _startAddClient
                                 : _startAddService,
                             icon: const Icon(Icons.add, size: 16),
                             label: Text(
                                 _tab.index == 0 ? l.addClient : l.addService),
-                            style: FilledButton.styleFrom(
-                              minimumSize: const Size(0, 34),
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 12),
-                              textStyle: t.bodySmall,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
-                            ),
                           )),
                 ],
               ]),
@@ -682,6 +681,10 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
                           ),
                           const SizedBox(height: 14),
                           OutlinedButton.icon(
+                            style: ThemedButtons.button(
+                              context,
+                              variant: ButtonVariant.secondary,
+                            ),
                             onPressed:
                                 isClients ? _startAddClient : _startAddService,
                             icon: const Icon(Icons.add_rounded, size: 18),

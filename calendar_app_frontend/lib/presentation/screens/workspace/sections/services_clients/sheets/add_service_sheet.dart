@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/service_catalog/service.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/services/service_catalog/service_api_client.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -241,24 +242,12 @@ class _AddServiceSheetState extends State<AddServiceSheet> {
 
     final saveButton = SizedBox(
       width: double.infinity,
-      child: FilledButton.icon(
-        style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
-        icon: _saving
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.save_outlined),
-        label: Text(
-          _saving ? l.saving : (_isEdit ? l.saveChanges : l.saveService),
-          style: typo.bodySmall.copyWith(
-            color: cs.onPrimary,
-            fontWeight: FontWeight.w700,
-            letterSpacing: .2,
-          ),
-        ),
+      child: HexoraButton(
+        icon: Icons.save_outlined,
+        label: _isEdit ? l.saveChanges : l.saveService,
         onPressed: _saving ? null : _save,
+        loading: _saving,
+        size: HexoraButtonSize.large,
       ),
     );
     final form = SingleChildScrollView(

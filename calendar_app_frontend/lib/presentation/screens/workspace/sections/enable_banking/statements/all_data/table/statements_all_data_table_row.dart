@@ -121,6 +121,9 @@ class StatementsAllDataTableRow extends StatelessWidget {
     final balanceMaxWidth =
         isWide ? 200.0 : StatementsAllDataTableLayout.balanceMaxWidth;
     final isDesktop = !isCompact && !isTablet;
+    // Show notes in the expanded tablet layout only. The fully expanded
+    // desktop layout already exposes the wider primary columns.
+    final showNotes = !isCompact && isTablet;
     final actionsWidth = isDesktop
         ? StatementsAllDataTableLayout.actionsWidth
         : StatementsAllDataTableLayout.compactActionsWidth;
@@ -653,7 +656,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                 );
                               }(),
                             ),
-                            if (isDesktop) ...[
+                            if (showNotes) ...[
                               const SizedBox(
                                   width: StatementsAllDataTableLayout
                                       .columnGapWide),

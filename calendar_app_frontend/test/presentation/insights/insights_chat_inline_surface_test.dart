@@ -78,8 +78,17 @@ void main() {
     final tableWidth = tester
         .getSize(find.byKey(const ValueKey('insights-results-table')))
         .width;
+    final tableSurface = tester.widget<Container>(
+      find.byKey(const ValueKey('insights-results-table')),
+    );
+    final tableDecoration = tableSurface.decoration! as BoxDecoration;
+    final dataTable = tester.widget<DataTable>(find.byType(DataTable));
     expect(chatWidth, inInclusiveRange(500, 520));
     expect(tableWidth, greaterThan(1100));
+    expect(tableSurface.clipBehavior, Clip.antiAlias);
+    expect(tableDecoration.borderRadius, BorderRadius.circular(9));
+    expect(dataTable.headingRowHeight, 38);
+    expect(dataTable.dataRowMaxHeight, lessThanOrEqualTo(48));
     expect(find.text('Vincular'), findsWidgets);
     expect(find.text('126 movimientos'), findsNothing);
     expect(find.text('10 movimientos'), findsOneWidget);

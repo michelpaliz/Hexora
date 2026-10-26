@@ -13,7 +13,7 @@ class _BatchArchiveConfirmation extends StatelessWidget {
   final bool canAnalyze;
   final bool analyzing;
   final VoidCallback onToggleExpanded;
-  final VoidCallback onCancel;
+  final VoidCallback onRemove;
   final VoidCallback onReplace;
   final VoidCallback onConfirm;
   final VoidCallback onRetry;
@@ -31,7 +31,7 @@ class _BatchArchiveConfirmation extends StatelessWidget {
     required this.canAnalyze,
     required this.analyzing,
     required this.onToggleExpanded,
-    required this.onCancel,
+    required this.onRemove,
     required this.onReplace,
     required this.onConfirm,
     required this.onRetry,
@@ -42,6 +42,33 @@ class _BatchArchiveConfirmation extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final ts = Theme.of(context).textTheme;
     final totalEntries = files.length + skipped.length;
+    final busy = inspecting || analyzing;
+
+    // Validation status
+    final Color statusColor;
+    final IconData statusIcon;
+    final String statusLabel;
+    if (inspecting) {
+      statusColor = cs.primary;
+      statusIcon = Icons.hourglass_top_rounded;
+      statusLabel = 'Inspeccionando…';
+    } else if (inspectionError != null) {
+      statusColor = cs.error;
+      statusIcon = Icons.error_outline_rounded;
+      statusLabel = 'Error de inspección';
+    } else if (blocked) {
+      statusColor = cs.error;
+      statusIcon = Icons.block_rounded;
+      statusLabel = 'Bloqueado';
+    } else if (files.isNotEmpty) {
+      statusColor = Colors.green.shade700;
+      statusIcon = Icons.check_circle_outline_rounded;
+      statusLabel = 'Listo para analizar';
+    } else {
+      statusColor = Colors.amber.shade800;
+      statusIcon = Icons.warning_amber_rounded;
+      statusLabel = 'Sin compatibles';
+    }
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -53,46 +80,103 @@ class _BatchArchiveConfirmation extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+            padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
             child: Row(
               children: [
                 Container(
-                  width: 34,
-                  height: 34,
+                  width: 32,
+                  height: 32,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: cs.primaryContainer.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(9),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(Icons.folder_zip_outlined,
-                      size: 19, color: cs.primary),
+                      size: 17, color: cs.primary),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        archiveName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: ts.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
+                      Tooltip(
+                        message: archiveName,
+                        child: Text(
+                          archiveName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: ts.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        _formatBatchBytes(archiveSizeBytes),
-                        style: ts.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            _formatBatchBytes(archiveSizeBytes),
+                            style: ts.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                              fontSize: 11,
+                            ),
+                          ),
+                          if (totalEntries > 0) ...[
+                            Text(
+                              ' · $totalEntries detectados',
+                              style: ts.bodySmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(width: 6),
+                          Icon(statusIcon, size: 12, color: statusColor),
+                          const SizedBox(width: 3),
+                          Text(
+                            statusLabel,
+                            style: ts.bodySmall?.copyWith(
+                              color: statusColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                OutlinedButton(
-                  onPressed: inspecting || analyzing ? null : onReplace,
-                  child: const Text('Reemplazar ZIP'),
+                const SizedBox(width: 6),
+                OutlinedButton.icon(
+                  onPressed: busy ? null : onReplace,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 32),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 6),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: ts.bodySmall?.copyWith(
+                        fontSize: 12, fontWeight: FontWeight.w600),
+                    side: BorderSide(
+                        color: cs.outlineVariant.withValues(alpha: 0.7)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.swap_horiz_rounded, size: 14),
+                  label: const Text('Reemplazar'),
+                ),
+                const SizedBox(width: 4),
+                Tooltip(
+                  message: 'Eliminar ZIP',
+                  child: IconButton(
+                    onPressed: busy ? null : onRemove,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 17),
+                    style: IconButton.styleFrom(
+                      foregroundColor: cs.error,
+                      minimumSize: const Size(32, 32),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -156,28 +240,22 @@ class _BatchArchiveConfirmation extends StatelessWidget {
             )
           else ...[
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
               child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 6,
+                runSpacing: 6,
                 children: [
                   _BatchArchiveMetric(
                     icon: Icons.description_outlined,
                     label: '${files.length} compatibles',
                     color: Colors.green.shade700,
                   ),
-                  _BatchArchiveMetric(
-                    icon: Icons.do_not_disturb_alt_outlined,
-                    label: '${skipped.length} omitidos',
-                    color: skipped.isEmpty
-                        ? cs.onSurfaceVariant
-                        : Colors.amber.shade800,
-                  ),
-                  _BatchArchiveMetric(
-                    icon: Icons.inventory_2_outlined,
-                    label: '$totalEntries archivos detectados',
-                    color: cs.primary,
-                  ),
+                  if (skipped.isNotEmpty)
+                    _BatchArchiveMetric(
+                      icon: Icons.do_not_disturb_alt_outlined,
+                      label: '${skipped.length} omitidos',
+                      color: Colors.amber.shade800,
+                    ),
                 ],
               ),
             ),
@@ -260,25 +338,29 @@ class _BatchArchiveConfirmation extends StatelessWidget {
               const Spacer(),
             const Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.all(12),
-              child: Wrap(
-                alignment: WrapAlignment.end,
-                spacing: 8,
-                runSpacing: 8,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(
-                    onPressed: analyzing ? null : onCancel,
-                    child: const Text('Cancelar'),
-                  ),
                   FilledButton.icon(
                     onPressed: canAnalyze && !analyzing ? onConfirm : null,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 34),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 7),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      textStyle: ts.bodySmall?.copyWith(
+                          fontSize: 12, fontWeight: FontWeight.w700),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
                     icon: analyzing
                         ? const SizedBox(
-                            width: 15,
-                            height: 15,
+                            width: 14,
+                            height: 14,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.auto_awesome_outlined, size: 17),
+                        : const Icon(Icons.auto_awesome_outlined, size: 15),
                     label: Text(
                       analyzing
                           ? 'Iniciando análisis…'
@@ -336,6 +418,13 @@ class _BatchArchiveFileTable extends StatelessWidget {
 
   const _BatchArchiveFileTable({required this.files, required this.skipped});
 
+  static String _fileType(String name) {
+    final ext = name.contains('.')
+        ? name.substring(name.lastIndexOf('.') + 1).toUpperCase()
+        : '';
+    return ext.isEmpty ? '—' : ext;
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -344,59 +433,151 @@ class _BatchArchiveFileTable extends StatelessWidget {
       for (final item in files) (item: item, supported: true),
       for (final item in skipped) (item: item, supported: false),
     ];
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(14, 2, 14, 10),
-      itemCount: rows.length,
-      separatorBuilder: (_, __) => Divider(
-        height: 1,
-        color: cs.outlineVariant.withValues(alpha: 0.35),
-      ),
-      itemBuilder: (context, index) {
-        final row = rows[index];
-        final name = (row.item['name'] ?? '').toString();
-        final reason = (row.item['reason'] ?? '').toString();
-        final size = row.item['sizeBytes'] is num
-            ? (row.item['sizeBytes'] as num).toInt()
-            : 0;
-        return SizedBox(
-          height: 42,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Header row
+        Container(
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
           child: Row(
             children: [
-              Icon(
-                row.supported
-                    ? Icons.check_circle_outline_rounded
-                    : Icons.error_outline_rounded,
-                size: 16,
-                color: row.supported ? Colors.green.shade600 : cs.error,
-              ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 22),
               Expanded(
-                child: Tooltip(
-                  message: name,
-                  child: Text(
-                    name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: ts.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                flex: 5,
+                child: Text(
+                  'Archivo',
+                  style: ts.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ),
-              if (!row.supported) ...[
-                const SizedBox(width: 8),
-                Text(
-                  reason,
-                  style: ts.labelSmall?.copyWith(color: cs.error),
+              SizedBox(
+                width: 42,
+                child: Text(
+                  'Tipo',
+                  style: ts.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
-              ],
-              const SizedBox(width: 12),
-              Text(
-                _formatBatchBytes(size),
-                style: ts.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+              SizedBox(
+                width: 62,
+                child: Text(
+                  'Tamaño',
+                  textAlign: TextAlign.right,
+                  style: ts.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
               ),
             ],
           ),
-        );
-      },
+        ),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+            itemCount: rows.length,
+            separatorBuilder: (_, __) => Divider(
+              height: 1,
+              color: cs.outlineVariant.withValues(alpha: 0.28),
+            ),
+            itemBuilder: (context, index) {
+              final row = rows[index];
+              final name = (row.item['name'] ?? '').toString();
+              final reason = (row.item['reason'] ?? '').toString();
+              final size = row.item['sizeBytes'] is num
+                  ? (row.item['sizeBytes'] as num).toInt()
+                  : 0;
+              final fileType = _fileType(name);
+              final rowColor = row.supported
+                  ? Colors.green.shade600
+                  : cs.error;
+              return SizedBox(
+                height: 38,
+                child: Row(
+                  children: [
+                    Icon(
+                      row.supported
+                          ? Icons.check_circle_outline_rounded
+                          : Icons.error_outline_rounded,
+                      size: 15,
+                      color: rowColor,
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      flex: 5,
+                      child: Tooltip(
+                        message: reason.isNotEmpty ? '$name\n$reason' : name,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: ts.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11.5,
+                              ),
+                            ),
+                            if (!row.supported && reason.isNotEmpty)
+                              Text(
+                                reason,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: ts.labelSmall?.copyWith(
+                                  color: cs.error,
+                                  fontSize: 10,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 42,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: cs.surfaceContainerHighest
+                              .withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          fileType,
+                          textAlign: TextAlign.center,
+                          style: ts.labelSmall?.copyWith(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 62,
+                      child: Text(
+                        _formatBatchBytes(size),
+                        textAlign: TextAlign.right,
+                        style: ts.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontSize: 10.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

@@ -99,6 +99,11 @@ void main() {
         final context = tester.element(find.byType(ExpenseRecentUploadsTab));
         await tester.tap(find.text(AppLocalizations.of(context)!.remove));
         await tester.pumpAndSettle();
+        expect(find.text('Papelería'), findsWidgets);
+        await tester.tap(
+          find.text(scale == 1.0 ? 'Eliminar gasto' : 'Eliminar').last,
+        );
+        await tester.pumpAndSettle();
         expect(deleted, 'two');
         expect(tester.takeException(), isNull);
       });

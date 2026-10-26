@@ -1,5 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/weather/weather_summary_card.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/models/weather/work_condition_result.dart';
 import 'package:hexora/services/weather/work_conditions_api.dart';
 import 'package:intl/intl.dart';
@@ -200,12 +201,13 @@ class _WorkConditionsCardState extends State<WorkConditionsCard> {
             ],
             if (result.affectedVisitCount > 0) ...[
               const SizedBox(height: 8),
-              TextButton.icon(
+              HexoraButton(
                 onPressed: () => _showAffected(result),
-                icon: const Icon(Icons.arrow_forward_rounded),
-                label: Text(es
+                icon: Icons.arrow_forward_rounded,
+                label: es
                     ? 'Ver ${result.affectedVisitCount} trabajos afectados'
-                    : 'View ${result.affectedVisitCount} affected jobs'),
+                    : 'View ${result.affectedVisitCount} affected jobs',
+                variant: HexoraButtonVariant.ghost,
               ),
             ],
           ],

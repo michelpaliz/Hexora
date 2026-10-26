@@ -467,7 +467,8 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
                 backgroundColor: cs.primaryContainer,
                 foregroundColor: cs.onPrimaryContainer,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius:
+                      BorderRadius.circular(HexoraDimensions.radius),
                 ),
                 elevation: 0,
               ),

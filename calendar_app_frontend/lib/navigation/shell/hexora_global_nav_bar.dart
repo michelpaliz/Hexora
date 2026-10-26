@@ -36,8 +36,7 @@ class HexoraNavDestination {
 /// Labels collapse to icons (with tooltips) on narrower windows or when the
 /// user picks the compact density; the active module always keeps its label.
 ///
-/// When [groupSwitcher] is provided it replaces the "HEXORA" wordmark; the
-/// compact Hexora icon is retained on the left as secondary branding.
+/// When [groupSwitcher] is provided it replaces the "HEXORA" wordmark.
 class HexoraGlobalNavBar extends StatelessWidget {
   const HexoraGlobalNavBar({
     super.key,
@@ -51,6 +50,7 @@ class HexoraGlobalNavBar extends StatelessWidget {
     this.notificationCount = 0,
     this.notificationsSelected = false,
     this.onOpenNotifications,
+    this.onlineMembers,
     this.profile,
     this.profileDetails,
     this.onBack,
@@ -68,18 +68,18 @@ class HexoraGlobalNavBar extends StatelessWidget {
   final int notificationCount;
   final bool notificationsSelected;
   final VoidCallback? onOpenNotifications;
+  final Widget? onlineMembers;
   final Widget? profile;
   final Widget? profileDetails;
   final VoidCallback? onBack;
   final String? backTooltip;
 
   /// When set, replaces the "HEXORA" wordmark with this widget (typically a
-  /// group/workspace switcher). The compact Hexora icon is kept for branding.
+  /// group/workspace switcher).
   final Widget? groupSwitcher;
 
   static const double _labelsBreakpoint = 1440;
   static const double _brandTextBreakpoint = 1100;
-  static const double _searchFieldBreakpoint = 1200;
   static const double _profileDetailsBreakpoint = 1600;
 
   @override
@@ -109,8 +109,6 @@ class HexoraGlobalNavBar extends StatelessWidget {
           child: Row(
             children: [
               if (groupSwitcher != null) ...[
-                _BrandIcon(onTap: onBrandTap, tooltip: brandTooltip),
-                const SizedBox(width: 4),
                 groupSwitcher!,
               ] else
                 _Brand(
@@ -148,11 +146,10 @@ class HexoraGlobalNavBar extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              _NavSearch(
-                destinations: destinations,
-                expanded: width >= _searchFieldBreakpoint,
-                onSelected: onSelected,
-              ),
+              if (onlineMembers != null) ...[
+                const SizedBox(width: 4),
+                onlineMembers!,
+              ],
               if (onOpenNotifications != null) ...[
                 const SizedBox(width: 4),
                 HexoraNavIconButton(
@@ -199,7 +196,8 @@ class HexoraGlobalNavBar extends StatelessWidget {
 }
 
 class _Brand extends StatelessWidget {
-  const _Brand({required this.onTap, required this.tooltip, required this.showText});
+  const _Brand(
+      {required this.onTap, required this.tooltip, required this.showText});
 
   final VoidCallback? onTap;
   final String? tooltip;
@@ -245,41 +243,6 @@ class _Brand extends StatelessWidget {
         borderRadius: BorderRadius.circular(NavigationTokens.radius),
         hoverColor: HexoraGlobalNavColors.foreground.withValues(alpha: 0.06),
         child: content,
-      ),
-    );
-  }
-}
-
-/// Compact Hexora icon (no wordmark) used alongside the group switcher so
-/// the app brand remains visible without taking dominant space.
-class _BrandIcon extends StatelessWidget {
-  const _BrandIcon({this.onTap, this.tooltip});
-
-  final VoidCallback? onTap;
-  final String? tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    final icon = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(6),
-        child: Image.asset(
-          'assets/images/branding/logo_icon.png',
-          width: 22,
-          height: 22,
-        ),
-      ),
-    );
-    if (onTap == null) return Semantics(label: 'Hexora', child: icon);
-    return Tooltip(
-      message: tooltip ?? 'Hexora',
-      waitDuration: const Duration(milliseconds: 350),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(NavigationTokens.radius),
-        hoverColor: HexoraGlobalNavColors.foreground.withValues(alpha: 0.06),
-        child: icon,
       ),
     );
   }
@@ -372,7 +335,8 @@ class _MoreMenu extends StatelessWidget {
             onPressed: () => onSelected(d.id),
             child: Text(d.label, style: NavigationTokens.label(context)),
           ),
-        if (items.isNotEmpty && onToggleCompact != null) const Divider(height: 8),
+        if (items.isNotEmpty && onToggleCompact != null)
+          const Divider(height: 8),
         if (onToggleCompact != null)
           MenuItemButton(
             leadingIcon: Icon(
@@ -390,7 +354,9 @@ class _MoreMenu extends StatelessWidget {
       ],
       builder: (context, controller, _) => HexoraNavTile(
         selected: active != null,
-        tooltip: hasLabel ? null : (es ? 'Más módulos y opciones' : 'More modules and options'),
+        tooltip: hasLabel
+            ? null
+            : (es ? 'Más módulos y opciones' : 'More modules and options'),
         semanticLabel: labelText,
         padding: hasLabel
             ? const EdgeInsets.only(
@@ -412,109 +378,6 @@ class _MoreMenu extends StatelessWidget {
               const SizedBox(width: 2),
               Icon(Icons.expand_more_rounded, size: 16, color: fg),
             ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NavSearch extends StatelessWidget {
-  const _NavSearch({
-    required this.destinations,
-    required this.expanded,
-    required this.onSelected,
-  });
-
-  final List<HexoraNavDestination> destinations;
-  final bool expanded;
-  final ValueChanged<String> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final es = Localizations.localeOf(context).languageCode == 'es';
-    final hint = es ? 'Buscar…' : 'Search…';
-    return SearchAnchor(
-      viewHintText: es ? 'Buscar módulos' : 'Search modules',
-      builder: (context, controller) => expanded
-          ? _SearchField(hint: hint, onTap: controller.openView)
-          : HexoraNavIconButton(
-              icon: Icons.search_rounded,
-              tooltip: es ? 'Buscar' : 'Search',
-              onPressed: controller.openView,
-            ),
-      suggestionsBuilder: (context, controller) {
-        final query = controller.text.trim().toLowerCase();
-        return destinations
-            .where((d) => d.label.toLowerCase().contains(query))
-            .map((d) => ListTile(
-                  dense: true,
-                  leading: Icon(d.icon, size: NavigationTokens.iconSize),
-                  title: Text(d.label, style: NavigationTokens.label(context)),
-                  onTap: () {
-                    controller.closeView(null);
-                    onSelected(d.id);
-                  },
-                ));
-      },
-    );
-  }
-}
-
-class _SearchField extends StatefulWidget {
-  const _SearchField({required this.hint, required this.onTap});
-
-  final String hint;
-  final VoidCallback onTap;
-
-  @override
-  State<_SearchField> createState() => _SearchFieldState();
-}
-
-class _SearchFieldState extends State<_SearchField> {
-  bool _hovered = false;
-  bool _focused = false;
-
-  @override
-  Widget build(BuildContext context) {
-    const fg = HexoraGlobalNavColors.foreground;
-    final radius = BorderRadius.circular(NavigationTokens.radius);
-    return InkWell(
-      onTap: widget.onTap,
-      borderRadius: radius,
-      onHover: (v) => setState(() => _hovered = v),
-      onFocusChange: (v) => setState(() => _focused = v),
-      hoverColor: Colors.transparent,
-      focusColor: Colors.transparent,
-      child: AnimatedContainer(
-        duration: NavigationTokens.motion,
-        width: 200,
-        height: NavigationTokens.searchHeight,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          color: fg.withValues(alpha: _hovered ? 0.11 : 0.07),
-          borderRadius: radius,
-          border: Border.all(
-            color: _focused
-                ? HexoraGlobalNavColors.focusRing
-                : fg.withValues(alpha: 0.08),
-            width: _focused ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.search_rounded,
-                size: 16, color: fg.withValues(alpha: 0.7)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                widget.hint,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: NavigationTokens.label(context)
-                    .copyWith(color: fg.withValues(alpha: 0.6)),
-              ),
-            ),
           ],
         ),
       ),
@@ -629,8 +492,7 @@ class _ScrollableNavStripState extends State<_ScrollableNavStrip> {
         if (_hasOverflow)
           _scrollButton(
             icon: Icons.chevron_right_rounded,
-            tooltip:
-                widget.isSpanish ? 'Ver más módulos' : 'View more modules',
+            tooltip: widget.isSpanish ? 'Ver más módulos' : 'View more modules',
             enabled: _canScrollRight,
             onPressed: () => _scrollBy(260),
           ),

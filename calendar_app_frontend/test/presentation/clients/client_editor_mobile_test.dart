@@ -102,6 +102,22 @@ void main() {
     expect(cancelled, isTrue);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('inline editor can defer its title to the split-view shell',
+      (tester) async {
+    await tester.pumpWidget(_app(AddClientSheet(
+      groupId: 'group-1',
+      api: ClientsApi(),
+      client: GroupClient(id: 'c', name: 'Las Alondras Playa'),
+      closeOnSave: false,
+      showInlineHeader: false,
+    )));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Editar cliente'), findsNothing);
+    expect(find.text('Las Alondras Playa'), findsWidgets);
+    expect(find.text('Guardar cambios'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   for (final width in [360.0, 1280.0]) {
     for (final scale in [1.0, 1.5]) {
       testWidgets('editor at width $width keeps save visible at scale $scale',

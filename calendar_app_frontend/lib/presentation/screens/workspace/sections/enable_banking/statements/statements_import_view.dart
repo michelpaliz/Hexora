@@ -11,12 +11,13 @@ class StatementsImportView extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+      padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
       child: FolderSectionCard(
         label: l.statementsImportTabTitle,
+        showTitle: false,
         leftTabOffset: 0,
         child: const Padding(
-          padding: EdgeInsets.only(top: 12),
+          padding: EdgeInsets.only(top: 8),
           child: StatementsTab(),
         ),
       ),

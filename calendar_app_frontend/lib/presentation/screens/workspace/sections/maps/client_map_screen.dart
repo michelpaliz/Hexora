@@ -1,4 +1,5 @@
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'dart:async';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:hexora/theme/typography/hexora_design_tokens.dart';
@@ -709,12 +710,10 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
             onPressed: () => Navigator.pop(dialogContext, false),
             child: Text(_isSpanish ? 'Cancelar' : 'Cancel'),
           ),
-          FilledButton(
+          HexoraButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: Text(_isSpanish ? 'Eliminar' : 'Remove'),
+            label: _isSpanish ? 'Eliminar' : 'Remove',
+            variant: HexoraButtonVariant.danger,
           ),
         ],
       ),
@@ -1086,18 +1085,11 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
         children: [
           if (canManageLocations) ...[
             Expanded(
-              child: FilledButton.icon(
+              child: HexoraButton(
                 onPressed: _chooseClient,
-                icon: const Icon(Icons.add_location_alt_outlined, size: 19),
-                label: Text(
-                  _isSpanish ? 'Ubicar cliente' : 'Set client location',
-                ),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 44),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+                icon: Icons.add_location_alt_outlined,
+                label: _isSpanish ? 'Ubicar cliente' : 'Set client location',
+                size: HexoraButtonSize.large,
               ),
             ),
             const SizedBox(width: 8),
@@ -1292,12 +1284,10 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 14),
-                            FilledButton.icon(
+                            HexoraButton(
                               onPressed: _load,
-                              icon: const Icon(Icons.refresh_rounded),
-                              label: Text(
-                                _isSpanish ? 'Reintentar' : 'Retry',
-                              ),
+                              icon: Icons.refresh_rounded,
+                              label: _isSpanish ? 'Reintentar' : 'Retry',
                             ),
                           ],
                         ),
@@ -1608,17 +1598,12 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          OutlinedButton.icon(
+          HexoraButton(
             onPressed: _locating ? null : _useCurrentLocation,
-            icon: _locating
-                ? const SizedBox.square(
-                    dimension: 17,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.my_location_rounded, size: 18),
-            label: Text(
-              _isSpanish ? 'Usar mi ubicación actual' : 'Use my location',
-            ),
+            icon: Icons.my_location_rounded,
+            label: _isSpanish ? 'Usar mi ubicación actual' : 'Use my location',
+            variant: HexoraButtonVariant.secondary,
+            loading: _locating,
           ),
           if (_resolvedAddress?.isNotEmpty == true) ...[
             const SizedBox(height: 12),
@@ -1708,15 +1693,11 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
             ],
           ),
           const SizedBox(height: 14),
-          FilledButton.icon(
+          HexoraButton(
             onPressed: _saving ? null : _saveLocation,
-            icon: _saving
-                ? const SizedBox.square(
-                    dimension: 17,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.check_rounded),
-            label: Text(_isSpanish ? 'Guardar ubicación' : 'Save location'),
+            icon: Icons.check_rounded,
+            label: _isSpanish ? 'Guardar ubicación' : 'Save location',
+            loading: _saving,
           ),
         ],
       ),
@@ -1867,14 +1848,11 @@ class _SelectedClientCard extends StatelessWidget {
                             )
                           : const Icon(Icons.location_off_outlined, size: 19),
                     ),
-                    TextButton.icon(
+                    HexoraButton(
                       onPressed: isRemoving ? null : onEdit,
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                      ),
-                      icon: const Icon(Icons.edit_location_alt_outlined,
-                          size: 17),
-                      label: Text(isSpanish ? 'Editar' : 'Edit'),
+                      icon: Icons.edit_location_alt_outlined,
+                      label: isSpanish ? 'Editar' : 'Edit',
+                      variant: HexoraButtonVariant.ghost,
                     ),
                   ],
                 ),
@@ -1883,10 +1861,11 @@ class _SelectedClientCard extends StatelessWidget {
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
-            child: FilledButton.tonalIcon(
+            child: HexoraButton(
               onPressed: () => _openDirections(context),
-              icon: const Icon(Icons.directions_rounded, size: 18),
-              label: Text(isSpanish ? 'Cómo llegar' : 'Get directions'),
+              icon: Icons.directions_rounded,
+              label: isSpanish ? 'Cómo llegar' : 'Get directions',
+              variant: HexoraButtonVariant.secondary,
             ),
           ),
         ],

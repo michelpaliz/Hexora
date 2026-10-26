@@ -1,6 +1,7 @@
 part of '../expense_upload_screen.dart';
 
 mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
+  void clearBatchArchive();
   List<String> _duplicateBatchNames(List<String> names) {
     final counts = <String, int>{};
     final originals = <String, String>{};
@@ -1042,6 +1043,51 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
     setState(_clearConsumedBatchState);
     await _removeCompletedBatchMapping(completedBackgroundJobId);
     return true;
+  }
+
+  Future<List<Map<String, dynamic>>> _loadRecentBatchJobs() async {
+    final groupId = resolveGroupId().trim();
+    if (groupId.isEmpty) return const [];
+    if (mounted) setState(() => _recentBatchJobsLoading = true);
+    try {
+      final jobs = await _api.listBatchExpensePreviewJobs(groupId);
+      if (mounted) {
+        setState(() {
+          _recentBatchJobs = jobs;
+          _recentBatchJobsError = null;
+        });
+      }
+      return jobs;
+    } catch (error) {
+      if (mounted) {
+        setState(() => _recentBatchJobsError = _friendlyNetworkError(error));
+      }
+      return const [];
+    } finally {
+      if (mounted) setState(() => _recentBatchJobsLoading = false);
+    }
+  }
+
+  Future<void> _openRecentBatchJob(Map<String, dynamic> job) async {
+    if (job['canResume'] != true) return;
+    final jobId = _batchJobText(job['jobId']);
+    if (jobId.isEmpty) return;
+    setState(() {
+      _resetBatchJobTracking();
+      _batchDocumentBytes.clear();
+      _batchDocumentNames.clear();
+      clearBatchArchive();
+      _batchJobId = jobId;
+      _batchBackgroundJobId = _batchJobText(job['backgroundJobId']);
+      _batchArchiveName = _batchJobText(job['sourceArchiveName']).isEmpty
+          ? null
+          : _batchJobText(job['sourceArchiveName']);
+      _batchJobStatus = Map<String, dynamic>.from(job);
+      _batchError = null;
+    });
+    _cacheBatchJobSnapshot();
+    await _pollBatchJobStatus();
+    if (_hasRunningBatchJob) _startBatchJobPolling();
   }
 
   Future<void> _resumeCachedBatchJobIfNeeded() async {

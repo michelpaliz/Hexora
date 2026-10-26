@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 
 class SaveButton extends StatelessWidget {
   final bool saving;
@@ -19,24 +20,12 @@ class SaveButton extends StatelessWidget {
 
     return SizedBox(
       width: double.infinity,
-      child: FilledButton.icon(
-        icon: saving
-            ? const SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.save_outlined, size: 16),
-        label: Text(
-          saving ? l.saving : (isEdit ? l.saveChanges : l.saveClient),
-        ),
+      child: HexoraButton(
+        icon: Icons.save_outlined,
+        label: isEdit ? l.saveChanges : l.saveClient,
         onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          minimumSize: const Size(0, 38),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          visualDensity: VisualDensity.compact,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+        loading: saving,
+        size: HexoraButtonSize.large,
       ),
     );
   }

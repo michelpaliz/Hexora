@@ -21,7 +21,9 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/prompt_clipboard_helper.dart';
 import 'package:hexora/presentation/shared/jobs/ocr_import_job_mapping_store.dart';
 import 'package:hexora/presentation/shared/jobs/ocr_import_jobs_store.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/buttons.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
@@ -1950,6 +1952,20 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     final displayGroupId = resolveGroupId();
     final hasGroupSelected = displayGroupId.trim().isNotEmpty;
     final displayGroupName = _resolveGroupName();
+    var canDeleteExpenses = true;
+    try {
+      final group = context.watch<GroupDomain>().currentGroup;
+      final userId = context.watch<AuthProvider>().currentUser?.id.trim() ?? '';
+      if (group != null && userId.isNotEmpty && group.id == displayGroupId) {
+        final role = group.ownerId == userId
+            ? 'owner'
+            : group.userRoles[userId]?.toLowerCase();
+        canDeleteExpenses =
+            role == 'owner' || role == 'admin' || role == 'co-admin';
+      }
+    } catch (_) {
+      // Keep the existing behavior when this embedded screen has no providers.
+    }
     final manualAdvanceOptions = _buildAdvanceOptions(
       providerId: _selectedProviderId,
       vendorName: _vendorController.text.trim(),
@@ -2528,6 +2544,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                 child: ExpenseRecentUploadsTab(
                   recentUploads: _recentUploads,
                   onDeleteExpense: deleteRecentExpense,
+                  canDeleteExpenses: canDeleteExpenses,
                   selectedExpense: _selectedRecentExpense,
                   autoEditExpenseId: _pendingAutoEditExpenseId,
                   onAutoEditHandled: (id) {
@@ -2597,6 +2614,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                     ExpenseRecentUploadsTab(
                       recentUploads: _recentUploads,
                       onDeleteExpense: deleteRecentExpense,
+                      canDeleteExpenses: canDeleteExpenses,
                       selectedExpense: _selectedRecentExpense,
                       autoEditExpenseId: _pendingAutoEditExpenseId,
                       onAutoEditHandled: (id) {

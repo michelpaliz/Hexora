@@ -13,10 +13,25 @@ abstract final class HexoraTypography {
 abstract final class HexoraDimensions {
   static const double space = 4;
   static const double toolbar = 52;
-  static const double button = 32;
+
+  /// Legacy button height — kept for back-compat; prefer the typed sizes below.
+  static const double button = 34;
+
+  /// Typed button heights — use these in new code and in HexoraButton.
+  static const double buttonStandard = 34;
+  static const double buttonCompact = 30;
+  static const double buttonLarge = 38;
+
+  /// Icon size inside buttons.
+  static const double buttonIconSize = 16;
+
+  /// Gap between a button icon and its label.
+  static const double buttonIconGap = 6;
+
   static const double touchTarget = 48;
   static const double radius = 8;
   static const double calendarPanel = 304;
+  static const double calendarDayHeight = 48;
   static const double calendarDayHeader = 48;
 }
 
@@ -43,7 +58,7 @@ abstract final class HexoraDocumentTokens {
   static const double amountColumn = 144;
   static const double icon = 17;
   static const double statusIconSlot = 18;
-  static const double monthHeadingHeight = 22;
+  static const double monthHeadingHeight = 28;
   static const double tabsHeight = 36;
   static const double filterHeight = 34;
 }

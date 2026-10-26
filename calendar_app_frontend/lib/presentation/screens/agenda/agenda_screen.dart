@@ -1,5 +1,6 @@
 import 'package:hexora/navigation/fab/contextual_fab.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/models/calendar/agenda_model.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/models/user/user.dart';
@@ -170,12 +171,14 @@ class _AgendaScreenState extends State<AgendaScreen> {
                   child: ListTile(
                     leading: const Icon(Icons.group_outlined),
                     title: Text(loc.agendaSelectGroupPrompt),
-                    trailing: TextButton(
+                    trailing: HexoraButton(
                       onPressed: () {
                         Navigator.pushNamed(context, AppRoutes.showGroups)
                             .then((_) => _loadAgenda());
                       },
-                      child: Text(loc.agendaChooseGroupButton),
+                      label: loc.agendaChooseGroupButton,
+                      variant: HexoraButtonVariant.ghost,
+                      size: HexoraButtonSize.compact,
                     ),
                   ),
                 ),

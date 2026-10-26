@@ -46,7 +46,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byType(DropdownButtonFormField<String>).first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Pago parcial').last);
+      await tester.tap(find.text('Parcial').last);
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), '150');
       await tester.ensureVisible(find.text('Guardar cambios'));
@@ -74,7 +74,7 @@ void main() {
       await tester.ensureVisible(find.text(l.cancel));
       await tester.tap(find.text(l.cancel));
       await tester.pumpAndSettle();
-      expect(find.text('Pago parcial · 25 EUR'), findsOneWidget);
+      expect(find.text('Parcial · 25 EUR'), findsOneWidget);
       expect(saved?['paidAmount'], 25);
       expect(tester.takeException(), isNull);
     });

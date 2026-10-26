@@ -26,20 +26,20 @@ class _GroupInvoicesView extends StatelessWidget {
             ? state._menuBeforeReceiptEditor
             : state._selectedMenu;
     final compactPrimaryButtonStyle = FilledButton.styleFrom(
-      visualDensity: VisualDensity.compact,
-      minimumSize: const Size(32, 30),
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      backgroundColor: cs.primary,
-      foregroundColor: cs.onPrimary,
+      minimumSize: const Size(32, HexoraDimensions.buttonCompact),
+      padding: const EdgeInsets.symmetric(
+          horizontal: HexoraTableTokens.cellPadding),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(HexoraDimensions.radius)),
       elevation: 0,
     );
     final compactIconButtonStyle = IconButton.styleFrom(
-      visualDensity: VisualDensity.compact,
-      minimumSize: const Size(30, 30),
-      fixedSize: const Size(30, 30),
+      minimumSize:
+          const Size.square(HexoraDimensions.buttonCompact),
+      fixedSize: const Size.square(HexoraDimensions.buttonCompact),
       padding: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(HexoraDimensions.radius)),
       foregroundColor: cs.onSurfaceVariant,
       backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.5),
       side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),

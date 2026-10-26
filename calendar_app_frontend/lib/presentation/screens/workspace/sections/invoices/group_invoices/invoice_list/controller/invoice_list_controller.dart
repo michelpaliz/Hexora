@@ -56,6 +56,7 @@ class _InvoicesTabList extends StatefulWidget {
 class _InvoicesTabListState extends State<_InvoicesTabList> {
   final InvoicesApi _invoicesApi = InvoicesApi();
   final RecurringInvoicesApi _recurringApi = RecurringInvoicesApi();
+  // ignore: unused_field
   DateQuickRange _quickRange = DateQuickRange.none;
   DateTime? _fromDate;
   DateTime? _toDate;
@@ -79,6 +80,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   Timer? _globalSearchDebounce;
   Set<String> _selectedClientNames = {};
   Set<String> _selectedLifecycleStatuses = {};
+  Set<String> _selectedDeliveryStatuses = {};
   Set<String> _selectedPaymentStatuses = {};
   _InvoiceAmountRange _baseRange = const _InvoiceAmountRange();
   _InvoiceAmountRange _vatRange = const _InvoiceAmountRange();
@@ -551,6 +553,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
     });
   }
 
+  // ignore: unused_element
   void _clearColumnFilters() {
     _invoiceSearchDebounce?.cancel();
     _globalSearchDebounce?.cancel();

@@ -335,86 +335,131 @@ class _WorkerRowState extends State<_WorkerRow> {
                           const SizedBox(width: 8),
 
                           // ── Actions ───────────────────────────────────
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _HoverActionIcon(
-                                tooltip: l.addTimeEntryCta,
-                                icon: Icons.schedule_outlined,
-                                onTap: widget.onAddHours,
-                                isPrimary: true,
-                              ),
-                              const SizedBox(width: 6),
-                              _HoverActionIcon(
-                                tooltip: l.overviewInfoTitle,
-                                icon: Icons.calendar_view_month_outlined,
-                                onTap: widget.onOpenOverview,
-                              ),
-                              const SizedBox(width: 6),
-                              _HoverActionIcon(
-                                tooltip: l.editWorker,
-                                icon: Icons.edit_outlined,
-                                onTap: widget.onEdit,
-                              ),
-                              if (widget.spacious) ...[
-                                const SizedBox(width: 6),
-                                PopupMenuButton<String>(
-                                  tooltip: l.localeName.startsWith('es')
-                                      ? 'Más opciones'
-                                      : 'More options',
-                                  icon: const Icon(Icons.more_vert_rounded,
-                                      size: 19),
-                                  onSelected: (value) async {
-                                    if (value == 'copy') {
-                                      await Clipboard.setData(
-                                          ClipboardData(text: name));
-                                      if (!context.mounted) return;
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(SnackBar(
-                                        content: Text(
-                                            l.localeName.startsWith('es')
-                                                ? 'Nombre copiado'
-                                                : 'Name copied'),
-                                      ));
-                                    } else if (value == 'notes') {
-                                      showDialog<void>(
-                                          context: context,
-                                          builder: (context) => AlertDialog(
-                                                title: Text(name),
-                                                content:
-                                                    SelectableText(w.notes!),
-                                                actions: [
-                                                  TextButton(
-                                                      onPressed: () =>
-                                                          Navigator.pop(
-                                                              context),
-                                                      child: Text(
-                                                          MaterialLocalizations
-                                                                  .of(context)
-                                                              .closeButtonLabel))
-                                                ],
-                                              ));
-                                    }
-                                  },
-                                  itemBuilder: (_) => [
-                                    NavigationPopupMenuItem(
-                                        value: 'copy',
-                                        child: Text(
-                                            l.localeName.startsWith('es')
-                                                ? 'Copiar nombre'
-                                                : 'Copy name')),
-                                    if (hasNotes)
+                          Builder(builder: (context) {
+                            final cs = Theme.of(context).colorScheme;
+                            final baseStyle = IconButton.styleFrom(
+                              minimumSize: const Size(32, 32),
+                              padding: EdgeInsets.zero,
+                              tapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
+                              side: BorderSide(
+                                  color:
+                                      cs.outlineVariant.withValues(alpha: .55)),
+                            );
+                            return Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton.outlined(
+                                  tooltip: l.addTimeEntryCta,
+                                  style: baseStyle.copyWith(
+                                    foregroundColor:
+                                        WidgetStatePropertyAll(cs.primary),
+                                    backgroundColor: WidgetStatePropertyAll(
+                                        cs.primary.withValues(alpha: 0.08)),
+                                    side: WidgetStatePropertyAll(BorderSide(
+                                        color: cs.primary
+                                            .withValues(alpha: 0.3))),
+                                  ),
+                                  onPressed: widget.onAddHours,
+                                  icon: const Icon(Icons.schedule_outlined,
+                                      size: 16),
+                                ),
+                                const SizedBox(width: 5),
+                                IconButton.outlined(
+                                  tooltip: l.overviewInfoTitle,
+                                  style: baseStyle,
+                                  onPressed: widget.onOpenOverview,
+                                  icon: const Icon(
+                                      Icons.calendar_view_month_outlined,
+                                      size: 16),
+                                ),
+                                const SizedBox(width: 5),
+                                IconButton.outlined(
+                                  tooltip: l.editWorker,
+                                  style: baseStyle,
+                                  onPressed: widget.onEdit,
+                                  icon: const Icon(Icons.edit_outlined,
+                                      size: 16),
+                                ),
+                                if (widget.spacious) ...[
+                                  const SizedBox(width: 5),
+                                  PopupMenuButton<String>(
+                                    tooltip: l.localeName.startsWith('es')
+                                        ? 'Más opciones'
+                                        : 'More options',
+                                    style: ButtonStyle(
+                                      minimumSize: const WidgetStatePropertyAll(
+                                          Size(32, 32)),
+                                      padding: const WidgetStatePropertyAll(
+                                          EdgeInsets.zero),
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                      visualDensity: VisualDensity.compact,
+                                      shape: WidgetStatePropertyAll(
+                                          RoundedRectangleBorder(
+                                              side: BorderSide(
+                                                  color: cs.outlineVariant
+                                                      .withValues(alpha: .55)),
+                                              borderRadius:
+                                                  BorderRadius.circular(8))),
+                                    ),
+                                    icon: const Icon(Icons.more_vert_rounded,
+                                        size: 16),
+                                    onSelected: (value) async {
+                                      if (value == 'copy') {
+                                        await Clipboard.setData(
+                                            ClipboardData(text: name));
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(SnackBar(
+                                          content: Text(
+                                              l.localeName.startsWith('es')
+                                                  ? 'Nombre copiado'
+                                                  : 'Name copied'),
+                                        ));
+                                      } else if (value == 'notes') {
+                                        showDialog<void>(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                                  title: Text(name),
+                                                  content:
+                                                      SelectableText(w.notes!),
+                                                  actions: [
+                                                    TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                                context),
+                                                        child: Text(
+                                                            MaterialLocalizations
+                                                                    .of(context)
+                                                                .closeButtonLabel))
+                                                  ],
+                                                ));
+                                      }
+                                    },
+                                    itemBuilder: (_) => [
                                       NavigationPopupMenuItem(
-                                          value: 'notes',
+                                          value: 'copy',
                                           child: Text(
                                               l.localeName.startsWith('es')
-                                                  ? 'Ver notas'
-                                                  : 'View notes')),
-                                  ],
-                                ),
+                                                  ? 'Copiar nombre'
+                                                  : 'Copy name')),
+                                      if (hasNotes)
+                                        NavigationPopupMenuItem(
+                                            value: 'notes',
+                                            child: Text(
+                                                l.localeName.startsWith('es')
+                                                    ? 'Ver notas'
+                                                    : 'View notes')),
+                                    ],
+                                  ),
+                                ],
                               ],
-                            ],
-                          ),
+                            );
+                          }),
                         ],
                       ),
                     ),
@@ -682,84 +727,3 @@ class _NotePreview extends StatelessWidget {
 
 // ── Hover-aware action icon ───────────────────────────────────────────────────
 
-class _HoverActionIcon extends StatefulWidget {
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool isPrimary;
-
-  const _HoverActionIcon({
-    required this.tooltip,
-    required this.icon,
-    required this.onTap,
-    this.isPrimary = false,
-  });
-
-  @override
-  State<_HoverActionIcon> createState() => _HoverActionIconState();
-}
-
-class _HoverActionIconState extends State<_HoverActionIcon> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    final Color bgBase = widget.isPrimary
-        ? cs.primary.withValues(alpha: 0.09)
-        : cs.surfaceContainerHighest.withValues(alpha: 0.7);
-
-    final Color bgHover = widget.isPrimary
-        ? cs.primary.withValues(alpha: 0.18)
-        : cs.surfaceContainerHighest;
-
-    final Color borderBase = widget.isPrimary
-        ? cs.primary.withValues(alpha: 0.22)
-        : cs.outlineVariant.withValues(alpha: 0.4);
-
-    final Color borderHover = widget.isPrimary
-        ? cs.primary.withValues(alpha: 0.5)
-        : cs.outlineVariant.withValues(alpha: 0.7);
-
-    final Color iconColor = widget.isPrimary
-        ? cs.primary.withValues(alpha: _hovered ? 1.0 : 0.7)
-        : _hovered
-            ? cs.onSurface
-            : cs.onSurfaceVariant;
-
-    return Tooltip(
-      message: widget.tooltip,
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 140),
-            curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: _hovered ? bgHover : bgBase,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: _hovered ? borderHover : borderBase,
-              ),
-              boxShadow: _hovered && widget.isPrimary
-                  ? [
-                      BoxShadow(
-                        color: cs.primary.withValues(alpha: 0.12),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Icon(widget.icon, size: 15, color: iconColor),
-          ),
-        ),
-      ),
-    );
-  }
-}

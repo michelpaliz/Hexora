@@ -3641,6 +3641,10 @@
   "groupSettingsDeleteNamePrompt": "Type “{name}” to confirm permanent deletion. This cannot be undone.",
   "@groupSettingsDeleteNamePrompt": {"placeholders": {"name": {"type": "String"}}},
   "groupSettingsDeleteGroup": "Delete business",
+  "invoiceIssueChronologyError": "This draft is dated {draftDate}, but invoice {invoiceNumber} was already issued with the later date {issuedDate}. Change the draft date before issuing it.",
+  "@invoiceIssueChronologyError": {"placeholders": {"draftDate": {}, "invoiceNumber": {}, "issuedDate": {}}},
+  "invoiceBatchIssueStoppedAfter": "{count} invoices were issued before the process stopped.",
+  "@invoiceBatchIssueStoppedAfter": {"placeholders": {"count": {}}},
   "agendaCompleted": "Completed",
   "agendaEmptyDay": "No jobs for this day. Select another date or All."
 }

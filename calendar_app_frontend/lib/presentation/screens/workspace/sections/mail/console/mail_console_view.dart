@@ -318,7 +318,8 @@ class _MailConsoleView extends StatelessWidget {
         : domain.threadState(state._selectedThreadKey!);
     final selectedThread = threadState?.thread;
 
-    Widget threadList() {
+    Widget threadList(BuildContext navContext) {
+      final navCs = Theme.of(navContext).colorScheme;
       final folderThreads = threadsState.folder == state._folder
           ? threadsState.threads
           : const <MailThread>[];
@@ -337,7 +338,7 @@ class _MailConsoleView extends StatelessWidget {
           itemCount: 9,
           separatorBuilder: (_, __) => Divider(
             height: 1,
-            color: cs.outlineVariant.withValues(alpha: 0.15),
+            color: navCs.outlineVariant.withValues(alpha: 0.35),
           ),
           itemBuilder: (_, i) => _SkeletonThreadRow(key: ValueKey(i), seed: i),
         );
@@ -376,7 +377,7 @@ class _MailConsoleView extends StatelessWidget {
         itemCount: itemCount,
         separatorBuilder: (_, __) => Divider(
           height: 1,
-          color: cs.outlineVariant.withValues(alpha: 0.15),
+          color: navCs.outlineVariant.withValues(alpha: 0.35),
         ),
         itemBuilder: (context, index) {
           if (index >= threads.length) {
@@ -409,7 +410,9 @@ class _MailConsoleView extends StatelessWidget {
       if (state._folder != target) state._selectFolder(target);
     }
 
-    Widget listTabs() {
+    Widget listTabs(BuildContext navContext) {
+      final navTheme = Theme.of(navContext);
+      final navCs = navTheme.colorScheme;
       final all = threadsState.folder == state._folder
           ? threadsState.threads
           : const <MailThread>[];
@@ -437,7 +440,7 @@ class _MailConsoleView extends StatelessWidget {
                         bottom: BorderSide(
                           width: 2,
                           color: state._desktopListFilter == index
-                              ? cs.primary
+                              ? navCs.primary
                               : Colors.transparent,
                         ),
                       ),
@@ -447,15 +450,15 @@ class _MailConsoleView extends StatelessWidget {
                           ? tabs[index].$1
                           : '${tabs[index].$1} (${tabs[index].$2})',
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            fontSize: 12,
-                            fontWeight: state._desktopListFilter == index
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            color: state._desktopListFilter == index
-                                ? cs.primary
-                                : cs.onSurfaceVariant,
-                          ),
+                      style: navTheme.textTheme.labelMedium?.copyWith(
+                        fontSize: 12,
+                        fontWeight: state._desktopListFilter == index
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: state._desktopListFilter == index
+                            ? navCs.primary
+                            : navCs.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ),
@@ -465,7 +468,7 @@ class _MailConsoleView extends StatelessWidget {
       );
     }
 
-    Widget middleColumn() {
+    Widget middleColumn(BuildContext navContext) {
       final activeQuery = (threadsState.query ?? '').trim();
       final isSearchActive = activeQuery.length >= 2;
       return Focus(
@@ -524,8 +527,8 @@ class _MailConsoleView extends StatelessWidget {
                 query: activeQuery,
                 onClear: state._clearThreadSearch,
               ),
-            listTabs(),
-            Expanded(child: threadList()),
+            listTabs(navContext),
+            Expanded(child: threadList(navContext)),
           ],
         ),
       );
@@ -587,105 +590,111 @@ class _MailConsoleView extends StatelessWidget {
                             );
     }
 
-    Widget desktopHeader() => Container(
-          height: 58,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          decoration: BoxDecoration(
-            color: cs.surface,
-            border: Border(
-              bottom:
-                  BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
-            ),
+    Widget desktopHeader(BuildContext navContext) {
+      final navTheme = Theme.of(navContext);
+      final navCs = navTheme.colorScheme;
+      return Container(
+        key: const ValueKey('mail-desktop-header-surface'),
+        height: 58,
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        decoration: BoxDecoration(
+          color: navCs.surface,
+          border: Border(
+            bottom:
+                BorderSide(color: navCs.outlineVariant.withValues(alpha: 0.5)),
           ),
-          child: Row(
-            children: [
-              Icon(Icons.mail_outline_rounded, color: cs.primary, size: 22),
-              const SizedBox(width: 10),
-              PopupMenuButton<MailFolder>(
-                tooltip: l.mailConsoleFoldersTitle,
-                onSelected: (folder) {
-                  state.update(() => state._desktopListFilter =
-                      folder == MailFolder.archive ? 3 : 0);
-                  state._selectFolder(folder);
-                },
-                itemBuilder: (_) => [
-                  for (final folder in MailFolder.values)
-                    PopupMenuItem(
-                      value: folder,
-                      child: Row(
-                        children: [
-                          Icon(_folderIcon(folder), size: 17),
-                          const SizedBox(width: 9),
-                          Text(_folderLabel(folder, l)),
-                        ],
-                      ),
-                    ),
-                ],
-                child: Row(
-                  children: [
-                    Text(
-                      l.mailConsoleTitle,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    const SizedBox(width: 6),
-                    Icon(Icons.keyboard_arrow_down_rounded,
-                        size: 18, color: cs.onSurfaceVariant),
-                  ],
-                ),
-              ),
-              const Spacer(),
-              PopupMenuButton<String>(
-                key: const ValueKey('mail-desktop-more-action'),
-                tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
-                icon: const Icon(Icons.more_horiz_rounded, size: 20),
-                onSelected: (value) {
-                  if (value == 'footer') {
-                    state._openFooterManager();
-                  } else if (value == 'templates') {
-                    unawaited(state._openTemplateManager());
-                  }
-                },
-                itemBuilder: (_) => [
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.mail_outline_rounded, color: navCs.primary, size: 22),
+            const SizedBox(width: 10),
+            PopupMenuButton<MailFolder>(
+              tooltip: l.mailConsoleFoldersTitle,
+              onSelected: (folder) {
+                state.update(() => state._desktopListFilter =
+                    folder == MailFolder.archive ? 3 : 0);
+                state._selectFolder(folder);
+              },
+              itemBuilder: (_) => [
+                for (final folder in MailFolder.values)
                   PopupMenuItem(
-                    value: 'footer',
-                    child: ListTile(
-                      dense: true,
-                      leading: const Icon(Icons.description_outlined),
-                      title: Text(l.mailFooterCreateCta),
+                    value: folder,
+                    child: Row(
+                      children: [
+                        Icon(_folderIcon(folder), size: 17),
+                        const SizedBox(width: 9),
+                        Text(_folderLabel(folder, l)),
+                      ],
                     ),
                   ),
-                  const PopupMenuItem(
-                    value: 'templates',
-                    child: ListTile(
-                      dense: true,
-                      leading: Icon(Icons.view_list_outlined),
-                      title: Text('Templates'),
+              ],
+              child: Row(
+                children: [
+                  Text(
+                    l.mailConsoleTitle,
+                    style: navTheme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
+                  const SizedBox(width: 6),
+                  Icon(Icons.keyboard_arrow_down_rounded,
+                      size: 18, color: navCs.onSurfaceVariant),
                 ],
               ),
-              const SizedBox(width: 8),
-              FilledButton.icon(
-                key: const ValueKey('mail-desktop-compose-action'),
-                onPressed: state._openCompose,
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: Text(
-                  l.localeName.startsWith('es') ? 'Nuevo correo' : 'New email',
+            ),
+            const Spacer(),
+            PopupMenuButton<String>(
+              key: const ValueKey('mail-desktop-more-action'),
+              tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+              icon: const Icon(Icons.more_horiz_rounded, size: 20),
+              onSelected: (value) {
+                if (value == 'footer') {
+                  state._openFooterManager();
+                } else if (value == 'templates') {
+                  unawaited(state._openTemplateManager());
+                }
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'footer',
+                  child: ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.description_outlined),
+                    title: Text(l.mailFooterCreateCta),
+                  ),
                 ),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                const PopupMenuItem(
+                  value: 'templates',
+                  child: ListTile(
+                    dense: true,
+                    leading: Icon(Icons.view_list_outlined),
+                    title: Text('Templates'),
+                  ),
                 ),
+              ],
+            ),
+            const SizedBox(width: 8),
+            FilledButton.icon(
+              key: const ValueKey('mail-desktop-compose-action'),
+              onPressed: state._openCompose,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: Text(
+                l.localeName.startsWith('es') ? 'Nuevo correo' : 'New email',
               ),
-            ],
-          ),
-        );
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 36),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     final content = Column(
       children: [
-        desktopHeader(),
+        if (!state._showCompose)
+          NavigationSurface(builder: (context) => desktopHeader(context)),
         Expanded(
           child: state._showFooterManager ||
                   state._showTemplateManager ||
@@ -698,7 +707,13 @@ class _MailConsoleView extends StatelessWidget {
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        SizedBox(width: listWidth, child: middleColumn()),
+                        SizedBox(
+                          width: listWidth,
+                          child: NavigationSurface(
+                            key: const ValueKey('mail-desktop-list-surface'),
+                            builder: (context) => middleColumn(context),
+                          ),
+                        ),
                         VerticalDivider(
                           width: 1,
                           thickness: 1,

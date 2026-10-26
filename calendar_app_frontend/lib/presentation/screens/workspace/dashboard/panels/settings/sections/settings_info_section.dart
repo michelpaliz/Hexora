@@ -99,6 +99,7 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
 
     return FolderSectionCard(
       label: l.groupInfo,
+      showTitle: false,
       leftTabOffset: 0,
       backgroundColor: isLight ? Colors.white : null,
       child: Padding(

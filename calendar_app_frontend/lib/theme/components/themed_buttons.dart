@@ -4,7 +4,7 @@ import 'package:hexora/theme/themes/mobile_theme.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/button_styles.dart';
 
 /// Button variants you actually use.
-enum ButtonVariant { primary, secondary, danger, info }
+enum ButtonVariant { primary, secondary, ghost, danger, info }
 
 /// Central place to produce button styles using your saucyButtonStyle.
 class ThemedButtons {
@@ -82,6 +82,13 @@ class ThemedButtons {
         bgPressed = c.withValues(alpha: 0.85);
         text = cs.onSecondary;
         border = c;
+        break;
+
+      case ButtonVariant.ghost:
+        bg = Colors.transparent;
+        bgPressed = cs.onSurface.withValues(alpha: 0.08);
+        text = cs.onSurfaceVariant;
+        border = Colors.transparent;
         break;
 
       case ButtonVariant.primary:

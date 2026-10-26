@@ -267,11 +267,13 @@ class ProviderFormView extends StatelessWidget {
                       foregroundColor:
                           isEditing ? cs.onSecondary : cs.onPrimary,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 9),
-                      minimumSize: Size.zero,
+                          horizontal: HexoraTableTokens.cellPadding,
+                          vertical: 8),
+                      minimumSize: const Size(0, HexoraDimensions.buttonStandard),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius:
+                            BorderRadius.circular(HexoraDimensions.radius),
                       ),
                     ),
                     label: Text(
@@ -287,13 +289,15 @@ class ProviderFormView extends StatelessWidget {
                     onPressed: savingProvider ? null : onReset,
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 9),
-                      minimumSize: Size.zero,
+                          horizontal: HexoraTableTokens.cellPadding,
+                          vertical: 8),
+                      minimumSize: const Size(0, HexoraDimensions.buttonStandard),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       side: BorderSide(
                           color: cs.outlineVariant.withValues(alpha: 0.5)),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius:
+                            BorderRadius.circular(HexoraDimensions.radius),
                       ),
                     ),
                     child: Text(

@@ -6,6 +6,7 @@ import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 
 class GroupHeaderCard extends StatelessWidget {
   const GroupHeaderCard({
@@ -56,6 +57,14 @@ class GroupHeaderCard extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final t = AppTypography.of(context);
+    final metadataButtonStyle = ThemedButtons.button(
+      context,
+      variant: ButtonVariant.ghost,
+    );
+    final editButtonStyle = ThemedButtons.iconAction(
+      context,
+      color: cs.primary,
+    );
     final hasDescription = description.trim().isNotEmpty;
     final l = AppLocalizations.of(context)!;
 
@@ -89,6 +98,7 @@ class GroupHeaderCard extends StatelessWidget {
                 ),
                 if (onTap != null)
                   IconButton(
+                    style: editButtonStyle,
                     tooltip: editTooltip ?? l.edit,
                     icon: const Icon(Icons.edit_outlined, size: 20),
                     onPressed: onTap,
@@ -105,38 +115,33 @@ class GroupHeaderCard extends StatelessWidget {
               if (isLoading)
                 const LinearProgressIndicator()
               else
-                TextButtonTheme(
-                    data: TextButtonThemeData(
-                        style: TextButton.styleFrom(
-                      textStyle:
-                          t.bodySmall.copyWith(fontWeight: FontWeight.w600),
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: const Size(0, 48),
-                    )),
-                    child: Wrap(spacing: 4, runSpacing: 0, children: [
-                      TextButton.icon(
-                          onPressed: onMembersTap,
-                          icon: const Icon(Icons.group_outlined, size: 18),
-                          label:
-                              Text('$members ${l.membersTitle.toLowerCase()}')),
-                      if (pendingEventsCount != null)
-                        TextButton.icon(
-                            onPressed: onPendingEventsTap,
-                            icon: const Icon(Icons.pending_actions_outlined,
-                                size: 18),
-                            label: Text(
-                                '$pendingEventsCount ${l.statusPending.toLowerCase()}')),
-                      if (clientCount != null)
-                        TextButton(
-                            onPressed: onClientsTap,
-                            child: Text(
-                                '$clientCount ${l.tabClients.toLowerCase()}')),
-                      if (workerCount != null)
-                        TextButton(
-                            onPressed: onWorkersTap,
-                            child: Text(
-                                '$workerCount ${l.localeName.startsWith('es') ? 'trabajadores' : 'workers'}')),
-                    ])),
+                Wrap(spacing: 4, runSpacing: 0, children: [
+                  TextButton.icon(
+                      style: metadataButtonStyle,
+                      onPressed: onMembersTap,
+                      icon: const Icon(Icons.group_outlined, size: 18),
+                      label: Text('$members ${l.membersTitle.toLowerCase()}')),
+                  if (pendingEventsCount != null)
+                    TextButton.icon(
+                        style: metadataButtonStyle,
+                        onPressed: onPendingEventsTap,
+                        icon: const Icon(Icons.pending_actions_outlined,
+                            size: 18),
+                        label: Text(
+                            '$pendingEventsCount ${l.statusPending.toLowerCase()}')),
+                  if (clientCount != null)
+                    TextButton(
+                        style: metadataButtonStyle,
+                        onPressed: onClientsTap,
+                        child:
+                            Text('$clientCount ${l.tabClients.toLowerCase()}')),
+                  if (workerCount != null)
+                    TextButton(
+                        style: metadataButtonStyle,
+                        onPressed: onWorkersTap,
+                        child: Text(
+                            '$workerCount ${l.localeName.startsWith('es') ? 'trabajadores' : 'workers'}')),
+                ]),
             ],
           ),
         ),
@@ -300,14 +305,10 @@ class GroupHeaderCard extends StatelessWidget {
                 top: 4,
                 right: 4,
                 child: IconButton(
+                  style: editButtonStyle,
                   icon: const Icon(Icons.edit_outlined),
                   tooltip: editTooltip ?? 'Edit',
                   onPressed: onTap,
-                  style: IconButton.styleFrom(
-                    foregroundColor: cs.primary,
-                    backgroundColor: cs.surface.withValues(alpha: 0.8),
-                    padding: const EdgeInsets.all(8),
-                  ),
                 ),
               ),
           ],

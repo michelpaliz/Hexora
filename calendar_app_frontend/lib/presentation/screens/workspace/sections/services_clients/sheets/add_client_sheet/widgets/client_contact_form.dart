@@ -1,5 +1,6 @@
 import 'client_form_fields.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/input_border.dart';
 import 'package:hexora/presentation/utils/validation/email_validator.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -145,15 +146,10 @@ class ClientContactForm extends StatelessWidget {
                       ),
                     ),
                   ),
-                  TextButton(
+                  HexoraButton(
                     onPressed: onManageClassification,
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      textStyle: text.labelLarge,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                    ),
-                    child: Text(l.clientClassificationManageCta),
+                    label: l.clientClassificationManageCta,
+                    variant: HexoraButtonVariant.ghost,
                   ),
                 ],
               ),

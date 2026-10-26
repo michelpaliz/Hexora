@@ -277,6 +277,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
       case 'info':
         return FolderSectionCard(
           label: l.groupInfo,
+          showTitle: false,
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -319,6 +320,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
       case 'notifications':
         return FolderSectionCard(
           label: l.notifications,
+          showTitle: false,
           actions: [
             IconButton(
               icon: const Icon(Icons.add, size: 18),

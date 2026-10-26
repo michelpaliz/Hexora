@@ -5,26 +5,21 @@ Widget _composeSubjectCard(
         required AppTypography t,
         required ColorScheme cs,
         required AppLocalizations l,
-        required bool compact}) =>
+        required bool compact,
+        required Color inputFill}) =>
     Container(
+      key: const ValueKey('mail-compose-subject-input-surface'),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
+        color: inputFill,
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Subject row — inline label + borderless field + template btn
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+            padding: const EdgeInsets.fromLTRB(10, 6, 8, 6),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [

@@ -5,6 +5,7 @@ import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/widgets/folder_section_card.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 
 class SettingsNotificationsSection extends StatefulWidget {
   final Group group;
@@ -82,20 +83,16 @@ class _SettingsNotificationsSectionState
       padding: const EdgeInsets.only(top: 12),
       child: FolderSectionCard(
         label: l.notifications,
+        showTitle: false,
         leftTabOffset: 0,
         backgroundColor: isLight ? Colors.white : null,
         actions: [
           if (widget.onRefresh != null)
             IconButton(
+              style: ThemedButtons.iconAction(context, color: cs.primary),
               icon: const Icon(Icons.refresh_rounded, size: 16),
               tooltip: 'Recargar',
               onPressed: widget.isLoading ? null : widget.onRefresh,
-              style: IconButton.styleFrom(
-                foregroundColor: cs.primary,
-                padding: EdgeInsets.zero,
-                minimumSize: const Size(28, 28),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
             ),
         ],
         child: _buildContent(context),
@@ -391,6 +388,7 @@ class _SettingsNotificationsSectionState
             // Delete button
             if (widget.onDelete != null)
               IconButton(
+                style: ThemedButtons.iconAction(context, color: cs.error),
                 icon: isDeleting
                     ? SizedBox(
                         width: 14,
@@ -408,11 +406,6 @@ class _SettingsNotificationsSectionState
                 tooltip: 'Eliminar',
                 onPressed:
                     isDeleting ? null : () => _handleDelete(notification),
-                style: IconButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(28, 28),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
               ),
           ],
         ),

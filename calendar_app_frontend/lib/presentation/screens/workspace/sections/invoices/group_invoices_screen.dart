@@ -39,6 +39,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/expense_upload_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/import_history/expense_import_history_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/prompt_clipboard_helper.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/invoice_issue_error_message.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/billing_profile_inline_editor.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/client_classifications_view.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/clients_view/client_contracts_tab.dart';
@@ -1483,41 +1484,10 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     }
   }
 
-  static const _invoiceChronologyErrorMessage =
-      'Esta factura tiene una fecha anterior a la última factura emitida. '
-      'Para mantener la numeración cronológica, debes emitir primero las '
-      'facturas de fechas anteriores o corregir la fecha.';
-
-  DateTime? _invoiceChronologyDate(Invoice invoice) {
-    return invoice.issueDate ?? invoice.occurrenceDate ?? invoice.registeredAt;
-  }
-
-  DateTime? _latestIssuedInvoiceDate() {
-    DateTime? latest;
-    for (final invoice in _invoices) {
-      final date = _invoiceChronologyDate(invoice);
-      if (date == null) continue;
-      if (latest == null || date.isAfter(latest)) latest = date;
-    }
-    return latest;
-  }
-
-  bool _isBeforeCalendarDay(DateTime value, DateTime limit) {
-    final valueDay = DateTime(value.year, value.month, value.day);
-    final limitDay = DateTime(limit.year, limit.month, limit.day);
-    return valueDay.isBefore(limitDay);
-  }
-
-  bool _canIssueInvoiceByDate(Invoice invoice) {
-    final selectedDate = _invoiceChronologyDate(invoice);
-    final latestIssuedDate = _latestIssuedInvoiceDate();
-    if (selectedDate == null || latestIssuedDate == null) return true;
-    return !_isBeforeCalendarDay(selectedDate, latestIssuedDate);
-  }
-
   Future<Invoice> _issueInvoiceDirect(Invoice invoice) async {
-    if (!_canIssueInvoiceByDate(invoice)) {
-      throw Exception(_invoiceChronologyErrorMessage);
+    final conflict = invoiceChronologyConflict(invoice, _invoices);
+    if (conflict != null) {
+      throw InvoiceChronologyIssueException(conflict);
     }
     final updated = await _invoicesApi.issue(invoice.id);
     if (!mounted) return updated;
@@ -1528,26 +1498,6 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       );
     });
     return updated;
-  }
-
-  bool _isDuplicateInvoiceNumberError(Object error) {
-    final lower = error.toString().toLowerCase();
-    return (lower.contains('e11000') && lower.contains('invoicenumber')) ||
-        (lower.contains('duplicate key') && lower.contains('invoicenumber'));
-  }
-
-  String _friendlyInvoiceIssueError(Object error, AppLocalizations l) {
-    final raw = error.toString().replaceFirst('Exception: ', '').trim();
-    if (!_isDuplicateInvoiceNumberError(error)) {
-      return raw.isEmpty ? l.invoiceIssueFailedSnack : raw;
-    }
-
-    final numberMatch = RegExp(r'invoiceNumber:\s*"([^"]+)"').firstMatch(raw) ??
-        RegExp(r'invoiceNumber:\s*([^,}\s]+)').firstMatch(raw);
-    final number = numberMatch?.group(1)?.trim() ?? '';
-    return number.isEmpty
-        ? l.invoiceIssueDuplicateNumberSnack
-        : l.invoiceIssueDuplicateNumberValueSnack(number);
   }
 
   Future<void> _issueAllDraftInvoices([List<Invoice>? scopedDrafts]) async {
@@ -1640,17 +1590,6 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           context, l.invoiceBatchIssueSuccessSnack(successCount.toString()));
     } on InvoicesBatchIssueException catch (e) {
       final issuedCount = e.failure?.issuedCount ?? 0;
-      final failedInvoiceId = e.failure?.failedInvoiceId;
-      Invoice? failedDraft;
-      if (failedInvoiceId != null) {
-        for (final draft in draftsToIssue) {
-          if (draft.id == failedInvoiceId) {
-            failedDraft = draft;
-            break;
-          }
-        }
-      }
-
       if (mounted) {
         try {
           await _refreshInvoiceListsOnly();
@@ -1658,18 +1597,10 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       }
       if (!mounted) return;
 
-      final message = e.message.trim().isEmpty
-          ? l.invoiceIssueFailedSnack
-          : e.message.trim();
+      final message = friendlyInvoiceIssueError(e, l);
       final parts = <String>[
         if (issuedCount > 0)
-          isSpanish
-              ? '$issuedCount facturas emitidas antes del error'
-              : '$issuedCount invoices issued before the error',
-        if (failedInvoiceId != null)
-          isSpanish
-              ? 'Fila fallida: ${failedDraft?.displayNumber(draftLabel: l.statusDraft) ?? l.statusDraft} ($failedInvoiceId)'
-              : 'Failed row: ${failedDraft?.displayNumber(draftLabel: l.statusDraft) ?? l.statusDraft} ($failedInvoiceId)',
+          l.invoiceBatchIssueStoppedAfter(issuedCount.toString()),
         message,
       ];
       final text = parts.join(' · ');
@@ -1685,7 +1616,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         } catch (_) {}
       }
       if (!mounted) return;
-      final message = _friendlyInvoiceIssueError(e, l);
+      final message = friendlyInvoiceIssueError(e, l);
       showErrorSnack(context, message);
     } finally {
       if (mounted) {
@@ -1721,6 +1652,8 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     try {
       final issued = await _issueInvoiceDirect(invoice);
       if (!mounted) return;
+      await _refreshInvoiceListsOnly();
+      if (!mounted) return;
       showSuccessSnack(
         context,
         l.invoiceIssueSuccessSnack(
@@ -1729,7 +1662,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      final message = _friendlyInvoiceIssueError(e, l);
+      final message = friendlyInvoiceIssueError(e, l);
       showErrorSnack(context, message);
       await _refreshInvoiceListsOnly();
     }

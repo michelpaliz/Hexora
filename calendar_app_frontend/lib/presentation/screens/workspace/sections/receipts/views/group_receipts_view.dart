@@ -60,8 +60,7 @@ class _MonthDivider extends StatelessWidget {
   final bool first;
 
   @override
-  Widget build(BuildContext context) =>
-      CompactDocumentMonthHeading(label: label);
+  Widget build(BuildContext context) => HexoraMonthSeparator(label: label);
 }
 
 enum _ReceiptSortColumn { number, client, status, date, base, total }
@@ -240,6 +239,8 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
             _clients = {};
           case CompactDocumentColumn.status:
             _statuses = {};
+            _deliveryStatuses = {};
+          case CompactDocumentColumn.delivery:
             _deliveryStatuses = {};
           case CompactDocumentColumn.date:
             _fromDate = null;
@@ -462,6 +463,10 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Row(children: [
+                  const DocumentLayoutSelector(
+                    key: ValueKey('receipt-layout-selector'),
+                  ),
+                  const SizedBox(width: 8),
                   Text('${filtered.length} recibos'),
                   const Spacer(),
                   if (_hasFilters)

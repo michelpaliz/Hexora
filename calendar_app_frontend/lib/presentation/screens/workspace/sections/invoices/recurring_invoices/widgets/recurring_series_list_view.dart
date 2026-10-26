@@ -211,57 +211,19 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
     final statusLabels = {
       'all': l.recurringInvoicesStatusAll,
       'active': l.recurringInvoicesStatusActive,
-      'paused': l.recurringInvoicesStatusPaused,
-      'cancelled': l.recurringInvoicesStatusCancelled,
-      'completed': l.recurringInvoicesStatusCompleted,
+      'inactive': l.localeName.startsWith('es') ? 'Inactivas' : 'Inactive',
     };
-    final statusKeys = [
-      'all',
-      'active',
-      'paused',
-      'cancelled',
-      'completed',
-    ];
+    final statusKeys = ['all', 'active', 'inactive'];
     final statusLabelToKey = {
       for (final k in statusKeys) (statusLabels[k] ?? k): k,
     };
-    final activeFilters = <String>[];
-    if (widget.statusFilter != 'all') {
-      activeFilters.add(
-        '${l.recurringInvoicesStatusFilterLabel}: ${statusLabels[widget.statusFilter] ?? widget.statusFilter}',
-      );
-    }
-    if (widget.clientFilter != null && widget.clientFilter!.isNotEmpty) {
-      final client = widget.clients
-          .where((c) => c.id == widget.clientFilter)
-          .cast<GroupClient?>()
-          .firstWhere((c) => c != null, orElse: () => null);
-      activeFilters.add(
-        '${l.recurringInvoicesClientFilterLabel}: ${client?.name ?? widget.clientFilter}',
-      );
-    }
-    if (widget.dueSoonOnly) {
-      activeFilters.add(l.recurringInvoicesDueSoon);
-    }
-    if (_frequencyFilter != null && _frequencyFilter!.isNotEmpty) {
-      activeFilters.add(
-        '${l.recurringInvoicesFrequencyLabel}: ${recurringFrequencyLabel(l, _frequencyFilter)}',
-      );
-    }
-    if (_showInactiveClients) {
-      activeFilters.add(l.showInactiveClients);
-    }
-    if (_sortByClientName) {
-      activeFilters.add('A-Z cliente');
-    }
     final activeFilterCount = (widget.statusFilter != 'all' ? 1 : 0) +
         (widget.clientFilter != null && widget.clientFilter!.isNotEmpty
             ? 1
             : 0) +
         (widget.dueSoonOnly ? 1 : 0) +
         (_frequencyFilter != null && _frequencyFilter!.isNotEmpty ? 1 : 0) +
-        (_showInactiveClients ? 1 : 0) +
-        (_sortByClientName ? 1 : 0);
+        (_showInactiveClients ? 1 : 0);
     final clientNamesById = {
       for (final c in widget.clients) c.id: c.name,
     };
@@ -333,6 +295,7 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
               ),
             )
           : ListView.separated(
+              key: const PageStorageKey<String>('recurring-series-list'),
               itemCount: visibleSeries.length,
               separatorBuilder: (_, __) => const SizedBox(height: 6),
               itemBuilder: (_, i) {
@@ -345,6 +308,7 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
                     () => _selectedSeriesId = seriesId(series),
                   ),
                   onOpen: widget.onOpenSeries,
+                  onEdit: widget.onOpenSeries,
                   onPreview: widget.onPreviewSeries,
                   onPause: widget.onPauseSeries,
                   onResume: widget.onResumeSeries,
@@ -354,6 +318,53 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
               },
             );
     }
+
+    final filters = RecurringSeriesFilters(
+      searchController: _searchCtrl,
+      onSearchChanged: () => setState(() {}),
+      activeFilterCount: activeFilterCount,
+      statusOptions:
+          statusKeys.map((k) => statusLabels[k] ?? k).toList(growable: false),
+      selectedStatus: statusLabels[widget.statusFilter] ?? widget.statusFilter,
+      onStatusSelected: (label) =>
+          widget.onStatusFilter(statusLabelToKey[label] ?? 'all'),
+      onStatusClear: () => widget.onStatusFilter('all'),
+      clientOptions: clientOptionLabels,
+      selectedClient: selectedClientLabel,
+      onClientSelected: (label) {
+        final id = clientLabelToId[label];
+        widget.onClientFilter(id);
+      },
+      onClientClear: () => widget.onClientFilter(null),
+      frequencyOptions: frequencyOptions,
+      selectedFrequency: _frequencyFilter,
+      onFrequencySelected: (value) => setState(() => _frequencyFilter = value),
+      onFrequencyClear: () => setState(() => _frequencyFilter = null),
+      dueSoonOnly: widget.dueSoonOnly,
+      onDueSoonChanged: widget.onDueSoon,
+      showInactiveClients: _showInactiveClients,
+      onShowInactiveChanged: (v) => setState(() => _showInactiveClients = v),
+      sortByClientName: _sortByClientName,
+      onSortByClientNameChanged: (v) => setState(() => _sortByClientName = v),
+      onClearFilters: () {
+        widget.onStatusFilter('all');
+        widget.onClientFilter(null);
+        widget.onDueSoon(false);
+        setState(() {
+          _frequencyFilter = null;
+          _showInactiveClients = false;
+        });
+      },
+    );
+
+    Widget buildListPane() => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            filters,
+            const SizedBox(height: 8),
+            Expanded(child: buildList()),
+          ],
+        );
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
@@ -372,61 +383,16 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
             ),
             const SizedBox(height: 8),
           ],
-          RecurringSeriesFilters(
-            searchController: _searchCtrl,
-            onSearchChanged: () => setState(() {}),
-            activeFilterCount: activeFilterCount,
-            statusOptions: statusKeys
-                .map((k) => statusLabels[k] ?? k)
-                .toList(growable: false),
-            selectedStatus:
-                statusLabels[widget.statusFilter] ?? widget.statusFilter,
-            onStatusSelected: (label) =>
-                widget.onStatusFilter(statusLabelToKey[label] ?? 'all'),
-            onStatusClear: () => widget.onStatusFilter('active'),
-            clientOptions: clientOptionLabels,
-            selectedClient: selectedClientLabel,
-            onClientSelected: (label) {
-              final id = clientLabelToId[label];
-              widget.onClientFilter(id);
-            },
-            onClientClear: () => widget.onClientFilter(null),
-            frequencyOptions: frequencyOptions,
-            selectedFrequency: _frequencyFilter,
-            onFrequencySelected: (value) =>
-                setState(() => _frequencyFilter = value),
-            onFrequencyClear: () => setState(() => _frequencyFilter = null),
-            dueSoonOnly: widget.dueSoonOnly,
-            onDueSoonChanged: widget.onDueSoon,
-            showInactiveClients: _showInactiveClients,
-            onShowInactiveChanged: (v) =>
-                setState(() => _showInactiveClients = v),
-            sortByClientName: _sortByClientName,
-            onSortByClientNameChanged: (v) =>
-                setState(() => _sortByClientName = v),
-            activeFilters: activeFilters,
-            onClearFilters: () {
-              widget.onStatusFilter('active');
-              widget.onClientFilter(null);
-              widget.onDueSoon(false);
-              setState(() {
-                _frequencyFilter = null;
-                _showInactiveClients = false;
-                _sortByClientName = true;
-              });
-            },
-          ),
-          const SizedBox(height: 10),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final showPanel = widget.api != null &&
                     selectedSeries != null &&
                     constraints.maxWidth >= 1080;
-                if (!showPanel) return buildList();
+                if (!showPanel) return buildListPane();
                 return Row(
                   children: [
-                    Expanded(flex: 5, child: buildList()),
+                    Expanded(flex: 5, child: buildListPane()),
                     const SizedBox(width: 12),
                     Expanded(
                       flex: 4,

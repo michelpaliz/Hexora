@@ -11,6 +11,7 @@ import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/group-settings/widgets/group_danger_zone_card.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/group-settings/widgets/group_overview_card.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -274,6 +275,10 @@ class _GroupSettingsState extends State<GroupSettings> {
                     ),
                     if (_membersFailed)
                       TextButton.icon(
+                          style: ThemedButtons.button(
+                            context,
+                            variant: ButtonVariant.ghost,
+                          ),
                           onPressed: _loadMemberNames,
                           icon: const Icon(Icons.refresh),
                           label: Text(l.refresh)),

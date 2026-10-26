@@ -33,6 +33,7 @@ void main() {
             identityLabel: 'Factura',
             actionsWidth: 96,
             previewActionInFullView: false,
+            showDeliveryColumn: true,
             visibleFinancialColumns: {
               HexoraFinancialColumn.date,
               HexoraFinancialColumn.taxableBase,
@@ -52,10 +53,13 @@ void main() {
                   paymentStatus: ['paid', 'partial', null][i],
                   status: 'issued',
                   deliveryStatus: 'sent',
-                  deliveryChannel: 'email'),
+                  deliveryChannel: 'email',
+                  issueDate: DateTime(2026, 10, 26)),
               client: GroupClient(id: 'c', name: 'Cliente $i'),
               selected: i == 1,
               warning: i == 2,
+              dateWarningTooltip:
+                  i == 0 ? 'Change the draft date before issuing it.' : null,
               onTap: () => opened++,
               visibleFinancialColumns: const {
                 HexoraFinancialColumn.date,
@@ -98,6 +102,7 @@ void main() {
       );
       for (final key in [
         'document-status-column',
+        'document-delivery-column',
         'document-payment-column',
         'document-amount-column',
         'document-actions-column'
@@ -109,12 +114,10 @@ void main() {
           expect(tester.getTopRight(columns.at(i)).dx, x);
         }
       }
-      // Secondary states (payment, delivery, reconciliation) sit behind the
-      // info icon in the status column.
-      final links = find.byIcon(Icons.info_outline_rounded);
-      expect(links, findsNWidgets(3));
+      expect(find.text('Enviada'), findsNWidgets(3));
+      expect(find.text('26 oct 2026'), findsNWidgets(3));
       expect(
-          tester.getCenter(links.at(0)).dx, tester.getCenter(links.at(2)).dx);
+          find.byKey(const ValueKey('document-date-warning')), findsOneWidget);
       for (var i = 0; i < 3; i++) {
         expect(tester.getSize(rows.at(i)).height,
             lessThanOrEqualTo(HexoraDocumentTokens.rowHeight));
@@ -145,4 +148,66 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('compact invoice keeps status delivery and date in columns',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(820, 500);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.forPlatform(Brightness.light,
+          platform: TargetPlatform.windows),
+      locale: const Locale('es'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: Column(children: [
+          const CompactDocumentTableHeader(
+            identityLabel: 'Factura',
+            actionsWidth: 68,
+            showDeliveryColumn: true,
+            visibleFinancialColumns: {
+              HexoraFinancialColumn.date,
+              HexoraFinancialColumn.total,
+              HexoraFinancialColumn.payment,
+            },
+          ),
+          InvoiceListItem(
+            invoice: Invoice(
+              id: 'invoice-1',
+              groupId: 'group-1',
+              clientId: 'client-1',
+              invoiceNumber: '382-26',
+              total: 1548.03,
+              paymentStatus: 'unpaid',
+              status: 'issued',
+              deliveryStatus: 'sent',
+              issueDate: DateTime(2026, 10, 26),
+            ),
+            client: GroupClient(id: 'client-1', name: 'SueÃ±o de Denia IV'),
+            onPreview: () {},
+            visibleFinancialColumns: const {
+              HexoraFinancialColumn.date,
+              HexoraFinancialColumn.total,
+              HexoraFinancialColumn.payment,
+            },
+          ),
+        ]),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(
+        find.byKey(const ValueKey('document-status-column')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('document-delivery-column')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('document-payment-column')), findsOneWidget);
+    expect(find.text('Emitida'), findsOneWidget);
+    expect(find.text('Enviada'), findsOneWidget);
+    expect(find.text('26 oct 2026'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

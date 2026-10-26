@@ -13,14 +13,23 @@ ThemeData compactComponentTheme(ThemeData base) {
     ),
   );
   final button = ButtonStyle(
-    textStyle: WidgetStatePropertyAll(text.labelLarge),
-    minimumSize:
-        const WidgetStatePropertyAll(Size(64, HexoraDimensions.button)),
+    textStyle: WidgetStatePropertyAll(
+      text.labelLarge?.copyWith(
+        fontFamily: 'Inter',
+        fontSize: HexoraTypography.label,
+        fontWeight: FontWeight.w500,
+        letterSpacing: 0,
+      ),
+    ),
+    minimumSize: const WidgetStatePropertyAll(
+        Size(64, HexoraDimensions.buttonStandard)),
     padding: const WidgetStatePropertyAll(
-        EdgeInsets.symmetric(horizontal: 12, vertical: 4)),
+        EdgeInsets.symmetric(
+            horizontal: HexoraTableTokens.cellPadding, vertical: 4)),
     shape: WidgetStatePropertyAll(RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(HexoraDimensions.radius))),
     visualDensity: VisualDensity.standard,
+    iconSize: const WidgetStatePropertyAll(HexoraDimensions.buttonIconSize),
   );
   return base.copyWith(
     cardTheme: base.cardTheme.copyWith(
@@ -61,9 +70,9 @@ ThemeData compactComponentTheme(ThemeData base) {
     ),
     iconButtonTheme: IconButtonThemeData(
         style: ButtonStyle(
-      iconSize: const WidgetStatePropertyAll(HexoraTableTokens.icon),
-      minimumSize:
-          const WidgetStatePropertyAll(Size.square(HexoraDimensions.button)),
+      iconSize: const WidgetStatePropertyAll(HexoraDimensions.buttonIconSize),
+      minimumSize: const WidgetStatePropertyAll(
+          Size.square(HexoraDimensions.buttonStandard)),
       padding:
           const WidgetStatePropertyAll(EdgeInsets.all(HexoraDimensions.space)),
       shape: button.shape,

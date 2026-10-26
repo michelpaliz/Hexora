@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:hexora/presentation/screens/workspace/sections/mail/mail_compose_screen.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 void main() {
@@ -34,7 +35,72 @@ void main() {
     expect(tester.widget<FilledButton>(send).onPressed, isNull);
     expect(tester.getSize(send).width, lessThan(300));
     expect(tester.getTopLeft(find.text('Adjuntar facturas')).dx,
-        greaterThan(tester.getTopLeft(find.byType(quill.QuillEditor)).dx));
+        lessThan(tester.getTopLeft(find.byType(quill.QuillEditor)).dx));
+    expect(
+      tester
+          .getTopLeft(
+            find.byKey(const ValueKey('mail-compose-editor-header')),
+          )
+          .dx,
+      greaterThan(
+        tester.getTopLeft(find.text('Adjuntar facturas')).dx,
+      ),
+    );
+    final optionsSurface = find.byKey(
+      const ValueKey('mail-compose-options-surface'),
+    );
+    final optionsBackground = tester.widget<ColoredBox>(
+      find
+          .descendant(
+            of: optionsSurface,
+            matching: find.byType(ColoredBox),
+          )
+          .first,
+    );
+    expect(optionsBackground.color, AppDarkColors.sidebar);
+    final context = tester.element(
+      find.byKey(const ValueKey('mail-compose-subject-input-surface')),
+    );
+    final expectedFill = Theme.of(context).inputDecorationTheme.fillColor;
+    for (final key in const [
+      'mail-compose-recipient-input-surface',
+      'mail-compose-subject-input-surface',
+      'mail-compose-body-input-surface',
+    ]) {
+      final container = tester.widget<Container>(find.byKey(ValueKey(key)));
+      expect((container.decoration! as BoxDecoration).color, expectedFill);
+    }
+  });
+
+  testWidgets('composer inherits the dark theme input surface', (tester) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.forPlatform(
+        Brightness.dark,
+        platform: TargetPlatform.windows,
+      ),
+      locale: const Locale('es'),
+      localizationsDelegates: const [
+        ...AppLocalizations.localizationsDelegates,
+        quill.FlutterQuillLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: const MailComposeScreen(),
+    ));
+    await tester.pumpAndSettle();
+
+    final finder =
+        find.byKey(const ValueKey('mail-compose-body-input-surface'));
+    final context = tester.element(finder);
+    final container = tester.widget<Container>(finder);
+    expect(
+      (container.decoration! as BoxDecoration).color,
+      Theme.of(context).inputDecorationTheme.fillColor,
+    );
+    expect(tester.takeException(), isNull);
   });
   for (final scale in [1.0, 1.5]) {
     testWidgets('mobile composer supports recipients and keyboard at $scale',

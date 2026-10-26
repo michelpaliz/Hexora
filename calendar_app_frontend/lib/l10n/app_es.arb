@@ -3610,6 +3610,10 @@
   "groupSettingsDeleteNamePrompt": "Escribe «{name}» para confirmar la eliminación permanente. Esta acción no se puede deshacer.",
   "@groupSettingsDeleteNamePrompt": {"placeholders": {"name": {"type": "String"}}},
   "groupSettingsDeleteGroup": "Eliminar negocio",
+  "invoiceIssueChronologyError": "Este borrador tiene fecha {draftDate}, pero la factura {invoiceNumber} ya se emitió con la fecha posterior {issuedDate}. Cambia la fecha del borrador antes de emitirlo.",
+  "@invoiceIssueChronologyError": {"placeholders": {"draftDate": {}, "invoiceNumber": {}, "issuedDate": {}}},
+  "invoiceBatchIssueStoppedAfter": "Se emitieron {count} facturas antes de que se detuviera el proceso.",
+  "@invoiceBatchIssueStoppedAfter": {"placeholders": {"count": {}}},
   "agendaCompleted": "Completado",
   "agendaEmptyDay": "No hay trabajos para este día. Selecciona otra fecha o Todos."
 }

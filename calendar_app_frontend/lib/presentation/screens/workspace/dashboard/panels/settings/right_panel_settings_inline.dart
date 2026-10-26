@@ -231,7 +231,7 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
     const menuWidth = NavigationTokens.sidebarWidth;
 
     return SizedBox(
-      width: width,
+      width: menuWidth,
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
@@ -303,7 +303,8 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
                       label: l.billingProfileTitle,
                       selected: _selectedSection == 'billing',
                       onTap: () {
-                        if (_selectedSection != 'billing') _loadBillingProfile();
+                        if (_selectedSection != 'billing')
+                          _loadBillingProfile();
                         setState(() => _selectedSection = 'billing');
                       },
                     ),

@@ -23,17 +23,21 @@ class _ComposeBottomBar extends StatelessWidget {
         child: FilledButton.icon(
           onPressed: enabled && !sending ? onSend : null,
           style: FilledButton.styleFrom(
-              minimumSize: const Size(0, 40),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+              minimumSize: const Size(0, HexoraDimensions.buttonStandard),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              textStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w700)),
+                  borderRadius: BorderRadius.circular(8)),
+              textStyle: t.bodySmall.copyWith(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600)),
           icon: sending
               ? const SizedBox(
-                  width: 16,
-                  height: 16,
+                  width: 14,
+                  height: 14,
                   child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.send_outlined, size: 18),
+              : const Icon(Icons.send_outlined,
+                  size: HexoraDimensions.buttonIconSize),
           label: Text(label),
         ));
     final guidance = Row(children: [
@@ -50,10 +54,10 @@ class _ComposeBottomBar extends StatelessWidget {
     return SafeArea(
         top: false,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
               color: cs.primary.withValues(alpha: .05),
-              borderRadius: BorderRadius.circular(10)),
+              borderRadius: BorderRadius.circular(8)),
           child: LayoutBuilder(builder: (context, constraints) {
             if (constraints.maxWidth < 600) {
               return Column(mainAxisSize: MainAxisSize.min, children: [

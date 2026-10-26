@@ -93,7 +93,12 @@ void main() {
       expect(find.text('Transf. a su favor'), findsOneWidget);
       expect(find.text('Lote'), findsNothing);
       expect(find.text('Saldo'), findsNothing);
-      expect(find.text('Notas'), findsNothing);
+      expect(
+        find.text('Notas'),
+        layout.$2 >= 1100 && layout.$2 < 1500
+            ? findsOneWidget
+            : findsNothing,
+      );
       expect(find.text('Contacto'),
           layout.$2 >= 1100 ? findsOneWidget : findsNothing);
       // The "Vincular" action now lives inside the row's 3-dot menu.

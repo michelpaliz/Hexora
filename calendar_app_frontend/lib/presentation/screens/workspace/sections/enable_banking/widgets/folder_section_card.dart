@@ -8,6 +8,7 @@ class FolderSectionCard extends StatelessWidget {
     required this.child,
     this.actions,
     this.leadingAction,
+    this.showTitle = true,
     this.leftTabOffset = 10,
     this.rightTabOffset = 10,
     this.backgroundColor,
@@ -17,6 +18,7 @@ class FolderSectionCard extends StatelessWidget {
   final Widget child;
   final List<Widget>? actions;
   final Widget? leadingAction;
+  final bool showTitle;
   final double leftTabOffset;
   final double rightTabOffset;
   final Color? backgroundColor;
@@ -24,7 +26,7 @@ class FolderSectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final typography = AppTypography.of(context);
+    final typography = showTitle ? AppTypography.of(context) : null;
     final border = cs.outlineVariant.withValues(alpha: 0.35);
     final bg = backgroundColor ?? cs.surface;
     final hasActions = actions != null && actions!.isNotEmpty;
@@ -40,42 +42,45 @@ class FolderSectionCard extends StatelessWidget {
           ),
           child: child,
         ),
-        Positioned(
-          left: leftTabOffset,
-          top: -8,
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: leadingAction == null ? 8 : 4,
-              vertical: 3,
-            ),
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(8),
-                topRight: Radius.circular(8),
-                bottomRight: Radius.circular(6),
+        if (showTitle)
+          Positioned(
+            left: leftTabOffset,
+            top: -8,
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: leadingAction == null ? 8 : 4,
+                vertical: 3,
               ),
-              border: Border.all(color: border),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (leadingAction != null) ...[
-                  leadingAction!,
-                  const SizedBox(width: 4),
-                ],
-                Text(
-                  label,
-                  style: typography.bodySmall.copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11,
-                    color: cs.onSurface.withValues(alpha: 0.85),
-                  ),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(8),
+                  topRight: Radius.circular(8),
+                  bottomRight: Radius.circular(6),
                 ),
-              ],
+                border: Border.all(color: border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (leadingAction != null) ...[
+                    leadingAction!,
+                    const SizedBox(width: 4),
+                  ],
+                  Text(
+                    label,
+                    style: typography!.bodySmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                      color: cs.onSurface.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
+        if (!showTitle && leadingAction != null)
+          Positioned(left: leftTabOffset, top: 0, child: leadingAction!),
         if (hasActions)
           Positioned(
             right: rightTabOffset,

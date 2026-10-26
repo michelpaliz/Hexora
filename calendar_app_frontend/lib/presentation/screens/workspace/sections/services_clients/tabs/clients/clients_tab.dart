@@ -352,6 +352,7 @@ class _SortChip extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
     return PopupMenuButton<bool>(
+      key: const ValueKey('client-sort-control'),
       tooltip: 'Ordenar por nombre',
       onSelected: onChanged,
       itemBuilder: (_) => const [
@@ -366,7 +367,7 @@ class _SortChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: cs.surfaceContainerLow,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: cs.outlineVariant),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: .6)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.swap_vert_rounded, size: 14, color: cs.onSurfaceVariant),

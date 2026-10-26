@@ -54,6 +54,10 @@ class StatementsAllDataTableHeader extends StatelessWidget {
     final balanceMaxWidth =
         isWide ? 200.0 : StatementsAllDataTableLayout.balanceMaxWidth;
     final isDesktop = !isCompact && !isTablet;
+    // The intermediate expanded layout has room for notes without competing
+    // with the full-width desktop columns. Keep the full layout focused on
+    // the primary transaction fields.
+    final showNotes = !isCompact && isTablet;
     final actionsWidth = isDesktop
         ? StatementsAllDataTableLayout.actionsWidth
         : StatementsAllDataTableLayout.compactActionsWidth;
@@ -210,7 +214,7 @@ class StatementsAllDataTableHeader extends StatelessWidget {
                 onTap: onClientProviderFilterTap,
               ),
             ),
-            if (isDesktop) ...[
+            if (showNotes) ...[
               const SizedBox(width: StatementsAllDataTableLayout.columnGapWide),
               _filterableCell(
                 context,

@@ -2,7 +2,10 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:hexora/models/invoice/invoice.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
+import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
+import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -28,7 +31,7 @@ class RecurringDetailGeneratedTab extends StatefulWidget {
   final VoidCallback onReload;
   final bool hasRequested;
   final int? count;
-  final ValueChanged<Invoice> onOpenInvoice;
+  final ValueChanged<Invoice>? onOpenInvoice;
   final ValueChanged<Invoice> onDownloadPdf;
   final Future<Invoice> Function(String invoiceId) onLoadInvoiceDetails;
   final Future<Uint8List> Function(String invoiceId) onLoadInvoicePreviewBytes;
@@ -42,7 +45,7 @@ class RecurringDetailGeneratedTab extends StatefulWidget {
     required this.onReload,
     required this.hasRequested,
     required this.count,
-    required this.onOpenInvoice,
+    this.onOpenInvoice,
     required this.onDownloadPdf,
     required this.onLoadInvoiceDetails,
     required this.onLoadInvoicePreviewBytes,
@@ -208,6 +211,17 @@ class _RecurringDetailGeneratedTabState
     return sorted;
   }
 
+  HexoraDocumentStatus _documentStatus(String? value) {
+    final status = (value ?? '').trim().toLowerCase();
+    if (status.contains('cancel')) return HexoraDocumentStatus.cancelled;
+    if (status.contains('rectif')) return HexoraDocumentStatus.rectified;
+    if (status.contains('issue')) return HexoraDocumentStatus.issued;
+    if (status.isEmpty || status.contains('draft')) {
+      return HexoraDocumentStatus.draft;
+    }
+    return HexoraDocumentStatus.warning;
+  }
+
   _InvoiceAmounts _amountsFor(Invoice invoice) {
     num subtotal = invoice.subtotal ?? 0;
     num tax = invoice.taxTotal ?? 0;
@@ -280,9 +294,6 @@ class _RecurringDetailGeneratedTabState
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
     final isEs = l.localeName.toLowerCase().startsWith('es');
-    final generatedTitle = widget.receiptsMode
-        ? (isEs ? 'Recibos de esta serie' : 'Receipts in this series')
-        : l.recurringInvoicesSeriesInvoicesTitle;
     final emptyGeneratedLabel = widget.receiptsMode
         ? (isEs ? 'No hay recibos generados.' : 'No generated receipts.')
         : l.recurringInvoicesSeriesInvoicesEmpty;
@@ -361,20 +372,28 @@ class _RecurringDetailGeneratedTabState
       );
     }
 
-    final header = Row(
-      children: [
-        Expanded(
-          child: Text(
-            generatedTitle,
-            style:
-                t.bodySmall.copyWith(fontWeight: FontWeight.w800, fontSize: 13),
+    final header = Container(
+      height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.24),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        children: [
+          Text(
+            listHeaderLabel,
+            style: t.bodySmall.copyWith(
+              fontWeight: FontWeight.w800,
+              color: cs.onSurfaceVariant,
+            ),
           ),
-        ),
-        if ((widget.count ?? 0) > 0)
+          const SizedBox(width: 6),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
-              color: cs.primaryContainer.withValues(alpha: 0.6),
+              color: cs.primaryContainer.withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
@@ -385,20 +404,37 @@ class _RecurringDetailGeneratedTabState
               ),
             ),
           ),
-        const SizedBox(width: 10),
-        Tooltip(
-          message: l.recurringInvoicesRefreshCta,
-          child: OutlinedButton(
-            onPressed: widget.loading ? null : widget.onReload,
-            style: OutlinedButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              padding: EdgeInsets.zero,
-              minimumSize: const Size(38, 32),
-            ),
-            child: const Icon(Icons.refresh_rounded, size: 16),
+          const SizedBox(width: 8),
+          sortIcon(
+            value: _GeneratedNumberSort.recent,
+            icon: Icons.schedule_outlined,
+            tooltip: l.invoiceSortByNumberRecent,
           ),
-        ),
-      ],
+          const SizedBox(width: 4),
+          sortIcon(
+            value: _GeneratedNumberSort.asc,
+            icon: Icons.arrow_upward,
+            tooltip: l.invoiceSortByNumberAsc,
+          ),
+          const SizedBox(width: 4),
+          sortIcon(
+            value: _GeneratedNumberSort.desc,
+            icon: Icons.arrow_downward,
+            tooltip: l.invoiceSortByNumberDesc,
+          ),
+          const Spacer(),
+          Tooltip(
+            message: l.recurringInvoicesRefreshCta,
+            child: IconButton(
+              onPressed: widget.loading ? null : widget.onReload,
+              icon: const Icon(Icons.refresh_rounded, size: 16),
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+              constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+            ),
+          ),
+        ],
+      ),
     );
 
     if (!widget.hasRequested || widget.loading) {
@@ -545,59 +581,7 @@ class _RecurringDetailGeneratedTabState
       children: [
         header,
         const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.3),
-            ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Text(
-                      listHeaderLabel,
-                      style: t.bodySmall.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    sortIcon(
-                      value: _GeneratedNumberSort.recent,
-                      icon: Icons.schedule_outlined,
-                      tooltip: l.invoiceSortByNumberRecent,
-                    ),
-                    const SizedBox(width: 6),
-                    sortIcon(
-                      value: _GeneratedNumberSort.asc,
-                      icon: Icons.arrow_upward,
-                      tooltip: l.invoiceSortByNumberAsc,
-                    ),
-                    const SizedBox(width: 6),
-                    sortIcon(
-                      value: _GeneratedNumberSort.desc,
-                      icon: Icons.arrow_downward,
-                      tooltip: l.invoiceSortByNumberDesc,
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                isEs ? 'Estado' : 'Status',
-                style: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -605,50 +589,87 @@ class _RecurringDetailGeneratedTabState
               Widget buildInvoiceCard(Invoice inv) {
                 final resolved = _detailById[inv.id] ?? inv;
                 final selected = inv.id == selectedInvoice?.id;
-                final date = resolved.occurrenceDate ??
-                    resolved.issueDate ??
-                    resolved.registeredAt;
+                final date = resolved.issueDate ??
+                    resolved.registeredAt ??
+                    resolved.occurrenceDate;
                 final dateLabel = date == null
                     ? '-'
-                    : DateFormat.yMMMd(l.localeName).add_Hm().format(date);
+                    : DateFormat.yMMMd(l.localeName).format(date.toLocal());
                 final currency = (resolved.currency ?? 'EUR').trim();
                 final amounts = _amountsFor(resolved);
                 final money = NumberFormat.simpleCurrency(
                   locale: l.localeName,
                   name: currency.isEmpty ? 'EUR' : currency,
                 );
-                return InkWell(
-                  onTap: () {
+                final isLinked = resolved.isLinkedResolved;
+                final linkedCount = resolved.linkedEntriesCountSafe;
+                final linkedLabel = isLinked
+                    ? (linkedCount > 0
+                        ? (isEs
+                            ? 'Vinculada a $linkedCount movimientos bancarios'
+                            : 'Linked to $linkedCount bank transactions')
+                        : (isEs ? 'Vinculada' : 'Linked'))
+                    : (isEs ? 'No vinculada' : 'Not linked');
+
+                Future<void> selectInvoice() async {
+                  if (wide) {
                     setState(() => _selectedInvoiceId = inv.id);
                     if (!_detailById.containsKey(inv.id) ||
                         !_pdfBytesById.containsKey(inv.id)) {
-                      _loadSelectionData(inv.id);
+                      await _loadSelectionData(inv.id);
                     }
-                  },
-                  onDoubleTap: () => _openPreview(inv),
-                  borderRadius: BorderRadius.circular(10),
+                  } else {
+                    await _openPreview(inv);
+                  }
+                }
+
+                void handleMenuAction(String value) {
+                  switch (value) {
+                    case 'preview':
+                      _openPreview(inv);
+                    case 'download':
+                      widget.onDownloadPdf(inv);
+                    case 'details':
+                      widget.onOpenInvoice?.call(resolved);
+                  }
+                }
+
+                return InkWell(
+                  key: ValueKey('generated-invoice-row-${inv.id}'),
+                  onTap: selectInvoice,
+                  borderRadius: BorderRadius.circular(HexoraDimensions.radius),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
+                    constraints: const BoxConstraints(
+                      minHeight: HexoraDocumentTokens.rowHeight,
+                      maxHeight: 68,
                     ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
                     decoration: BoxDecoration(
                       color: selected
-                          ? cs.primaryContainer.withValues(alpha: 0.35)
+                          ? cs.primaryContainer.withValues(alpha: 0.28)
                           : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius:
+                          BorderRadius.circular(HexoraDimensions.radius),
                       border: Border.all(
                         color: selected
-                            ? cs.primary.withValues(alpha: 0.7)
-                            : cs.outlineVariant.withValues(alpha: 0.35),
+                            ? cs.primary.withValues(alpha: 0.65)
+                            : cs.outlineVariant.withValues(
+                                alpha: HexoraTableTokens.separatorOpacity,
+                              ),
                       ),
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.receipt_long_outlined,
-                          color: cs.onSurfaceVariant,
-                          size: 20,
+                        SizedBox.square(
+                          dimension: 28,
+                          child: Center(
+                            child: Icon(
+                              Icons.receipt_long_outlined,
+                              color:
+                                  selected ? cs.primary : cs.onSurfaceVariant,
+                              size: HexoraDocumentTokens.icon,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -663,76 +684,129 @@ class _RecurringDetailGeneratedTabState
                                 style: t.bodySmall.copyWith(
                                   fontWeight: FontWeight.w800,
                                   fontSize: 13,
+                                  fontFamily: HexoraTypography.fontFamily,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 dateLabel,
-                                style: t.bodySmall.copyWith(
-                                  color: cs.onSurfaceVariant,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Subtotal: ${money.format(amounts.subtotal)} - IVA: ${money.format(amounts.tax)} - Total: ${money.format(amounts.total)}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: t.bodySmall.copyWith(
-                                  color: cs.primary,
-                                  fontWeight: FontWeight.w700,
+                                  color: cs.onSurfaceVariant,
+                                  fontFamily: HexoraTypography.fontFamily,
+                                  fontSize: HexoraTypography.caption,
                                 ),
                               ),
                             ],
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              statusLabel(resolved.status),
-                              style: t.bodySmall.copyWith(
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
+                        SizedBox(
+                          key: ValueKey('generated-invoice-total-${inv.id}'),
+                          width: constraints.maxWidth < 520 ? 82 : 108,
+                          child: Text(
+                            money.format(amounts.total),
+                            maxLines: 1,
+                            overflow: TextOverflow.fade,
+                            softWrap: false,
+                            textAlign: TextAlign.right,
+                            style: t.bodySmall.copyWith(
+                              fontFamily: HexoraTypography.fontFamily,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              fontFeatures: HexoraTypography.numericFeatures,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 96),
+                          child: HexoraStatusBadge.document(
+                            context,
+                            key: ValueKey('generated-invoice-status-${inv.id}'),
+                            status: _documentStatus(resolved.status),
+                            label: statusLabel(resolved.status),
+                          ),
+                        ),
+                        if (!widget.receiptsMode) ...[
+                          const SizedBox(width: 4),
+                          SizedBox.square(
+                            key: ValueKey(
+                                'generated-invoice-delivery-${inv.id}'),
+                            dimension: 28,
+                            child: Center(
+                              child: DeliveryStatusBadge(
+                                status: resolved.deliveryStatus,
+                                channel: resolved.deliveryChannel,
+                                sentAt: resolved.sentAt,
+                                deliveryError: resolved.deliveryError,
+                                compact: true,
+                                feminine: true,
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            TextButton.icon(
-                              onPressed: () => _openPreview(inv),
-                              icon: const Icon(
-                                Icons.visibility_outlined,
-                                size: 15,
-                              ),
-                              label: Text(
-                                isEs ? 'Mostrar PDF' : 'Show PDF preview',
-                              ),
-                              style: TextButton.styleFrom(
-                                visualDensity: VisualDensity.compact,
-                                foregroundColor: cs.primary,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 6,
-                                ),
-                                textStyle: t.bodySmall.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 11,
+                          ),
+                          SizedBox.square(
+                            key: ValueKey('generated-invoice-link-${inv.id}'),
+                            dimension: 28,
+                            child: Tooltip(
+                              message: linkedLabel,
+                              child: Center(
+                                child: Icon(
+                                  isLinked
+                                      ? Icons.link_rounded
+                                      : Icons.link_off_rounded,
+                                  size: 16,
+                                  color: isLinked
+                                      ? cs.primary
+                                      : cs.onSurfaceVariant,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 2),
-                            Tooltip(
-                              message: l.invoicePdfDownloadCta,
-                              child: IconButton(
-                                onPressed: () => widget.onDownloadPdf(inv),
-                                icon: const Icon(
-                                  Icons.download_outlined,
-                                  size: 18,
-                                ),
-                                visualDensity: VisualDensity.compact,
-                                splashRadius: 16,
+                          ),
+                        ],
+                        SizedBox.square(
+                          dimension: 32,
+                          child: PopupMenuButton<String>(
+                            key: ValueKey('generated-invoice-menu-${inv.id}'),
+                            tooltip: MaterialLocalizations.of(context)
+                                .moreButtonTooltip,
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(Icons.more_vert, size: 18),
+                            onSelected: handleMenuAction,
+                            itemBuilder: (_) => [
+                              NavigationPopupMenuItem<String>(
+                                value: 'preview',
+                                child: Row(children: [
+                                  const Icon(Icons.visibility_outlined,
+                                      size: 16),
+                                  const SizedBox(width: 8),
+                                  Text(isEs ? 'Mostrar PDF' : 'Show PDF'),
+                                ]),
                               ),
-                            ),
-                          ],
+                              NavigationPopupMenuItem<String>(
+                                value: 'download',
+                                child: Row(children: [
+                                  const Icon(Icons.download_outlined, size: 16),
+                                  const SizedBox(width: 8),
+                                  Text(l.invoicePdfDownloadCta),
+                                ]),
+                              ),
+                              if (widget.onOpenInvoice != null)
+                                NavigationPopupMenuItem<String>(
+                                  value: 'details',
+                                  child: Row(children: [
+                                    const Icon(Icons.open_in_new_rounded,
+                                        size: 16),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                        isEs ? 'Ver detalles' : 'View details'),
+                                  ]),
+                                ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -741,6 +815,8 @@ class _RecurringDetailGeneratedTabState
               }
 
               final list = ListView.separated(
+                key: const PageStorageKey<String>(
+                    'recurring-generated-invoice-history'),
                 itemCount: visibleInvoices.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 6),
                 itemBuilder: (_, i) => buildInvoiceCard(visibleInvoices[i]),

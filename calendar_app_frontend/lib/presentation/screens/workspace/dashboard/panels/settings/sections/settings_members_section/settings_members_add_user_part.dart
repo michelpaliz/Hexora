@@ -63,23 +63,13 @@ extension _SettingsMembersAddUserPart on _SettingsMembersSectionState {
                   right: 16,
                   bottom: 16,
                   child: FilledButton.icon(
+                    style: ThemedButtons.button(context),
                     onPressed: () {
                       ctrl.commitSelected(context);
                       _updateUi();
                     },
                     icon: const Icon(Icons.check_rounded, size: 20),
                     label: Text(l.done),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: cs.primary,
-                      foregroundColor: cs.onPrimary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
                   ),
                 ),
             ],

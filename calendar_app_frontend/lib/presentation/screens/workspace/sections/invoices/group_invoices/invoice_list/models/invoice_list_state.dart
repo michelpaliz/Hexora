@@ -8,6 +8,7 @@ enum _InvoiceColumnSort {
   number,
   client,
   status,
+  delivery,
   payment,
   date,
   taxableBase,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/client_classification_store.dart';
@@ -64,6 +65,7 @@ class AddClientSheet extends StatefulWidget {
   final List<GroupClient> existingClients;
   final bool closeOnSave;
   final bool fullScreen;
+  final bool showInlineHeader;
   final VoidCallback? onCancel;
 
   const AddClientSheet({
@@ -76,6 +78,7 @@ class AddClientSheet extends StatefulWidget {
     this.existingClients = const [],
     this.closeOnSave = true,
     this.fullScreen = false,
+    this.showInlineHeader = true,
     this.onCancel,
   });
 
@@ -448,9 +451,10 @@ class _AddClientSheetState extends State<AddClientSheet> {
       final l = AppLocalizations.of(context)!;
       final cs = Theme.of(context).colorScheme;
       return Column(children: [
-        Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: ClientHeader(isEdit: c.isEdit)),
+        if (widget.showInlineHeader)
+          Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: ClientHeader(isEdit: c.isEdit)),
         Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: _identityHeader()),
@@ -464,9 +468,10 @@ class _AddClientSheetState extends State<AddClientSheet> {
                         color: cs.outlineVariant.withValues(alpha: .4)))),
             child: Row(children: [
               if (widget.onCancel != null) ...[
-                OutlinedButton(
+                HexoraButton(
                     onPressed: c.saving ? null : widget.onCancel,
-                    child: Text(l.cancel)),
+                    label: l.cancel,
+                    variant: HexoraButtonVariant.secondary),
                 const SizedBox(width: 12),
               ],
               Expanded(

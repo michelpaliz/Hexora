@@ -64,7 +64,8 @@ extension _RecentUploadsMobileSection on _ExpenseRecentUploadsTabState {
                             value: 0,
                             child: Text(isEs ? 'Todos los años' : 'All years')),
                         for (final year in _availableUploadYears)
-                          NavigationPopupMenuItem(value: year, child: Text('$year')),
+                          NavigationPopupMenuItem(
+                              value: year, child: Text('$year')),
                       ],
                       child: filterPill(
                         icon: Icons.event_outlined,
@@ -248,12 +249,16 @@ extension _RecentUploadsMobileSection on _ExpenseRecentUploadsTabState {
                     switch (action) {
                       case 'document':
                         _selectExpense(item);
+                        return;
                       case 'edit':
                         _openExpenseEditor(item);
+                        return;
                       case 'reprocess':
                         _reprocessExpense(item);
+                        return;
                       case 'delete':
-                        widget.onDeleteExpense(id);
+                        unawaited(_confirmDeleteExpense(item));
+                        return;
                     }
                   },
                   itemBuilder: (_) => [
@@ -268,7 +273,7 @@ extension _RecentUploadsMobileSection on _ExpenseRecentUploadsTabState {
                             Text(isEs ? 'Releer factura' : 'Re-read invoice')),
                     NavigationPopupMenuItem(
                         value: 'delete',
-                        enabled: id.isNotEmpty,
+                        enabled: id.isNotEmpty && widget.canDeleteExpenses,
                         child:
                             Text(l.remove, style: TextStyle(color: cs.error))),
                   ],

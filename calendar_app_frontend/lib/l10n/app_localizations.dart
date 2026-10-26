@@ -14137,6 +14137,19 @@ abstract class AppLocalizations {
   /// **'Delete business'**
   String get groupSettingsDeleteGroup;
 
+  /// No description provided for @invoiceIssueChronologyError.
+  ///
+  /// In en, this message translates to:
+  /// **'This draft is dated {draftDate}, but invoice {invoiceNumber} was already issued with the later date {issuedDate}. Change the draft date before issuing it.'**
+  String invoiceIssueChronologyError(
+      Object draftDate, Object invoiceNumber, Object issuedDate);
+
+  /// No description provided for @invoiceBatchIssueStoppedAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} invoices were issued before the process stopped.'**
+  String invoiceBatchIssueStoppedAfter(Object count);
+
   /// No description provided for @agendaCompleted.
   ///
   /// In en, this message translates to:

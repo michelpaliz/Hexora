@@ -25,6 +25,18 @@ abstract final class HexoraGlobalNavColors {
   static Color get focusRing => active.withValues(alpha: 0.85);
 }
 
+/// Shared compact style for the global-bar dropdowns (group switcher and worker
+/// status). Keeps the two menus visually consistent across light/dark themes.
+MenuStyle hexoraDropdownMenuStyle() => const MenuStyle(
+      minimumSize: WidgetStatePropertyAll(Size(280, 0)),
+      shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(10)),
+      )),
+      padding: WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 6)),
+      elevation: WidgetStatePropertyAll(8),
+      visualDensity: VisualDensity.compact,
+    );
+
 /// Base interactive surface for global-bar controls. Handles hover, focus and
 /// pressed states and hands the resolved foreground color to [builder].
 class HexoraNavTile extends StatefulWidget {
@@ -327,10 +339,10 @@ class SidebarCollapseToggle extends StatelessWidget {
         minimumSize: const WidgetStatePropertyAll(Size.square(size)),
         fixedSize: const WidgetStatePropertyAll(Size.square(size)),
         foregroundColor: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.hovered) ||
-                  s.contains(WidgetState.focused)
-              ? cs.onSurface
-              : nav.foreground,
+          (s) =>
+              s.contains(WidgetState.hovered) || s.contains(WidgetState.focused)
+                  ? cs.onSurface
+                  : nav.foreground,
         ),
         overlayColor: WidgetStateProperty.resolveWith(nav.overlay),
         side: WidgetStatePropertyAll(

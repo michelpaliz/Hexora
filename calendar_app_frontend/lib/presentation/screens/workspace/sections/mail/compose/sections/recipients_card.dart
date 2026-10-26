@@ -14,22 +14,15 @@ Widget _composeRecipientsCard(
     Container(
       decoration: BoxDecoration(
         color: cs.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── To row ──────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 8, 6),
+            padding: const EdgeInsets.fromLTRB(10, 8, 8, 4),
             child: compact
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -64,10 +57,12 @@ Widget _composeRecipientsCard(
                       // Input area
                       Expanded(
                           child: Container(
+                              key: const ValueKey(
+                                  'mail-compose-recipient-input-surface'),
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
-                                  color: cs.primary.withValues(alpha: .025),
+                                  color: inputDecoration.fillColor,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
                                       color: cs.outlineVariant

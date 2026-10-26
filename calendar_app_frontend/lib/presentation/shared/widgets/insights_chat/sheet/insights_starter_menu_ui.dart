@@ -231,7 +231,7 @@ mixin InsightsStarterMenuUi on InsightsChatSheetStateBase {
     final title = menu?.title?.trim();
     final titleText = (title != null && title.isNotEmpty)
         ? title
-        : (isEs ? 'Opciones' : 'Options');
+        : (isEs ? 'Opciones rápidas' : 'Quick options');
 
     if (MediaQuery.sizeOf(context).width < 600) {
       return Column(
@@ -294,7 +294,7 @@ mixin InsightsStarterMenuUi on InsightsChatSheetStateBase {
     }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
@@ -314,7 +314,7 @@ mixin InsightsStarterMenuUi on InsightsChatSheetStateBase {
                     ? null
                     : () => sendMenuBack(menu!, message: message),
                 icon: const Icon(Icons.arrow_back_rounded, size: 14),
-                label: const Text('Back'),
+                label: Text(isEs ? 'Volver' : 'Back'),
                 style: TextButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                   padding:
@@ -326,83 +326,109 @@ mixin InsightsStarterMenuUi on InsightsChatSheetStateBase {
               ),
           ],
         ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final option in menuOptions)
-              ActionChip(
-                onPressed: runtime.sending
-                    ? null
-                    : () => sendMenuChoice(
-                          option.index,
-                          action: option.action,
-                          label: option.label,
-                          message: message,
-                        ),
-                avatar: CircleAvatar(
-                  radius: 10,
-                  backgroundColor: cs.primary.withValues(alpha: 0.16),
-                  child: Text(
-                    '${option.index}',
-                    style: t.bodySmall.copyWith(
-                      color: cs.primary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                backgroundColor: selected
-                    ? cs.primary.withValues(alpha: 0.14)
-                    : cs.surfaceContainerHigh.withValues(alpha: 0.42),
-                side: BorderSide.none,
-                label: Text(
-                  option.label,
-                  style: t.bodySmall.copyWith(
-                    color: cs.onSurface,
-                    fontWeight: FontWeight.w700,
-                    fontSize: compact ? 11.5 : 12,
-                  ),
-                ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              ),
-            for (int index = 0; index < followUps.length; index++)
-              ActionChip(
-                onPressed: runtime.sending
-                    ? null
-                    : () => sendMenuChoice(index + 1, message: message),
-                avatar: CircleAvatar(
-                  radius: 10,
-                  backgroundColor: cs.primary.withValues(alpha: 0.16),
-                  child: Text(
-                    '${index + 1}',
-                    style: t.bodySmall.copyWith(
-                      color: cs.primary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                backgroundColor: selected
-                    ? cs.primary.withValues(alpha: 0.14)
-                    : cs.surfaceContainerHigh.withValues(alpha: 0.42),
-                side: BorderSide.none,
-                label: Text(
-                  followUps[index],
-                  style: t.bodySmall.copyWith(
-                    color: cs.onSurface,
-                    fontWeight: FontWeight.w700,
-                    fontSize: compact ? 11.5 : 12,
-                  ),
-                ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              ),
-          ],
-        ),
+        const SizedBox(height: 6),
+        for (final option in menuOptions)
+          Padding(
+            padding: const EdgeInsets.only(top: 5),
+            child: _buildWideOptionButton(
+              label: option.label,
+              icon: _iconForMenuOption(option.action),
+              cs: cs,
+              t: t,
+              compact: compact,
+              selected: selected,
+              onPressed: runtime.sending
+                  ? null
+                  : () => sendMenuChoice(
+                        option.index,
+                        action: option.action,
+                        label: option.label,
+                        message: message,
+                      ),
+            ),
+          ),
+        for (int index = 0; index < followUps.length; index++)
+          Padding(
+            padding: const EdgeInsets.only(top: 5),
+            child: _buildWideOptionButton(
+              label: followUps[index],
+              icon: Icons.chat_bubble_outline_rounded,
+              cs: cs,
+              t: t,
+              compact: compact,
+              selected: selected,
+              onPressed: runtime.sending
+                  ? null
+                  : () => sendMenuChoice(index + 1, message: message),
+            ),
+          ),
       ],
+    );
+  }
+
+  IconData _iconForMenuOption(String? action) {
+    if (action == linkedIncomeReviewAction) return Icons.link_rounded;
+    return Icons.person_outline_rounded;
+  }
+
+  Widget _buildWideOptionButton({
+    required String label,
+    required IconData icon,
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool compact,
+    required bool selected,
+    required VoidCallback? onPressed,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      clipBehavior: Clip.antiAlias,
+      child: Ink(
+        decoration: BoxDecoration(
+          color: selected
+              ? cs.primary.withValues(alpha: 0.14)
+              : cs.surfaceContainerHigh.withValues(alpha: 0.42),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.22),
+          ),
+        ),
+        child: InkWell(
+          onTap: onPressed,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 15,
+                  color: selected
+                      ? cs.primary
+                      : cs.onSurfaceVariant.withValues(alpha: 0.8),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: t.bodySmall.copyWith(
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w600,
+                      fontSize: compact ? 11.5 : 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 15,
+                  color: cs.onSurfaceVariant.withValues(alpha: 0.45),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

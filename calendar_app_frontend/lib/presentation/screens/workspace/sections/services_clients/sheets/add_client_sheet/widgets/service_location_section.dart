@@ -1,5 +1,6 @@
 import 'client_form_fields.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 
 import '../add_client_controller.dart';
 
@@ -49,17 +50,14 @@ class ServiceLocationSection extends StatelessWidget {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: FilledButton.tonalIcon(
+            child: HexoraButton(
+              icon: Icons.my_location_rounded,
+              label: isSpanish
+                  ? 'Usar mi ubicación actual'
+                  : 'Use current location',
               onPressed: locating ? null : onUseCurrentLocation,
-              icon: locating
-                  ? const SizedBox.square(
-                      dimension: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.my_location_rounded, size: 18),
-              label: Text(
-                isSpanish ? 'Usar mi ubicación actual' : 'Use current location',
-              ),
+              loading: locating,
+              variant: HexoraButtonVariant.tonal,
             ),
           ),
           const SizedBox(height: 12),

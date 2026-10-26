@@ -9,7 +9,7 @@ import 'pdf_preview_platform.dart';
 
 import 'document_split_view.dart';
 
-class PdfInlinePreview extends StatefulWidget {
+class PdfInlinePreview extends StatelessWidget {
   const PdfInlinePreview({
     super.key,
     required this.bytes,
@@ -34,18 +34,30 @@ class PdfInlinePreview extends StatefulWidget {
     );
     if (useRenderer) {
       return rendered.PdfInlinePreview(
-        bytes: bytes, height: height, interactive: interactive,
+        bytes: bytes,
+        height: height,
+        interactive: interactive,
       );
     }
-    return _BrowserPdfPreview(bytes: bytes, height: height, interactive: interactive);
+    return _BrowserPdfPreview(
+      bytes: bytes,
+      height: height,
+      interactive: interactive,
+      showToolbar: showToolbar,
+    );
   }
 }
 
 class _BrowserPdfPreview extends StatefulWidget {
-  const _BrowserPdfPreview({required this.bytes, required this.height, required this.interactive});
+  const _BrowserPdfPreview(
+      {required this.bytes,
+      required this.height,
+      required this.interactive,
+      required this.showToolbar});
   final Uint8List bytes;
   final double height;
   final bool interactive;
+  final bool showToolbar;
 
   @override
   State<_BrowserPdfPreview> createState() => _PdfInlinePreviewState();

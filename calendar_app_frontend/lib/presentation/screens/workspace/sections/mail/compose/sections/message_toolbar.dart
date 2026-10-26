@@ -5,7 +5,8 @@ Widget _composeMessageToolbar(
         required AppTypography t,
         required ColorScheme cs,
         required AppLocalizations l,
-        required bool compact}) =>
+        required bool compact,
+        required Color inputFill}) =>
     AnimatedBuilder(
       animation: Listenable.merge([state._quillController, state._bodyFocus]),
       builder: (context, _) {
@@ -37,7 +38,7 @@ Widget _composeMessageToolbar(
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: cs.surfaceContainerLow,
+            color: inputFill,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
             border: Border.all(
               color: showTools

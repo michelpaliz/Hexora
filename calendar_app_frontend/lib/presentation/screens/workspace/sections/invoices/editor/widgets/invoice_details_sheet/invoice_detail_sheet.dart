@@ -32,6 +32,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/buttons.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
@@ -46,7 +47,10 @@ class InvoiceDetailSheet extends StatefulWidget {
   final BillingProfile? billingProfile;
   final Group group;
   final ValueChanged<String>? onOpenRecurringSeries;
+  final VoidCallback? onOpenDeliveryRecord;
   final VoidCallback? onInvoiceChanged;
+  final VoidCallback? onEditInvoice;
+  final Future<void> Function(Invoice invoice)? onIssueInvoice;
   final VoidCallback? onClose;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
@@ -63,7 +67,10 @@ class InvoiceDetailSheet extends StatefulWidget {
     required this.billingProfile,
     required this.group,
     this.onOpenRecurringSeries,
+    this.onOpenDeliveryRecord,
     this.onInvoiceChanged,
+    this.onEditInvoice,
+    this.onIssueInvoice,
     this.onClose,
     this.onPrevious,
     this.onNext,
@@ -79,6 +86,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     with InvoiceDetailSheetLogic {
   bool _previewMenuOpen = false;
   int _inlineTabIndex = 0;
+  bool _issuingInvoice = false;
 
   String get _pdfLink {
     final url = _invoice.pdfUrl?.trim();
@@ -153,11 +161,14 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     final previous = oldWidget.invoice;
     final current = widget.invoice;
     final differentInvoice = previous.id != current.id;
+    final documentChanged = previous.status != current.status ||
+        previous.invoiceNumber != current.invoiceNumber ||
+        previous.issueDate != current.issueDate;
     final paymentChanged = previous.paymentStatus != current.paymentStatus ||
         previous.paidAmount != current.paidAmount ||
         previous.paidAt != current.paidAt ||
         previous.paymentSource != current.paymentSource;
-    if (!differentInvoice && !paymentChanged) return;
+    if (!differentInvoice && !documentChanged && !paymentChanged) return;
     _currentInvoice = null;
     if (differentInvoice) {
       _lines = current.lines;
@@ -166,6 +177,20 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     }
     _loadInvoiceDetail();
     if (!widget.fullPage) _loadInlinePdfPreview();
+  }
+
+  Future<void> _issueSelectedInvoice() async {
+    if (_issuingInvoice || !mounted) return;
+    final callback = widget.onIssueInvoice;
+    final invoice = _invoice;
+    if (callback == null || !invoice.isDraft) return;
+    setState(() => _issuingInvoice = true);
+    try {
+      await callback(invoice);
+      if (mounted) await _loadInvoiceDetail();
+    } finally {
+      if (mounted) setState(() => _issuingInvoice = false);
+    }
   }
 
   // ── Computed helpers ────────────────────────────────────────────────────────
@@ -218,10 +243,12 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
           scrollCtrl: scrollCtrl,
           onOpenPayments: () =>
               _afterClosingDetails(_openBankTransactions, sheetContext),
-          onSendInvoice: () => _afterClosingDetails(
-            () => _openSendInvoice(canSend: true),
-            sheetContext,
-          ),
+          onOpenDelivery: widget.onOpenDeliveryRecord == null
+              ? null
+              : () => _afterClosingDetails(
+                    widget.onOpenDeliveryRecord!,
+                    sheetContext,
+                  ),
         ),
       ),
     );
@@ -230,7 +257,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
   Widget _buildDetailsContent({
     ScrollController? scrollCtrl,
     VoidCallback? onOpenPayments,
-    VoidCallback? onSendInvoice,
+    VoidCallback? onOpenDelivery,
   }) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
@@ -276,11 +303,6 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     final moneyFormat =
         NumberFormat.currency(locale: l.localeName, symbol: 'EUR ');
     final isEs = l.localeName.toLowerCase().startsWith('es');
-    final currentUserId = context.watch<UserDomain?>()?.user?.id;
-    final role =
-        currentUserId == null ? null : widget.group.userRoles[currentUserId];
-    final canSend = role == 'owner' || role == 'co-admin';
-
     return ListView(
       controller: scrollCtrl,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
@@ -300,7 +322,8 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
             child: TextButton.icon(
               onPressed: widget.onEditInvoice,
               icon: const Icon(Icons.edit_outlined, size: 18),
-              label: Text(isEs ? 'Modificar factura emitida' : 'Edit issued invoice'),
+              label: Text(
+                  isEs ? 'Modificar factura emitida' : 'Edit issued invoice'),
             ),
           ),
           const SizedBox(height: 4),
@@ -465,7 +488,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         _PaymentStatusSection(
           invoice: invoice,
           localeName: l.localeName,
-          onOpenPayments: onOpenPayments,
+          onOpenPayments: onOpenPayments ?? _openBankTransactions,
         ),
         if ((invoice.status ?? '').toLowerCase() == 'issued') ...[
           const SizedBox(height: 12),
@@ -479,7 +502,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
           deliveryStatus: deliveryStatus,
           sentAtLabel: sentAtLabel,
           channelLabel: channelLabel,
-          onSendInvoice: canSend ? onSendInvoice : null,
+          onOpenDelivery: onOpenDelivery ?? widget.onOpenDeliveryRecord,
         ),
 
         // History
@@ -689,26 +712,12 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     required int selectedIndex,
     required bool isEs,
   }) {
-    if (selectedIndex == 1) return _buildDetailsContent();
-    if (selectedIndex == 2) {
-      return ListView(
-        padding: const EdgeInsets.all(12),
-        children: [
-          InvoiceDetailLines(
-            loading: _loading,
-            error: _error,
-            lines: _lines,
-            onRefresh: _fetchLines,
-            subtotal: _invoice.subtotal,
-            taxTotal: _invoice.taxTotal,
-            total: _invoice.total,
-            discountAmount: _invoice.discountAmount,
-            discountPercent: _invoice.discountPercent,
-          ),
-        ],
-      );
+    // Tab 0 = Resumen
+    if (selectedIndex == 0) {
+      return _buildResumenTab(cs, l, isEs: isEs);
     }
-    if (selectedIndex == 3) {
+    // Tab 2 = Historial
+    if (selectedIndex == 2) {
       return ListView(
         padding: const EdgeInsets.all(12),
         children: [
@@ -725,6 +734,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
       );
     }
 
+    // Tab 1 = Vista previa
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -795,6 +805,188 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
               ),
             ),
           ),
+        ),
+      ],
+    );
+  }
+
+  // ── Resumen tab ──────────────────────────────────────────────────────────────
+
+  Widget _buildResumenTab(ColorScheme cs, AppLocalizations l,
+      {required bool isEs}) {
+    final invoice = _invoice;
+    final t = AppTypography.of(context);
+    final money = NumberFormat.currency(locale: l.localeName, symbol: '€ ');
+    final status = (invoice.status ?? '').toLowerCase();
+    final deliveryStatus = normalizeDeliveryStatus(invoice.deliveryStatus);
+    final sentAtLine = invoice.sentAt != null
+        ? DateFormat('d MMM y · HH:mm', l.localeName)
+            .format(invoice.sentAt!.toLocal())
+        : null;
+    final channelLabel = invoiceDeliveryChannelLabelEs(invoice.deliveryChannel);
+
+    final issueDate = invoice.issuedAtResolved ?? invoice.registeredAt;
+    final issueDateStr = issueDate != null
+        ? DateFormat('d MMM y', l.localeName).format(issueDate.toLocal())
+        : '-';
+
+    final settlement = invoice.finalSettlement;
+    final showFinalSettlement =
+        (invoice.invoiceType ?? '').toLowerCase() == 'final' &&
+            settlement != null;
+    final moneyFormat =
+        NumberFormat.currency(locale: l.localeName, symbol: 'EUR ');
+
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        // ── Total + status header ──
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: cs.primaryContainer.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: cs.primary.withValues(alpha: 0.15)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isEs ? 'Total factura' : 'Invoice total',
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      money.format(invoice.total ?? 0),
+                      style: t.titleLarge.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurface,
+                        fontSize: 22,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: _statusColor(cs, status).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: _statusColor(cs, status).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(_statusIcon(status),
+                        size: 12, color: _statusColor(cs, status)),
+                    const SizedBox(width: 4),
+                    Text(
+                      _resolveStatus(status),
+                      style: t.bodySmall.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                        color: _statusColor(cs, status),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        // ── Client + Date rows ──
+        _SummaryRow(
+          icon: Icons.person_outline_rounded,
+          label: isEs ? 'Cliente' : 'Client',
+          value: widget.client.name,
+        ),
+        _SummaryRow(
+          icon: Icons.calendar_today_rounded,
+          label: isEs ? 'Fecha' : 'Date',
+          value: issueDateStr,
+        ),
+
+        const SizedBox(height: 10),
+
+        // ── Payment section ──
+        _PaymentStatusSection(
+          invoice: invoice,
+          localeName: l.localeName,
+          onOpenPayments: invoice.isLinkedResolved ||
+                  (invoice.linkedEntryId ?? '').trim().isNotEmpty
+              ? _openBankTransactions
+              : null,
+        ),
+
+        const SizedBox(height: 10),
+
+        // ── Delivery section ──
+        _DeliverySection(
+          invoice: invoice,
+          deliveryStatus: deliveryStatus,
+          sentAtLabel: sentAtLine ?? '-',
+          channelLabel: channelLabel,
+          onOpenDelivery: widget.onOpenDeliveryRecord,
+        ),
+
+        // ── Final settlement ──
+        if (showFinalSettlement) ...[
+          const SizedBox(height: 10),
+          _DetailSection(
+            icon: Icons.account_balance_outlined,
+            iconColor: cs.secondary,
+            title: isEs ? 'Liquidación final' : 'Final settlement',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if ((settlement.advanceInvoiceNumber ?? '').trim().isNotEmpty)
+                  _DetailRow(
+                    label: isEs ? 'Factura anticipo' : 'Advance invoice',
+                    value: settlement.advanceInvoiceNumber ?? '',
+                  ),
+                if (settlement.deductedTotal != null)
+                  _DetailRow(
+                    label: isEs ? 'Total deducido' : 'Deducted total',
+                    value: moneyFormat.format(settlement.deductedTotal),
+                    bold: true,
+                  ),
+                if (settlement.remainingTotal != null)
+                  _DetailRow(
+                    label: isEs ? 'Total restante' : 'Remaining total',
+                    value: moneyFormat.format(settlement.remainingTotal),
+                    bold: true,
+                    accent: cs.primary,
+                  ),
+              ],
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 10),
+
+        // ── Invoice lines ──
+        InvoiceDetailLines(
+          loading: _loading,
+          error: _error,
+          lines: _lines,
+          onRefresh: _fetchLines,
+          subtotal: _invoice.subtotal,
+          taxTotal: _invoice.taxTotal,
+          total: _invoice.total,
+          discountAmount: _invoice.discountAmount,
+          discountPercent: _invoice.discountPercent,
         ),
       ],
     );
@@ -959,159 +1151,180 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     final role =
         currentUserId == null ? null : widget.group.userRoles[currentUserId];
     final canSend = role == 'owner' || role == 'co-admin';
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 440 ||
-            MediaQuery.textScalerOf(context).scale(14) > 20;
-        final buttonStyle = OutlinedButton.styleFrom(
-          minimumSize: const Size(0, 40),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        );
-        Widget actionLabel(IconData icon, String label) {
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+    final status = (_invoice.status ?? '').toLowerCase();
+    final showPublicLink = status == 'issued';
+    final canIssue = _invoice.isDraft &&
+        widget.onIssueInvoice != null &&
+        (currentUserId == widget.group.ownerId ||
+            role == 'owner' ||
+            role == 'admin' ||
+            role == 'co-admin');
+    final canEditDraft = _invoice.isDraft && widget.onEditInvoice != null;
+
+    final details = HexoraButton(
+      onPressed: () => _openDetailsDialog(context),
+      icon: Icons.receipt_long_outlined,
+      label: isEs ? 'Ver detalles' : 'Details',
+      variant: HexoraButtonVariant.secondary,
+    );
+    final send = HexoraButton(
+      onPressed: canSend ? () => _openSendInvoice(canSend: canSend) : null,
+      icon: Icons.mail_outline_rounded,
+      label: isEs ? 'Enviar' : 'Send',
+      variant: HexoraButtonVariant.secondary,
+      tooltip: canSend
+          ? l.invoiceSendCta
+          : (isEs
+              ? 'Solo propietarios y coadministradores pueden enviar facturas'
+              : 'Only owners and co-admins can send invoices'),
+    );
+    final edit = HexoraButton(
+      key: const ValueKey('invoice-detail-edit-draft-button'),
+      onPressed: canEditDraft ? widget.onEditInvoice : null,
+      icon: Icons.edit_outlined,
+      label: isEs ? 'Editar' : 'Edit',
+      variant: HexoraButtonVariant.secondary,
+    );
+    final overflow = PopupMenuButton<String>(
+      tooltip: isEs ? 'Más acciones' : 'More actions',
+      onOpened: () => setState(() => _previewMenuOpen = true),
+      onCanceled: () => setState(() => _previewMenuOpen = false),
+      icon: const Icon(Icons.more_horiz_rounded, size: 18),
+      style: IconButton.styleFrom(
+        fixedSize: const Size(
+            HexoraDimensions.buttonStandard, HexoraDimensions.buttonStandard),
+        minimumSize: const Size(
+            HexoraDimensions.buttonStandard, HexoraDimensions.buttonStandard),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        side: BorderSide(color: cs.outlineVariant),
+      ),
+      onSelected: (value) {
+        setState(() => _previewMenuOpen = false);
+        switch (value) {
+          case 'download':
+            _downloadPdf();
+          case 'preview':
+            _previewPdf();
+          case 'copy':
+            _copyPdfLink();
+          case 'recurrence':
+            widget.onOpenRecurringSeries?.call(_invoice.recurringSeriesId!);
+        }
+      },
+      itemBuilder: (_) => [
+        NavigationPopupMenuItem(
+          value: 'download',
+          enabled: !_downloadingPdf,
+          child: ListTile(
+            leading: const Icon(Icons.download_outlined),
+            title: Text('${l.download} PDF'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        NavigationPopupMenuItem(
+          value: 'preview',
+          enabled: !_previewing,
+          child: ListTile(
+            leading: const Icon(Icons.open_in_full_rounded),
+            title: Text(l.invoicePreviewCta),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        NavigationPopupMenuItem(
+          value: 'copy',
+          child: ListTile(
+            leading: const Icon(Icons.copy_outlined),
+            title: Text(isEs ? 'Copiar enlace PDF' : 'Copy PDF link'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        if (hasRecurrence)
+          NavigationPopupMenuItem(
+            value: 'recurrence',
+            enabled: widget.onOpenRecurringSeries != null,
+            child: ListTile(
+              leading: const Icon(Icons.repeat_rounded),
+              title: Text(recurrenceLabel),
+              subtitle: occurrenceLabel == null ? null : Text(occurrenceLabel),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        if (showPublicLink)
+          NavigationPopupMenuItem(
+            value: 'public_link',
+            enabled: false,
+            child: ListTile(
+              leading: const Icon(Icons.qr_code_2_rounded),
+              title: Text(isEs ? 'Factura digital' : 'Digital invoice'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        NavigationPopupMenuItem<String>(
+          enabled: false,
+          child: ListTile(
+            leading:
+                Icon(isLinked ? Icons.link_rounded : Icons.link_off_rounded),
+            title: Text(isLinked
+                ? '${l.statementsInvoiceAlreadyLinkedBadge} ($linkedEntriesCount)'
+                : l.statementsUnlinked),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+      ],
+    );
+
+    if (_invoice.isDraft) {
+      final draftActions = <Widget>[
+        if (canIssue)
+          HexoraButton(
+            key: const ValueKey('invoice-detail-issue-button'),
+            onPressed: _issuingInvoice ? null : _issueSelectedInvoice,
+            icon: Icons.publish_outlined,
+            label: isEs ? 'Emitir' : 'Issue',
+            loading: _issuingInvoice,
+          ),
+        if (canEditDraft) edit,
+        details,
+        send,
+      ];
+
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          const gap = 8.0;
+          if (constraints.maxWidth >= 560) {
+            return Row(
+              children: [
+                for (var index = 0; index < draftActions.length; index++) ...[
+                  if (index > 0) const SizedBox(width: gap),
+                  Expanded(child: draftActions[index]),
+                ],
+              ],
+            );
+          }
+
+          final itemWidth = (constraints.maxWidth - gap) / 2;
+          return Wrap(
+            spacing: gap,
+            runSpacing: gap,
             children: [
-              Icon(icon, size: 14),
-              const SizedBox(width: 4),
-              Flexible(child: Text(label))
+              for (final action in draftActions)
+                SizedBox(width: itemWidth, child: action),
             ],
           );
-        }
+        },
+      );
+    }
 
-        final details = FilledButton.icon(
-          onPressed: () => _openDetailsDialog(context),
-          icon: const Icon(Icons.receipt_long_outlined, size: 15),
-          label: Text(isEs ? 'Ver detalles' : 'Details'),
-          style: FilledButton.styleFrom(
-            minimumSize: const Size(0, 40),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            textStyle:
-                const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
-        final secondary = Row(
-          children: [
-            Expanded(
-              child: Tooltip(
-                message: canSend
-                    ? l.invoiceSendCta
-                    : (isEs
-                        ? 'Solo propietarios y coadministradores pueden enviar facturas'
-                        : 'Only owners and co-admins can send invoices'),
-                child: OutlinedButton(
-                  onPressed:
-                      canSend ? () => _openSendInvoice(canSend: canSend) : null,
-                  style: buttonStyle,
-                  child: actionLabel(
-                      Icons.mail_outline_rounded, isEs ? 'Enviar' : 'Send'),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: _downloadingPdf ? null : _downloadPdf,
-                style: buttonStyle,
-                child: actionLabel(
-                  _downloadingPdf
-                      ? Icons.hourglass_empty_rounded
-                      : Icons.download_outlined,
-                  l.download,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            PopupMenuButton<String>(
-              tooltip: isEs ? 'Más acciones' : 'More actions',
-              onOpened: () => setState(() => _previewMenuOpen = true),
-              onCanceled: () => setState(() => _previewMenuOpen = false),
-              icon: const Icon(Icons.more_horiz_rounded),
-              style: IconButton.styleFrom(
-                minimumSize: const Size(40, 40),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-                side: BorderSide(color: cs.outlineVariant),
-              ),
-              onSelected: (value) {
-                setState(() => _previewMenuOpen = false);
-                switch (value) {
-                  case 'preview':
-                    _previewPdf();
-                  case 'copy':
-                    _copyPdfLink();
-                  case 'recurrence':
-                    widget.onOpenRecurringSeries
-                        ?.call(_invoice.recurringSeriesId!);
-                }
-              },
-              itemBuilder: (_) => [
-                NavigationPopupMenuItem(
-                  value: 'preview',
-                  enabled: !_previewing,
-                  child: ListTile(
-                    leading: const Icon(Icons.open_in_full_rounded),
-                    title: Text(l.invoicePreviewCta),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-                NavigationPopupMenuItem(
-                  value: 'copy',
-                  child: ListTile(
-                    leading: const Icon(Icons.copy_outlined),
-                    title: Text(isEs ? 'Copiar enlace PDF' : 'Copy PDF link'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-                if (hasRecurrence)
-                  NavigationPopupMenuItem(
-                    value: 'recurrence',
-                    enabled: widget.onOpenRecurringSeries != null,
-                    child: ListTile(
-                      leading: const Icon(Icons.repeat_rounded),
-                      title: Text(recurrenceLabel),
-                      subtitle: occurrenceLabel == null
-                          ? null
-                          : Text(occurrenceLabel),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                NavigationPopupMenuItem<String>(
-                  enabled: false,
-                  child: ListTile(
-                    leading: Icon(
-                        isLinked ? Icons.link_rounded : Icons.link_off_rounded),
-                    title: Text(isLinked
-                        ? '${l.statementsInvoiceAlreadyLinkedBadge} ($linkedEntriesCount)'
-                        : l.statementsUnlinked),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        );
-        if (compact) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [details, const SizedBox(height: 8), secondary],
-          );
-        }
-        return Row(
-          children: [
-            Expanded(flex: 9, child: details),
-            const SizedBox(width: 8),
-            Expanded(flex: 11, child: secondary),
-          ],
-        );
-      },
+    return Row(
+      children: [
+        Expanded(flex: 3, child: details),
+        const SizedBox(width: 8),
+        Expanded(flex: 2, child: send),
+        const SizedBox(width: 8),
+        overflow,
+      ],
     );
   }
 }
@@ -1266,13 +1479,9 @@ class _PaymentStatusSection extends StatelessWidget {
     final method = _paymentMethodLabel(invoice.paymentMethod, isEs: isEs);
     final source = _paymentSourceLabel(invoice.paymentSource, isEs: isEs);
     final linkedCount = invoice.linkedEntriesCountSafe;
+    final linkedEntryId = (invoice.linkedEntryId ?? '').trim();
     final canOpenPayments =
-        onOpenPayments != null && (linkedCount > 0 || (!isPaid && !isPartial));
-    final actionLabel = linkedCount > 1
-        ? (isEs ? 'Ver pagos vinculados' : 'View linked payments')
-        : linkedCount == 1
-            ? (isEs ? 'Ver transacción' : 'View transaction')
-            : (isEs ? 'Buscar transacción' : 'Find transaction');
+        onOpenPayments != null && (linkedCount > 0 || linkedEntryId.isNotEmpty);
 
     return _CompactStatusSection(
       icon: isPaid
@@ -1302,13 +1511,12 @@ class _PaymentStatusSection extends StatelessWidget {
           _MetaChip(icon: Icons.source_outlined, label: source),
       ],
       action: canOpenPayments
-          ? TextButton.icon(
+          ? HexoraButton(
               onPressed: onOpenPayments,
-              icon: Icon(
-                linkedCount > 0 ? Icons.open_in_new_rounded : Icons.search,
-                size: 15,
-              ),
-              label: Text(actionLabel),
+              icon: Icons.open_in_new_rounded,
+              label: isEs ? 'Ver pago' : 'View payment',
+              variant: HexoraButtonVariant.ghost,
+              size: HexoraButtonSize.compact,
             )
           : null,
     );
@@ -1348,14 +1556,14 @@ class _DeliverySection extends StatelessWidget {
     required this.deliveryStatus,
     required this.sentAtLabel,
     required this.channelLabel,
-    this.onSendInvoice,
+    this.onOpenDelivery,
   });
 
   final Invoice invoice;
   final String deliveryStatus;
   final String sentAtLabel;
   final String channelLabel;
-  final VoidCallback? onSendInvoice;
+  final VoidCallback? onOpenDelivery;
 
   @override
   Widget build(BuildContext context) {
@@ -1373,7 +1581,9 @@ class _DeliverySection extends StatelessWidget {
             : failed
                 ? cs.error
                 : cs.onSurfaceVariant;
-    final canSend = onSendInvoice != null && (!sent && !delivered);
+    final hasDeliveryRecord =
+        invoice.sentAt != null || sent || delivered || failed;
+    final canOpenDelivery = onOpenDelivery != null && hasDeliveryRecord;
 
     return _CompactStatusSection(
       icon: delivered
@@ -1403,13 +1613,13 @@ class _DeliverySection extends StatelessWidget {
             label: invoice.deliveryError!.trim(),
           ),
       ],
-      action: canSend
-          ? TextButton.icon(
-              onPressed: onSendInvoice,
-              icon: const Icon(Icons.email_outlined, size: 15),
-              label: Text(failed
-                  ? (isEs ? 'Reintentar por email' : 'Retry by email')
-                  : (isEs ? 'Enviar por email' : 'Send by email')),
+      action: canOpenDelivery
+          ? HexoraButton(
+              onPressed: onOpenDelivery,
+              icon: Icons.open_in_new_rounded,
+              label: isEs ? 'Ver envío' : 'View delivery',
+              variant: HexoraButtonVariant.ghost,
+              size: HexoraButtonSize.compact,
             )
           : null,
     );
@@ -1440,8 +1650,8 @@ class _CompactStatusSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1539,6 +1749,51 @@ class _MetaChip extends StatelessWidget {
   }
 }
 
+class _SummaryRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _SummaryRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: cs.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: t.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          const Spacer(),
+          Flexible(
+            child: Text(
+              value,
+              style: t.bodySmall.copyWith(
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface,
+              ),
+              textAlign: TextAlign.end,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _InvoiceDetailTabs extends StatelessWidget {
   const _InvoiceDetailTabs({
     required this.selectedIndex,
@@ -1555,8 +1810,8 @@ class _InvoiceDetailTabs extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     final labels = isEs
-        ? const ['Vista previa', 'Datos', 'Líneas', 'Historial']
-        : const ['Preview', 'Details', 'Lines', 'History'];
+        ? const ['Resumen', 'Vista previa', 'Historial']
+        : const ['Summary', 'Preview', 'History'];
 
     return SizedBox(
       height: 34,

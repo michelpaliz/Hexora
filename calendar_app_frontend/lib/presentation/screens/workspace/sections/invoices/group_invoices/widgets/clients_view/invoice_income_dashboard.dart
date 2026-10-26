@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
+import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:intl/intl.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
@@ -228,9 +229,11 @@ class _InvoiceIncomeDashboardState extends State<InvoiceIncomeDashboard> {
                       child: OutlinedButton.icon(
                         onPressed: _chooseEnd,
                         style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(0, 42),
+                          minimumSize:
+                              const Size(0, HexoraDimensions.buttonStandard),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
+                              borderRadius: BorderRadius.circular(
+                                  HexoraDimensions.radius)),
                           side: BorderSide(
                               color: Theme.of(context)
                                   .colorScheme

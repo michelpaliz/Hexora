@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/services/clients/client_api.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/client_classification_store.dart';
 
 class ClientClassificationManagerDialog extends StatefulWidget {
@@ -113,12 +114,13 @@ class _ClientClassificationManagerDialogState
                 content: Text(t('Las opciones guardadas no se modificarán.',
                     'Saved options will remain unchanged.')),
                 actions: [
-                  TextButton(
+                  HexoraButton(
                       onPressed: () => Navigator.pop(context, false),
-                      child: Text(t('Seguir editando', 'Keep editing'))),
-                  FilledButton(
+                      label: t('Seguir editando', 'Keep editing'),
+                      variant: HexoraButtonVariant.ghost),
+                  HexoraButton(
                       onPressed: () => Navigator.pop(context, true),
-                      child: Text(t('Descartar', 'Discard'))),
+                      label: t('Descartar', 'Discard')),
                 ],
               ));
       if (!mounted) return;
@@ -215,10 +217,11 @@ class _ClientClassificationManagerDialogState
                                   fontSize: 12, color: cs.onSurfaceVariant)),
                     ])),
               ]);
-              final add = OutlinedButton.icon(
+              final add = HexoraButton(
                   onPressed: _saving ? null : () => _add(rows),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: Text(t('Añadir opción', 'Add option')));
+                  icon: Icons.add,
+                  label: t('Añadir opción', 'Add option'),
+                  variant: HexoraButtonVariant.secondary);
               return constraints.maxWidth < 520
                   ? Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -404,14 +407,6 @@ class _ClientClassificationManagerDialogState
               height: (MediaQuery.sizeOf(context).height * .88).clamp(0, 850),
               child: Theme(
                 data: theme.copyWith(
-                  outlinedButtonTheme: OutlinedButtonThemeData(
-                      style: OutlinedButton.styleFrom(
-                          shape: shape,
-                          side: BorderSide(color: cs.outlineVariant),
-                          minimumSize: const Size(0, 40))),
-                  filledButtonTheme: FilledButtonThemeData(
-                      style: FilledButton.styleFrom(
-                          shape: shape, minimumSize: const Size(0, 42))),
                   iconButtonTheme: IconButtonThemeData(
                       style: IconButton.styleFrom(shape: shape)),
                 ),
@@ -500,11 +495,13 @@ class _ClientClassificationManagerDialogState
                                                     if (_entities.isEmpty &&
                                                         _properties.isEmpty &&
                                                         !_dirty)
-                                                      TextButton(
+                                                      HexoraButton(
                                                           onPressed: _load,
-                                                          child: Text(t(
-                                                              'Reintentar',
-                                                              'Retry'))),
+                                                          label: t('Reintentar',
+                                                              'Retry'),
+                                                          variant:
+                                                              HexoraButtonVariant
+                                                                  .ghost),
                                                   ])))),
                                     if (_error == null ||
                                         _entities.isNotEmpty ||
@@ -554,28 +551,23 @@ class _ClientClassificationManagerDialogState
                               runSpacing: 8,
                               alignment: WrapAlignment.end,
                               children: [
-                                OutlinedButton.icon(
+                                HexoraButton(
                                     onPressed: !_loading && !_saving && _dirty
                                         ? () => setState(_resetDraft)
                                         : null,
-                                    icon:
-                                        const Icon(Icons.restart_alt, size: 18),
-                                    label: Text(t('Restablecer', 'Reset'))),
-                                TextButton(
+                                    icon: Icons.restart_alt,
+                                    label: t('Restablecer', 'Reset'),
+                                    variant: HexoraButtonVariant.secondary),
+                                HexoraButton(
                                     onPressed: _saving ? null : _close,
-                                    child: Text(t('Cancelar', 'Cancel'))),
-                                FilledButton(
+                                    label: t('Cancelar', 'Cancel'),
+                                    variant: HexoraButtonVariant.ghost),
+                                HexoraButton(
                                     onPressed: !_loading && !_saving && _dirty
                                         ? _save
                                         : null,
-                                    child: _saving
-                                        ? const SizedBox(
-                                            width: 18,
-                                            height: 18,
-                                            child: CircularProgressIndicator(
-                                                strokeWidth: 2))
-                                        : Text(t('Guardar cambios',
-                                            'Save changes'))),
+                                    label: t('Guardar cambios', 'Save changes'),
+                                    loading: _saving),
                               ]))),
                 ]),
               )),

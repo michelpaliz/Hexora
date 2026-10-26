@@ -5,6 +5,7 @@ extension _InvoiceColumnFilters on _InvoicesTabListState {
         CompactDocumentColumn.identity => _InvoiceColumnSort.number,
         CompactDocumentColumn.client => _InvoiceColumnSort.client,
         CompactDocumentColumn.status => _InvoiceColumnSort.status,
+        CompactDocumentColumn.delivery => _InvoiceColumnSort.delivery,
         CompactDocumentColumn.payment => _InvoiceColumnSort.payment,
         CompactDocumentColumn.date => _InvoiceColumnSort.date,
         CompactDocumentColumn.taxableBase => _InvoiceColumnSort.taxableBase,
@@ -16,6 +17,7 @@ extension _InvoiceColumnFilters on _InvoicesTabListState {
         CompactDocumentColumn.identity => _invoiceNumberQuery.isNotEmpty,
         CompactDocumentColumn.client => _selectedClientNames.isNotEmpty,
         CompactDocumentColumn.status => _selectedLifecycleStatuses.isNotEmpty,
+        CompactDocumentColumn.delivery => _selectedDeliveryStatuses.isNotEmpty,
         CompactDocumentColumn.payment => _selectedPaymentStatuses.isNotEmpty,
         CompactDocumentColumn.date => _fromDate != null || _toDate != null,
         CompactDocumentColumn.taxableBase => _baseRange.active,
@@ -43,6 +45,7 @@ extension _InvoiceColumnFilters on _InvoicesTabListState {
       width: width,
       numeric: numeric,
       centered: column == CompactDocumentColumn.status ||
+          column == CompactDocumentColumn.delivery ||
           column == CompactDocumentColumn.payment,
       filterActive: _filterActiveFor(column),
       sortDirection: _sortDirectionFor(column),
@@ -146,6 +149,18 @@ extension _InvoiceColumnFilters on _InvoicesTabListState {
               labelFor: _lifecycleLabel,
               onChanged: (value) => _updateInvoiceListState(
                   () => _selectedLifecycleStatuses = value),
+            ),
+          if (column == CompactDocumentColumn.delivery)
+            _selectionList(
+              context,
+              values: {
+                for (final invoice in invoices)
+                  normalizeDeliveryStatus(invoice.deliveryStatus)
+              }.toList(),
+              selected: _selectedDeliveryStatuses,
+              labelFor: (value) => invoiceDeliveryViewData(value).labelEs,
+              onChanged: (value) => _updateInvoiceListState(
+                  () => _selectedDeliveryStatuses = value),
             ),
           if (column == CompactDocumentColumn.payment)
             _selectionList(
@@ -309,6 +324,8 @@ extension _InvoiceColumnFilters on _InvoicesTabListState {
           _selectedClientNames = {};
         case CompactDocumentColumn.status:
           _selectedLifecycleStatuses = {};
+        case CompactDocumentColumn.delivery:
+          _selectedDeliveryStatuses = {};
         case CompactDocumentColumn.payment:
           _selectedPaymentStatuses = {};
         case CompactDocumentColumn.date:

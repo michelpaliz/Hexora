@@ -7915,6 +7915,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupSettingsDeleteGroup => 'Delete business';
 
   @override
+  String invoiceIssueChronologyError(
+      Object draftDate, Object invoiceNumber, Object issuedDate) {
+    return 'This draft is dated $draftDate, but invoice $invoiceNumber was already issued with the later date $issuedDate. Change the draft date before issuing it.';
+  }
+
+  @override
+  String invoiceBatchIssueStoppedAfter(Object count) {
+    return '$count invoices were issued before the process stopped.';
+  }
+
+  @override
   String get agendaCompleted => 'Completed';
 
   @override

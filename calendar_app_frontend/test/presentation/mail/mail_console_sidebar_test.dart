@@ -13,6 +13,7 @@ import 'package:hexora/services/mail/repository/i_mail_repository.dart';
 import 'package:hexora/presentation/screens/workspace/sections/mail/mail_console_screen.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -55,6 +56,20 @@ void main() {
         find.byKey(const ValueKey('mail-desktop-more-action')), findsOneWidget);
     expect(find.byKey(const ValueKey('mail-list-filter-3')), findsOneWidget);
     expect(find.text('Select an email to read it'), findsOneWidget);
+    final header = tester.widget<Container>(
+      find.byKey(const ValueKey('mail-desktop-header-surface')),
+    );
+    expect(
+      (header.decoration! as BoxDecoration).color,
+      AppDarkColors.sidebar,
+    );
+    final listSurface = find.byKey(
+      const ValueKey('mail-desktop-list-surface'),
+    );
+    final listBackground = tester.widget<ColoredBox>(
+      find.descendant(of: listSurface, matching: find.byType(ColoredBox)).first,
+    );
+    expect(listBackground.color, AppDarkColors.sidebar);
 
     await tester.tap(find.text('Mail'));
     await tester.pumpAndSettle();
@@ -67,6 +82,36 @@ void main() {
     ]) {
       expect(find.text(label), findsOneWidget);
     }
+  });
+
+  testWidgets('desktop compose removes the mail section header',
+      (tester) async {
+    await _setSurfaceSize(tester, const Size(1200, 800));
+    final repository = _FakeMailRepository();
+
+    await tester.pumpWidget(
+      _mailApp(
+        repository: repository,
+        home: const MailConsoleScreen(embedded: true),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+
+    await tester.tap(
+      find.byKey(const ValueKey('mail-desktop-compose-action')),
+    );
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('mail-desktop-compose-action')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('mail-desktop-more-action')),
+      findsNothing,
+    );
+    expect(find.text('Compose'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('mobile Email drawer closes after selecting a folder',

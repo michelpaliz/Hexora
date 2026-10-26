@@ -11,6 +11,7 @@ import 'package:hexora/services/invoicing/invoice_lines_api.dart';
 import 'package:hexora/services/shared/content_disposition.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/invoice_delivery_utils.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -29,6 +30,7 @@ class InvoiceListItem extends StatefulWidget {
   final bool monthWarning;
   final String? monthWarningLabel;
   final String? monthWarningTooltip;
+  final String? dateWarningTooltip;
   final bool selected;
   final bool mobile;
   final Set<HexoraFinancialColumn> visibleFinancialColumns;
@@ -52,6 +54,7 @@ class InvoiceListItem extends StatefulWidget {
     this.monthWarning = false,
     this.monthWarningLabel,
     this.monthWarningTooltip,
+    this.dateWarningTooltip,
     this.selected = false,
     this.mobile = false,
     this.showClient = true,
@@ -98,7 +101,6 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     }
   }
 
-  bool _detailsExpanded = false;
   int? _lineCount;
   num? _subtotal;
   num? _taxTotal;
@@ -236,20 +238,11 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
           trailing: PopupMenuButton<String>(
             tooltip: isEs ? 'Más acciones' : 'More actions',
             onSelected: (value) {
-              if (value == 'details') {
-                setState(() => _detailsExpanded = !_detailsExpanded);
-              }
               if (value == 'edit') widget.onEdit?.call();
               if (value == 'download') _downloadPdf();
               if (value == 'delete') widget.onDelete?.call();
             },
             itemBuilder: (_) => [
-              NavigationPopupMenuItem(
-                value: 'details',
-                child: Text(_detailsExpanded
-                    ? (isEs ? 'Ocultar seguimiento' : 'Hide delivery tracking')
-                    : (isEs ? 'Seguimiento de entrega' : 'Delivery tracking')),
-              ),
               if (widget.onEdit != null)
                 NavigationPopupMenuItem(
                   value: 'edit',
@@ -275,11 +268,6 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
             ],
           ),
         ),
-        if (_detailsExpanded)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-            child: _InvoiceDeliveryTracking(invoice: inv),
-          ),
       ],
     );
   }
@@ -298,6 +286,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
         ? ''
         : DateFormat.yMMMd(l.localeName).format(date.toLocal());
 
+    // ignore: unused_local_variable
     final linesCountLabel =
         _lineCount?.toString() ?? (_loadingMeta ? '…' : '-');
     final money = NumberFormat.currency(locale: l.localeName, symbol: '€');
@@ -322,6 +311,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
         (widget.invoice.status ?? '').toLowerCase().contains('issue');
     final isLinked = widget.invoice.isLinkedResolved;
     final invoiceType = (widget.invoice.invoiceType ?? '').trim().toLowerCase();
+    // ignore: unused_local_variable
     final showInvoiceType = invoiceType == 'advance' || invoiceType == 'final';
     final isEs = l.localeName.toLowerCase().startsWith('es');
     final showsAdvanceDeduction =
@@ -368,6 +358,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                 : HexoraDocumentStatus.draft;
     final backendLinkStatusLabel =
         (widget.invoice.linkStatusLabel ?? '').trim();
+    // ignore: unused_local_variable
     final linkTooltip = backendLinkStatusLabel.isNotEmpty
         ? backendLinkStatusLabel
         : (isLinked
@@ -383,6 +374,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     final amber = isLight ? const Color(0xFF9A5B00) : const Color(0xFFFFC247);
 
     // Subtotal/IVA tooltip string
+    // ignore: unused_local_variable
     String? breakdownTooltip;
     if (_subtotal != null || _taxTotal != null) {
       final parts = <String>[];
@@ -413,13 +405,40 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       'unpaid' => cs.onSurfaceVariant,
       _ => cs.onSurfaceVariant,
     };
-    final secondaryStates = [
-      linkTooltip,
-      if (showInvoiceType)
-        invoiceType == 'advance'
-            ? (isEs ? 'Factura de anticipo' : 'Advance invoice')
-            : (isEs ? 'Factura final' : 'Final invoice'),
-    ];
+    final deliveryData = invoiceDeliveryViewData(widget.invoice.deliveryStatus);
+    final deliveryColor = invoiceDeliveryColor(cs, deliveryData.visual);
+    final delivery = Tooltip(
+      message: deliveryData.labelEs,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            deliveryData.status == 'delivered'
+                ? Icons.done_all_rounded
+                : deliveryData.status == 'sent'
+                    ? Icons.send_rounded
+                    : deliveryData.status == 'failed'
+                        ? Icons.error_outline_rounded
+                        : Icons.schedule_send_outlined,
+            size: 16,
+            color: deliveryColor,
+          ),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              deliveryData.labelEs,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.bodySmall.copyWith(
+                fontSize: 11.5,
+                color: deliveryColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
     final warningTooltip = [
       if (warning) warningText(widget.warningLabel),
       if (monthWarning)
@@ -437,6 +456,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       metadata: widget.showClient ? widget.client.name : '',
       amount: totalLabel,
       date: date,
+      dateWarningTooltip: widget.dateWarningTooltip,
       payment: Tooltip(
         message: paymentStatus.isEmpty
             ? (isEs
@@ -478,12 +498,11 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
           ),
         ),
         const SizedBox(width: 4),
-        Tooltip(
-          message: secondaryStates.join('\n'),
-          child: Icon(Icons.info_outline_rounded,
-              size: 16, color: cs.onSurfaceVariant),
-        ),
       ]),
+      delivery: delivery,
+      showDeliveryColumn: true,
+      compactSplitLayout: documentStatus == HexoraDocumentStatus.draft,
+      compactTitle: isEs ? 'Factura' : 'Invoice',
       actions: [
         if (widget.onEdit != null)
           CompactDocumentAction(
@@ -496,12 +515,6 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
           _downloadingPdf ? null : _downloadPdf,
           icon: Icons.download_rounded,
         ),
-        CompactDocumentAction(
-            _detailsExpanded
-                ? (isEs ? 'Ocultar seguimiento' : 'Hide delivery tracking')
-                : (isEs ? 'Seguimiento de entrega' : 'Delivery tracking'),
-            () => setState(() => _detailsExpanded = !_detailsExpanded),
-            icon: Icons.local_shipping_outlined),
         if (widget.onIssue != null)
           CompactDocumentAction(l.invoiceIssueCta, widget.onIssue),
         if (widget.onInspectRecurrence != null)
@@ -511,7 +524,8 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
           CompactDocumentAction(l.delete, widget.onDelete,
               destructive: true, icon: Icons.delete_outline_rounded),
       ],
-      details: !_detailsExpanded
+      details: null,
+      /* details: !_detailsExpanded
           ? null
           : Align(
               alignment: AlignmentDirectional.centerStart,
@@ -534,11 +548,12 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                   const SizedBox(height: 8),
                   _InvoiceDeliveryTracking(invoice: widget.invoice),
                 ],
-              )),
+              )), */
     );
   }
 }
 
+// ignore: unused_element
 class _InvoiceDeliveryTracking extends StatelessWidget {
   const _InvoiceDeliveryTracking({required this.invoice});
 

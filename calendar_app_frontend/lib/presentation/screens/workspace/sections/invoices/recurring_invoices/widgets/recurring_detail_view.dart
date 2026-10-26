@@ -669,6 +669,14 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
     try {
       await widget.api.update(id, payload);
       await widget.onUpdated();
+      if (!mounted) return;
+      final locale = Localizations.localeOf(context).languageCode;
+      final successText = locale.toLowerCase().startsWith('es')
+          ? 'Plantilla guardada'
+          : 'Template saved';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(successText)),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -1079,7 +1087,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
         title: l.recurringInvoicesTitle,
         onBack: widget.onBack,
         showTab: true,
-        contentTopPadding: 56,
+        contentTopPadding: 0,
         actions: [
           _RecurringDetailActionBar(
             status: status,
@@ -1111,42 +1119,42 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                         child: TabBar(
-                          labelColor: cs.onPrimaryContainer,
+                          labelColor: cs.primary,
                           unselectedLabelColor: cs.onSurfaceVariant,
                           labelStyle: t.bodySmall.copyWith(
                               fontWeight: FontWeight.w800, fontSize: 13),
                           unselectedLabelStyle:
                               t.bodySmall.copyWith(fontSize: 13),
-                          indicator: BoxDecoration(
-                            color: cs.primaryContainer,
-                            borderRadius: BorderRadius.circular(999),
+                          indicator: UnderlineTabIndicator(
+                            borderSide: BorderSide(color: cs.primary, width: 2),
+                            insets: const EdgeInsets.symmetric(horizontal: 18),
                           ),
                           indicatorSize: TabBarIndicatorSize.tab,
                           labelPadding:
-                              const EdgeInsets.symmetric(horizontal: 24),
+                              const EdgeInsets.symmetric(horizontal: 12),
                           dividerColor:
                               cs.outlineVariant.withValues(alpha: 0.4),
                           tabs: [
                             Tab(
-                              height: 40,
+                              height: 36,
                               text: l.recurringInvoicesRuleTab,
                             ),
                             Tab(
-                              height: 40,
+                              height: 36,
                               text: l.recurringInvoicesTemplateTab,
                             ),
                             Tab(
-                              height: 40,
+                              height: 36,
                               text: l.recurringInvoicesGeneratedTab,
                             ),
                             Tab(
-                              height: 40,
+                              height: 36,
                               text: l.recurringInvoicesActivityTab,
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 4),
                       Expanded(
                         child: TabBarView(
                           children: [

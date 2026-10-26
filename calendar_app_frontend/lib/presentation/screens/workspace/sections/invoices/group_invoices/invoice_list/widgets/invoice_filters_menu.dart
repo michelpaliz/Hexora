@@ -1,5 +1,6 @@
 part of '../../widgets/group_invoices_invoices_view.dart';
 
+// ignore: unused_element
 class _InvoiceFiltersMenu extends StatelessWidget {
   const _InvoiceFiltersMenu({
     required this.sortActions,

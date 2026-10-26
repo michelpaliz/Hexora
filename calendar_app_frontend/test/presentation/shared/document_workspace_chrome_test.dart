@@ -103,7 +103,13 @@ void main() {
           body: DocumentSplitView(
             storageKey: 'workspace-control-test',
             selectionKey: 'selected-document',
-            list: Text('Document list'),
+            list: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DocumentLayoutSelector(),
+                Text('Document list'),
+              ],
+            ),
             preview: Text('Document preview'),
           ),
         ),
@@ -111,17 +117,17 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byTooltip('List only'), findsOneWidget);
-    expect(find.byTooltip('Split view'), findsOneWidget);
+    expect(find.byTooltip('Compact layout'), findsOneWidget);
+    expect(find.byTooltip('Extended layout'), findsOneWidget);
     expect(find.text('Document list'), findsOneWidget);
     expect(find.text('Document preview'), findsNothing);
 
-    await tester.tap(find.byTooltip('List only'));
+    await tester.tap(find.byTooltip('Compact layout'));
     await tester.pump();
     expect(find.text('Document list'), findsOneWidget);
     expect(find.text('Document preview'), findsNothing);
 
-    await tester.tap(find.byTooltip('Split view'));
+    await tester.tap(find.byTooltip('Extended layout'));
     await tester.pump();
     expect(find.text('Document list'), findsOneWidget);
     expect(find.text('Document preview'), findsOneWidget);
@@ -146,20 +152,23 @@ void main() {
             storageKey: 'preview-drawer-test',
             modeNotifier: mode,
             selectionKey: selected,
-            list: CompactDocumentRow(
-              title: 'F2026-028',
-              metadata: 'Arjen',
-              amount: '300,00 €',
-              previewLabel: 'Vista previa',
-              quickActionSlots: 1,
-              quickActions: [
-                CompactDocumentQuickAction(
-                  icon: Icons.visibility_outlined,
-                  tooltip: 'Vista previa',
-                  opensPreviewDrawer: true,
-                  onPressed: () => setState(() => selected = 'invoice-28'),
-                ),
-              ],
+            list: _ListWithLayoutSelector(
+              child: CompactDocumentRow(
+                title: 'F2026-028',
+                metadata: 'Arjen',
+                amount: '300,00 €',
+                previewLabel: 'Vista previa',
+                quickActionSlots: 1,
+                actions: [CompactDocumentAction('More', () {})],
+                quickActions: [
+                  CompactDocumentQuickAction(
+                    icon: Icons.visibility_outlined,
+                    tooltip: 'Vista previa',
+                    opensPreviewDrawer: true,
+                    onPressed: () => setState(() => selected = 'invoice-28'),
+                  ),
+                ],
+              ),
             ),
             preview: const Text('PDF preview'),
           ),
@@ -168,7 +177,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('List only'));
+    await tester.tap(find.byTooltip('Compact layout'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Vista previa'));
     await tester.pumpAndSettle();
@@ -181,9 +190,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(drawer, findsNothing);
 
-    await tester.tap(find.byTooltip('Split view'));
+    await tester.tap(find.byTooltip('Extended layout'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Vista previa'), findsNothing);
     expect(find.text('PDF preview'), findsOneWidget);
   });
+}
+
+class _ListWithLayoutSelector extends StatelessWidget {
+  const _ListWithLayoutSelector({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const DocumentLayoutSelector(),
+          child,
+        ],
+      );
 }

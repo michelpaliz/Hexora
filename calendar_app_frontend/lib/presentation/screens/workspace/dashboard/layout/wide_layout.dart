@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/navigation/shell/hexora_app_shell.dart';
 import 'package:hexora/navigation/shell/hexora_global_nav_bar.dart';
 import 'package:hexora/navigation/shell/hexora_nav_components.dart';
+import 'package:hexora/navigation/shell/worker_status_indicator.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
@@ -301,6 +302,7 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
         .notifications
         .where((n) => n.groupId == state.group.id && !n.isRead)
         .length;
+    final memberIds = {...state.group.userIds, state.group.ownerId}..remove('');
 
     return HexoraGlobalNavBar(
       destinations: _dashboardDestinations(l, canSeeAdmin: state.canSeeAdmin),
@@ -312,12 +314,25 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
       groupSwitcher: _GroupSwitcherChip(
         activeGroup: state.group,
         userId: user?.id ?? '',
+        onOpenGroupSettings: () => state.openSection(Sections.settings),
       ),
       compact: _compact,
       onToggleCompact: _toggleCompact,
       notificationCount: unreadNotifications,
       notificationsSelected: state.activeSection == Sections.notifications,
       onOpenNotifications: () => state.openSection(Sections.notifications),
+      onlineMembers: WorkerStatusIndicator(
+        groupId: state.group.id,
+        memberIds: memberIds.toList(),
+        groupRoles: state.group.userRoles,
+        onOpenWorkers: () {
+          Navigator.pushNamed(
+            context,
+            AppRoutes.groupTimeTracking,
+            arguments: state.group,
+          );
+        },
+      ),
       profile: UserProfilePopup(
         user: user,
         onSettings: () => state.openSection('settings'),
@@ -361,10 +376,12 @@ class _GroupSwitcherChip extends StatelessWidget {
   const _GroupSwitcherChip({
     required this.activeGroup,
     required this.userId,
+    required this.onOpenGroupSettings,
   });
 
   final Group activeGroup;
   final String userId;
+  final VoidCallback onOpenGroupSettings;
 
   static const double _nameBreakpoint = 1100;
   static const double _chipMaxNameWidth = 140.0;
@@ -426,22 +443,25 @@ class _GroupSwitcherChip extends StatelessWidget {
           : const Stream.empty(),
       builder: (context, snap) {
         final groups = snap.data ?? [activeGroup];
+        final cs = Theme.of(context).colorScheme;
 
         return MenuAnchor(
           alignmentOffset: const Offset(0, 6),
+          style: hexoraDropdownMenuStyle(),
           menuChildren: [
             for (final g in groups)
               MenuItemButton(
+                style: MenuItemButton.styleFrom(
+                  backgroundColor: g.id == activeGroup.id
+                      ? cs.primary.withValues(alpha: 0.10)
+                      : null,
+                ),
                 leadingIcon: _avatar(g, 20),
                 trailingIcon: g.id == activeGroup.id
-                    ? Icon(
-                        Icons.check_rounded,
-                        size: NavigationTokens.iconSize,
-                        color: Theme.of(context).colorScheme.primary,
-                      )
+                    ? Icon(Icons.check_rounded, size: 16, color: cs.primary)
                     : null,
                 onPressed: g.id == activeGroup.id
-                    ? null
+                    ? () {}
                     : () {
                         groupDomain.currentGroup = g;
                         Navigator.of(context).pushNamed(
@@ -449,8 +469,9 @@ class _GroupSwitcherChip extends StatelessWidget {
                           arguments: g,
                         );
                       },
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 220),
+                child: Tooltip(
+                  message: g.name,
+                  waitDuration: const Duration(milliseconds: 500),
                   child: Text(
                     g.name,
                     maxLines: 1,
@@ -461,49 +482,71 @@ class _GroupSwitcherChip extends StatelessWidget {
               ),
           ],
           builder: (context, controller, _) {
-            final tooltipMsg = showName
-                ? (es ? 'Cambiar espacio de trabajo' : 'Switch workspace')
-                : activeGroup.name;
-            return Tooltip(
-              message: tooltipMsg,
-              waitDuration: const Duration(milliseconds: 350),
-              child: HexoraNavTile(
-                selected: false,
-                semanticLabel: activeGroup.name,
-                tooltip: null,
-                padding: showName
-                    ? const EdgeInsets.symmetric(
-                        horizontal: NavigationTokens.globalItemPadding,
-                      )
-                    : const EdgeInsets.symmetric(horizontal: 4),
-                onTap: () =>
-                    controller.isOpen ? controller.close() : controller.open(),
-                builder: (context, fg) => Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _avatar(activeGroup, 24),
-                    if (showName) ...[
-                      const SizedBox(width: 8),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          maxWidth: _chipMaxNameWidth,
-                        ),
-                        child: Text(
-                          activeGroup.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: NavigationTokens.label(context).copyWith(
-                            color: fg,
-                            fontWeight: FontWeight.w600,
-                          ),
+            void switchWorkspace() {
+              if (controller.isOpen) {
+                controller.close();
+              } else {
+                controller.open();
+              }
+            }
+
+            final switchLabel =
+                es ? 'Cambiar espacio de trabajo' : 'Switch workspace';
+            final settingsLabel = es ? 'Configurar grupo' : 'Configure group';
+
+            // Keep the two actions separate: the avatar opens the workspace
+            // picker, while the group name takes the user to its settings.
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                HexoraNavTile(
+                  selected: false,
+                  semanticLabel: switchLabel,
+                  tooltip: switchLabel,
+                  minWidth: 32,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  onTap: switchWorkspace,
+                  builder: (context, fg) => _avatar(activeGroup, 24),
+                ),
+                if (showName) ...[
+                  const SizedBox(width: 2),
+                  HexoraNavTile(
+                    selected: false,
+                    semanticLabel: settingsLabel,
+                    tooltip: settingsLabel,
+                    minWidth: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    onTap: onOpenGroupSettings,
+                    builder: (context, fg) => ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: _chipMaxNameWidth,
+                      ),
+                      child: Text(
+                        activeGroup.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: NavigationTokens.label(context).copyWith(
+                          color: fg,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      Icon(Icons.expand_more_rounded, size: 14, color: fg),
-                    ],
-                  ],
-                ),
-              ),
+                    ),
+                  ),
+                  HexoraNavTile(
+                    selected: false,
+                    semanticLabel: switchLabel,
+                    tooltip: switchLabel,
+                    minWidth: 24,
+                    padding: EdgeInsets.zero,
+                    onTap: switchWorkspace,
+                    builder: (context, fg) => Icon(
+                      Icons.expand_more_rounded,
+                      size: 14,
+                      color: fg,
+                    ),
+                  ),
+                ],
+              ],
             );
           },
         );

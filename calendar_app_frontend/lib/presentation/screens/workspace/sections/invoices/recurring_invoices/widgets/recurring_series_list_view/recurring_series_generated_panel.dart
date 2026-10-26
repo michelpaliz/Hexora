@@ -213,7 +213,6 @@ class _RecurringSeriesGeneratedPanelState
               onReload: _loadGenerated,
               hasRequested: _hasRequested,
               count: _count,
-              onOpenInvoice: (_) {},
               onDownloadPdf: _downloadInvoicePdf,
               onLoadInvoiceDetails: _loadInvoiceDetails,
               onLoadInvoicePreviewBytes: _loadInvoicePreviewBytes,

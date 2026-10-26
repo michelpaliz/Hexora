@@ -876,31 +876,26 @@ class _InvoiceEditorView extends StatelessWidget {
                         ),
                         back: currentEditorStep == 0
                             ? null
-                            : OutlinedButton.icon(
+                            : HexoraButton(
                                 onPressed: () {
                                   final previous = currentEditorStep - 1;
                                   state._c.setCurrentStepIndex(previous);
                                   state._tabController.animateTo(previous);
                                 },
-                                icon: const Icon(Icons.arrow_back_rounded,
-                                    size: 17),
-                                label: Text(l.back),
+                                icon: Icons.arrow_back_rounded,
+                                label: l.back,
+                                variant: HexoraButtonVariant.secondary,
                               ),
-                        primary: FilledButton.icon(
+                        primary: HexoraButton(
                           onPressed: canContinue ? continueEditor : null,
-                          icon: Icon(
-                            currentEditorStep == 3
-                                ? Icons.save_outlined
-                                : Icons.arrow_forward_rounded,
-                            size: 17,
-                          ),
-                          label: Text(
-                            currentEditorStep == 3
-                                ? l.invoiceSaveDraftCta
-                                : (l.localeName.startsWith('es')
-                                    ? 'Continuar'
-                                    : 'Continue'),
-                          ),
+                          icon: currentEditorStep == 3
+                              ? Icons.save_outlined
+                              : Icons.arrow_forward_rounded,
+                          label: currentEditorStep == 3
+                              ? l.invoiceSaveDraftCta
+                              : (l.localeName.startsWith('es')
+                                  ? 'Continuar'
+                                  : 'Continue'),
                         ),
                       ),
                     ],
@@ -1031,12 +1026,11 @@ class _InvoiceEditorView extends StatelessWidget {
             ),
             if (state._c.editingIssued) ...[
               const SizedBox(height: 10),
-              OutlinedButton.icon(
+              HexoraButton(
                 onPressed: () => _editIssuedBillingDetails(context, state),
-                icon: const Icon(Icons.badge_outlined, size: 18),
-                label: Text(
-                  isEs ? 'Editar datos fiscales' : 'Edit billing details',
-                ),
+                icon: Icons.badge_outlined,
+                label: isEs ? 'Editar datos fiscales' : 'Edit billing details',
+                variant: HexoraButtonVariant.secondary,
               ),
             ],
           ],

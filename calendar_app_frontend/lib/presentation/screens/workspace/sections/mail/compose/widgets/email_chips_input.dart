@@ -76,6 +76,7 @@ class _EmailChipsInputState extends State<_EmailChipsInput> {
     final compact = MediaQuery.sizeOf(context).width < 600;
     final inputStyle = t.bodySmall.copyWith(color: cs.onSurface);
     return Container(
+      key: const ValueKey('mail-compose-email-chips-input'),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
       decoration: BoxDecoration(
         color: widget.decoration.fillColor ?? cs.surface,

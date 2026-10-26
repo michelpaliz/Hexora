@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -48,16 +49,12 @@ class BillingProfileCard extends StatelessWidget {
                       : cs.onSurfaceVariant,
                 ),
                 const SizedBox(width: 8),
-                TextButton.icon(
-                  onPressed: busy ? null : onEdit,
-                  icon: busy
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.edit_outlined),
-                  label: Text(l.edit),
+                HexoraButton(
+                  onPressed: onEdit,
+                  icon: Icons.edit_outlined,
+                  label: l.edit,
+                  variant: HexoraButtonVariant.ghost,
+                  loading: busy,
                 ),
               ],
             ),

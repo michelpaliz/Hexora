@@ -13,6 +13,7 @@ import 'package:hexora/presentation/screens/calendar/screens/calendar/screen/mai
 import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -222,6 +223,7 @@ class GroupDashboardState extends ChangeNotifier {
     final theme = Theme.of(context);
     final topBarColor = backdrop;
     final onTopBar = theme.colorScheme.onSurface;
+    final iconButtonStyle = ThemedButtons.iconAction(context);
 
     final ma =
         (!isWide && activeSection == Sections.emails) ? _mailBarActions : null;
@@ -235,6 +237,7 @@ class GroupDashboardState extends ChangeNotifier {
         actionsIconTheme: IconThemeData(color: onTopBar),
         // Back arrow: detail view → back to thread list; list view → back to dashboard
         leading: IconButton(
+          style: iconButtonStyle,
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           onPressed: ma.isDetailView
@@ -258,6 +261,7 @@ class GroupDashboardState extends ChangeNotifier {
           if (!ma.isDetailView) ...[
             if (ma.onRefresh != null)
               IconButton(
+                style: iconButtonStyle,
                 icon: const Icon(Icons.refresh_rounded),
                 tooltip: l.refreshAction,
                 onPressed: ma.onRefresh,
@@ -265,6 +269,7 @@ class GroupDashboardState extends ChangeNotifier {
             // Hamburger moved to right side
             if (ma.onOpenFolderMenu != null)
               IconButton(
+                style: iconButtonStyle,
                 icon: const Icon(Icons.menu_rounded),
                 tooltip: l.mailConsoleFoldersTitle,
                 onPressed: ma.onOpenFolderMenu,
@@ -273,6 +278,7 @@ class GroupDashboardState extends ChangeNotifier {
           if (ma.isDetailView) ...[
             if (ma.onToggleRead != null)
               IconButton(
+                style: iconButtonStyle,
                 icon: Icon(
                   ma.hasUnread == true
                       ? Icons.mark_email_read_outlined
@@ -341,6 +347,7 @@ class GroupDashboardState extends ChangeNotifier {
       leading: isWide
           ? const SizedBox.shrink()
           : IconButton(
+              style: iconButtonStyle,
               icon: const Icon(Icons.arrow_back_ios_new_rounded),
               tooltip: MaterialLocalizations.of(context).backButtonTooltip,
               onPressed: () => Navigator.of(context).maybePop(),
@@ -360,12 +367,14 @@ class GroupDashboardState extends ChangeNotifier {
       actions: [
         if (!isWide)
           IconButton(
+            style: iconButtonStyle,
             tooltip: l.groupNotificationsSectionTitle,
             icon: const Icon(Icons.notifications_none_rounded),
             onPressed: () => openSection(Sections.notifications),
           ),
         if (!isWide && canSeeAdmin)
           IconButton(
+            style: iconButtonStyle,
             tooltip: l.groupSettingsTitle,
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => openSection(Sections.settings),

@@ -10,6 +10,7 @@ class RecurringSeriesCard extends StatefulWidget {
   final Map<String, dynamic> series;
   final Map<String, String> clientNamesById;
   final ValueChanged<Map<String, dynamic>> onOpen;
+  final ValueChanged<Map<String, dynamic>> onEdit;
   final ValueChanged<Map<String, dynamic>> onPreview;
   final ValueChanged<Map<String, dynamic>>? onPause;
   final ValueChanged<Map<String, dynamic>>? onResume;
@@ -23,6 +24,7 @@ class RecurringSeriesCard extends StatefulWidget {
     required this.series,
     required this.clientNamesById,
     required this.onOpen,
+    required this.onEdit,
     required this.onPreview,
     required this.onPause,
     required this.onResume,
@@ -421,19 +423,22 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
                           // Edit button
                           if (widget.canManage) ...[
                             const SizedBox(width: 4),
-                            Tooltip(
-                              message: l.edit,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(8),
-                                onTap: () => widget.onOpen(series),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(6),
-                                  child: Icon(
-                                    Icons.edit_outlined,
-                                    size: 16,
-                                    color: cs.onSurfaceVariant
-                                        .withValues(alpha: 0.7),
-                                  ),
+                            IconButton(
+                              key: ValueKey(
+                                  'edit-recurring-${seriesId(series)}'),
+                              tooltip: l.edit,
+                              onPressed: () => widget.onEdit(series),
+                              icon: const Icon(Icons.edit_outlined, size: 16),
+                              color: cs.onSurfaceVariant,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints.tightFor(
+                                width: 32,
+                                height: 32,
+                              ),
+                              style: IconButton.styleFrom(
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
                             ),

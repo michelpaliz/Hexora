@@ -862,6 +862,40 @@ class ExpensesApi {
     return _getMap(uri);
   }
 
+  Future<List<Map<String, dynamic>>> listBatchExpensePreviewJobs(
+      String groupId) async {
+    final trimmedGroupId = groupId.trim();
+    if (trimmedGroupId.isEmpty) return const [];
+    final uri = _u('/import-json-batch/preview/jobs', {
+      'groupId': trimmedGroupId,
+    });
+    final payload = await _getMap(uri);
+    return (payload['jobs'] as List? ?? const [])
+        .whereType<Map>()
+        .map((job) => Map<String, dynamic>.from(job))
+        .toList(growable: false);
+  }
+
+  Future<Map<String, dynamic>> listExpenseImportHistory(
+    String groupId, {
+    int page = 1,
+    int limit = 20,
+  }) =>
+      _getMap(_u('/import-json-batch/preview/history', {
+        'groupId': groupId,
+        'page': '$page',
+        'limit': '$limit',
+      }));
+
+  Future<Map<String, dynamic>> getExpenseImportHistory(
+    String groupId,
+    String jobId,
+  ) =>
+      _getMap(_u(
+          '/import-json-batch/preview/history/${Uri.encodeComponent(jobId)}', {
+        'groupId': groupId,
+      }));
+
   Future<Map<String, dynamic>> getBatchExpensePreviewJobStatus(
       String jobId) async {
     final trimmedJobId = jobId.trim();

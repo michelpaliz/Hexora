@@ -10,6 +10,7 @@ import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/invoicing/invoice_lines_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/invoice_editor_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/billing_profile_sheet/billing_profile_sheet.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/invoice_issue_error_message.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/add_client_sheet.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -311,7 +312,6 @@ class GroupInvoicesController extends ChangeNotifier {
     if (draftIds.isEmpty) return;
 
     final l = AppLocalizations.of(context)!;
-    final isSpanish = l.localeName.toLowerCase().startsWith('es');
     try {
       final result = await _invoicesApi.issueAll(
         groupId: group.id,
@@ -326,34 +326,16 @@ class GroupInvoicesController extends ChangeNotifier {
       );
     } on InvoicesBatchIssueException catch (e) {
       final issuedCount = e.failure?.issuedCount ?? 0;
-      final failedInvoiceId = e.failure?.failedInvoiceId;
-      Invoice? failedDraft;
-      if (failedInvoiceId != null) {
-        for (final draft in drafts) {
-          if (draft.id == failedInvoiceId) {
-            failedDraft = draft;
-            break;
-          }
-        }
-      }
       if (context.mounted) {
         try {
           await loadAll();
         } catch (_) {}
       }
       if (!context.mounted) return;
-      final message = e.message.trim().isEmpty
-          ? l.invoiceIssueFailedSnack
-          : e.message.trim();
+      final message = friendlyInvoiceIssueError(e, l);
       final parts = <String>[
         if (issuedCount > 0)
-          isSpanish
-              ? '$issuedCount facturas emitidas antes del error'
-              : '$issuedCount invoices issued before the error',
-        if (failedInvoiceId != null)
-          isSpanish
-              ? 'Fila fallida: ${failedDraft?.displayNumber(draftLabel: l.statusDraft) ?? l.statusDraft} ($failedInvoiceId)'
-              : 'Failed row: ${failedDraft?.displayNumber(draftLabel: l.statusDraft) ?? l.statusDraft} ($failedInvoiceId)',
+          l.invoiceBatchIssueStoppedAfter(issuedCount.toString()),
         message,
       ];
       final text = parts.join(' · ');
@@ -369,10 +351,9 @@ class GroupInvoicesController extends ChangeNotifier {
         } catch (_) {}
       }
       if (!context.mounted) return;
-      final message = e.toString().replaceFirst('Exception: ', '').trim();
       showErrorSnack(
         context,
-        message.isEmpty ? l.invoiceIssueFailedSnack : message,
+        friendlyInvoiceIssueError(e, l),
       );
     }
   }

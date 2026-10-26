@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -25,14 +26,11 @@ Future<bool?> showLogoutDialog(BuildContext context) => showDialog<bool>(
               style: TextButton.styleFrom(foregroundColor: cs.primary),
               child: Text(l.cancel),
             ),
-            FilledButton(
+            HexoraButton(
               key: const ValueKey('confirm-logout'),
-              style: FilledButton.styleFrom(
-                backgroundColor: cs.error,
-                foregroundColor: cs.onError,
-              ),
               onPressed: () => Navigator.pop(context, true),
-              child: Text(l.logout),
+              label: l.logout,
+              variant: HexoraButtonVariant.danger,
             ),
           ],
         );

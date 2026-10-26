@@ -30,6 +30,7 @@ import 'package:hexora/presentation/viewmodels/groups/use_cases/update_group_use
 import 'package:hexora/presentation/viewmodels/groups/use_cases/upload_group_photo_usecase.dart';
 import 'package:hexora/presentation/viewmodels/groups/group_view_model.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -165,6 +166,7 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
       padding: const EdgeInsets.only(top: 24),
       child: FolderSectionCard(
         label: l.membersTitle,
+        showTitle: false,
         leftTabOffset: 0,
         backgroundColor: isLight ? Colors.white : null,
         child: _buildContent(context),

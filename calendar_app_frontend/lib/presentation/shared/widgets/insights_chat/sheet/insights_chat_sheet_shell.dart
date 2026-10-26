@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hexora/presentation/shared/widgets/panels/hexora_side_panel.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/theme/components/hexora_ai_output_tokens.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -706,6 +707,15 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
       final cs = Theme.of(context).colorScheme;
       final t = AppTypography.of(context);
       final isDark = Theme.of(context).brightness == Brightness.dark;
+      final outputForeground =
+          navy ? HexoraAiOutputTokens.panelForeground : cs.onSurface;
+      final outputMuted = navy
+          ? HexoraAiOutputTokens.panelMutedForeground
+          : cs.onSurfaceVariant;
+      final outputAccent = navy ? AppDarkColors.primary : cs.primary;
+      final outputBorder = navy
+          ? HexoraAiOutputTokens.panelBorder.withValues(alpha: 0.72)
+          : cs.outlineVariant.withValues(alpha: isDark ? 0.22 : 0.28);
       if (selectedAssistantMessage == null) {
         return Center(
           child: Padding(
@@ -716,14 +726,14 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 Icon(
                   Icons.auto_awesome_rounded,
                   size: 34,
-                  color: cs.primary.withValues(alpha: 0.8),
+                  color: outputAccent.withValues(alpha: 0.8),
                 ),
                 const SizedBox(height: 14),
                 Text(
                   isEs ? 'Selecciona una respuesta' : 'Select a response',
                   style: t.bodyLarge.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: cs.onSurface,
+                    color: outputForeground,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -733,7 +743,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                       : 'Use the left panel for the conversation. Select an assistant response to inspect it here in more detail.',
                   textAlign: TextAlign.center,
                   style: t.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
+                    color: outputMuted,
                     height: 1.45,
                   ),
                 ),
@@ -759,14 +769,14 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 Icon(
                   Icons.table_chart_outlined,
                   size: 34,
-                  color: cs.primary.withValues(alpha: 0.8),
+                  color: outputAccent.withValues(alpha: 0.8),
                 ),
                 const SizedBox(height: 14),
                 Text(
                   isEs ? 'Sin datos tabulares' : 'No tabular data',
                   style: t.bodyLarge.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: cs.onSurface,
+                    color: outputForeground,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -776,7 +786,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                       : 'The right panel only shows data responses such as tables and structured breakdowns.',
                   textAlign: TextAlign.center,
                   style: t.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
+                    color: outputMuted,
                     height: 1.45,
                   ),
                 ),
@@ -818,6 +828,9 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
               icon: const Icon(Icons.filter_alt_rounded, size: 15),
               label: Text(isEs ? 'Filtrar fechas' : 'Filter dates'),
               style: OutlinedButton.styleFrom(
+                foregroundColor: outputAccent,
+                backgroundColor: Colors.transparent,
+                side: BorderSide(color: outputBorder),
                 visualDensity: VisualDensity.compact,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 padding:
@@ -837,7 +850,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 avatar: Icon(
                   Icons.event_rounded,
                   size: 14,
-                  color: cs.primary,
+                  color: outputAccent,
                 ),
                 label: Text(
                   filterLabel,
@@ -848,17 +861,18 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                     showTableDateFilterDialog(selectedAssistantMessage),
                 onDeleted: () => clearTableDateFilter(selectedAssistantMessage),
                 deleteIcon: const Icon(Icons.close_rounded, size: 14),
+                deleteIconColor: outputAccent,
                 visualDensity: VisualDensity.compact,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 labelStyle: t.bodySmall.copyWith(
-                  color: cs.primary,
+                  color: outputAccent,
                   fontWeight: FontWeight.w800,
                   fontSize: 11,
                 ),
                 side: BorderSide(
-                  color: cs.primary.withValues(alpha: 0.22),
+                  color: outputAccent.withValues(alpha: 0.36),
                 ),
-                backgroundColor: cs.primary.withValues(alpha: 0.08),
+                backgroundColor: outputAccent.withValues(alpha: 0.10),
               ),
             ),
             const SizedBox(width: 6),
@@ -873,6 +887,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 ),
                 padding: EdgeInsets.zero,
                 visualDensity: VisualDensity.compact,
+                style: IconButton.styleFrom(foregroundColor: outputAccent),
               ),
             ),
           ],
@@ -883,40 +898,26 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+            padding: const EdgeInsets.symmetric(
+              horizontal: HexoraAiOutputTokens.workspacePadding,
+              vertical: 8,
+            ),
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(
-                  color:
-                      cs.outlineVariant.withValues(alpha: isDark ? 0.22 : 0.28),
+                  color: outputBorder,
                 ),
               ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        cs.primary.withValues(alpha: 0.22),
-                        cs.primary.withValues(alpha: 0.08),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    Icons.table_chart_rounded,
-                    size: 20,
-                    color: cs.primary,
-                  ),
+                Icon(
+                  Icons.table_chart_rounded,
+                  size: 18,
+                  color: outputAccent,
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -933,26 +934,26 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                     : 'Selected response'),
                             style: t.bodySmall.copyWith(
                               fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                              color: cs.onSurface,
+                              fontSize: 13,
+                              color: outputForeground,
                             ),
                           ),
                           if (rowCount > 0) ...[
-                            const SizedBox(width: 7),
+                            const SizedBox(width: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 2,
+                                horizontal: 6,
+                                vertical: 1,
                               ),
                               decoration: BoxDecoration(
-                                color: cs.primary.withValues(alpha: 0.12),
+                                color: outputAccent.withValues(alpha: 0.13),
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               child: Text(
                                 rowCountLabel,
                                 style: t.bodySmall.copyWith(
-                                  color: cs.primary,
-                                  fontSize: 11,
+                                  color: outputAccent,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
@@ -960,16 +961,16 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                           ],
                         ],
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Row(
                         children: [
                           if (!isLinkedIncomeReview) ...[
                             Icon(
                               Icons.alt_route_rounded,
-                              size: 12,
-                              color: cs.primary.withValues(alpha: 0.75),
+                              size: 11,
+                              color: outputAccent.withValues(alpha: 0.82),
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 3),
                           ],
                           Expanded(
                             child: Text(
@@ -983,8 +984,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: t.bodySmall.copyWith(
-                                color: cs.onSurfaceVariant,
-                                fontSize: 13,
+                                color: outputMuted,
+                                fontSize: 11,
                                 height: 1.3,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -1019,8 +1020,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                         size: 17,
                       ),
                       style: IconButton.styleFrom(
-                        foregroundColor: cs.primary,
-                        backgroundColor: cs.primary.withValues(alpha: 0.10),
+                        foregroundColor: outputAccent,
+                        backgroundColor: outputAccent.withValues(alpha: 0.10),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(9),
                         ),
@@ -1035,7 +1036,9 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+              padding: const EdgeInsets.all(
+                HexoraAiOutputTokens.workspacePadding,
+              ),
               child: buildInsightsTableView(
                 context,
                 message: selectedAssistantMessage,
@@ -1451,7 +1454,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
       if (isDesktopEmbedded) {
         // The link panel docks beside the chat and results panes; both stay
         // mounted so the conversation and table keep their state.
-        final panelBg = navy ? AppColors.dashboardTopBar : canvas;
+        final panelBg = navy ? HexoraAiOutputTokens.panelBackground : canvas;
         return Container(
           decoration: BoxDecoration(
             color: panelBg,
@@ -1466,7 +1469,9 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 children: [
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+                      padding: const EdgeInsets.all(
+                        HexoraAiOutputTokens.workspacePadding,
+                      ),
                       child: Row(
                         children: [
                           AnimatedContainer(
@@ -1860,14 +1865,14 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                             flex: 9,
                             child: Container(
                               decoration: BoxDecoration(
-                                color: resultsTheme.colorScheme.surface
-                                    .withValues(alpha: isDark ? 0.20 : 0.35),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: resultsTheme.colorScheme.outlineVariant
-                                      .withValues(
-                                    alpha: isDark ? 0.18 : 0.22,
-                                  ),
+                                color: navy
+                                    ? HexoraAiOutputTokens.panelBackground
+                                    : resultsTheme.colorScheme.surface
+                                        .withValues(
+                                        alpha: isDark ? 0.20 : 0.35,
+                                      ),
+                                borderRadius: BorderRadius.circular(
+                                  HexoraAiOutputTokens.surfaceRadius,
                                 ),
                               ),
                               clipBehavior: Clip.antiAlias,

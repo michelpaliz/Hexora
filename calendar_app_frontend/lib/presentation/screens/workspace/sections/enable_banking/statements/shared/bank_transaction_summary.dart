@@ -243,7 +243,8 @@ class _BankTransactionSummaryState extends State<BankTransactionSummary> {
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                     padding: const EdgeInsets.symmetric(horizontal: 6),
-                    minimumSize: const Size(0, 28),
+                    minimumSize:
+                        const Size(0, HexoraDimensions.buttonCompact),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   iconAlignment: IconAlignment.end,

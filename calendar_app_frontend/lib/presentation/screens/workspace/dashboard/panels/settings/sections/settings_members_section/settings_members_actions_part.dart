@@ -55,10 +55,18 @@ extension _SettingsMembersActionsPart on _SettingsMembersSectionState {
             ),
             actions: [
               TextButton(
+                style: ThemedButtons.button(
+                  context,
+                  variant: ButtonVariant.ghost,
+                ),
                 onPressed: () => Navigator.of(context).pop(false),
                 child: Text(l.cancel),
               ),
               FilledButton(
+                style: ThemedButtons.button(
+                  context,
+                  variant: ButtonVariant.danger,
+                ),
                 onPressed: () => Navigator.of(context).pop(true),
                 child: Text(l.remove),
               ),
