@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:hexora/presentation/screens/workspace/sections/mail/mail_compose_screen.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
-import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 void main() {
@@ -70,19 +69,20 @@ void main() {
     final optionsSurface = find.byKey(
       const ValueKey('mail-compose-options-surface'),
     );
-    final optionsBackground = tester.widget<ColoredBox>(
-      find
-          .descendant(
-            of: optionsSurface,
-            matching: find.byType(ColoredBox),
-          )
-          .first,
+    final optionsBackground = tester.widget<ColoredBox>(optionsSurface);
+    expect(
+      optionsBackground.color,
+      Theme.of(tester.element(optionsSurface)).colorScheme.surface,
     );
-    expect(optionsBackground.color, AppDarkColors.sidebar);
     final desktopFrame = tester.widget<ColoredBox>(
       find.byKey(const ValueKey('mail-compose-desktop-frame')),
     );
-    expect(desktopFrame.color, AppDarkColors.sidebar);
+    expect(
+      desktopFrame.color,
+      Theme.of(tester.element(optionsSurface))
+          .colorScheme
+          .surfaceContainerLowest,
+    );
     final editorSurface = tester.widget<Container>(
       find.byKey(const ValueKey('mail-compose-editor-surface')),
     );
@@ -95,7 +95,7 @@ void main() {
     final context = tester.element(
       find.byKey(const ValueKey('mail-compose-subject-input-surface')),
     );
-    final expectedFill = Theme.of(context).inputDecorationTheme.fillColor;
+    final expectedFill = Theme.of(context).colorScheme.surface;
     for (final key in const [
       'mail-compose-recipient-input-surface',
       'mail-compose-subject-input-surface',
@@ -104,6 +104,56 @@ void main() {
       final container = tester.widget<Container>(find.byKey(ValueKey(key)));
       expect((container.decoration! as BoxDecoration).color, expectedFill);
     }
+
+    expect(
+      find.byKey(const ValueKey('mail-compose-preparation-mode-selector')),
+      findsOneWidget,
+    );
+    final selectionWorkspace = find.byKey(
+      const ValueKey('mail-compose-selection-workspace'),
+    );
+    final selectionContext = tester.element(selectionWorkspace);
+    final selectionContainer = tester.widget<Container>(selectionWorkspace);
+    expect(Theme.of(selectionContext).brightness, Brightness.light);
+    expect(
+      (selectionContainer.decoration! as BoxDecoration).color,
+      Theme.of(selectionContext).colorScheme.surface,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('mail-compose-mode-email')),
+    );
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey('mail-attachment-compact-header')),
+      findsNothing,
+    );
+    final leftEmailInput = find
+        .descendant(
+          of: optionsSurface,
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is TextField &&
+                widget.keyboardType == TextInputType.emailAddress,
+          ),
+        )
+        .first;
+    await tester.enterText(leftEmailInput, 'mode@example.com ');
+    await tester.pump();
+    expect(find.text('mode@example.com'), findsWidgets);
+
+    await tester.tap(
+      find.byKey(const ValueKey('mail-compose-mode-clients')),
+    );
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey('mail-attachment-compact-header')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('mail-compose-mode-email')),
+    );
+    await tester.pump();
+    expect(find.text('mode@example.com'), findsWidgets);
   });
 
   testWidgets('composer inherits the dark theme input surface', (tester) async {
@@ -134,6 +184,62 @@ void main() {
       (container.decoration! as BoxDecoration).color,
       Theme.of(context).inputDecorationTheme.fillColor,
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('selection workspace reacts to runtime theme changes',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final themeMode = ValueNotifier(ThemeMode.light);
+    addTearDown(themeMode.dispose);
+    await tester.pumpWidget(ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeMode,
+      child: const MailComposeScreen(),
+      builder: (context, mode, child) => MaterialApp(
+        theme: AppTheme.forPlatform(
+          Brightness.light,
+          platform: TargetPlatform.windows,
+        ),
+        darkTheme: AppTheme.forPlatform(
+          Brightness.dark,
+          platform: TargetPlatform.windows,
+        ),
+        themeMode: mode,
+        locale: const Locale('es'),
+        localizationsDelegates: const [
+          ...AppLocalizations.localizationsDelegates,
+          quill.FlutterQuillLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: child,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    const workspaceKey = ValueKey('mail-compose-selection-workspace');
+    Color workspaceColor() {
+      final finder = find.byKey(workspaceKey);
+      return (tester.widget<Container>(finder).decoration! as BoxDecoration)
+          .color!;
+    }
+
+    final lightColor = workspaceColor();
+    expect(
+      Theme.of(tester.element(find.byKey(workspaceKey))).brightness,
+      Brightness.light,
+    );
+
+    themeMode.value = ThemeMode.dark;
+    await tester.pumpAndSettle();
+
+    final darkContext = tester.element(find.byKey(workspaceKey));
+    expect(Theme.of(darkContext).brightness, Brightness.dark);
+    expect(workspaceColor(), Theme.of(darkContext).colorScheme.surface);
+    expect(workspaceColor(), isNot(lightColor));
     expect(tester.takeException(), isNull);
   });
   for (final scale in [1.0, 1.5]) {

@@ -7,8 +7,10 @@ Widget _composeMessageEditor(
         required AppLocalizations l,
         required bool compact,
         required bool isWideEmbedded,
+        required double minHeight,
         required InputDecoration inputDecoration}) =>
     AnimatedBuilder(
+      key: const ValueKey('mail-compose-message-editor'),
       animation: state._bodyFocus,
       builder: (context, _) {
         final focused = state._bodyFocus.hasFocus;
@@ -16,7 +18,7 @@ Widget _composeMessageEditor(
           key: const ValueKey('mail-compose-body-input-surface'),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: inputDecoration.fillColor ?? cs.surface,
+            color: cs.surface,
             borderRadius:
                 const BorderRadius.vertical(bottom: Radius.circular(8)),
             border: Border(
@@ -35,13 +37,14 @@ Widget _composeMessageEditor(
             ),
           ),
           constraints: BoxConstraints(
-            minHeight: isWideEmbedded ? 380 : 180,
+            minHeight: minHeight,
           ),
           child: DefaultTextStyle(
             style: t.bodySmall.copyWith(
               color: cs.onSurface,
-              fontSize: compact ? 16 : 12,
-              height: 1.45,
+              fontFamily: 'Inter',
+              fontSize: compact ? 15 : 14,
+              height: 1.35,
             ),
             child: Builder(
               builder: (context) {
@@ -59,7 +62,8 @@ Widget _composeMessageEditor(
                       placeHolder: quill.DefaultTextBlockStyle(
                         t.bodySmall.copyWith(
                           color: cs.onSurfaceVariant,
-                          fontSize: compact ? 16 : 12,
+                          fontFamily: 'Inter',
+                          fontSize: compact ? 15 : 14,
                         ),
                         const quill.HorizontalSpacing(0, 0),
                         quill.VerticalSpacing.zero,

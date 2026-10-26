@@ -71,6 +71,9 @@ class _InvoiceEditorView extends StatelessWidget {
               : InvoiceEditorAppBar(
                   titleStyle: t.titleLarge,
                   saving: state._c.saving,
+                  saveLabel: state._c.editingIssued
+                      ? l.saveChanges
+                      : l.invoiceSaveDraftCta,
                   onSaveDraft: () => state._c.handleSaveDraft(context),
                   showClose: state.widget.embedded,
                   onClose: state.widget.embedded ? state._requestClose : null,
@@ -117,6 +120,7 @@ class _InvoiceEditorView extends StatelessWidget {
                 onChanged: state._c.notifyUi,
                 total: state._c.total,
                 controller: state._c,
+                saveDraftLabel: state._c.editingIssued ? l.saveChanges : null,
                 ocrState: state._c.ocrState,
                 onPickImageForLineExtraction: () =>
                     state._c.extractLinesFromImage(context),
@@ -892,7 +896,9 @@ class _InvoiceEditorView extends StatelessWidget {
                               ? Icons.save_outlined
                               : Icons.arrow_forward_rounded,
                           label: currentEditorStep == 3
-                              ? l.invoiceSaveDraftCta
+                              ? (state._c.editingIssued
+                                  ? l.saveChanges
+                                  : l.invoiceSaveDraftCta)
                               : (l.localeName.startsWith('es')
                                   ? 'Continuar'
                                   : 'Continue'),

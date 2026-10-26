@@ -89,8 +89,23 @@ class _EmailChipsInputState extends State<_EmailChipsInput> {
         children: [
           ...widget.values.map(
             (email) => InputChip(
-              label: Text(email,
-                  style: inputStyle.copyWith(fontSize: compact ? 14 : 11)),
+              label: Text(
+                email,
+                style: inputStyle.copyWith(
+                  color: cs.onPrimaryContainer,
+                  fontSize: compact ? 14 : 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              backgroundColor: cs.primaryContainer,
+              disabledColor: cs.primaryContainer.withValues(alpha: 0.55),
+              deleteIconColor: cs.onPrimaryContainer,
+              side: BorderSide(
+                color: cs.primary.withValues(alpha: 0.42),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
               visualDensity: VisualDensity.compact,
               padding: const EdgeInsets.symmetric(horizontal: 2),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,

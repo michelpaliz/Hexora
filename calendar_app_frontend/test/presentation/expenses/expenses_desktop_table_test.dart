@@ -149,9 +149,11 @@ void main() {
 
     await tester.tap(find.text('Proveedor').first);
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField).last, 'Papelería');
+    await tester.enterText(find.byType(TextField).last, 'Papelería');
+    await tester.pump();
+    expect(find.text('Papelería Central'), findsWidgets);
+    await tester.tap(find.text('Papelería Central').last);
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('Papelería Central'), findsOneWidget);
     expect(
       find.text('Proveedor con un nombre extraordinariamente largo'),
       findsNothing,

@@ -75,7 +75,9 @@ void main() {
     await tester.tap(find.text('Cliente'));
     await tester.pumpAndSettle();
     expect(find.text('Aún no hay clientes'), findsNothing);
-    await tester.tap(find.text('Las Alondras'));
+    await tester.tap(
+      find.byKey(const ValueKey('mail-compose-client-picker-field')),
+    );
     await tester.pumpAndSettle();
     expect(find.byType(Dialog), findsOneWidget);
     final name = find.descendant(
@@ -102,6 +104,14 @@ void main() {
     await tester.tap(find.text('Reintentar'));
     await tester.pumpAndSettle();
     expect(find.text('No se pudieron cargar los clientes.'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('mail-compose-client-picker-field')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('mail-compose-client-picker-field')),
+    );
+    await tester.pumpAndSettle();
     expect(find.text('Las Alondras'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

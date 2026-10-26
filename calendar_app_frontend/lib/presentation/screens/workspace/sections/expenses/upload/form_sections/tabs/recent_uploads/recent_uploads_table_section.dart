@@ -119,6 +119,12 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
   }
 
   Widget _buildExpenseTableHeader(ColorScheme cs, bool isSpanish) {
+    final vendorValues = widget.recentUploads
+        .map((item) => (item['vendor'] ?? '').trim())
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
     return Container(
       key: const ValueKey('expense-table-header'),
       height: 36,
@@ -128,19 +134,46 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
         HexoraFilterableHeaderCell(
           label: isSpanish ? 'Proveedor' : 'Supplier',
           width: _supplierWidth,
-          filterActive: _vendorColumnQuery.trim().isNotEmpty,
+          filterActive: _vendorColumnFilters.isNotEmpty,
           sortDirection: _expenseSortDirection(
             {_ExpenseListSortOption.vendorAz},
             {_ExpenseListSortOption.vendorZa},
           ),
-          menuBuilder: (_) => _textColumnFilterMenu(
+          menuBuilder: (_) => HexoraColumnFilterMenu(
             label: isSpanish ? 'Proveedor' : 'Supplier',
-            value: _vendorColumnQuery,
-            hint: isSpanish ? 'Buscar proveedor' : 'Search supplier',
-            onChanged: (value) =>
-                _applyExpenseColumnFilter(() => _vendorColumnQuery = value),
-            ascending: _ExpenseListSortOption.vendorAz,
-            descending: _ExpenseListSortOption.vendorZa,
+            sortDirection: _expenseSortDirection(
+              {_ExpenseListSortOption.vendorAz},
+              {_ExpenseListSortOption.vendorZa},
+            ),
+            onSortAscending: () =>
+                _setSortOption(_ExpenseListSortOption.vendorAz),
+            onSortDescending: () =>
+                _setSortOption(_ExpenseListSortOption.vendorZa),
+            filterActive: _vendorColumnFilters.isNotEmpty,
+            onClear: () => _applyExpenseColumnFilter(
+              () => _vendorColumnFilters = <String>{},
+              refreshImmediately: true,
+            ),
+            child: HexoraMultiSelectFilter(
+              values: vendorValues,
+              selected: _vendorColumnFilters,
+              labelFor: (value) => value,
+              onChanged: (values) => _applyExpenseColumnFilter(
+                () => _vendorColumnFilters = values,
+                refreshImmediately: true,
+              ),
+              searchable: true,
+              searchHint:
+                  isSpanish ? 'Buscar proveedor...' : 'Search supplier...',
+              emptyLabel: isSpanish
+                  ? 'No se encontraron proveedores'
+                  : 'No suppliers found',
+              selectionSingularLabel:
+                  isSpanish ? 'proveedor seleccionado' : 'selected supplier',
+              selectionPluralLabel: isSpanish
+                  ? 'proveedores seleccionados'
+                  : 'selected suppliers',
+            ),
           ),
         ),
         HexoraFilterableHeaderCell(

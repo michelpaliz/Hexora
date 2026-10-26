@@ -226,6 +226,7 @@ class ClientsSearchFilters extends StatelessWidget {
       searchHint: searchHint,
       hasFilterOptions: hasEntityFilters ||
           hasPropertyFilters ||
+          additionalFilters != null ||
           (moveSummaryIntoFilters && (hasInactiveToggle || showCounts)),
       hasActiveFilters: activeFilterCount > 0,
       activeFilterCount: activeFilterCount,

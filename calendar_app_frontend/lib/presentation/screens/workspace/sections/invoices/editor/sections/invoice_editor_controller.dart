@@ -29,6 +29,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
     as pdf_launcher;
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 part 'controller/invoice_editor_controller_draft_flow.dart';

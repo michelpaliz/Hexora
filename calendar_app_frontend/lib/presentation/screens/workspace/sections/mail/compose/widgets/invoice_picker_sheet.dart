@@ -57,6 +57,7 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
   bool _loadingInvoices = false;
   bool _loadingReceipts = false;
   bool _loadingPresupuestos = false;
+  final Set<String> _previewingPresupuestoIds = <String>{};
   List<Invoice> _invoices = const [];
   List<Receipt> _receipts = const [];
   List<Map<String, dynamic>> _presupuestos = const [];
@@ -78,6 +79,18 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
   void dispose() {
     _invoiceSearchCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _previewPresupuesto(String id) async {
+    if (id.isEmpty || _previewingPresupuestoIds.contains(id)) return;
+    setState(() => _previewingPresupuestoIds.add(id));
+    try {
+      await widget.onPreviewPresupuesto(id);
+    } finally {
+      if (mounted) {
+        setState(() => _previewingPresupuestoIds.remove(id));
+      }
+    }
   }
 
   Future<void> _fetchInvoices() async {
@@ -666,6 +679,9 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                             final selected =
                                                 _selectedPresupuestoIds
                                                     .contains(id);
+                                            final previewing =
+                                                _previewingPresupuestoIds
+                                                    .contains(id);
                                             final status =
                                                 _presupuestoStatus(presupuesto);
                                             final isDraft =
@@ -781,19 +797,34 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                         padding:
                                                             const EdgeInsets
                                                                 .all(4),
-                                                        onPressed: id.isEmpty
+                                                        onPressed: id.isEmpty ||
+                                                                previewing
                                                             ? null
-                                                            : () => widget
-                                                                .onPreviewPresupuesto(
+                                                            : () =>
+                                                                _previewPresupuesto(
                                                                     id),
-                                                        icon: Icon(
-                                                          Icons
-                                                              .visibility_outlined,
-                                                          size: 18,
-                                                          color: cs.secondary
-                                                              .withValues(
-                                                                  alpha: 0.8),
-                                                        ),
+                                                        icon: previewing
+                                                            ? SizedBox(
+                                                                width: 16,
+                                                                height: 16,
+                                                                child:
+                                                                    CircularProgressIndicator(
+                                                                  strokeWidth:
+                                                                      2,
+                                                                  color: cs
+                                                                      .secondary,
+                                                                ),
+                                                              )
+                                                            : Icon(
+                                                                Icons
+                                                                    .visibility_outlined,
+                                                                size: 18,
+                                                                color: cs
+                                                                    .secondary
+                                                                    .withValues(
+                                                                        alpha:
+                                                                            0.8),
+                                                              ),
                                                       ),
                                                       Checkbox(
                                                         value: selected,
@@ -891,6 +922,9 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                             final selected =
                                                 _selectedPresupuestoIds
                                                     .contains(id);
+                                            final previewing =
+                                                _previewingPresupuestoIds
+                                                    .contains(id);
                                             return Padding(
                                               padding: const EdgeInsets.only(
                                                   bottom: 6),
@@ -941,16 +975,28 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
                                                         minWidth: 32,
                                                         minHeight: 32,
                                                       ),
-                                                      onPressed: id.isEmpty
+                                                      onPressed: id.isEmpty ||
+                                                              previewing
                                                           ? null
-                                                          : () => widget
-                                                              .onPreviewPresupuesto(
+                                                          : () =>
+                                                              _previewPresupuesto(
                                                                   id),
-                                                      icon: const Icon(
-                                                        Icons
-                                                            .visibility_outlined,
-                                                        size: 18,
-                                                      ),
+                                                      icon: previewing
+                                                          ? SizedBox(
+                                                              width: 16,
+                                                              height: 16,
+                                                              child:
+                                                                  CircularProgressIndicator(
+                                                                strokeWidth: 2,
+                                                                color:
+                                                                    cs.primary,
+                                                              ),
+                                                            )
+                                                          : const Icon(
+                                                              Icons
+                                                                  .visibility_outlined,
+                                                              size: 18,
+                                                            ),
                                                     ),
                                                     Checkbox(
                                                       value: selected,

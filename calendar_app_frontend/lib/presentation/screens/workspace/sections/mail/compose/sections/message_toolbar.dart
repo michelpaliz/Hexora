@@ -38,7 +38,7 @@ Widget _composeMessageToolbar(
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: inputFill,
+            color: cs.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
             border: Border.all(
               color: showTools

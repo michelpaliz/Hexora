@@ -687,28 +687,9 @@ class _ConnectedFlowState extends State<_ConnectedFlow> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (isChats) ...[
-                  Row(children: [
-                    Expanded(
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          Text(_sectionTitle(_selectedSection),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 3),
-                          Text(
-                              Localizations.localeOf(context).languageCode ==
-                                      'es'
-                                  ? 'Gestiona tus conversaciones de Telegram.'
-                                  : 'Manage your Telegram conversations.',
-                              style: Theme.of(context).textTheme.bodySmall),
-                        ])),
-                    if (!menuInChatHeader) menu,
-                  ]),
-                  const SizedBox(height: 12),
+                if (isChats && !menuInChatHeader) ...[
+                  Align(alignment: Alignment.centerRight, child: menu),
+                  const SizedBox(height: 6),
                 ],
                 if (!isChats && !inlineMenu) ...[
                   Align(alignment: Alignment.centerRight, child: menu),
@@ -877,7 +858,9 @@ class _TelegramTopMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
-    final size = touchTargets ? NavigationTokens.touchRowHeight : NavigationTokens.rowHeight(context);
+    final size = touchTargets
+        ? NavigationTokens.touchRowHeight
+        : NavigationTokens.rowHeight(context);
     final identity = [
       account.fullName,
       if (account.username != null) '@${account.username}',
@@ -1396,7 +1379,7 @@ class ResponsiveWorkspaceLayout extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(width: 320, child: chatsSidebar),
-              const SizedBox(width: 16),
+              const SizedBox(width: 8),
               Expanded(child: workspace),
             ],
           );
@@ -1460,10 +1443,10 @@ class ChatsSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: cs.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
       ),
       child: TelegramChatListWidget(
@@ -1597,7 +1580,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
       return Container(
         decoration: BoxDecoration(
           color: cs.surface,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
         ),
         child: const TelegramChatEmptyState(),
@@ -1615,7 +1598,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
     return Container(
       decoration: BoxDecoration(
         color: cs.surface,
-        borderRadius: phone ? null : BorderRadius.circular(18),
+        borderRadius: phone ? null : BorderRadius.circular(8),
         border: phone
             ? null
             : Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
@@ -1625,7 +1608,6 @@ class _WorkspaceShellState extends State<WorkspaceShell>
         children: [
           WorkspaceHeader(
             chat: chat,
-            selectedTopic: selectedTopic,
             topics: topics,
             tabController: _tabController,
             isLoadingTopics: isLoadingTopics,
@@ -1682,7 +1664,7 @@ class WorkspaceHeader extends StatelessWidget {
   const WorkspaceHeader({
     super.key,
     required this.chat,
-    required this.selectedTopic,
+    this.selectedTopic,
     required this.topics,
     required this.tabController,
     required this.isLoadingTopics,
@@ -1696,6 +1678,8 @@ class WorkspaceHeader extends StatelessWidget {
   });
 
   final TelegramChat chat;
+  // Kept for call-site compatibility; the active topic is already visible in
+  // the compact tabs and is intentionally not repeated below the chat name.
   final TelegramForumTopic? selectedTopic;
   final List<TelegramForumTopic> topics;
   final TabController? tabController;
@@ -1713,16 +1697,13 @@ class WorkspaceHeader extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isCompact = MediaQuery.sizeOf(context).width < 860;
     final phone = MediaQuery.sizeOf(context).width < 700;
-    final breadcrumbTopic =
-        selectedTopic?.displayName ?? (chat.isForumChat ? 'General' : null);
-
     return Material(
       color: cs.surface,
       elevation: 0,
       child: Container(
         padding: phone
-            ? EdgeInsets.fromLTRB(8, 10, 12, chat.isForumChat ? 2 : 10)
-            : EdgeInsets.fromLTRB(16, 14, 16, chat.isForumChat ? 8 : 14),
+            ? EdgeInsets.fromLTRB(8, 8, 10, chat.isForumChat ? 2 : 8)
+            : EdgeInsets.fromLTRB(12, 8, 12, chat.isForumChat ? 6 : 8),
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
@@ -1761,18 +1742,6 @@ class WorkspaceHeader extends StatelessWidget {
                               fontWeight: FontWeight.w700,
                             ),
                       ),
-                      if (breadcrumbTopic != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          breadcrumbTopic,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: cs.onSurfaceVariant,
-                                  ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -1828,7 +1797,7 @@ class WorkspaceHeader extends StatelessWidget {
               ],
             ),
             if (chat.isForumChat) ...[
-              SizedBox(height: phone ? 8 : 12),
+              const SizedBox(height: 6),
               if (topicError != null && topicError!.trim().isNotEmpty)
                 _TopicTabsError(message: topicError!, onRetry: onRefresh)
               else
@@ -1865,7 +1834,7 @@ class TopicTabs extends StatelessWidget {
     final phone = MediaQuery.sizeOf(context).width < 700;
     if (isLoading && topics.isEmpty) {
       return SizedBox(
-        height: 42,
+        height: 36,
         child: Row(
           children: [
             const SizedBox(
@@ -1889,12 +1858,12 @@ class TopicTabs extends StatelessWidget {
     }
 
     return Container(
-      height: phone ? 48 : 44,
+      height: 36,
       decoration: phone
           ? null
           : BoxDecoration(
               color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: cs.outlineVariant.withValues(alpha: 0.28),
               ),
@@ -1911,7 +1880,7 @@ class TopicTabs extends StatelessWidget {
             ? null
             : BoxDecoration(
                 color: cs.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(7),
               ),
         dividerColor: phone
             ? cs.outlineVariant.withValues(alpha: 0.7)
@@ -1931,8 +1900,8 @@ class TopicTabs extends StatelessWidget {
                 .labelLarge
                 ?.copyWith(fontWeight: FontWeight.w500)
             : const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        labelPadding: phone ? const EdgeInsets.symmetric(horizontal: 14) : null,
-        padding: phone ? EdgeInsets.zero : const EdgeInsets.all(4),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: phone ? EdgeInsets.zero : const EdgeInsets.all(3),
         tabs: [
           for (final topic in topics)
             Tab(

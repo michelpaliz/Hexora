@@ -116,8 +116,7 @@ extension _InvoiceColumnFilters on _InvoicesTabListState {
               onChanged: _setInvoiceNumberQueryDebounced,
             ),
           if (column == CompactDocumentColumn.client)
-            _selectionList(
-              context,
+            HexoraMultiSelectFilter(
               values: {
                 for (final invoice in invoices)
                   _normalizedClientName(invoice, AppLocalizations.of(context)!)
@@ -137,6 +136,11 @@ extension _InvoiceColumnFilters on _InvoicesTabListState {
               },
               onChanged: (value) =>
                   _updateInvoiceListState(() => _selectedClientNames = value),
+              searchable: true,
+              searchHint: 'Buscar cliente...',
+              emptyLabel: 'No se encontraron clientes',
+              selectionSingularLabel: 'cliente seleccionado',
+              selectionPluralLabel: 'clientes seleccionados',
             ),
           if (column == CompactDocumentColumn.status)
             _selectionList(

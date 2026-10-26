@@ -9,6 +9,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/blocks_table_editor.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_form_sheet/invoice_blocks_editor.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/widgets/lines_json_import_panel.dart';
+import 'package:hexora/presentation/shared/utils/formatting/money_format_utils.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -1039,7 +1040,7 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
             availableBlockTypes: availableBlockTypes,
           ),
           if (widget.controller != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             InvoicePaymentEditor(
               invoice: widget.controller!.paymentEditorInvoice,
               compact: true,
@@ -1048,7 +1049,7 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
               onSave: (_) async {},
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Row(
             children: [
               if (widget.showSaveDraftButton)
@@ -1078,7 +1079,7 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
               ),
               const SizedBox(width: 12),
               Text(
-                NumberFormat.simpleCurrency(name: '').format(widget.total),
+                '${formatMoneyEu(widget.total, fallback: '0,00')} €',
                 style: t.titleLarge.copyWith(
                   fontWeight: FontWeight.w900,
                   color: cs.onSurface,
@@ -1160,7 +1161,7 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   actionsPanel,
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   blocksPanel,
                 ],
               ),
@@ -1239,11 +1240,11 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
 
     // ── Layout ────────────────────────────────────────────────────────────────
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 16, 8, 16),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 10),
+          const SizedBox(height: 4),
           Center(
             child: Wrap(
               spacing: 8,
@@ -1268,7 +1269,7 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Expanded(child: buildContentBody()),
         ],
       ),

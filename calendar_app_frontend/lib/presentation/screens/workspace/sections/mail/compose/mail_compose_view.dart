@@ -88,82 +88,92 @@ class _MailComposeView extends StatelessWidget {
             selectedClientId: state._recipientClientId,
             loading: state._loadingRecipientClients,
             enabled: !state._sending && state._recipientClientError == null,
-            onChanged: (value) => state.update(
-              () => state._recipientClientId = value,
-            ),
+            onChanged: (value) {
+              if (value != null) state._selectRecipientClient(value);
+            },
           );
-    final recipientMode = _RecipientModeToggle(
-      clientMode: state._useClientMode,
-      enabled: !state._sending,
-      emailLabel: 'Email',
-      clientLabel: 'Cliente',
-      recentLabel: state._isSpanishLocale ? 'Recientes' : 'Recent',
-      recentLoading: state._loadingRecentInvoices,
-      onChanged: (v) {
-        state.update(() => state._useClientMode = v);
-        if (v) state._loadRecipientClientsIfNeeded();
+    final recipientMode = isWideEmbedded
+        ? const SizedBox.shrink()
+        : _RecipientModeToggle(
+            clientMode: state._useClientMode,
+            enabled: !state._sending,
+            emailLabel: 'Email',
+            clientLabel: 'Cliente',
+            recentLabel: state._isSpanishLocale ? 'Recientes' : 'Recent',
+            recentLoading: state._loadingRecentInvoices,
+            onChanged: (v) {
+              state.update(() => state._useClientMode = v);
+              if (v) state._loadRecipientClientsIfNeeded();
+            },
+            onRecentTap: state._openRecentIssuedInvoicesPicker,
+          );
+
+    final content = LayoutBuilder(
+      builder: (context, viewport) {
+        final editorMinHeight = isWideEmbedded && viewport.hasBoundedHeight
+            ? (viewport.maxHeight - 250).clamp(300.0, 720.0).toDouble()
+            : (compact ? 180.0 : 260.0);
+        return SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Recipients card ──────────────────────────────────────────────
+              _composeRecipientsCard(
+                  state: state,
+                  context: context,
+                  t: t,
+                  cs: cs,
+                  l: l,
+                  compact: compact,
+                  recipientClients: recipientClients,
+                  inputDecoration: inputDecoration,
+                  recipientInput: recipientInput,
+                  recipientMode: recipientMode),
+              const SizedBox(height: 8),
+              // ── Subject card ────────────────────────────────────────────────
+              _composeSubjectCard(
+                  state: state,
+                  t: t,
+                  cs: cs,
+                  l: l,
+                  compact: compact,
+                  inputFill: inputFill),
+              const SizedBox(height: 6),
+              _composeAttachmentsCard(
+                  state: state, t: t, cs: cs, l: l, compact: compact),
+              _ComposeDocumentSummary(state: state),
+              const SizedBox(height: 6),
+              _composeMessageToolbar(
+                  state: state,
+                  t: t,
+                  cs: cs,
+                  l: l,
+                  compact: compact,
+                  inputFill: inputFill),
+              _composeMessageEditor(
+                  state: state,
+                  t: t,
+                  cs: cs,
+                  l: l,
+                  compact: compact,
+                  isWideEmbedded: isWideEmbedded,
+                  minHeight: editorMinHeight,
+                  inputDecoration: inputDecoration),
+              if (!isWideEmbedded) ...[
+                const SizedBox(height: 8),
+                _composeInvoiceOptions(
+                    state: state,
+                    t: t,
+                    cs: cs,
+                    l: l,
+                    inputDecoration: inputDecoration), // Container
+              ],
+            ],
+          ),
+        );
       },
-      onRecentTap: state._openRecentIssuedInvoicesPicker,
-    );
-
-    final content = SingleChildScrollView(
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Recipients card ──────────────────────────────────────────────
-          _composeRecipientsCard(
-              state: state,
-              context: context,
-              t: t,
-              cs: cs,
-              l: l,
-              compact: compact,
-              recipientClients: recipientClients,
-              inputDecoration: inputDecoration,
-              recipientInput: recipientInput,
-              recipientMode: recipientMode),
-          const SizedBox(height: 8),
-          // ── Subject card ────────────────────────────────────────────────
-          _composeSubjectCard(
-              state: state,
-              t: t,
-              cs: cs,
-              l: l,
-              compact: compact,
-              inputFill: inputFill),
-          const SizedBox(height: 8),
-          _composeMessageToolbar(
-              state: state,
-              t: t,
-              cs: cs,
-              l: l,
-              compact: compact,
-              inputFill: inputFill),
-          _composeMessageEditor(
-              state: state,
-              t: t,
-              cs: cs,
-              l: l,
-              compact: compact,
-              isWideEmbedded: isWideEmbedded,
-              inputDecoration: inputDecoration),
-
-          const SizedBox(height: 8),
-          _composeAttachmentsCard(
-              state: state, t: t, cs: cs, l: l, compact: compact), // Container
-          if (!isWideEmbedded) ...[
-            const SizedBox(height: 8),
-            _composeInvoiceOptions(
-                state: state,
-                t: t,
-                cs: cs,
-                l: l,
-                inputDecoration: inputDecoration), // Container
-          ],
-        ],
-      ),
     );
 
     if (compact) {
@@ -223,7 +233,7 @@ class _MailComposeView extends StatelessWidget {
 
       final desktopBody = ColoredBox(
         key: const ValueKey('mail-compose-desktop-frame'),
-        color: AppDarkColors.sidebar,
+        color: cs.surfaceContainerLowest,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
           child: Column(
@@ -237,27 +247,30 @@ class _MailComposeView extends StatelessWidget {
                       flex: 9,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: NavigationSurface(
+                        child: ColoredBox(
                           key: const ValueKey('mail-compose-options-surface'),
-                          builder: (navigationContext) => Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 10),
-                                child: composeHeader(navigationContext),
-                              ),
-                              Divider(
-                                height: 1,
-                                color: Theme.of(navigationContext)
-                                    .colorScheme
-                                    .outlineVariant
-                                    .withValues(alpha: .35),
-                              ),
-                              Expanded(
-                                child: _InlineInvoiceFlowPanel(state: state),
-                              ),
-                            ],
+                          color: cs.surface,
+                          child: Builder(
+                            builder: (optionsContext) => Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10),
+                                  child: composeHeader(optionsContext),
+                                ),
+                                Divider(
+                                  height: 1,
+                                  color: Theme.of(optionsContext)
+                                      .colorScheme
+                                      .outlineVariant
+                                      .withValues(alpha: .35),
+                                ),
+                                Expanded(
+                                  child: _InlineInvoiceFlowPanel(state: state),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -343,6 +356,63 @@ class _MailComposeView extends StatelessWidget {
         onSend: state._send,
         label: state._sending ? l.mailComposeSending : sendLabel,
         disabledHint: disabledSendHint,
+      ),
+    );
+  }
+}
+
+class _ComposeDocumentSummary extends StatelessWidget {
+  const _ComposeDocumentSummary({required this.state});
+
+  final _MailComposeScreenState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final count = state._totalAttachedDocumentCount;
+    final names = state._attachedDocumentDisplayNames;
+    final visibleName = names.isEmpty ? '' : names.first;
+    final remaining = count - (visibleName.isEmpty ? 0 : 1);
+    final isSpanish = state._isSpanishLocale;
+    final countLabel = isSpanish
+        ? '$count documento${count == 1 ? '' : 's'} adjunto${count == 1 ? '' : 's'}'
+        : '$count attached document${count == 1 ? '' : 's'}';
+
+    if (count == 0) {
+      return const SizedBox.shrink(
+        key: ValueKey('mail-compose-attached-document-summary'),
+      );
+    }
+
+    return Padding(
+      key: const ValueKey('mail-compose-attached-document-summary'),
+      padding: const EdgeInsets.only(top: 6),
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: .45)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.attach_file_rounded, size: 16, color: cs.primary),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                '$countLabel${visibleName.isEmpty ? '' : ' · $visibleName'}${remaining > 0 ? ' +$remaining' : ''}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: t.bodySmall.copyWith(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

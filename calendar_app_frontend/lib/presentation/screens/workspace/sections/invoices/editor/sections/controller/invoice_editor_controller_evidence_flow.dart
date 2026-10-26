@@ -901,16 +901,21 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+            PointerInterceptor(
+              child: TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child:
+                    Text(MaterialLocalizations.of(context).cancelButtonLabel),
+              ),
             ),
-            FilledButton(
-              onPressed: () {
-                if (formKey.currentState?.validate() != true) return;
-                Navigator.of(dialogContext).pop(controller.text.trim());
-              },
-              child: Text(isEs ? 'Guardar cambios' : 'Save changes'),
+            PointerInterceptor(
+              child: FilledButton(
+                onPressed: () {
+                  if (formKey.currentState?.validate() != true) return;
+                  Navigator.of(dialogContext).pop(controller.text.trim());
+                },
+                child: Text(isEs ? 'Guardar cambios' : 'Save changes'),
+              ),
             ),
           ],
         ),

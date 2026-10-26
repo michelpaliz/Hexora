@@ -87,8 +87,8 @@ void _emit(
     );
 }
 
-void _showDetails(BuildContext context, String? title, String message,
-    String details) {
+void _showDetails(
+    BuildContext context, String? title, String message, String details) {
   final es = Localizations.maybeLocaleOf(context)?.languageCode == 'es';
   showDialog<void>(
     context: context,
@@ -162,6 +162,12 @@ SnackBar _build(
 
   final hasTitle = title != null && title.trim().isNotEmpty;
   final hasDetails = details != null && details.trim().isNotEmpty;
+  final dismissLabel = action == null &&
+          !hasDetails &&
+          actionLabel != null &&
+          actionLabel.trim().isNotEmpty
+      ? actionLabel.trim()
+      : null;
   final screenWidth = MediaQuery.sizeOf(context).width;
   final snackWidth = screenWidth < 512 ? screenWidth - 32 : 480.0;
   final resolvedAction = action ??
@@ -172,15 +178,7 @@ SnackBar _build(
               onPressed: () =>
                   _showDetails(context, title, message, details.trim()),
             )
-          : actionLabel == null || actionLabel.trim().isEmpty
-              ? null
-              : SnackBarAction(
-                  label: actionLabel,
-                  textColor: accent,
-                  onPressed: () {
-                    ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
-                  },
-                ));
+          : null);
 
   return SnackBar(
     behavior: SnackBarBehavior.floating,
@@ -245,6 +243,21 @@ SnackBar _build(
             ],
           ),
         ),
+        if (dismissLabel != null) ...[
+          const SizedBox(width: 6),
+          TextButton(
+            onPressed: () =>
+                ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar(),
+            style: TextButton.styleFrom(
+              foregroundColor: accent,
+              minimumSize: const Size(0, 34),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
+            child: Text(dismissLabel),
+          ),
+        ],
       ],
     ),
   );

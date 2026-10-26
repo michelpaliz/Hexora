@@ -15,14 +15,14 @@ Widget _composeRecipientsCard(
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .45)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── To row ──────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 8, 4),
+            padding: const EdgeInsets.fromLTRB(10, 5, 8, 3),
             child: compact
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -34,9 +34,9 @@ Widget _composeRecipientsCard(
                                 ?.copyWith(
                                     color: cs.onSurface,
                                     fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 6),
                         recipientMode,
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 6),
                         recipientInput,
                       ])
                 : Row(
@@ -60,9 +60,9 @@ Widget _composeRecipientsCard(
                               key: const ValueKey(
                                   'mail-compose-recipient-input-surface'),
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 6),
+                                  horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                  color: inputDecoration.fillColor,
+                                  color: cs.surface,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
                                       color: cs.outlineVariant
@@ -77,7 +77,7 @@ Widget _composeRecipientsCard(
           // Sub-hints for email / client mode
           if (!state._useClientMode && state._toList.isEmpty)
             Padding(
-              padding: EdgeInsets.fromLTRB(compact ? 12 : 56, 0, 12, 10),
+              padding: EdgeInsets.fromLTRB(compact ? 12 : 56, 0, 12, 5),
               child: Text(
                 l.mailComposeToHelper,
                 style: t.bodySmall.copyWith(
@@ -89,7 +89,7 @@ Widget _composeRecipientsCard(
           if (state._useClientMode) ...[
             if ((state._recipientClientError ?? '').isNotEmpty)
               Padding(
-                padding: EdgeInsets.fromLTRB(compact ? 12 : 56, 0, 12, 10),
+                padding: EdgeInsets.fromLTRB(compact ? 12 : 56, 0, 12, 5),
                 child: Row(children: [
                   Icon(Icons.error_outline, size: 13, color: cs.error),
                   const SizedBox(width: 4),
@@ -111,7 +111,7 @@ Widget _composeRecipientsCard(
                 state._recipientClientError == null &&
                 recipientClients.isEmpty)
               Padding(
-                padding: EdgeInsets.fromLTRB(compact ? 12 : 56, 0, 12, 10),
+                padding: EdgeInsets.fromLTRB(compact ? 12 : 56, 0, 12, 5),
                 child: Text(
                   state._pickerClients.isEmpty
                       ? l.noClientsYet
@@ -124,7 +124,7 @@ Widget _composeRecipientsCard(
               ),
             if (state._selectedRecipientClientEmail() != null)
               Padding(
-                padding: EdgeInsets.fromLTRB(compact ? 12 : 56, 0, 12, 10),
+                padding: EdgeInsets.fromLTRB(compact ? 12 : 56, 0, 12, 5),
                 child: Row(children: [
                   Icon(
                     Icons.alternate_email_rounded,
@@ -144,6 +144,67 @@ Widget _composeRecipientsCard(
                   ),
                 ]),
               ),
+            if (state._selectedRecipientClient() case final client?)
+              if (state._clientEmailIssue(client).isNotEmpty)
+                Padding(
+                  padding: EdgeInsets.fromLTRB(compact ? 12 : 56, 0, 8, 4),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        size: 14,
+                        color: ThemeColors.warning(context),
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          state._clientEmailIssue(client) == 'invalid'
+                              ? (state._isSpanishLocale
+                                  ? 'Correo no válido'
+                                  : 'Invalid email')
+                              : (state._isSpanishLocale
+                                  ? 'Sin correo registrado'
+                                  : 'No email registered'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.bodySmall.copyWith(
+                            color: ThemeColors.warning(context),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      TextButton(
+                        onPressed: state._sending
+                            ? null
+                            : state._enterRecipientManually,
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          textStyle: t.bodySmall.copyWith(fontSize: 11),
+                        ),
+                        child: Text(state._isSpanishLocale
+                            ? 'Introducir correo'
+                            : 'Enter email'),
+                      ),
+                      if (state._canEditClients)
+                        TextButton(
+                          onPressed: state._sending
+                              ? null
+                              : state._editSelectedRecipientClient,
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            textStyle: t.bodySmall.copyWith(fontSize: 11),
+                          ),
+                          child: Text(state._isSpanishLocale
+                              ? 'Actualizar cliente'
+                              : 'Update client'),
+                        ),
+                    ],
+                  ),
+                ),
           ],
           // ── CC / BCC expanded fields ──────────────────────────────
           AnimatedSize(

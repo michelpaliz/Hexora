@@ -44,31 +44,31 @@ class _ComposeBottomBar extends StatelessWidget {
       Icon(Icons.info_outline, size: 16, color: cs.primary),
       const SizedBox(width: 8),
       Expanded(
-          child: Text(
-              hint ??
-                  (Localizations.localeOf(context).languageCode == 'es'
-                      ? 'Revisa los destinatarios y adjuntos antes de enviar.'
-                      : 'Review recipients and attachments before sending.'),
+          child: Text(hint ?? '',
               style: t.bodySmall.copyWith(color: cs.onSurfaceVariant))),
     ]);
     return SafeArea(
         top: false,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-              color: cs.primary.withValues(alpha: .05),
+              color: cs.surface,
+              border: Border(
+                top:
+                    BorderSide(color: cs.outlineVariant.withValues(alpha: .45)),
+              ),
               borderRadius: BorderRadius.circular(8)),
           child: LayoutBuilder(builder: (context, constraints) {
             if (constraints.maxWidth < 600) {
               return Column(mainAxisSize: MainAxisSize.min, children: [
-                if (hint != null) ...[guidance, const SizedBox(height: 6)],
+                if (hint != null) ...[guidance, const SizedBox(height: 4)],
                 SizedBox(width: double.infinity, child: button),
               ]);
             }
             return Row(children: [
-              Expanded(child: guidance),
+              if (hint != null) Expanded(child: guidance) else const Spacer(),
               const SizedBox(width: 16),
-              SizedBox(width: 240, child: button)
+              SizedBox(width: 200, child: button)
             ]);
           }),
         ));

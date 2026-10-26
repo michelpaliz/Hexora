@@ -1,9 +1,12 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/telegram/telegram.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/components/telegram_chat_view.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
+import 'package:hexora/services/telegram/domain/telegram_domain.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
 
 Widget _app(Widget child) => MaterialApp(
@@ -152,6 +155,66 @@ void main() {
     await tester.pump();
     await tester.tap(find.byIcon(Icons.send_rounded));
     expect(sends, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('composer compacts, collapses and labels multiple attachments',
+      (tester) async {
+    tester.view.physicalSize = const Size(900, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final controller = TextEditingController();
+    final focusNode = FocusNode();
+    addTearDown(controller.dispose);
+    addTearDown(focusNode.dispose);
+    TelegramComposerAttachment? removed;
+    final attachments = [
+      TelegramComposerAttachment(
+        fileName: 'invoice-379-26.pdf',
+        bytes: Uint8List(8),
+        fileSize: 1000,
+        mimeType: 'application/pdf',
+      ),
+      TelegramComposerAttachment(
+        fileName: 'invoice-371-26.pdf',
+        bytes: Uint8List(12),
+        fileSize: 2000,
+        mimeType: 'application/pdf',
+      ),
+    ];
+
+    await tester.pumpWidget(_app(TelegramChatComposer(
+      controller: controller,
+      focusNode: focusNode,
+      enabled: true,
+      isSending: false,
+      error: null,
+      replyTarget: null,
+      attachments: attachments,
+      onSend: () {},
+      onPickAttachment: () {},
+      onPickClientDocument: () {},
+      onPickWorkerDocument: () {},
+      onPickIssuedPresupuesto: () {},
+      onRemoveAttachment: (attachment) => removed = attachment,
+      onClearReply: () {},
+      onKeyEvent: (_, KeyEvent event) => KeyEventResult.ignored,
+    )));
+
+    expect(find.text('2 attachments'), findsOneWidget);
+    expect(find.text('Send 2 files'), findsOneWidget);
+    expect(find.text('application/pdf'), findsNothing);
+    expect(find.text('invoice-379-26.pdf'), findsOneWidget);
+
+    await tester.tap(find.text('2 attachments'));
+    await tester.pumpAndSettle();
+    expect(find.text('invoice-379-26.pdf'), findsNothing);
+
+    await tester.tap(find.text('2 attachments'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Remove attachment').first);
+    expect(removed, same(attachments.first));
     expect(tester.takeException(), isNull);
   });
 

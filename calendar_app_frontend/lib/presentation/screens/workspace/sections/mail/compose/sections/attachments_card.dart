@@ -7,71 +7,72 @@ Widget _composeAttachmentsCard(
         required AppLocalizations l,
         required bool compact}) =>
     Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .45)),
       ),
-      child: _CollapsedPanel(
-        title: state._attachments.isEmpty
-            ? l.mailComposeAttachmentsLabel
-            : '${l.mailComposeAttachmentsLabel} (${state._attachments.length})',
-        expanded: state._attachmentsExpanded,
-        onToggle: () => state.update(
-          () => state._attachmentsExpanded = !state._attachmentsExpanded,
-        ),
-        trailing: compact
-            ? IconButton.filledTonal(
-                tooltip: l.mailComposeAddAttachment,
-                onPressed: state._sending || state._uploadingAttachment
-                    ? null
-                    : state._showAttachmentActions,
-                icon: state._uploadingAttachment
-                    ? const SizedBox.square(
-                        dimension: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.attach_file_rounded),
-              )
-            : TextButton.icon(
-                onPressed: state._sending || state._uploadingAttachment
-                    ? null
-                    : state._showAttachmentActions,
-                style: TextButton.styleFrom(
-                  foregroundColor: cs.onSurfaceVariant,
-                  textStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
+      child: Row(
+        children: [
+          Icon(Icons.attach_file_rounded, size: 16, color: cs.onSurfaceVariant),
+          const SizedBox(width: 6),
+          if (state._attachments.isEmpty)
+            Expanded(
+              child: Text(
+                l.mailComposeAttachmentsLabel,
+                style: t.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 11,
                 ),
-                icon: state._uploadingAttachment
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.attach_file, size: 18),
-                label: Text(l.mailComposeAddAttachment),
               ),
-        child: state._attachments.isEmpty
-            ? Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Text(
-                  l.mailComposeAttachmentsEmpty,
-                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-                ),
-              )
-            : Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: state._attachments.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final attachment = entry.value;
+            )
+          else
+            Expanded(
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: state._attachments.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 6),
+                itemBuilder: (_, index) {
+                  final attachment = state._attachments[index];
                   final label =
                       attachment.filename ?? attachment.storageKey ?? '-';
                   return InputChip(
-                    label: Text(label, style: t.bodySmall),
-                    onDeleted: () =>
-                        state.update(() => state._attachments.removeAt(index)),
+                    visualDensity: VisualDensity.compact,
+                    label: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 180),
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.bodySmall.copyWith(fontSize: 11),
+                      ),
+                    ),
+                    onDeleted: state._sending
+                        ? null
+                        : () => state.update(
+                              () => state._attachments.removeAt(index),
+                            ),
                   );
-                }).toList(),
+                },
               ),
+            ),
+          IconButton(
+            tooltip: l.mailComposeAddAttachment,
+            onPressed: state._sending || state._uploadingAttachment
+                ? null
+                : state._showAttachmentActions,
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+            padding: EdgeInsets.zero,
+            icon: state._uploadingAttachment
+                ? const SizedBox.square(
+                    dimension: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.add_rounded, size: 18),
+          ),
+        ],
       ),
     );

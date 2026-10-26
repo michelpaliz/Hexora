@@ -47,6 +47,19 @@ class CalendarDashboardActions {
   });
 }
 
+@visibleForTesting
+String calendarViewModeForSideMenu(String menu) {
+  switch (menu) {
+    case 'day':
+    case 'week':
+    case 'agenda':
+    case 'month':
+      return menu;
+    default:
+      return 'week';
+  }
+}
+
 class MainCalendarView extends StatefulWidget {
   final Group? group;
   final bool embedded;
@@ -232,10 +245,8 @@ class _MainCalendarViewState extends State<MainCalendarView> {
       case 'week':
       case 'day':
       case 'agenda':
-        // These view modes are handled by the main calendar
-        break;
       case 'month':
-        // Month is still a calendar view in the main area.
+        _c.calendarUI?.setViewMode(menu);
         break;
       case 'upcoming':
         _setPanelView(_SidePanelView.upcoming);
@@ -510,13 +521,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
         }) {
           final calendarUI = _c.calendarUI;
 
-          // Determine the view mode based on side menu selection
-          String viewMode = 'week'; // default
-          if (_selectedSideMenu == 'day' ||
-              _selectedSideMenu == 'week' ||
-              _selectedSideMenu == 'agenda') {
-            viewMode = _selectedSideMenu;
-          }
+          final viewMode = calendarViewModeForSideMenu(_selectedSideMenu);
 
           return Column(
             children: [
@@ -533,7 +538,9 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                 child: calendarUI?.buildCalendar(
                       context,
                       forcedViewMode: viewMode,
+                      showMonthAgenda: viewMode != 'month',
                       onTimeRangeSelected: _openAddEventForRange,
+                      onEventTap: _openViewEventInline,
                     ) ??
                     const SizedBox(),
               ),

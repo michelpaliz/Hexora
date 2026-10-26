@@ -2353,6 +2353,11 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         selected: _budgetClientFilters,
         labelFor: (value) => value,
         onChanged: (value) => setState(() => _budgetClientFilters = value),
+        searchable: true,
+        searchHint: 'Buscar cliente...',
+        emptyLabel: 'No se encontraron clientes',
+        selectionSingularLabel: 'cliente seleccionado',
+        selectionPluralLabel: 'clientes seleccionados',
       );
     } else if (column == CompactDocumentColumn.status) {
       filter = HexoraMultiSelectFilter(

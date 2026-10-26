@@ -273,6 +273,7 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
   }
 
   Widget _buildLinesStep() {
+    final l = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 100),
       child: AbsorbPointer(
@@ -287,6 +288,7 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
             onChanged: _c.notifyUi,
             total: _c.total,
             controller: _c,
+            saveDraftLabel: _c.editingIssued ? l.saveChanges : null,
             ocrState: _c.ocrState,
             onPickImageForLineExtraction: () =>
                 _c.extractLinesFromImage(context),
@@ -445,7 +447,7 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
                 _c.saving
                     ? l.savingLabel
                     : _c.editingIssued
-                        ? 'Guardar cambios'
+                        ? l.saveChanges
                         : l.invoiceSaveDraftCta,
               ),
             ),
@@ -638,7 +640,11 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
                               )
                             : const Icon(Icons.save_outlined, size: 18),
                         label: Text(
-                          _c.saving ? l.savingLabel : l.invoiceSaveDraftCta,
+                          _c.saving
+                              ? l.savingLabel
+                              : _c.editingIssued
+                                  ? l.saveChanges
+                                  : l.invoiceSaveDraftCta,
                         ),
                         style: FilledButton.styleFrom(
                           visualDensity: VisualDensity.compact,

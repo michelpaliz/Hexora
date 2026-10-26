@@ -85,6 +85,6 @@ MonthViewSettings buildMonthSettings(
       dayFormat: 'EEE',
       appointmentDisplayMode: MonthAppointmentDisplayMode.none,
       appointmentDisplayCount: 4,
-      showTrailingAndLeadingDates: false,
-      navigationDirection: MonthNavigationDirection.vertical,
+      showTrailingAndLeadingDates: true,
+      navigationDirection: MonthNavigationDirection.horizontal,
     );

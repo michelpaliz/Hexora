@@ -300,6 +300,11 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
         selected: _clients,
         labelFor: (value) => value,
         onChanged: (value) => setState(() => _clients = value),
+        searchable: true,
+        searchHint: 'Buscar cliente...',
+        emptyLabel: 'No se encontraron clientes',
+        selectionSingularLabel: 'cliente seleccionado',
+        selectionPluralLabel: 'clientes seleccionados',
       );
     } else if (column == CompactDocumentColumn.status) {
       filter = Column(

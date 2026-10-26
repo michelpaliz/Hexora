@@ -121,7 +121,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   bool _showOnlyDuplicateInvoiceIds = false;
   bool _showOnlyPotentialDuplicates = false;
   bool _showOnlyZeroVat = false;
-  String _vendorColumnQuery = '';
+  Set<String> _vendorColumnFilters = <String>{};
   String _invoiceColumnQuery = '';
   DateTimeRange? _dateColumnRange;
   double? _baseColumnMin;
@@ -545,9 +545,9 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         return false;
       }
       if (_showOnlyZeroVat && !_hasZeroVat(item)) return false;
-      final vendorQuery = _vendorColumnQuery.toLowerCase().trim();
-      if (vendorQuery.isNotEmpty &&
-          !(item['vendor'] ?? '').toLowerCase().contains(vendorQuery)) {
+      final vendor = (item['vendor'] ?? '').trim();
+      if (_vendorColumnFilters.isNotEmpty &&
+          !_vendorColumnFilters.contains(vendor)) {
         return false;
       }
       final invoiceQuery = _invoiceColumnQuery.toLowerCase().trim();
@@ -1763,7 +1763,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       _hasActiveExpenseColumnFilters;
 
   bool get _hasActiveExpenseColumnFilters =>
-      _vendorColumnQuery.trim().isNotEmpty ||
+      _vendorColumnFilters.isNotEmpty ||
       _invoiceColumnQuery.trim().isNotEmpty ||
       _dateColumnRange != null ||
       _baseColumnMin != null ||
@@ -1787,7 +1787,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       _showOnlyDuplicateInvoiceIds = false;
       _showOnlyPotentialDuplicates = false;
       _showOnlyZeroVat = false;
-      _vendorColumnQuery = '';
+      _vendorColumnFilters = <String>{};
       _invoiceColumnQuery = '';
       _dateColumnRange = null;
       _baseColumnMin = null;

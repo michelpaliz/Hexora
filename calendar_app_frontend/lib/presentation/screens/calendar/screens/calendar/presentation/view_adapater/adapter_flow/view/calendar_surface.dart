@@ -15,6 +15,22 @@ import 'appointment_builder_bridge.dart';
 
 typedef TimeRangeSelected = void Function(DateTime start, DateTime end);
 
+sf.CalendarView calendarViewForMode(String mode) {
+  switch (mode) {
+    case 'day':
+      return sf.CalendarView.day;
+    case 'week':
+      return sf.CalendarView.week;
+    case 'month':
+      return sf.CalendarView.month;
+    case 'agenda':
+    case 'schedule':
+      return sf.CalendarView.schedule;
+    default:
+      return sf.CalendarView.week;
+  }
+}
+
 // calendar_surface.dart
 class CalendarSurface extends StatefulWidget {
   final CalendarState state;
@@ -23,6 +39,7 @@ class CalendarSurface extends StatefulWidget {
   final String? forcedViewMode;
   final bool showMonthAgenda;
   final TimeRangeSelected? onTimeRangeSelected;
+  final ValueChanged<Event>? onEventTap;
 
   const CalendarSurface({
     super.key,
@@ -32,6 +49,7 @@ class CalendarSurface extends StatefulWidget {
     this.forcedViewMode,
     this.showMonthAgenda = true,
     this.onTimeRangeSelected,
+    this.onEventTap,
   });
 
   @override
@@ -49,27 +67,11 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
   bool _isDraggingEvent = false;
   bool _isSelectingTimeRange = false;
 
-  sf.CalendarView _mapModeToSf(String mode) {
-    switch (mode) {
-      case 'day':
-        return sf.CalendarView.day;
-      case 'week':
-        return sf.CalendarView.week;
-      case 'month':
-        return sf.CalendarView.month;
-      case 'agenda':
-      case 'schedule': // alias
-        return sf.CalendarView.schedule;
-      default:
-        return sf.CalendarView.week; // sane default
-    }
-  }
-
   @override
   void initState() {
     super.initState();
     // Initialize controller’s view to current mode
-    _selectedView = _mapModeToSf(widget.state.currentViewMode);
+    _selectedView = calendarViewForMode(widget.state.currentViewMode);
     _controller.view = _selectedView;
   }
 
@@ -460,7 +462,7 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
       valueListenable: widget.state.viewMode,
       builder: (_, mode, __) {
         final effectiveMode = widget.forcedViewMode ?? mode;
-        final view = _mapModeToSf(effectiveMode);
+        final view = calendarViewForMode(effectiveMode);
         if (_controller.view != view) {
           _selectedView = view;
           _scheduleSync(() {
@@ -562,6 +564,7 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                           selectedDate: _selectedDate,
                                           events: events,
                                           weatherSummaries: weatherMap,
+                                          onEventTap: widget.onEventTap,
                                         ),
 
                                         scheduleViewMonthHeaderBuilder:
@@ -611,6 +614,7 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                                 color: Colors.transparent),
                                         showNavigationArrow: true,
                                         showDatePickerButton: true,
+                                        showTodayButton: true,
                                         firstDayOfWeek: DateTime.monday,
                                         initialSelectedDate: DateTime.now(),
                                         cellBorderColor: Theme.of(context)

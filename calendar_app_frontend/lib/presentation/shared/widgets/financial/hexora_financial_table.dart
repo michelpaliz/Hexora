@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -307,12 +308,22 @@ class HexoraMultiSelectFilter extends StatefulWidget {
     required this.selected,
     required this.labelFor,
     required this.onChanged,
+    this.searchable = false,
+    this.searchHint = 'Buscar...',
+    this.emptyLabel = 'No se encontraron resultados',
+    this.selectionSingularLabel = 'elemento seleccionado',
+    this.selectionPluralLabel = 'elementos seleccionados',
   });
 
   final List<String> values;
   final Set<String> selected;
   final String Function(String) labelFor;
   final ValueChanged<Set<String>> onChanged;
+  final bool searchable;
+  final String searchHint;
+  final String emptyLabel;
+  final String selectionSingularLabel;
+  final String selectionPluralLabel;
 
   @override
   State<HexoraMultiSelectFilter> createState() =>
@@ -321,34 +332,105 @@ class HexoraMultiSelectFilter extends StatefulWidget {
 
 class _HexoraMultiSelectFilterState extends State<HexoraMultiSelectFilter> {
   late final Set<String> _selected = Set.of(widget.selected);
+  String _query = '';
+
+  String _normalized(String value) => value
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp('[áàäâã]'), 'a')
+      .replaceAll(RegExp('[éèëê]'), 'e')
+      .replaceAll(RegExp('[íìïî]'), 'i')
+      .replaceAll(RegExp('[óòöôõ]'), 'o')
+      .replaceAll(RegExp('[úùüû]'), 'u')
+      .replaceAll('ñ', 'n');
+
+  void _toggle(String value) {
+    setState(() {
+      _selected.contains(value)
+          ? _selected.remove(value)
+          : _selected.add(value);
+    });
+    widget.onChanged(Set.of(_selected));
+  }
 
   @override
-  Widget build(BuildContext context) => ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: 220),
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            for (final value in widget.values)
-              CheckboxListTile(
-                dense: true,
-                visualDensity: VisualDensity.compact,
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                title: Text(widget.labelFor(value),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                value: _selected.contains(value),
-                onChanged: (checked) {
-                  setState(() {
-                    checked == true
-                        ? _selected.add(value)
-                        : _selected.remove(value);
-                  });
-                  widget.onChanged(Set.of(_selected));
-                },
+  Widget build(BuildContext context) {
+    final normalizedQuery = _normalized(_query);
+    final visibleValues = normalizedQuery.isEmpty
+        ? widget.values
+        : widget.values
+            .where((value) =>
+                _normalized(widget.labelFor(value)).contains(normalizedQuery))
+            .toList(growable: false);
+
+    final list = ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 230),
+      child: visibleValues.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Text(
+                widget.emptyLabel,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
+            )
+          : ListView.builder(
+              shrinkWrap: true,
+              itemCount: visibleValues.length,
+              itemBuilder: (context, index) {
+                final value = visibleValues[index];
+                return CheckboxListTile(
+                  dense: true,
+                  visualDensity: VisualDensity.compact,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: Text(widget.labelFor(value),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  value: _selected.contains(value),
+                  onChanged: (_) => _toggle(value),
+                );
+              },
+            ),
+    );
+
+    if (!widget.searchable) return list;
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): () =>
+            closeHexoraColumnFilterMenu(context),
+      },
+      child: FocusTraversalGroup(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              autofocus: MediaQuery.sizeOf(context).width >= 600,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: widget.searchHint,
+                prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                isDense: true,
+              ),
+              onChanged: (value) => setState(() => _query = value),
+            ),
+            const SizedBox(height: 6),
+            list,
+            const SizedBox(height: 4),
+            Text(
+              '${_selected.length} ${_selected.length == 1 ? widget.selectionSingularLabel : widget.selectionPluralLabel}',
+              textAlign: TextAlign.end,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
           ],
         ),
-      );
+      ),
+    );
+  }
 }
 
 class HexoraAmountRangeInput extends StatefulWidget {

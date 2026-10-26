@@ -135,15 +135,15 @@ class _TelegramChatListWidgetState extends State<TelegramChatListWidget> {
                       fillColor: cs.onSurface.withValues(alpha: 0.05),
                       contentPadding: const EdgeInsets.symmetric(vertical: 0),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
                           color: _kTelegramBlue.withValues(alpha: 0.45),
                           width: 1.4,
@@ -172,7 +172,7 @@ class _TelegramChatListWidgetState extends State<TelegramChatListWidget> {
                       : const Icon(Icons.refresh_rounded, size: 18),
                   style: IconButton.styleFrom(
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     minimumSize: const Size(40, 40),
                   ),
@@ -222,7 +222,7 @@ class _TelegramChatListWidgetState extends State<TelegramChatListWidget> {
               ),
             ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           // Error state
           if (widget.error != null)
@@ -299,11 +299,6 @@ class _TelegramChatListWidgetState extends State<TelegramChatListWidget> {
               child: ListView(
                 padding: const EdgeInsets.only(bottom: 8),
                 children: [
-                  if (showArchivedSection)
-                    _ChatSectionHeader(
-                      title: l.telegramMainChatsSection,
-                      count: mainChats.length,
-                    ),
                   if (mainChats.isEmpty && archivedChats.isNotEmpty)
                     _SectionInfoBanner(
                       message: l.telegramNoMainChatsInfo,
@@ -363,59 +358,6 @@ class _TelegramChatListWidgetState extends State<TelegramChatListWidget> {
 
 enum _ChatFilter { all, groups, channels, private }
 
-class _ChatSectionHeader extends StatelessWidget {
-  const _ChatSectionHeader({
-    required this.title,
-    required this.count,
-  });
-
-  final String title;
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 3,
-            height: 14,
-            decoration: BoxDecoration(
-              color: _kTelegramBlue.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(999),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: cs.onSurface.withValues(alpha: 0.72),
-                ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            decoration: BoxDecoration(
-              color: _kTelegramBlue.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              '$count',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: _kTelegramBlue,
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ArchiveSectionHeader extends StatelessWidget {
   const _ArchiveSectionHeader({
     required this.label,
@@ -434,10 +376,10 @@ class _ArchiveSectionHeader extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Material(
       color: cs.onSurface.withValues(alpha: 0.04),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
@@ -619,7 +561,7 @@ class _ChatListItem extends StatelessWidget {
             color: selected
                 ? _kTelegramBlue.withValues(alpha: 0.08)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
             border: selected
                 ? Border(
                     left: BorderSide(
@@ -629,7 +571,8 @@ class _ChatListItem extends StatelessWidget {
                   )
                 : null,
           ),
-          padding: EdgeInsets.fromLTRB(selected ? 6 : 8, 6, 8, 6),
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: EdgeInsets.fromLTRB(selected ? 6 : 8, 5, 8, 5),
           child: Row(
             children: [
               // Avatar with type badge
@@ -679,9 +622,10 @@ class _ChatListItem extends StatelessWidget {
               ),
               const SizedBox(width: 12),
 
-              // Title + subtitle
+              // Title + optional useful context
               Expanded(
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
@@ -709,15 +653,18 @@ class _ChatListItem extends StatelessWidget {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _subtitle(context),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: cs.onSurface.withValues(alpha: 0.5),
-                          ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    if (_subtitle(context) case final subtitle?) ...[
+                      const SizedBox(height: 1),
+                      Text(
+                        subtitle,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: cs.onSurface.withValues(alpha: 0.5),
+                              fontSize: 11.5,
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -786,7 +733,7 @@ class _ChatListItem extends StatelessWidget {
     );
   }
 
-  String _subtitle(BuildContext context) {
+  String? _subtitle(BuildContext context) {
     final desc = chat.description?.trim();
     if (desc != null && desc.isNotEmpty) return desc;
     final username = chat.username?.trim();
@@ -796,13 +743,14 @@ class _ChatListItem extends StatelessWidget {
       final label = chat.isChannel ? 'subscribers' : 'members';
       return '$count $label';
     }
+    if (chat.isPrivate) return null;
     if (Localizations.localeOf(context).languageCode != 'es') {
       return chat.typeLabel;
     }
     if (chat.isForumChat) return 'Foro';
     if (chat.isChannel) return 'Canal';
     if (chat.isGroup) return 'Grupo';
-    return 'Chat privado';
+    return null;
   }
 
   IconData get _typeIcon {

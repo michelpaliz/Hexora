@@ -89,7 +89,12 @@ void main() {
     expect(find.text('¿Enviar borrador?'), findsOneWidget);
     expect(find.text('Enviar borrador'), findsOneWidget);
 
-    await tester.tap(find.text('Cancelar'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Cancelar'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Presupuestos'), findsOneWidget);
   });
@@ -159,7 +164,8 @@ void main() {
 
     expect(selection?.map((s) => s.id), ['budget/7', 'issued-9']);
     expect(selection?.first.kind, PresupuestoKind.document);
-    expect(selection?.last.label, 'Presupuesto 020-26 · Com. de Prop. Alqueria');
+    expect(
+        selection?.last.label, 'Presupuesto 020-26 · Com. de Prop. Alqueria');
   });
 }
 

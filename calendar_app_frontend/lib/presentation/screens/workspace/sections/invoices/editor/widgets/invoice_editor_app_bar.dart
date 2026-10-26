@@ -6,6 +6,7 @@ class InvoiceEditorAppBar extends StatelessWidget
     implements PreferredSizeWidget {
   final TextStyle? titleStyle;
   final bool saving;
+  final String? saveLabel;
   final VoidCallback onSaveDraft;
   final bool showClose;
   final VoidCallback? onClose;
@@ -14,6 +15,7 @@ class InvoiceEditorAppBar extends StatelessWidget
     super.key,
     this.titleStyle,
     required this.saving,
+    this.saveLabel,
     required this.onSaveDraft,
     this.showClose = false,
     this.onClose,
@@ -39,7 +41,7 @@ class InvoiceEditorAppBar extends StatelessWidget
       actions: [
         HexoraButton(
           onPressed: onSaveDraft,
-          label: l.invoiceSaveDraftCta,
+          label: saveLabel ?? l.invoiceSaveDraftCta,
           variant: HexoraButtonVariant.ghost,
           loading: saving,
         ),

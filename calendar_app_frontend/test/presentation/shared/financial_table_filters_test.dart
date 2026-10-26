@@ -51,6 +51,44 @@ void main() {
     expect(selected, {'Arjen', 'Cindy'});
   });
 
+  testWidgets(
+      'searchable multi-select ignores accents and preserves hidden selections',
+      (tester) async {
+    Set<String> selected = {};
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: SizedBox(
+          width: 320,
+          child: HexoraMultiSelectFilter(
+            values: const ['Álvaro Gestión', 'Comunidad Sol'],
+            selected: const {},
+            labelFor: (value) => value,
+            onChanged: (value) => selected = value,
+            searchable: true,
+            searchHint: 'Buscar cliente...',
+            emptyLabel: 'No se encontraron clientes',
+            selectionSingularLabel: 'cliente seleccionado',
+            selectionPluralLabel: 'clientes seleccionados',
+          ),
+        ),
+      ),
+    ));
+
+    await tester.enterText(find.byType(TextField), 'alvaro');
+    await tester.pump();
+    expect(find.text('Álvaro Gestión'), findsOneWidget);
+    expect(find.text('Comunidad Sol'), findsNothing);
+
+    await tester.tap(find.text('Álvaro Gestión'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'sin coincidencias');
+    await tester.pump();
+
+    expect(selected, {'Álvaro Gestión'});
+    expect(find.text('1 cliente seleccionado'), findsOneWidget);
+    expect(find.text('No se encontraron clientes'), findsOneWidget);
+  });
+
   testWidgets('amount range accepts Spanish decimal formatting',
       (tester) async {
     num? minimum;
