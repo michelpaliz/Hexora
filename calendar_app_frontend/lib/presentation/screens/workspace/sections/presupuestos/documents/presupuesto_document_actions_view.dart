@@ -662,6 +662,7 @@ class _DocumentRow extends StatelessWidget {
 
   bool get _isIssued => presupuestoDocumentStatus(document) == 'issued';
   bool get _isDraft => presupuestoDocumentStatus(document) == 'draft';
+  bool get _isSent => document['deliveryStatus'] == 'sent';
 
   static String _initials(String source) {
     final trimmed = source.trim();
@@ -830,6 +831,18 @@ class _DocumentRow extends StatelessWidget {
                               : 'Anulado',
                       color: accent,
                     ),
+                    if (_isIssued) ...[
+                      const SizedBox(height: 5),
+                      Tooltip(
+                        message: _isSent
+                            ? _sentDetails(document)
+                            : 'No consta un envío por Hexora Email o Telegram.',
+                        child: _DocumentPill(
+                          label: _isSent ? 'Enviado' : 'Envío no registrado',
+                          color: _isSent ? Colors.green.shade700 : cs.outline,
+                        ),
+                      ),
+                    ],
                   ],
                 );
 
@@ -1068,6 +1081,13 @@ class _DocumentRow extends StatelessWidget {
         .trim();
     return value.isEmpty ? presupuestoDocumentId(source) : value;
   }
+}
+
+String _sentDetails(Map<String, dynamic> document) {
+  final channel = document['deliveryChannel'] == 'telegram' ? 'Telegram' : 'Email';
+  final date = DateTime.tryParse('${document['sentAt'] ?? ''}')?.toLocal();
+  if (date == null) return 'Enviado por $channel';
+  return 'Enviado por $channel el ${DateFormat('d MMM y, HH:mm', 'es').format(date)}';
 }
 
 class _DocumentMeta extends StatelessWidget {
