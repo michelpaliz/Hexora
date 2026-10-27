@@ -6,6 +6,7 @@ import 'package:hexora/models/groups/permissions/group_permissions_response.dart
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/enums/invitation/invitation_status.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/services/errors/error_classes/error_classes.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/user/repository/i_user_repository.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/widgets/folder_section_card.dart';
@@ -68,6 +69,7 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
   User? _selectedUser;
   Invitation? _selectedInvitation;
   bool _loadingUser = false;
+  bool _sendingInvitations = false;
 
   @override
   void initState() {

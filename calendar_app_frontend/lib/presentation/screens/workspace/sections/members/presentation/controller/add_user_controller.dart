@@ -142,7 +142,20 @@ class AddUserController extends ChangeNotifier {
   }
 
   void unselect(String username) {
+    final removedIds = _selectedUsers
+        .where((u) => u.userName == username)
+        .map((u) => u.id)
+        .toList();
     _selectedUsers.removeWhere((u) => u.userName == username);
+    for (final id in removedIds) {
+      _stagedRolesByUserId.remove(id);
+    }
+    notifyListeners();
+  }
+
+  void clearSelection() {
+    _selectedUsers.clear();
+    _stagedRolesByUserId.clear();
     notifyListeners();
   }
 
