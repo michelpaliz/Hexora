@@ -1,6 +1,54 @@
 part of '../settings_members_section.dart';
 
 extension _SettingsMembersAddUserPart on _SettingsMembersSectionState {
+  Future<void> _sendSelectedInvitations(
+    BuildContext context,
+    AddUserController ctrl,
+  ) async {
+    if (_sendingInvitations || ctrl.selectedUsers.isEmpty) return;
+
+    final selected = List<User>.from(ctrl.selectedUsers);
+    final messenger = ScaffoldMessenger.of(context);
+    final groupRepo = context.read<GroupDomain>().groupRepository;
+    _updateUi(() => _sendingInvitations = true);
+
+    try {
+      for (final user in selected) {
+        final role = ctrl.stagedRoleOf(user.id) ?? GroupRole.member;
+        try {
+          await groupRepo.sendGroupInvitation(
+            groupId: widget.group.id,
+            userId: user.id,
+            roleWire: role.wire,
+          );
+        } on HttpFailure catch (error) {
+          // A retry after a partial success can legitimately find the invite.
+          if (error.statusCode != 409) rethrow;
+        }
+      }
+
+      if (!mounted) return;
+      ctrl.clearSelection();
+      await widget.membersVM.refreshAll();
+      if (!mounted) return;
+      _updateUi(() {
+        _selectedTab = 1;
+        _selectedMember = null;
+        _selectedUser = null;
+      });
+      messenger.showSnackBar(
+        SnackBar(content: Text('${selected.length} invitación(es) enviada(s)')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('No se pudo enviar la invitación: $error')),
+      );
+    } finally {
+      _updateUi(() => _sendingInvitations = false);
+    }
+  }
+
   Widget _buildAddMembersTab(BuildContext context) {
     final currentUser = context.read<UserDomain?>()?.user;
     if (currentUser == null) {
@@ -36,8 +84,6 @@ extension _SettingsMembersAddUserPart on _SettingsMembersSectionState {
 
           final ctrl = context.watch<AddUserController>();
           final l = AppLocalizations.of(context)!;
-          final cs = Theme.of(context).colorScheme;
-
           return Stack(
             children: [
               AddUsersTab(
@@ -64,11 +110,16 @@ extension _SettingsMembersAddUserPart on _SettingsMembersSectionState {
                   bottom: 16,
                   child: FilledButton.icon(
                     style: ThemedButtons.button(context),
-                    onPressed: () {
-                      ctrl.commitSelected(context);
-                      _updateUi();
-                    },
-                    icon: const Icon(Icons.check_rounded, size: 20),
+                    onPressed: _sendingInvitations
+                        ? null
+                        : () => _sendSelectedInvitations(context, ctrl),
+                    icon: _sendingInvitations
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.check_rounded, size: 20),
                     label: Text(l.done),
                   ),
                 ),
