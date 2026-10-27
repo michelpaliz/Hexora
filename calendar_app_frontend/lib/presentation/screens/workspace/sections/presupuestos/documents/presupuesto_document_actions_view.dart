@@ -1233,6 +1233,7 @@ class _DocumentRow extends StatelessWidget {
 
   bool get _isIssued => presupuestoDocumentStatus(document) == 'issued';
   bool get _isDraft => presupuestoDocumentStatus(document) == 'draft';
+  bool get _isSent => document['deliveryStatus'] == 'sent';
 
   HexoraDocumentStatus get _statusKind {
     if (_isIssued) return HexoraDocumentStatus.issued;
@@ -1307,6 +1308,7 @@ class _DocumentRow extends StatelessWidget {
                                 Text(
                                     '${presupuestoDocumentImageCount(document)} imágenes',
                                     style: theme.textTheme.bodySmall),
+                              if (_isIssued) _deliveryIndicator(context),
                             ]),
                           ])),
                       const SizedBox(width: 12),
@@ -1418,6 +1420,10 @@ class _DocumentRow extends StatelessWidget {
                 status: _statusKind,
                 label: _statusLabel,
               ),
+              if (_isIssued) ...[
+                const SizedBox(width: HexoraTableTokens.gap),
+                _deliveryIndicator(context),
+              ],
               const SizedBox(width: HexoraTableTokens.gap),
               Expanded(
                   child: Text(
@@ -1433,6 +1439,27 @@ class _DocumentRow extends StatelessWidget {
             Align(alignment: Alignment.centerRight, child: _actions(context)),
           ]),
         ),
+      ),
+    );
+  }
+
+  Widget _deliveryIndicator(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final channel = document['deliveryChannel'] == 'telegram'
+        ? 'Telegram'
+        : 'Email';
+    final sentAt = DateTime.tryParse('${document['sentAt'] ?? ''}')?.toLocal();
+    final details = sentAt == null
+        ? 'Enviado por $channel'
+        : 'Enviado por $channel el ${DateFormat('d MMM y, HH:mm', 'es').format(sentAt)}';
+
+    return Tooltip(
+      message: _isSent
+          ? details
+          : 'No consta un envío por Hexora Email o Telegram.',
+      child: _DocumentPill(
+        label: _isSent ? 'Enviado' : 'Envío no registrado',
+        color: _isSent ? Colors.green.shade700 : cs.outline,
       ),
     );
   }

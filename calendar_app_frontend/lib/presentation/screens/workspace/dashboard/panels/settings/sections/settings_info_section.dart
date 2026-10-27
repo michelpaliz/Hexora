@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/group_profile/dialog_choosement/action/edit_group_arg.dart';
+import 'package:hexora/presentation/screens/calendar/screens/group/group-settings/widgets/delete_group_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/widgets/folder_section_card.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
 import 'package:hexora/presentation/viewmodels/groups/use_cases/upload_group_photo_usecase.dart';
@@ -23,6 +27,70 @@ class SettingsInfoSection extends StatefulWidget {
 
 class _SettingsInfoSectionState extends State<SettingsInfoSection> {
   bool _uploading = false;
+  bool _removing = false;
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _editBusiness(Group group) async {
+    final userDomain = context.read<UserDomain>();
+    try {
+      final users = await userDomain.getUsersForGroup(group);
+      if (!mounted) return;
+      await Navigator.of(context).pushNamed(
+        AppRoutes.editGroupData,
+        arguments: EditGroupArguments(group: group, users: users),
+      );
+      if (!mounted) return;
+      await context.read<GroupDomain>().refreshCurrentGroup();
+    } catch (_) {
+      if (mounted) _showError(AppLocalizations.of(context)!.failedToEditGroup);
+    }
+  }
+
+  Future<void> _removeBusiness(Group group) async {
+    if (_removing) return;
+    setState(() => _removing = true);
+    try {
+      final groupDomain = context.read<GroupDomain>();
+      final userDomain = context.read<UserDomain>();
+      final fresh = await groupDomain.groupRepository.getGroupById(group.id);
+      final user = userDomain.user ?? await userDomain.getUser();
+      if (!mounted) return;
+      final l = AppLocalizations.of(context)!;
+      if (user?.id != fresh.ownerId) {
+        _showError(l.permissionDeniedInf);
+        return;
+      }
+      final members = await userDomain.getUsersForGroup(fresh);
+      if (!mounted) return;
+      if (members.any((member) => member.id != fresh.ownerId)) {
+        _showError(l.removeMembersFirst);
+        return;
+      }
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (_) => DeleteGroupDialog(groupName: fresh.name),
+      );
+      if (confirmed != true || !mounted) return;
+      final removed = await groupDomain.removeGroup(fresh, userDomain);
+      if (!mounted) return;
+      if (!removed) {
+        _showError(l.failedToEditGroup);
+        return;
+      }
+      groupDomain.currentGroup = null;
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.homePage,
+        (route) => false,
+      );
+    } catch (_) {
+      if (mounted) _showError(AppLocalizations.of(context)!.failedToEditGroup);
+    } finally {
+      if (mounted) setState(() => _removing = false);
+    }
+  }
 
   Future<void> _pickAndUploadPhoto() async {
     final picker = ImagePicker();
@@ -87,9 +155,13 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
 
     // Listen to GroupDomain so photoUrl refreshes after upload
     final groupDomain = context.watch<GroupDomain>();
+    final currentUserId = context.watch<UserDomain>().user?.id;
     final liveGroup = groupDomain.currentGroup?.id == widget.group.id
         ? groupDomain.currentGroup!
         : widget.group;
+    final isOwner = currentUserId == liveGroup.ownerId;
+    final role = liveGroup.userRoles[currentUserId]?.toLowerCase();
+    final canEdit = isOwner || role == 'admin' || role == 'co-admin';
 
     final createdStr =
         '${liveGroup.createdTime.day}/${liveGroup.createdTime.month}/${liveGroup.createdTime.year}';
@@ -161,45 +233,46 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
                           borderWidth: 2,
                         ),
                       ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: _uploading ? null : _pickAndUploadPhoto,
-                          child: Container(
-                            width: 30,
-                            height: 30,
-                            decoration: BoxDecoration(
-                              color: cs.primary,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: cs.surface,
-                                width: 2,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: cs.shadow.withValues(alpha: 0.15),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
+                      if (canEdit)
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: GestureDetector(
+                            onTap: _uploading ? null : _pickAndUploadPhoto,
+                            child: Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                color: cs.primary,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: cs.surface,
+                                  width: 2,
                                 ),
-                              ],
-                            ),
-                            child: _uploading
-                                ? Padding(
-                                    padding: const EdgeInsets.all(6),
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: cs.shadow.withValues(alpha: 0.15),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: _uploading
+                                  ? Padding(
+                                      padding: const EdgeInsets.all(6),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: cs.onPrimary,
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.camera_alt_rounded,
+                                      size: 15,
                                       color: cs.onPrimary,
                                     ),
-                                  )
-                                : Icon(
-                                    Icons.camera_alt_rounded,
-                                    size: 15,
-                                    color: cs.onPrimary,
-                                  ),
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -228,6 +301,30 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
                 ],
               ),
             ),
+            if (canEdit) ...[
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => _editBusiness(liveGroup),
+                      icon: const Icon(Icons.edit_outlined),
+                      label: Text(l.edit),
+                    ),
+                    if (isOwner)
+                      OutlinedButton.icon(
+                        onPressed: _removing ? null : () => _removeBusiness(liveGroup),
+                        icon: const Icon(Icons.delete_outline),
+                        label: Text(l.groupSettingsDeleteGroup),
+                        style: OutlinedButton.styleFrom(foregroundColor: cs.error),
+                      ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             // ── Detail cards 2×2 ──
             Row(
