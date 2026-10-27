@@ -65,7 +65,9 @@ class GroupDashboardRightPanel extends StatelessWidget {
         );
         break;
       case 'services':
-        content = role == GroupRole.owner || role == GroupRole.admin || role == GroupRole.coAdmin
+        content = role == GroupRole.owner ||
+                role == GroupRole.admin ||
+                role == GroupRole.coAdmin
             ? ServicesClientsInlinePanel(group: group)
             : const SizedBox.shrink();
         break;

@@ -41,7 +41,11 @@ class WideLayout extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
 
     String? moduleLabel;
-    for (final d in _dashboardDestinations(l, canSeeAdmin: state.canSeeAdmin)) {
+    for (final d in _dashboardDestinations(
+      l,
+      canSeeAdmin: state.canSeeAdmin,
+      canSeeWorkers: state.canSeeAdmin,
+    )) {
       if (d.id == state.activeSection) moduleLabel = d.label;
     }
 
@@ -170,6 +174,7 @@ class WideLayout extends StatelessWidget {
 List<HexoraNavDestination> _dashboardDestinations(
   AppLocalizations l, {
   required bool canSeeAdmin,
+  required bool canSeeWorkers,
 }) {
   final es = l.localeName.startsWith('es');
   return [
@@ -179,16 +184,16 @@ List<HexoraNavDestination> _dashboardDestinations(
       label: l.calendar,
     ),
     HexoraNavDestination(
-      id: Sections.services,
-      icon: Icons.design_services_outlined,
-      label: es ? 'Operaciones' : 'Operations',
-    ),
-    HexoraNavDestination(
       id: Sections.maps,
       icon: Icons.map_outlined,
       label: es ? 'Mapa' : 'Map',
     ),
     if (canSeeAdmin) ...[
+      HexoraNavDestination(
+        id: Sections.services,
+        icon: Icons.design_services_outlined,
+        label: es ? 'Operaciones' : 'Operations',
+      ),
       HexoraNavDestination(
         id: Sections.invoices,
         icon: Icons.receipt_long_outlined,
@@ -215,16 +220,17 @@ List<HexoraNavDestination> _dashboardDestinations(
       icon: Icons.chat_bubble_outline_rounded,
       label: 'Chat',
     ),
+    if (canSeeWorkers)
+      HexoraNavDestination(
+        id: Sections.workers,
+        icon: Icons.access_time_rounded,
+        label: es ? 'Trabajadores' : 'Workers',
+      ),
     if (canSeeAdmin) ...[
       HexoraNavDestination(
         id: Sections.chat,
         icon: Icons.auto_awesome_outlined,
         label: es ? 'Asistente IA' : 'AI assistant',
-      ),
-      HexoraNavDestination(
-        id: Sections.workers,
-        icon: Icons.access_time_rounded,
-        label: es ? 'Trabajadores' : 'Workers',
       ),
       HexoraNavDestination(
         id: Sections.enableBanking,
@@ -310,7 +316,11 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
     final memberIds = {...state.group.userIds, state.group.ownerId}..remove('');
 
     return HexoraGlobalNavBar(
-      destinations: _dashboardDestinations(l, canSeeAdmin: state.canSeeAdmin),
+      destinations: _dashboardDestinations(
+        l,
+        canSeeAdmin: state.canSeeAdmin,
+        canSeeWorkers: state.canSeeAdmin,
+      ),
       activeId: state.activeSection,
       onSelected: state.openSection,
       onBrandTap:

@@ -12,6 +12,8 @@ class PreferencesSection extends StatelessWidget {
   final bool autoStatementImportEnabled;
   final bool autoStatementImportBusy;
   final ValueChanged<bool> onToggleAutoStatementImport;
+  final String? autoStatementImportTitle;
+  final String? autoStatementImportSubtitle;
 
   const PreferencesSection({
     super.key,
@@ -22,6 +24,8 @@ class PreferencesSection extends StatelessWidget {
     required this.autoStatementImportEnabled,
     required this.autoStatementImportBusy,
     required this.onToggleAutoStatementImport,
+    this.autoStatementImportTitle,
+    this.autoStatementImportSubtitle,
   });
 
   @override
@@ -40,6 +44,7 @@ class PreferencesSection extends StatelessWidget {
           ),
           iconBgColor: cs.primary.withValues(alpha: 0.12),
           title: l.darkMode,
+          compact: true,
           value: isDark,
           onChanged: (_) => onToggleDark(),
         ),
@@ -50,8 +55,9 @@ class PreferencesSection extends StatelessWidget {
         SwitchTile(
           leading: Icon(Icons.sync_rounded, size: 18, color: cs.primary),
           iconBgColor: cs.primary.withValues(alpha: 0.12),
-          title: l.autoStatementImportTitle,
-          subtitle: l.autoStatementImportHelper,
+          title: autoStatementImportTitle ?? l.autoStatementImportTitle,
+          subtitle: autoStatementImportSubtitle ?? l.autoStatementImportHelper,
+          compact: true,
           value: autoStatementImportEnabled,
           enabled: !autoStatementImportBusy,
           onChanged: onToggleAutoStatementImport,
@@ -65,6 +71,7 @@ class PreferencesSection extends StatelessWidget {
           iconBgColor: cs.primary.withValues(alpha: 0.12),
           title: isSpanish ? 'Idioma' : 'Language',
           subtitle: languageName,
+          compact: true,
           onTap: onChangeLanguage,
         ),
       ],

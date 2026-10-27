@@ -88,6 +88,19 @@ extension _SettingsMembersAddUserPart on _SettingsMembersSectionState {
             children: [
               AddUsersTab(
                 openPicker: () async {
+                  final useDialog = MediaQuery.sizeOf(context).width >= 720;
+                  if (useDialog) {
+                    await showDialog<void>(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => ChangeNotifierProvider.value(
+                        value: context.read<AddUserController>(),
+                        child: const AddUsersPickerDialog(),
+                      ),
+                    );
+                    return;
+                  }
+
                   await showModalBottomSheet<void>(
                     context: context,
                     isScrollControlled: true,

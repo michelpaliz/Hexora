@@ -149,7 +149,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
         TextField(controller: description, maxLength: 4000, maxLines: 4, decoration: InputDecoration(labelText: _es ? 'Descripción' : 'Description', border: const OutlineInputBorder())),
         if (_canAssignIssues && workers.isNotEmpty) ...[
           const SizedBox(height: 12),
-          DropdownButtonFormField<String>(value: workerId, decoration: InputDecoration(labelText: _es ? 'Asignar a (opcional)' : 'Assign to (optional)', border: const OutlineInputBorder()),
+          DropdownButtonFormField<String>(initialValue: workerId, decoration: InputDecoration(labelText: _es ? 'Asignar a (opcional)' : 'Assign to (optional)', border: const OutlineInputBorder()),
             items: [DropdownMenuItem<String>(value: '', child: Text(_es ? 'Sin asignar' : 'Unassigned')), ...workers.map((worker) => DropdownMenuItem<String>(value: worker['id'].toString(), child: Text('${worker['name']} · ${worker['role']}')))],
             onChanged: (value) { if (value != null) refreshDialog(() => workerId = value); }),
         ],

@@ -159,6 +159,7 @@ class DashboardActions {
         );
         break;
       case Sections.workers:
+        if (!state.canSeeAdmin) return;
         Navigator.pushNamed(
           context,
           AppRoutes.groupTimeTracking,

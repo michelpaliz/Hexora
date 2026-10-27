@@ -206,7 +206,13 @@ class _ShowNotificationsState extends State<ShowNotifications>
       await _notificationViewModel.handleConfirmation(notification);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(loc.confirm)),
+        SnackBar(
+          content: Text(
+            loc.localeName.startsWith('es')
+                ? 'Invitación aceptada. Ya puedes acceder al negocio.'
+                : 'Invitation accepted. You can now access the business.',
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;

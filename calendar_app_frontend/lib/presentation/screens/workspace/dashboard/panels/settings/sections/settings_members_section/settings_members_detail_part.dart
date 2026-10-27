@@ -56,6 +56,10 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
 
     final user = _selectedUser;
     if (user == null) {
+      final invitation = _selectedInvitation;
+      if (invitation != null) {
+        return _buildInvitationDetailPanel(context, invitation);
+      }
       return Container(
         constraints: const BoxConstraints(maxHeight: 380),
         decoration: BoxDecoration(
@@ -297,6 +301,80 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
   }
 
   // ── Status badge ──
+  Widget _buildInvitationDetailPanel(
+    BuildContext context,
+    Invitation invitation,
+  ) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final invitee = invitation.email ?? invitation.userId ?? '—';
+
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 380),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: cs.primaryContainer.withValues(alpha: 0.5),
+                  child: Icon(Icons.mail_outline_rounded, color: cs.primary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    invitee,
+                    style: t.bodyLarge.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: cs.onSurface,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                _buildStatusBadge(context, false, invitation),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _buildCompactInfoRow(
+              context,
+              icon: Icons.alternate_email_rounded,
+              value: invitee,
+            ),
+            const SizedBox(height: 10),
+            _buildInvitationCard(context, invitation),
+            const SizedBox(height: 12),
+            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.shield_outlined, size: 14, color: cs.primary),
+                const SizedBox(width: 6),
+                Text(
+                  'Rol asignado',
+                  style: t.caption.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _buildRoleReadOnly(context, invitation.role),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatusBadge(
     BuildContext context,
     bool isAccepted,

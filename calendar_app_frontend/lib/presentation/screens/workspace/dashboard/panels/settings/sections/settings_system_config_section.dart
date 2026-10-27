@@ -201,84 +201,131 @@ class _SettingsSystemConfigSectionState
     );
 
     return Consumer2<ThemeModeProvider, AuthProvider>(
-      builder: (_, themeModeProv, authProvider, __) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionHeader(
-            title: loc.accountSectionTitle,
-            subtitle: _sectionDescription(context, 'account'),
-            textStyle: sectionTitleStyle,
-            subtitleStyle: sectionSubtitleStyle,
-            showDivider: false,
-            padding: const EdgeInsets.only(bottom: 12),
-          ),
-          SectionCard(
-            child: AccountSection(
-              userName: userName,
-              userSubtitle: authProvider.currentUser?.email,
-              onEditUsername: () async {
-                final successMessage =
-                    AppLocalizations.of(context)!.successChangingUsername;
-                final newName = await showChangeUsernameDialog(context);
-                if (newName == null) return;
-                final err = await _changeUsername(newName);
-                if (!mounted) return;
-                _snack(err ?? successMessage);
-              },
-              onEditProfile: () => showProfileEditDialog(context),
-              onChangePassword: () async {
-                final result = await showChangePasswordDialog(context);
-                if (result == null) return;
-                await _changePassword(
-                    result.current, result.newPass, result.confirm);
-              },
+      builder: (_, themeModeProv, authProvider, __) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 960),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionHeader(
+                  title: loc.accountSectionTitle,
+                  subtitle: _sectionDescription(context, 'account'),
+                  textStyle: sectionTitleStyle,
+                  subtitleStyle: sectionSubtitleStyle,
+                  showDivider: false,
+                  padding: const EdgeInsets.only(bottom: 12),
+                ),
+                SectionCard(
+                  compact: true,
+                  child: AccountSection(
+                    userName: userName,
+                    userSubtitle: authProvider.currentUser?.email,
+                    onEditUsername: () async {
+                      final successMessage =
+                          AppLocalizations.of(context)!.successChangingUsername;
+                      final newName = await showChangeUsernameDialog(context);
+                      if (newName == null) return;
+                      final err = await _changeUsername(newName);
+                      if (!mounted) return;
+                      _snack(err ?? successMessage);
+                    },
+                    onEditProfile: () => showProfileEditDialog(context),
+                    onChangePassword: () async {
+                      final result = await showChangePasswordDialog(context);
+                      if (result == null) return;
+                      await _changePassword(
+                          result.current, result.newPass, result.confirm);
+                    },
+                    compact: true,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SectionHeader(
+                  title: loc.preferencesSectionTitle,
+                  subtitle: _sectionDescription(context, 'preferences'),
+                  textStyle: sectionTitleStyle,
+                  subtitleStyle: sectionSubtitleStyle,
+                  showDivider: false,
+                  padding: const EdgeInsets.only(bottom: 12),
+                ),
+                SectionCard(
+                  compact: true,
+                  child: PreferencesSection(
+                    isDark: themeModeProv.mode == ThemeMode.dark,
+                    onToggleDark: () => themeModeProv.toggleLightDark(),
+                    languageName: _languageName(context),
+                    onChangeLanguage: _openLanguageSheet,
+                    autoStatementImportEnabled:
+                        authProvider.currentUser?.autoStatementImportEnabled ??
+                            false,
+                    autoStatementImportBusy: _autoStatementImportLoading,
+                    onToggleAutoStatementImport: _toggleAutoStatementImport,
+                    autoStatementImportTitle:
+                        Localizations.localeOf(context).languageCode == 'es'
+                            ? 'Importación automática'
+                            : 'Automatic import',
+                    autoStatementImportSubtitle: Localizations.localeOf(context)
+                                .languageCode ==
+                            'es'
+                        ? 'Importar diariamente el extracto bancario de Caixa'
+                        : 'Import the Caixa bank statement daily',
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SectionHeader(
+                  title: Localizations.localeOf(context).languageCode == 'es'
+                      ? 'Seguridad'
+                      : 'Security',
+                  subtitle: _sectionDescription(context, 'security'),
+                  textStyle: sectionTitleStyle,
+                  subtitleStyle: sectionSubtitleStyle,
+                  showDivider: false,
+                  padding: const EdgeInsets.only(bottom: 12),
+                ),
+                SectionCard(
+                  compact: true,
+                  child: Column(
+                    children: [
+                      NavTile(
+                        compact: true,
+                        leading: Icon(Icons.lock_outline_rounded,
+                            size: 18, color: cs.primary),
+                        iconBgColor: cs.primary.withValues(alpha: 0.12),
+                        title: loc.changePassword,
+                        onTap: () async {
+                          final result =
+                              await showChangePasswordDialog(context);
+                          if (result == null) return;
+                          await _changePassword(
+                              result.current, result.newPass, result.confirm);
+                        },
+                      ),
+                      Divider(
+                          height: 0,
+                          indent: 63,
+                          color: cs.outlineVariant.withValues(alpha: 0.4)),
+                      NavTile(
+                        compact: true,
+                        leading: Icon(Icons.logout_rounded,
+                            size: 18, color: cs.error),
+                        iconBgColor: cs.error.withValues(alpha: 0.10),
+                        title: loc.logout,
+                        subtitle:
+                            Localizations.localeOf(context).languageCode == 'es'
+                                ? 'Salir de esta cuenta en este dispositivo.'
+                                : 'Sign out of this account on this device.',
+                        onTap: _confirmLogout,
+                        danger: true,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
-          SectionHeader(
-            title: loc.preferencesSectionTitle,
-            subtitle: _sectionDescription(context, 'preferences'),
-            textStyle: sectionTitleStyle,
-            subtitleStyle: sectionSubtitleStyle,
-            showDivider: false,
-            padding: const EdgeInsets.only(bottom: 12),
-          ),
-          SectionCard(
-            child: PreferencesSection(
-              isDark: themeModeProv.mode == ThemeMode.dark,
-              onToggleDark: () => themeModeProv.toggleLightDark(),
-              languageName: _languageName(context),
-              onChangeLanguage: _openLanguageSheet,
-              autoStatementImportEnabled:
-                  authProvider.currentUser?.autoStatementImportEnabled ?? false,
-              autoStatementImportBusy: _autoStatementImportLoading,
-              onToggleAutoStatementImport: _toggleAutoStatementImport,
-            ),
-          ),
-          const SizedBox(height: 24),
-          SectionHeader(
-            title: Localizations.localeOf(context).languageCode == 'es'
-                ? 'Seguridad'
-                : 'Security',
-            subtitle: _sectionDescription(context, 'security'),
-            textStyle: sectionTitleStyle,
-            subtitleStyle: sectionSubtitleStyle,
-            showDivider: false,
-            padding: const EdgeInsets.only(bottom: 12),
-          ),
-          SectionCard(
-            child: NavTile(
-              leading: Icon(Icons.logout_rounded, size: 18, color: cs.error),
-              iconBgColor: cs.error.withValues(alpha: 0.10),
-              title: loc.logout,
-              subtitle: Localizations.localeOf(context).languageCode == 'es'
-                  ? 'Salir de esta cuenta en este dispositivo.'
-                  : 'Sign out of this account on this device.',
-              onTap: _confirmLogout,
-              danger: true,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

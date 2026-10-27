@@ -136,7 +136,6 @@ class AddUserController extends ChangeNotifier {
     }
 
     _selectedUsers.add(user);
-    _searchResults.remove(username);
     notifyListeners();
     return user;
   }

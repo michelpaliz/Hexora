@@ -129,10 +129,25 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
 
     // Look up matching invitation by userId or email
     final invitations = widget.membersVM.invitations;
+    final normalizedRef = ref.username.trim().toLowerCase();
     final inv = invitations.cast<Invitation?>().firstWhere(
-          (i) => i!.userId == ref.username || i.email == ref.username,
+          (i) =>
+              i!.userId == ref.username ||
+              i.email?.trim().toLowerCase() == normalizedRef,
           orElse: () => null,
         );
+
+    // Email-only invitations do not have an account to resolve yet. Their
+    // invitation record is the source of truth for the detail pane.
+    if (inv?.userId == null && inv?.email != null) {
+      if (mounted) {
+        setState(() {
+          _selectedInvitation = inv;
+          _loadingUser = false;
+        });
+      }
+      return;
+    }
 
     try {
       final repo = context.read<IUserRepository>();
