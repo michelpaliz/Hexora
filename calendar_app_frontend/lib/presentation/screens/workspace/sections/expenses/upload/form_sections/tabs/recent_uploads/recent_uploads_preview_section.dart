@@ -354,7 +354,7 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
       children: [
         // ── Sticky KPI header ─────────────────────────────────────
         Container(
-          padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+          padding: const EdgeInsets.fromLTRB(10, 7, 8, 7),
           decoration: BoxDecoration(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
             color: cs.surfaceContainerHighest.withValues(alpha: 0.1),
@@ -372,15 +372,18 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
-                    child: Text(
-                      vendor,
-                      style: t.bodySmall.copyWith(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 13,
-                        color: cs.onSurface,
+                    child: Tooltip(
+                      message: vendor,
+                      child: Text(
+                        vendor,
+                        style: t.bodySmall.copyWith(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          color: cs.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -400,18 +403,6 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
                         ),
                       ),
                     ),
-                  if (status.isNotEmpty) ...[
-                    const SizedBox(width: 5),
-                    _StatusPill(label: status, cs: cs),
-                  ],
-                  if (expenseType != ExpenseDocumentType.standard) ...[
-                    const SizedBox(width: 5),
-                    _ExpenseTypePill(type: expenseType, cs: cs),
-                  ],
-                  if (hasZeroVat) ...[
-                    const SizedBox(width: 5),
-                    _VatZeroPill(cs: cs),
-                  ],
                 ],
               ),
               const SizedBox(height: 5),
@@ -430,6 +421,18 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (status.isNotEmpty) ...[
+                    const SizedBox(width: 5),
+                    _StatusPill(label: status, cs: cs),
+                  ],
+                  if (expenseType != ExpenseDocumentType.standard) ...[
+                    const SizedBox(width: 4),
+                    _ExpenseTypePill(type: expenseType, cs: cs),
+                  ],
+                  if (hasZeroVat) ...[
+                    const SizedBox(width: 4),
+                    _VatZeroPill(cs: cs),
+                  ],
                   const SizedBox(width: 6),
                   _OcrBadge(score: ocrScore),
                   const SizedBox(width: 4),

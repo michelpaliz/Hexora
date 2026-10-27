@@ -16,6 +16,7 @@ import 'package:hexora/theme/theme_provider.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 /// Circular avatar button.  Tap → shows a profile card popup anchored
 /// to the top-right of the screen (near the nav bar).
@@ -64,13 +65,16 @@ class UserProfilePopup extends StatelessWidget {
     showDialog(
       context: context,
       barrierColor: Colors.black12,
-      builder: (_) => Dialog(
-        alignment: Alignment.topRight,
-        insetPadding:
-            const EdgeInsets.only(top: 56, right: 14, bottom: 0, left: 0),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 8,
-        child: _UserProfileCard(initialUser: u, onSettings: onSettings),
+      builder: (_) => PointerInterceptor(
+        child: Dialog(
+          alignment: Alignment.topRight,
+          insetPadding:
+              const EdgeInsets.only(top: 56, right: 14, bottom: 0, left: 0),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 8,
+          child: _UserProfileCard(initialUser: u, onSettings: onSettings),
+        ),
       ),
     );
   }
@@ -388,9 +392,10 @@ class _UserProfileCardState extends State<_UserProfileCard> {
                 Expanded(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.settings_outlined, size: 14),
-                    label: Text(Localizations.localeOf(context).languageCode == 'es'
-                        ? 'Configuración'
-                        : 'Settings'),
+                    label: Text(
+                        Localizations.localeOf(context).languageCode == 'es'
+                            ? 'Configuración'
+                            : 'Settings'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: activeColor,
                       side:

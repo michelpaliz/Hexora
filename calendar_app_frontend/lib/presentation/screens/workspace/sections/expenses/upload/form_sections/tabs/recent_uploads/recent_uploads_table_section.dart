@@ -555,16 +555,33 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      vendor.isEmpty
-                          ? (isSpanish ? 'Sin proveedor' : 'No supplier')
-                          : vendor,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: t.bodySmall.copyWith(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          vendor.isEmpty
+                              ? (isSpanish ? 'Sin proveedor' : 'No supplier')
+                              : vendor,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.bodySmall.copyWith(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (reprocessing) ...[
+                          const SizedBox(height: 1),
+                          Text(
+                            isSpanish ? 'Releyendo…' : 'Re-reading…',
+                            style: t.bodySmall.copyWith(
+                              fontSize: 10.5,
+                              color: cs.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -707,99 +724,144 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
                   ),
                 )
               : null,
-          child: Row(children: [
-            CircleAvatar(
-              radius: 15,
-              backgroundColor: cs.primaryContainer.withValues(alpha: .55),
-              child: Text(
-                vendor.isEmpty ? '?' : vendor[0].toUpperCase(),
-                style: t.bodySmall.copyWith(
-                  color: cs.primary,
-                  fontWeight: FontWeight.w700,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Row(children: [
+              CircleAvatar(
+                radius: 15,
+                backgroundColor: cs.primaryContainer.withValues(alpha: .55),
+                child: Text(
+                  vendor.isEmpty ? '?' : vendor[0].toUpperCase(),
+                  style: t.bodySmall.copyWith(
+                    color: cs.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Tooltip(
-                    message: vendor,
-                    child: Text(
-                      vendor.isEmpty
-                          ? (isSpanish ? 'Sin proveedor' : 'No supplier')
-                          : vendor,
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Tooltip(
+                      message: vendor,
+                      child: Text(
+                        vendor.isEmpty
+                            ? (isSpanish ? 'Sin proveedor' : 'No supplier')
+                            : vendor,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.bodySmall.copyWith(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      [
+                        if (invoice.isNotEmpty) '#$invoice',
+                        if (date.isNotEmpty) date
+                      ].join(' · '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: t.bodySmall.copyWith(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
+                        color: cs.onSurfaceVariant,
+                        fontSize: 11,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    [
-                      if (invoice.isNotEmpty) '#$invoice',
-                      if (date.isNotEmpty) date
-                    ].join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: t.bodySmall.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Tooltip(
-              message: _vatStateLabel(state, isSpanish),
-              child: _StatusPill(
-                label: _compactVatStateLabel(state, isSpanish),
-                cs: cs,
-                color: stateColor,
-                icon: stateIcon,
-              ),
-            ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 94,
-              child: Text(
-                [
-                  _formatMoney(_expenseAmount(item)),
-                  if (currency.isNotEmpty) currency,
-                ].join(' '),
-                maxLines: 1,
-                overflow: TextOverflow.fade,
-                textAlign: TextAlign.end,
-                style: t.bodySmall.copyWith(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
-                  fontFeatures: const [FontFeature.tabularFigures()],
+                    if (reprocessing) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          SizedBox.square(
+                            dimension: 11,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.7,
+                              value: WidgetsBinding.instance.platformDispatcher
+                                      .accessibilityFeatures.disableAnimations
+                                  ? .65
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            isSpanish ? 'Releyendo…' : 'Re-reading…',
+                            style: t.bodySmall.copyWith(
+                              fontSize: 10.5,
+                              color: cs.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(width: 16),
-            _ExpenseActionGroup(
-              showPreview: false,
-              isSpanish: isSpanish,
-              previewEnabled: false,
-              onPreview: null,
-              reprocessing: reprocessing,
-              onOcr: id.isEmpty || reprocessing
-                  ? null
-                  : () => _reprocessExpense(item),
-              onEdit: () => _openExpenseEditor(item),
-              deleting: _deletingExpenseIds.contains(id),
-              onDelete: id.isEmpty || !widget.canDeleteExpenses
-                  ? null
-                  : () => _confirmDeleteExpense(item),
-              onOpenOriginal: _originalDocumentAction(item),
-            ),
+              const SizedBox(width: 8),
+              Tooltip(
+                message: _vatStateLabel(state, isSpanish),
+                child: _StatusPill(
+                  label: _compactVatStateLabel(state, isSpanish),
+                  cs: cs,
+                  color: stateColor,
+                  icon: stateIcon,
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 94,
+                child: Text(
+                  [
+                    _formatMoney(_expenseAmount(item)),
+                    if (currency.isNotEmpty) currency,
+                  ].join(' '),
+                  maxLines: 1,
+                  overflow: TextOverflow.fade,
+                  textAlign: TextAlign.end,
+                  style: t.bodySmall.copyWith(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              _ExpenseActionGroup(
+                showPreview: false,
+                isSpanish: isSpanish,
+                previewEnabled: false,
+                onPreview: null,
+                reprocessing: reprocessing,
+                onOcr: id.isEmpty || reprocessing
+                    ? null
+                    : () => _reprocessExpense(item),
+                onEdit: () => _openExpenseEditor(item),
+                deleting: _deletingExpenseIds.contains(id),
+                onDelete: id.isEmpty || !widget.canDeleteExpenses
+                    ? null
+                    : () => _confirmDeleteExpense(item),
+                onOpenOriginal: _originalDocumentAction(item),
+              ),
+            ]),
+            if (reprocessing) ...[
+              const SizedBox(height: 3),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: SizedBox(
+                  height: 2,
+                  child: LinearProgressIndicator(
+                    color: cs.primary,
+                    backgroundColor: cs.primary.withValues(alpha: .12),
+                    value: WidgetsBinding.instance.platformDispatcher
+                            .accessibilityFeatures.disableAnimations
+                        ? .65
+                        : null,
+                  ),
+                ),
+              ),
+            ],
           ]),
         ),
       ),
@@ -941,15 +1003,34 @@ class _ExpenseActionGroup extends StatelessWidget {
               ]),
             ),
         ],
-        child: IgnorePointer(
-          child: HexoraButton.iconOnly(
-            icon: Icons.more_horiz_rounded,
-            tooltip: isSpanish ? 'Más acciones' : 'More actions',
-            size: HexoraButtonSize.compact,
-            variant: HexoraButtonVariant.ghost,
-            onPressed: hasMoreActions ? () {} : null,
-          ),
-        ),
+        child: reprocessing
+            ? Tooltip(
+                message:
+                    isSpanish ? 'Releyendo factura…' : 'Re-reading invoice…',
+                child: SizedBox.square(
+                  dimension: 32,
+                  child: Center(
+                    child: SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        value: MediaQuery.disableAnimationsOf(context)
+                            ? .65
+                            : null,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            : IgnorePointer(
+                child: HexoraButton.iconOnly(
+                  icon: Icons.more_horiz_rounded,
+                  tooltip: isSpanish ? 'Más acciones' : 'More actions',
+                  size: HexoraButtonSize.compact,
+                  variant: HexoraButtonVariant.ghost,
+                  onPressed: hasMoreActions ? () {} : null,
+                ),
+              ),
       ),
     ];
 

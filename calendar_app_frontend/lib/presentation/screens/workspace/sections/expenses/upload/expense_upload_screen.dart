@@ -2051,7 +2051,6 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     );
     final displayGroupId = resolveGroupId();
     final hasGroupSelected = displayGroupId.trim().isNotEmpty;
-    final displayGroupName = _resolveGroupName();
     var canDeleteExpenses = true;
     try {
       final group = context.watch<GroupDomain>().currentGroup;
@@ -2146,27 +2145,24 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
         setState(() {});
       },
     );
-    final formFields = ExpenseFormFields(
-      groupName: displayGroupName,
-      groupId: displayGroupId,
+    final formFields = ManualExpenseTabbedForm(
       providerPicker: providerPicker,
       vendorController: _vendorController,
-      issueDateController: _issueDateController,
       vendorTaxIdController: _vendorTaxIdController,
       invoiceNumberController: _invoiceNumberController,
-      dueDateController: _dueDateController,
       currencyController: _currencyController,
+      issueDateController: _issueDateController,
+      dueDateController: _dueDateController,
       notesController: _notesController,
-      clientIdController: _clientIdController,
       settlementFields: manualSettlementFields,
       discountFields: manualDiscountFields,
       withholdingFields: manualWithholdingFields,
       totalsFields: manualTotalsFields,
       linesEditor: linesEditor,
       vatBreakdown: vatBreakdown,
-      hasLines: hasLines,
       submitting: _submitting,
       manualProvider: (_selectedProviderId ?? '').trim().isEmpty,
+      lineCount: _lines.length,
       onPickDate: _pickDate,
     );
     final errorsAndSubmit = ExpenseErrorsAndSubmit(

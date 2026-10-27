@@ -1426,6 +1426,17 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         apply: false,
       );
       if (!mounted) return;
+      final changes = preview['changes'];
+      final suggested = preview['suggested'];
+      final hasSuggestions = changes is List
+          ? changes.isNotEmpty
+          : suggested is Map && suggested.isNotEmpty;
+      if (!hasSuggestions) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sin cambios sugeridos.')),
+        );
+        return;
+      }
       final previewItem = await _resolveDuplicatePreviewItem(item);
       if (!mounted) return;
       final applied = await _showOcrReprocessReviewDialog(
@@ -1439,7 +1450,13 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_ocrReprocessErrorMessage(error))),
+        SnackBar(
+          content: Text(_ocrReprocessErrorMessage(error)),
+          action: SnackBarAction(
+            label: 'Reintentar',
+            onPressed: () => unawaited(_reprocessExpense(item)),
+          ),
+        ),
       );
     } finally {
       if (mounted) {
@@ -1947,6 +1964,10 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                     ),
                   ),
                   const SizedBox(width: 8),
+                  if (_bulkReprocessJob != null) ...[
+                    _buildOcrQueueIndicator(cs, t, isSpanish),
+                    const SizedBox(width: 8),
+                  ],
                   if (_zeroVatItemCount > 0) ...[
                     _buildVatReprocessButton(cs, t, isSpanish),
                   ],
@@ -2247,6 +2268,114 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
               size: 16,
             ),
       label: Text(label),
+    );
+  }
+
+  /// Presents the status returned by the existing persisted bulk OCR job.
+  /// A document-level queue cannot be simulated here: the current API exposes
+  /// one bulk job, not queue listing, cancellation, or retry endpoints.
+  Widget _buildOcrQueueIndicator(
+    ColorScheme cs,
+    AppTypography t,
+    bool isSpanish,
+  ) {
+    final job = _bulkReprocessJob!;
+    final status = _asText(job['status']).toLowerCase();
+    final total = _asInt(job['total']);
+    final processed = _asInt(job['processed']);
+    final completed = status == 'completed';
+    final failed = status == 'failed';
+    final remaining = (total - processed).clamp(0, total);
+    final label = failed
+        ? 'OCR · Error'
+        : completed
+            ? 'OCR · ${isSpanish ? 'Listo' : 'Ready'}'
+            : status == 'queued'
+                ? 'OCR · ${isSpanish ? 'En espera' : 'Queued'} $remaining'
+                : 'OCR · ${isSpanish ? 'Procesando' : 'Processing'} $processed/$total';
+    final color = failed
+        ? cs.error
+        : completed
+            ? Colors.green
+            : cs.primary;
+
+    return PopupMenuButton<String>(
+      tooltip: isSpanish ? 'Estado del OCR' : 'OCR status',
+      onSelected: (value) {
+        if (value == 'review') _openBulkReprocessResults();
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem<String>(
+          enabled: false,
+          child: SizedBox(
+            width: 220,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isSpanish ? 'Procesamiento OCR' : 'OCR processing',
+                  style: t.bodySmall.copyWith(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  failed
+                      ? (isSpanish
+                          ? 'El procesamiento no pudo completarse.'
+                          : 'Processing could not be completed.')
+                      : completed
+                          ? (isSpanish
+                              ? '$total documentos listos para revisar.'
+                              : '$total documents ready for review.')
+                          : (isSpanish
+                              ? '$processed de $total documentos procesados.'
+                              : '$processed of $total documents processed.'),
+                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (completed)
+          PopupMenuItem<String>(
+            value: 'review',
+            child: Row(children: [
+              Icon(Icons.fact_check_outlined, size: 17, color: cs.primary),
+              const SizedBox(width: 8),
+              Text(isSpanish ? 'Revisar cambios' : 'Review changes'),
+            ]),
+          ),
+      ],
+      child: IgnorePointer(
+        child: OutlinedButton.icon(
+          onPressed: () {},
+          style: OutlinedButton.styleFrom(
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+            minimumSize: const Size(0, 32),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            side: BorderSide(color: color.withValues(alpha: .35)),
+            foregroundColor: color,
+            textStyle: t.bodySmall.copyWith(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          icon: completed
+              ? const Icon(Icons.fact_check_outlined, size: 16)
+              : failed
+                  ? const Icon(Icons.error_outline, size: 16)
+                  : SizedBox(
+                      height: 14,
+                      width: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: color,
+                      ),
+                    ),
+          label: Text(label),
+        ),
+      ),
     );
   }
 
@@ -4148,6 +4277,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
 }
 
 // Single-chip KPI for the Total — the one metric that earns a border.
+enum _OcrReviewFilter { suggestions, unchanged, all }
+
 class _OcrReprocessReviewDialog extends StatefulWidget {
   final String title;
   final String groupId;
@@ -4190,7 +4321,10 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
   ];
 
   late final Set<String> _selectedExpenseIds;
+  late final Set<String> _selectedChangeKeys;
   bool _applying = false;
+  _OcrReviewFilter _filter = _OcrReviewFilter.suggestions;
+  bool _changesExpanded = true;
 
   @override
   void initState() {
@@ -4199,6 +4333,10 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
       for (final result in widget.results)
         if (_hasSuggestion(result)) _expenseId(result),
     }..removeWhere((id) => id.isEmpty);
+    _selectedChangeKeys = <String>{
+      for (final result in _withSuggestions)
+        for (final field in _changedFields(result)) _changeKey(result, field),
+    };
   }
 
   List<Map<String, dynamic>> get _withSuggestions =>
@@ -4213,6 +4351,87 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
         return !_hasSuggestion(result) &&
             !_failed.any((failed) => identical(failed, result));
       }).toList(growable: false);
+
+  List<Map<String, dynamic>> get _visibleResults => switch (_filter) {
+        _OcrReviewFilter.suggestions => _withSuggestions,
+        _OcrReviewFilter.unchanged => _noChanges,
+        _OcrReviewFilter.all => widget.results,
+      };
+
+  static String _changeKey(Map<String, dynamic> result, String field) =>
+      '${_expenseId(result)}::$field';
+
+  List<String> _changedFields(Map<String, dynamic> result) {
+    final suggested = _mapOf(result['suggested']);
+    final changes = result['changes'];
+    final fields = changes is List
+        ? changes
+            .map((value) => value is Map
+                ? _asText(value['field'] ?? value['path'] ?? value['key'])
+                : _asText(value))
+            .where((field) => field.isNotEmpty)
+        : suggested.keys;
+    return fields
+        .where((field) => _allowedFields.contains(field))
+        .where(suggested.containsKey)
+        .toSet()
+        .toList(growable: false);
+  }
+
+  int get _selectedFieldCount => _selectedChangeKeys.length;
+
+  int get _selectedDocumentCount => _withSuggestions
+      .where((result) => _changedFields(result).any(
+          (field) => _selectedChangeKeys.contains(_changeKey(result, field))))
+      .length;
+
+  void _toggleDocumentSelection(Map<String, dynamic> result, bool selected) {
+    final id = _expenseId(result);
+    final fields = _changedFields(result);
+    setState(() {
+      if (selected) {
+        _selectedExpenseIds.add(id);
+        _selectedChangeKeys
+            .addAll(fields.map((field) => _changeKey(result, field)));
+      } else {
+        _selectedExpenseIds.remove(id);
+        _selectedChangeKeys
+            .removeAll(fields.map((field) => _changeKey(result, field)));
+      }
+    });
+  }
+
+  void _toggleFieldSelection(
+    Map<String, dynamic> result,
+    String field,
+    bool selected,
+  ) {
+    final key = _changeKey(result, field);
+    final id = _expenseId(result);
+    setState(() {
+      if (selected) {
+        _selectedChangeKeys.add(key);
+        _selectedExpenseIds.add(id);
+      } else {
+        _selectedChangeKeys.remove(key);
+        if (!_changedFields(result).any(
+            (item) => _selectedChangeKeys.contains(_changeKey(result, item)))) {
+          _selectedExpenseIds.remove(id);
+        }
+      }
+    });
+  }
+
+  String _comparisonValue(String field, dynamic value) {
+    if (value == null) return '—';
+    if (const {'subtotal', 'taxTotal', 'total'}.contains(field)) {
+      final amount = ExpenseFormHelpers.parseNum(value);
+      return amount == null
+          ? _valueLabel(value)
+          : '${ExpenseFormHelpers.formatAmount(amount)} €';
+    }
+    return _valueLabel(value);
+  }
 
   static String _expenseId(Map<String, dynamic> result) =>
       _asText(result['expenseId'] ?? result['id']);
@@ -4267,13 +4486,15 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
 
   Future<void> _applySelected() async {
     final items = _withSuggestions
-        .where((result) => _selectedExpenseIds.contains(_expenseId(result)))
         .map((result) {
           final suggested = _mapOf(result['suggested']);
+          final selectedFields = _changedFields(result).where(
+            (field) => _selectedChangeKeys.contains(_changeKey(result, field)),
+          );
           return <String, dynamic>{
             'expenseId': _expenseId(result),
             'suggested': <String, dynamic>{
-              for (final field in _allowedFields)
+              for (final field in selectedFields)
                 if (suggested.containsKey(field)) field: suggested[field],
             },
           };
@@ -4312,12 +4533,12 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
     final hasDocumentPreview = widget.previewItem != null;
 
     return AlertDialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
       contentPadding: EdgeInsets.zero,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       content: SizedBox(
-        width: hasDocumentPreview ? 1180 : 920,
-        height: 680,
+        width: hasDocumentPreview ? 1490 : 980,
+        height: 930,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -4361,9 +4582,23 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
                     ),
                   ),
                   _DialogCountChip(
-                    label: 'seleccionados',
-                    value: _selectedExpenseIds.length,
+                    label: 'documentos',
+                    value: _selectedDocumentCount,
                     color: cs.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  _DialogCountChip(
+                    label: 'cambios',
+                    value: _selectedFieldCount,
+                    color: cs.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'Cerrar',
+                    onPressed: _applying
+                        ? null
+                        : () => Navigator.of(context).pop(false),
+                    icon: const Icon(Icons.close_rounded),
                   ),
                 ],
               ),
@@ -4391,7 +4626,7 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
                   ),
                   const SizedBox(width: 8),
                   FilledButton.icon(
-                    onPressed: _selectedExpenseIds.isEmpty || _applying
+                    onPressed: _selectedFieldCount == 0 || _applying
                         ? null
                         : _applySelected,
                     icon: _applying
@@ -4401,7 +4636,9 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.check_rounded, size: 18),
-                    label: const Text('Aplicar cambios'),
+                    label: Text(
+                      'Aplicar $_selectedFieldCount ${_selectedFieldCount == 1 ? 'cambio' : 'cambios'}',
+                    ),
                   ),
                 ],
               ),
@@ -4412,54 +4649,62 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
     );
   }
 
-  Widget _sectionTitle(BuildContext context, String label) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
-      child: Text(
-        label.toUpperCase(),
-        style: t.bodySmall.copyWith(
-          color: cs.onSurfaceVariant.withValues(alpha: 0.72),
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.7,
-        ),
-      ),
-    );
-  }
-
   Widget _buildDialogBody(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final list = ListView(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+    final t = AppTypography.of(context);
+    final comparisonResults = _visibleResults.where(_hasSuggestion).toList();
+    final suggestedCount = _withSuggestions.fold<int>(
+      0,
+      (count, result) => count + _changedFields(result).length,
+    );
+    final list = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_withSuggestions.isNotEmpty)
-          _sectionTitle(context, 'Sugerencias disponibles'),
-        for (final result in _withSuggestions) _suggestionCard(context, result),
-        if (_noChanges.isNotEmpty) ...[
-          _sectionTitle(context, 'Sin cambios detectados'),
-          for (final result in _noChanges)
-            _ResultCompactTile(
-              title: _expenseId(result),
-              subtitle: 'OCR no propuso cambios relevantes.',
-              icon: Icons.check_circle_outline,
-              color: Colors.green,
-            ),
-        ],
-        if (_failed.isNotEmpty) ...[
-          _sectionTitle(context, 'Fallidos'),
-          for (final result in _failed)
-            _ResultCompactTile(
-              title: _expenseId(result),
-              subtitle: _asText(
-                result['message'] ??
-                    result['error'] ??
-                    'No se pudo releer la factura.',
-              ),
-              icon: Icons.error_outline,
-              color: cs.error,
-            ),
-        ],
+        _OcrReviewFilterBar(
+          selected: _filter,
+          suggestions: _withSuggestions.length,
+          unchanged: _noChanges.length,
+          total: widget.results.length,
+          onChanged: (value) => setState(() => _filter = value),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(18, 0, 12, 14),
+            children: [
+              if (comparisonResults.isNotEmpty) ...[
+                Text(
+                  '$_selectedDocumentCount documentos seleccionados · '
+                  '$suggestedCount cambios sugeridos · '
+                  '$_selectedFieldCount cambios seleccionados',
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                for (final result in comparisonResults)
+                  _buildComparisonTable(context, result),
+              ],
+              for (final result
+                  in _visibleResults.where((item) => !_hasSuggestion(item)))
+                if (_failed.any((failed) => identical(failed, result)))
+                  _ResultCompactTile(
+                    title: _expenseId(result),
+                    subtitle: _asText(result['message'] ?? result['error']),
+                    icon: Icons.error_outline,
+                    color: cs.error,
+                  )
+                else
+                  _ResultCompactTile(
+                    title: _expenseId(result),
+                    subtitle: 'OCR no propuso cambios relevantes.',
+                    icon: Icons.check_circle_outline,
+                    color: Colors.green,
+                  ),
+            ],
+          ),
+        ),
       ],
     );
 
@@ -4486,6 +4731,146 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
     );
   }
 
+  Widget _buildComparisonTable(
+    BuildContext context,
+    Map<String, dynamic> result,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final current = _mapOf(result['current']);
+    final suggested = _mapOf(result['suggested']);
+    final fields = _changedFields(result);
+    final selectedCount = fields
+        .where(
+            (field) => _selectedChangeKeys.contains(_changeKey(result, field)))
+        .length;
+    final documentSelected = selectedCount == fields.length;
+    final vendor = _asText(
+      suggested['vendorName'] ?? current['vendorName'] ?? result['vendorName'],
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .38)),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 7, 10, 7),
+            child: Row(
+              children: [
+                Checkbox(
+                  value: documentSelected
+                      ? true
+                      : selectedCount == 0
+                          ? false
+                          : null,
+                  tristate: true,
+                  visualDensity: VisualDensity.compact,
+                  onChanged: (value) =>
+                      _toggleDocumentSelection(result, value ?? true),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    vendor.isEmpty ? 'Documento OCR' : vendor,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                ),
+                Text(
+                  '$selectedCount/${fields.length}',
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .32)),
+          const _OcrComparisonHeader(),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .32)),
+          for (final field in fields)
+            _OcrComparisonRow(
+              selected: _selectedChangeKeys.contains(_changeKey(result, field)),
+              onSelected: (value) =>
+                  _toggleFieldSelection(result, field, value),
+              label: _fieldLabel(field),
+              current: _comparisonValue(field, current[field]),
+              suggested: _comparisonValue(field, suggested[field]),
+              confidence: _confidenceFor(result, field),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Legacy helper retained for the transition; the dialog renders only the
+  // consolidated comparison table above.
+  // ignore: unused_element
+  Widget _buildChangeReview(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final result = _withSuggestions.firstWhere(
+      (item) => _selectedExpenseIds.contains(_expenseId(item)),
+      orElse: () => _withSuggestions.first,
+    );
+    final current = _mapOf(result['current']);
+    final suggested = _mapOf(result['suggested']);
+    final changes = result['changes'];
+    final fields = changes is List
+        ? changes
+            .map((item) => item is Map
+                ? _asText(item['field'] ?? item['path'] ?? item['key'])
+                : _asText(item))
+            .where((field) => field.isNotEmpty)
+            .toSet()
+            .toList()
+        : suggested.keys.toList();
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: .18),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .35)),
+      ),
+      child: Column(children: [
+        InkWell(
+          onTap: () => setState(() => _changesExpanded = !_changesExpanded),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(children: [
+              Icon(Icons.check_rounded, size: 16, color: cs.primary),
+              const SizedBox(width: 8),
+              Text('Vista de cambios',
+                  style: t.bodySmall.copyWith(fontWeight: FontWeight.w900)),
+              const Spacer(),
+              Icon(_changesExpanded ? Icons.expand_less : Icons.expand_more,
+                  size: 18),
+            ]),
+          ),
+        ),
+        if (_changesExpanded) ...[
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .3)),
+          for (final field in fields)
+            _OcrComparisonRow(
+              selected: false,
+              onSelected: (_) {},
+              label: _fieldLabel(field),
+              current: _valueLabel(current[field]),
+              suggested: _valueLabel(suggested[field]),
+              confidence: _confidenceFor(result, field),
+            ),
+        ],
+      ]),
+    );
+  }
+
+  // ignore: unused_element
   Widget _suggestionCard(BuildContext context, Map<String, dynamic> result) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
@@ -4647,6 +5032,194 @@ class _OcrReprocessReviewDialogState extends State<_OcrReprocessReviewDialog> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _OcrReviewFilterBar extends StatelessWidget {
+  final _OcrReviewFilter selected;
+  final int suggestions;
+  final int unchanged;
+  final int total;
+  final ValueChanged<_OcrReviewFilter> onChanged;
+
+  const _OcrReviewFilterBar({
+    required this.selected,
+    required this.suggestions,
+    required this.unchanged,
+    required this.total,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    Widget item(
+        _OcrReviewFilter value, IconData icon, String label, int count) {
+      final active = selected == value;
+      return Expanded(
+        child: InkWell(
+          onTap: () => onChanged(value),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            height: 46,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: active
+                  ? cs.primary.withValues(alpha: .12)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: active
+                  ? Border.all(color: cs.primary.withValues(alpha: .55))
+                  : null,
+            ),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(icon,
+                  size: 16, color: active ? cs.primary : cs.onSurfaceVariant),
+              const SizedBox(width: 7),
+              Flexible(
+                  child: Text(label,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          t.bodySmall.copyWith(fontWeight: FontWeight.w800))),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: active ? .18 : .08),
+                    borderRadius: BorderRadius.circular(999)),
+                child: Text('$count',
+                    style: t.bodySmall.copyWith(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: active ? cs.primary : cs.onSurfaceVariant)),
+              ),
+            ]),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 12, 12, 0),
+      child: Container(
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest.withValues(alpha: .25),
+            borderRadius: BorderRadius.circular(9)),
+        child: Row(children: [
+          item(_OcrReviewFilter.suggestions, Icons.check_rounded, 'Sugerencias',
+              suggestions),
+          item(_OcrReviewFilter.unchanged, Icons.remove_circle_outline,
+              'Sin cambios', unchanged),
+          item(_OcrReviewFilter.all, Icons.format_list_bulleted_rounded, 'Todo',
+              total),
+        ]),
+      ),
+    );
+  }
+}
+
+class _OcrComparisonHeader extends StatelessWidget {
+  const _OcrComparisonHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final style = t.bodySmall.copyWith(
+      color: cs.onSurfaceVariant,
+      fontSize: 11,
+      fontWeight: FontWeight.w900,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      child: Row(children: [
+        SizedBox(width: 54, child: Text('Seleccionar', style: style)),
+        SizedBox(width: 96, child: Text('Campo', style: style)),
+        Expanded(child: Text('Valor actual', style: style)),
+        const SizedBox(width: 12),
+        Expanded(child: Text('Valor sugerido', style: style)),
+      ]),
+    );
+  }
+}
+
+class _OcrComparisonRow extends StatelessWidget {
+  final bool selected;
+  final ValueChanged<bool> onSelected;
+  final String label;
+  final String current;
+  final String suggested;
+  final double confidence;
+
+  const _OcrComparisonRow({
+    required this.selected,
+    required this.onSelected,
+    required this.label,
+    required this.current,
+    required this.suggested,
+    required this.confidence,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final confidenceLabel =
+        confidence > 0 ? 'Confianza ${(confidence * 100).round()}%' : null;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      child: Row(children: [
+        Checkbox(
+          value: selected,
+          visualDensity: VisualDensity.compact,
+          onChanged: (value) => onSelected(value ?? false),
+        ),
+        SizedBox(
+            width: 96,
+            child: Text(label,
+                style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                overflow: TextOverflow.ellipsis)),
+        const SizedBox(width: 8),
+        Expanded(
+            child: Text(current,
+                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis)),
+        const SizedBox(width: 12),
+        Expanded(
+            child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+              color: cs.primary.withValues(alpha: .09),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: cs.primary.withValues(alpha: .25))),
+          child: Row(children: [
+            Expanded(
+              child: Text(suggested,
+                  style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+            ),
+            if (confidenceLabel != null) ...[
+              const SizedBox(width: 6),
+              Tooltip(
+                message: 'Confianza de lectura OCR',
+                child: Text(
+                  confidenceLabel,
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ]),
+        )),
+      ]),
     );
   }
 }
