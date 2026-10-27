@@ -48,6 +48,30 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
   String? _resolvedServiceName;
   String? _resolvedOwnerName;
 
+  Future<void> _confirmDelete(bool isEs) async {
+    if (widget.onDelete == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isEs ? 'Eliminar notificación' : 'Delete notification'),
+        content: Text(isEs
+            ? 'Esta acción no se puede deshacer.'
+            : 'This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(isEs ? 'Cancelar' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(isEs ? 'Eliminar' : 'Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) widget.onDelete!();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -533,74 +557,93 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
             ],
 
             // ── Context ───────────────────────────────────────────────────────
-            _SectionDivider(label: isEs ? 'Contexto' : 'Context', cs: cs, t: t),
-            _IconDetailRow(
-              icon: Icons.group_rounded,
-              label: l.groupSectionTitle,
-              value: widget.groupName,
-              color: dim,
-            ),
-            if (args.ownerName != null || args.ownerId != null)
-              _IconDetailRow(
-                icon: Icons.manage_accounts_rounded,
-                label: isEs ? 'Responsable' : 'Owner',
-                value: _bestResolvedLabel(
-                      resolvedName: _resolvedOwnerName,
-                      payloadName: args.ownerName,
-                      fallbackId: args.ownerId,
-                    ) ??
-                    args.ownerId!,
-                color: dim,
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              title: Text(
+                isEs ? 'Ver detalles' : 'View details',
+                style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
               ),
-            _IconDetailRow(
-              icon: Icons.send_rounded,
-              label: isEs ? 'Enviado por' : 'Sent by',
-              value: args.senderName ??
-                  args.ownerName ??
-                  _fallbackActorLabel(
-                    isEs: isEs,
-                    actorId: args.senderId ?? n.senderId,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Column(
+                    children: [
+                      _IconDetailRow(
+                        icon: Icons.group_rounded,
+                        label: l.groupSectionTitle,
+                        value: widget.groupName,
+                        color: dim,
+                      ),
+                      if (args.ownerName != null || args.ownerId != null)
+                        _IconDetailRow(
+                          icon: Icons.manage_accounts_rounded,
+                          label: isEs ? 'Responsable' : 'Owner',
+                          value: _bestResolvedLabel(
+                                resolvedName: _resolvedOwnerName,
+                                payloadName: args.ownerName,
+                                fallbackId: args.ownerId,
+                              ) ??
+                              args.ownerId!,
+                          color: dim,
+                        ),
+                      _IconDetailRow(
+                        icon: Icons.send_rounded,
+                        label: isEs ? 'Enviado por' : 'Sent by',
+                        value: args.senderName ??
+                            args.ownerName ??
+                            _fallbackActorLabel(
+                              isEs: isEs,
+                              actorId: args.senderId ?? n.senderId,
+                            ),
+                        color: dim,
+                      ),
+                      _IconDetailRow(
+                        icon: Icons.notifications_rounded,
+                        label: l.notifications,
+                        value: _localizedCategory(n.category, l),
+                        color: dim,
+                      ),
+                      _IconDetailRow(
+                        icon: Icons.access_time_rounded,
+                        label: isEs ? 'Recibida' : 'Received',
+                        value: formatTimeDifference(n.timestamp, context),
+                        color: dim,
+                      ),
+                      // Priority — always visible
+                      _IconDetailRow(
+                        icon: Icons.flag_rounded,
+                        label: isEs ? 'Prioridad' : 'Priority',
+                        value: switch (n.priority) {
+                          PriorityLevel.high => isEs ? 'Alta' : 'High',
+                          PriorityLevel.low => isEs ? 'Baja' : 'Low',
+                          PriorityLevel.medium => isEs ? 'Media' : 'Medium',
+                        },
+                        color: switch (n.priority) {
+                          PriorityLevel.high => Colors.red.shade600,
+                          PriorityLevel.low => Colors.grey.shade500,
+                          PriorityLevel.medium => dim,
+                        },
+                      ),
+                      // Notification type
+                      _IconDetailRow(
+                        icon: Icons.category_rounded,
+                        label: isEs ? 'Tipo de notif.' : 'Notif. type',
+                        value: switch (n.type) {
+                          NotificationType.alert => isEs ? 'Alerta' : 'Alert',
+                          NotificationType.reminder =>
+                            isEs ? 'Recordatorio' : 'Reminder',
+                          NotificationType.message =>
+                            isEs ? 'Mensaje' : 'Message',
+                          NotificationType.update =>
+                            isEs ? 'Actualización' : 'Update',
+                        },
+                        color: dim,
+                      ),
+                    ],
                   ),
-              color: dim,
-            ),
-            _IconDetailRow(
-              icon: Icons.notifications_rounded,
-              label: l.notifications,
-              value: _localizedCategory(n.category, l),
-              color: dim,
-            ),
-            _IconDetailRow(
-              icon: Icons.access_time_rounded,
-              label: isEs ? 'Recibida' : 'Received',
-              value: formatTimeDifference(n.timestamp, context),
-              color: dim,
-            ),
-            // Priority — always visible
-            _IconDetailRow(
-              icon: Icons.flag_rounded,
-              label: isEs ? 'Prioridad' : 'Priority',
-              value: switch (n.priority) {
-                PriorityLevel.high => isEs ? 'Alta' : 'High',
-                PriorityLevel.low => isEs ? 'Baja' : 'Low',
-                PriorityLevel.medium => isEs ? 'Media' : 'Medium',
-              },
-              color: switch (n.priority) {
-                PriorityLevel.high => Colors.red.shade600,
-                PriorityLevel.low => Colors.grey.shade500,
-                PriorityLevel.medium => dim,
-              },
-            ),
-            // Notification type
-            _IconDetailRow(
-              icon: Icons.category_rounded,
-              label: isEs ? 'Tipo de notif.' : 'Notif. type',
-              value: switch (n.type) {
-                NotificationType.alert => isEs ? 'Alerta' : 'Alert',
-                NotificationType.reminder => isEs ? 'Recordatorio' : 'Reminder',
-                NotificationType.message => isEs ? 'Mensaje' : 'Message',
-                NotificationType.update => isEs ? 'Actualización' : 'Update',
-              },
-              color: dim,
+                ),
+              ],
             ),
           ],
           if (hasActions) ...[
@@ -616,7 +659,8 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
               ],
             ),
           ],
-          if (widget.onOpen != null || widget.onMarkRead != null) ...[
+          if (hasActions &&
+              (widget.onOpen != null || widget.onMarkRead != null)) ...[
             const SizedBox(height: 14),
             Wrap(
               spacing: 8,
@@ -658,19 +702,24 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
                 icon: const Icon(Icons.mark_email_read_outlined, size: 16),
                 label: Text(isEs ? 'Marcar como leída' : 'Mark as read'),
               ),
-            OutlinedButton.icon(
-              onPressed: widget.onDelete,
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(0, 38),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-                foregroundColor: cs.error,
-                backgroundColor: cs.error.withValues(alpha: .05),
-                side: BorderSide(color: cs.error.withValues(alpha: .18)),
-              ),
-              icon:
-                  Icon(Icons.delete_outline_rounded, size: 16, color: cs.error),
-              label: Text(l.delete, style: TextStyle(color: cs.error)),
+            PopupMenuButton<String>(
+              tooltip: isEs ? 'Más acciones' : 'More actions',
+              onSelected: (value) {
+                if (value == 'delete') _confirmDelete(isEs);
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem<String>(
+                  value: 'delete',
+                  enabled: widget.onDelete != null,
+                  child: Row(children: [
+                    Icon(Icons.delete_outline_rounded,
+                        color: cs.error, size: 18),
+                    const SizedBox(width: 8),
+                    Text(l.delete, style: TextStyle(color: cs.error)),
+                  ]),
+                ),
+              ],
+              icon: const Icon(Icons.more_horiz_rounded),
             ),
           ]),
         ],
@@ -749,11 +798,6 @@ class _BankExpenseRowsSection extends StatelessWidget {
     return raw.isEmpty ? '-' : _money(context, raw, _currency(row));
   }
 
-  String _balance(BuildContext context, Map<String, dynamic> row) {
-    final raw = _text(row, const ['balance']);
-    return raw.isEmpty ? '-' : _money(context, raw, _currency(row));
-  }
-
   String _date(BuildContext context, Map<String, dynamic> row) {
     final value = _text(row, const [
       'date',
@@ -805,78 +849,140 @@ class _BankExpenseRowsSection extends StatelessWidget {
             ),
           ),
         ],
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border:
-                Border.all(color: cs.outlineVariant.withValues(alpha: 0.55)),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              headingRowHeight: 36,
-              dataRowMinHeight: 44,
-              dataRowMaxHeight: 58,
-              horizontalMargin: 12,
-              columnSpacing: 18,
-              headingTextStyle: t.caption.copyWith(
-                color: cs.onSurface,
-                fontWeight: FontWeight.w900,
+        if (rows.length == 1)
+          _BankExpenseSingleRowCard(
+            date: _date(context, rows.first),
+            description: _description(rows.first),
+            amount: _amount(context, rows.first),
+            provider: _provider(rows.first),
+          )
+        else
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border:
+                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.55)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                headingRowHeight: 36,
+                dataRowMinHeight: 44,
+                dataRowMaxHeight: 58,
+                horizontalMargin: 12,
+                columnSpacing: 18,
+                headingTextStyle: t.caption.copyWith(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w900,
+                ),
+                dataTextStyle: t.caption.copyWith(color: cs.onSurface),
+                columns: const [
+                  DataColumn(label: Text('Fecha')),
+                  DataColumn(label: Text('Descripción')),
+                  DataColumn(label: Text('Importe')),
+                  DataColumn(label: Text('Proveedor')),
+                ],
+                rows: List<DataRow>.generate(rows.length, (index) {
+                  final row = rows[index];
+                  final key = _text(row, const ['entryId', 'id']);
+                  return DataRow(
+                    key: ValueKey(key.isEmpty ? index : key),
+                    cells: [
+                      DataCell(Text(_date(context, row))),
+                      DataCell(
+                        SizedBox(
+                          width: 220,
+                          child: Text(
+                            _description(row),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        Text(
+                          _amount(context, row),
+                          style: TextStyle(
+                            color: cs.error,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        SizedBox(
+                          width: 150,
+                          child: Text(
+                            _provider(row),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }),
               ),
-              dataTextStyle: t.caption.copyWith(color: cs.onSurface),
-              columns: const [
-                DataColumn(label: Text('Fecha')),
-                DataColumn(label: Text('Descripción')),
-                DataColumn(label: Text('Importe')),
-                DataColumn(label: Text('Saldo')),
-                DataColumn(label: Text('Proveedor')),
-              ],
-              rows: List<DataRow>.generate(rows.length, (index) {
-                final row = rows[index];
-                final key = _text(row, const ['entryId', 'id']);
-                return DataRow(
-                  key: ValueKey(key.isEmpty ? index : key),
-                  cells: [
-                    DataCell(Text(_date(context, row))),
-                    DataCell(
-                      SizedBox(
-                        width: 220,
-                        child: Text(
-                          _description(row),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        _amount(context, row),
-                        style: TextStyle(
-                          color: cs.error,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    DataCell(Text(_balance(context, row))),
-                    DataCell(
-                      SizedBox(
-                        width: 150,
-                        child: Text(
-                          _provider(row),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              }),
             ),
           ),
-        ),
       ],
+    );
+  }
+}
+
+class _BankExpenseSingleRowCard extends StatelessWidget {
+  const _BankExpenseSingleRowCard({
+    required this.date,
+    required this.description,
+    required this.amount,
+    required this.provider,
+  });
+
+  final String date;
+  final String description;
+  final String amount;
+  final String provider;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        color: cs.surfaceContainerHighest.withValues(alpha: .18),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .4)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Text(date, style: t.caption.copyWith(color: cs.onSurfaceVariant)),
+          const Spacer(),
+          Text(
+            amount,
+            style: t.bodySmall.copyWith(
+              color: cs.error,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ]),
+        const SizedBox(height: 6),
+        Text(
+          description,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          provider,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: t.caption.copyWith(color: cs.onSurfaceVariant),
+        ),
+      ]),
     );
   }
 }

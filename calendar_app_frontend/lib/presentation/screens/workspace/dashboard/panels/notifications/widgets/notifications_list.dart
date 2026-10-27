@@ -14,6 +14,7 @@ class NotificationsList extends StatelessWidget {
   final String? selectedId;
   final FutureOr<void> Function(NotificationUser) onSelect;
   final Future<void> Function(NotificationUser) onDelete;
+  final FutureOr<void> Function(NotificationUser)? onMarkRead;
 
   const NotificationsList({
     super.key,
@@ -21,6 +22,7 @@ class NotificationsList extends StatelessWidget {
     required this.selectedId,
     required this.onSelect,
     required this.onDelete,
+    this.onMarkRead,
   });
 
   @override
@@ -54,6 +56,7 @@ class NotificationsList extends StatelessWidget {
             isSelected: selectedId == n.id,
             onTap: () => onSelect(n),
             onDelete: () => onDelete(n),
+            onMarkRead: onMarkRead == null ? null : () => onMarkRead!(n),
           ),
         );
       },
@@ -116,12 +119,14 @@ class _SettingsLikeNotificationRow extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     required this.onDelete,
+    this.onMarkRead,
   });
 
   final NotificationUser notification;
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final VoidCallback? onMarkRead;
 
   @override
   Widget build(BuildContext context) {
@@ -174,37 +179,24 @@ class _SettingsLikeNotificationRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.fromLTRB(10, 7, 8, 7),
+          padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
           decoration: BoxDecoration(
-            color: notification.isRead
-                ? cs.surfaceContainerHighest.withValues(alpha: 0.12)
-                : priorityColor.withValues(alpha: isHighPriority ? 0.10 : 0.07),
+            color: isSelected
+                ? cs.primary.withValues(alpha: 0.07)
+                : (!notification.isRead
+                    ? cs.primary.withValues(alpha: 0.035)
+                    : Colors.transparent),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: isSelected
-                  ? priorityColor.withValues(alpha: 0.5)
-                  : (notification.isRead
-                      ? cs.outlineVariant.withValues(alpha: 0.25)
-                      : priorityColor.withValues(
-                          alpha: isHighPriority ? 0.28 : 0.18,
-                        )),
-              width: isSelected ? 1.4 : 1,
+                  ? cs.primary.withValues(alpha: 0.45)
+                  : cs.outlineVariant.withValues(alpha: 0.22),
+              width: isSelected ? 1.2 : 0.8,
             ),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (isSelected || isHighPriority || !notification.isRead)
-                Container(
-                  width: isHighPriority ? 4 : 3,
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    color: priorityColor.withValues(
-                      alpha: notification.isRead ? 0.65 : 1,
-                    ),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
               Container(
                 width: 32,
                 height: 32,
@@ -259,12 +251,21 @@ class _SettingsLikeNotificationRow extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        const SizedBox(width: 6),
+                        Text(
+                          formatInlineNotificationTimestamp(
+                              notification.timestamp),
+                          style: t.caption.copyWith(
+                            color: cs.onSurfaceVariant.withValues(alpha: .65),
+                            fontSize: 10,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      notification.getLocalizedMessage(l),
-                      maxLines: 2,
+                      compactNotificationDescription(notification, l),
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: t.caption.copyWith(color: cs.onSurfaceVariant),
                     ),
@@ -344,30 +345,39 @@ class _SettingsLikeNotificationRow extends StatelessWidget {
                             .toList(),
                       ),
                     ],
-                    const SizedBox(height: 3),
-                    Text(
-                      formatInlineNotificationTimestamp(notification.timestamp),
-                      style: t.caption.copyWith(
-                        color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-                        fontSize: 10,
-                      ),
-                    ),
                   ],
                 ),
               ),
-              IconButton(
-                icon: Icon(
-                  Icons.close_rounded,
-                  size: 14,
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.5),
-                ),
-                tooltip: l.delete,
-                onPressed: onDelete,
-                style: IconButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(26, 26),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
+              PopupMenuButton<String>(
+                tooltip: isEs ? 'Acciones' : 'Actions',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 180),
+                onSelected: (value) {
+                  if (value == 'read') onMarkRead?.call();
+                  if (value == 'delete') onDelete();
+                },
+                itemBuilder: (context) => [
+                  if (!notification.isRead && onMarkRead != null)
+                    PopupMenuItem<String>(
+                      value: 'read',
+                      child: Row(children: [
+                        const Icon(Icons.mark_email_read_outlined, size: 17),
+                        const SizedBox(width: 8),
+                        Text(isEs ? 'Marcar como leída' : 'Mark as read'),
+                      ]),
+                    ),
+                  PopupMenuItem<String>(
+                    value: 'delete',
+                    child: Row(children: [
+                      Icon(Icons.delete_outline_rounded,
+                          size: 17, color: cs.error),
+                      const SizedBox(width: 8),
+                      Text(l.delete, style: TextStyle(color: cs.error)),
+                    ]),
+                  ),
+                ],
+                icon: Icon(Icons.more_horiz_rounded,
+                    size: 18, color: cs.onSurfaceVariant),
               ),
             ],
           ),
@@ -385,6 +395,31 @@ String formatInlineNotificationTimestamp(DateTime ts) {
   if (diff.inHours < 24) return '${diff.inHours}h';
   if (diff.inDays < 7) return '${diff.inDays}d';
   return '${ts.day}/${ts.month}/${ts.year}';
+}
+
+String compactNotificationDescription(
+  NotificationUser notification,
+  AppLocalizations localizations,
+) {
+  final message = notification.getLocalizedMessage(localizations).trim();
+  final title = notification.getLocalizedTitle(localizations).toLowerCase();
+  final bankMatch = RegExp(
+    r'(\d+)\s+gastos? bancarios.*?(?:total de|total)\s+([^.]*)',
+    caseSensitive: false,
+  ).firstMatch(message);
+  if (title.contains('gastos bancarios') && bankMatch != null) {
+    final count = bankMatch.group(1)!;
+    return '$count ${count == '1' ? 'movimiento' : 'movimientos'} · ${bankMatch.group(2)!.trim()}';
+  }
+
+  final recurring = RegExp(
+    r'(?:para\s+)(.+?)(?:\s+a partir de la recurrencia\s+)["“]?(.+?)["”]?(?:\s+por\s+)([^.]+)',
+    caseSensitive: false,
+  ).firstMatch(message);
+  if (recurring != null) {
+    return '${recurring.group(1)!.trim()} · ${recurring.group(2)!.trim()} · ${recurring.group(3)!.trim()}';
+  }
+  return message;
 }
 
 enum _NotificationPriority { high, medium, low }

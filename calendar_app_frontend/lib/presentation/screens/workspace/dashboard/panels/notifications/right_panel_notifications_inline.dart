@@ -114,10 +114,20 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
         width: 32,
         height: 32,
         child: IconButton(
-          style: ThemedButtons.iconAction(context),
+          // Keep this compact control self-contained. The shared desktop
+          // action style has a larger minimum target, which conflicts with
+          // the fixed 32px toolbar slot and creates invalid constraints.
+          style: IconButton.styleFrom(
+            minimumSize: const Size(32, 32),
+            padding: EdgeInsets.zero,
+            foregroundColor: cs.onSurfaceVariant,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
           padding: EdgeInsets.zero,
           visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           splashRadius: 16,
           iconSize: 16,
           icon: Icon(
@@ -846,6 +856,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                         selectedId: effectiveSelected?.id,
                         onSelect: _handleNotificationSelected,
                         onDelete: _handleDelete,
+                        onMarkRead: _handleMarkRead,
                       ),
               );
 
