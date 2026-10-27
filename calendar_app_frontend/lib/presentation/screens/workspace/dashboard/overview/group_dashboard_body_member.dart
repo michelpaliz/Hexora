@@ -103,6 +103,19 @@ class GroupDashboardBodyMember extends StatelessWidget {
                       .openSection(Sections.agenda),
                 ),
               ),
+              Card(
+                color: tileBg,
+                child: ListTile(
+                  leading: const Icon(Icons.forum_outlined),
+                  title: Text(l.localeName.startsWith('es')
+                      ? 'Chat de la empresa'
+                      : 'Business chat', style: tileTitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context
+                      .read<GroupDashboardState>()
+                      .openSection(Sections.businessChat),
+                ),
+              ),
               if (!group.hasCalendar) ...[
                 const SizedBox(height: 8),
                 Card(

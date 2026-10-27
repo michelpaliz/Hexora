@@ -87,6 +87,8 @@ class GroupDashboardState extends ChangeNotifier {
   String activeSection = Sections.calendar;
 
   void selectSection(String section) {
+    if (section == Sections.chat && !canSeeAdmin) return;
+    if (section == Sections.services && !canSeeAdmin) return;
     if (activeSection == section) return;
     activeSection = section;
     notifyListeners();
@@ -147,6 +149,9 @@ class GroupDashboardState extends ChangeNotifier {
 
     role = await RoleResolver.resolve(group: target, userDomain: _ud);
     user = await _getSafeUser();
+    if ((activeSection == Sections.chat || activeSection == Sections.services) && !canSeeAdmin) {
+      activeSection = Sections.calendar;
+    }
 
     if (refreshed != null) group = refreshed;
 

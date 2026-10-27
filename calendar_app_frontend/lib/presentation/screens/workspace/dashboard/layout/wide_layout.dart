@@ -222,6 +222,8 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
       case Sections.emails:
         return 'Emails';
       case Sections.chat:
+        return 'IA';
+      case Sections.businessChat:
         return 'Chat';
       case 'enableBanking':
         return 'Banco';
@@ -265,7 +267,7 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
         icon: Icons.design_services_outlined,
         label: l.localeName.startsWith('es') ? 'Operaciones' : 'Operations',
         section: Sections.services,
-        adminOnly: false,
+        adminOnly: true,
       ),
       (
         icon: Icons.map_outlined,
@@ -300,8 +302,14 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
       (
         icon: Icons.chat_bubble_outline_rounded,
         label: 'Chat',
-        section: Sections.chat,
+        section: Sections.businessChat,
         adminOnly: false,
+      ),
+      (
+        icon: Icons.auto_awesome_outlined,
+        label: l.localeName.startsWith('es') ? 'Asistente IA' : 'AI assistant',
+        section: Sections.chat,
+        adminOnly: true,
       ),
       (
         icon: Icons.account_balance_outlined,

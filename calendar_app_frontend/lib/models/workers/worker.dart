@@ -34,6 +34,7 @@ class Worker {
   final String? currency; // e.g., "EUR"
   final String? externalId;
   final String? roleTag; // e.g., "barista"
+  final String operationalRole; // worker | supervisor, separate from company role
   final String? notes; // <= 1000 chars
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -51,6 +52,7 @@ class Worker {
     this.currency,
     this.externalId,
     this.roleTag,
+    this.operationalRole = 'worker',
     this.notes,
     this.createdAt,
     this.updatedAt,
@@ -68,6 +70,7 @@ class Worker {
     String? currency,
     String? externalId,
     String? roleTag,
+    String operationalRole = 'worker',
     String? notes,
   }) =>
       Worker(
@@ -81,6 +84,7 @@ class Worker {
         currency: currency,
         externalId: externalId,
         roleTag: roleTag,
+        operationalRole: operationalRole,
         notes: notes,
       );
 
@@ -91,6 +95,7 @@ class Worker {
     double? advanceAmount,
     String? currency,
     String? roleTag,
+    String operationalRole = 'worker',
     String? notes,
   }) =>
       Worker(
@@ -104,6 +109,7 @@ class Worker {
         currency: currency,
         externalId: null,
         roleTag: roleTag,
+        operationalRole: operationalRole,
         notes: notes,
       );
 
@@ -118,6 +124,7 @@ class Worker {
     String? currency,
     String? externalId,
     String? roleTag,
+    String? operationalRole,
     String? notes,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -135,6 +142,7 @@ class Worker {
       currency: currency ?? this.currency,
       externalId: externalId ?? this.externalId,
       roleTag: roleTag ?? this.roleTag,
+      operationalRole: operationalRole ?? this.operationalRole,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -164,6 +172,7 @@ class Worker {
       currency: json['currency'] as String?,
       externalId: json['externalId'] as String?,
       roleTag: json['roleTag'] as String?,
+      operationalRole: json['operationalRole'] == 'supervisor' ? 'supervisor' : 'worker',
       notes: json['notes'] as String?,
       createdAt: (json['createdAt'] != null)
           ? DateTime.parse(json['createdAt'])
@@ -190,6 +199,7 @@ class Worker {
       if (currency != null) 'currency': currency,
       if (externalId != null) 'externalId': externalId,
       if (roleTag != null) 'roleTag': roleTag,
+      'operationalRole': operationalRole,
       if (notes != null) 'notes': notes,
       // status is optional on create; backend defaults to "active"
     };
@@ -205,6 +215,7 @@ class Worker {
       if (currency != null) 'currency': currency,
       if (externalId != null) 'externalId': externalId,
       if (roleTag != null) 'roleTag': roleTag,
+      'operationalRole': operationalRole,
       if (notes != null) 'notes': notes,
     };
   }

@@ -37,15 +37,17 @@ class BottomBar extends StatelessWidget {
                       onPressed: () => state.openSection('calendar'),
                     ),
             ),
-            const SizedBox(width: 12),
-            SizedBox(
-              width: 48,
-              height: 48,
-              child: InsightsChatFab(
-                groupId: state.group.id,
-                heroTag: 'group-dashboard-insights-chat-fab',
+            if (state.canSeeAdmin) ...[
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: InsightsChatFab(
+                  groupId: state.group.id,
+                  heroTag: 'group-dashboard-insights-chat-fab',
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),

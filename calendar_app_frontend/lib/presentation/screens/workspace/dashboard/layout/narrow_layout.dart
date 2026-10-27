@@ -62,6 +62,7 @@ class NarrowLayout extends StatelessWidget {
         );
         break;
       case Sections.chat:
+      case Sections.businessChat:
       case Sections.notifications:
       case Sections.settings:
       case Sections.members:

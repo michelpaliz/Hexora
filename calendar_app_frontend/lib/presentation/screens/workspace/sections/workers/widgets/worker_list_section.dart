@@ -232,7 +232,7 @@ class _WorkerRowState extends State<_WorkerRow> {
                                     const SizedBox(width: 5),
                                     Expanded(
                                       child: Text(
-                                        _metaLine(l, isLinked, role),
+                                        _metaLine(l, isLinked, role, w.operationalRole),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: t.bodySmall.copyWith(
@@ -340,9 +340,10 @@ class _WorkerRowState extends State<_WorkerRow> {
     );
   }
 
-  String _metaLine(AppLocalizations l, bool isLinked, String role) {
+  String _metaLine(AppLocalizations l, bool isLinked, String role, String operationalRole) {
     final typeLabel = isLinked ? l.linkedUser : l.externalWorker;
-    return role.isNotEmpty ? '$typeLabel · $role' : typeLabel;
+    final workerRole = operationalRole == 'supervisor' ? 'Supervisor' : null;
+    return [typeLabel, if (workerRole != null) workerRole, if (role.isNotEmpty) role].join(' · ');
   }
 }
 

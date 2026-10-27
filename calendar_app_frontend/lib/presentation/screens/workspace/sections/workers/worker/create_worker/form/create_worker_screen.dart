@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/workers/worker.dart';
+import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/shared/currency_options.dart';
@@ -30,6 +31,10 @@ class _CreateWorkerScreenState extends State<CreateWorkerScreen> {
   final TextEditingController _roleCtrl = TextEditingController();
   final TextEditingController _rateCtrl = TextEditingController();
   final TextEditingController _notesCtrl = TextEditingController();
+  List<User> _members = const [];
+  bool _loadingMembers = false;
+  String? _membersError;
+  String _operationalRole = 'worker';
   String _selectedCurrency = defaultWorkerCurrency;
 
   bool _saving = false;
@@ -41,8 +46,31 @@ class _CreateWorkerScreenState extends State<CreateWorkerScreen> {
     _userDomain = context.read<UserDomain>();
   }
 
+  Future<void> _loadMembers() async {
+    setState(() {
+      _loadingMembers = true;
+      _membersError = null;
+    });
+    try {
+      final members = await _userDomain.getUsersForGroup(widget.group);
+      if (!members.any((member) => member.id == widget.group.ownerId)) {
+        try {
+          members.add(await _userDomain.userRepository.getUserById(widget.group.ownerId));
+        } catch (_) {
+          // The member list can still be used if the owner profile is unavailable.
+        }
+      }
+      if (mounted) setState(() => _members = members);
+    } catch (_) {
+      if (mounted) setState(() => _membersError = 'No se pudieron cargar los miembros.');
+    } finally {
+      if (mounted) setState(() => _loadingMembers = false);
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_linkToExistingUser && _userIdCtrl.text.trim().isEmpty) return;
 
     setState(() => _saving = true);
 
@@ -58,6 +86,7 @@ class _CreateWorkerScreenState extends State<CreateWorkerScreen> {
               double.tryParse(_rateCtrl.text.trim().replaceAll(',', '.')),
           currency: _selectedCurrency,
           roleTag: _roleCtrl.text.trim(),
+          operationalRole: _operationalRole,
           notes: _notesCtrl.text.trim(),
         );
       } else {
@@ -117,7 +146,10 @@ class _CreateWorkerScreenState extends State<CreateWorkerScreen> {
                 l: l,
                 t: t,
                 value: _linkToExistingUser,
-                onChanged: (v) => setState(() => _linkToExistingUser = v),
+                onChanged: (v) {
+                  setState(() => _linkToExistingUser = v);
+                  if (v && _members.isEmpty) _loadMembers();
+                },
               ),
               const SizedBox(height: 12),
               _IdentityCard(
@@ -126,7 +158,25 @@ class _CreateWorkerScreenState extends State<CreateWorkerScreen> {
                 linkToExistingUser: _linkToExistingUser,
                 userIdCtrl: _userIdCtrl,
                 displayNameCtrl: _displayNameCtrl,
+                members: _members,
+                loadingMembers: _loadingMembers,
+                membersError: _membersError,
+                onRetryMembers: _loadMembers,
               ),
+              if (_linkToExistingUser) ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _operationalRole,
+                  decoration: const InputDecoration(labelText: 'Rol de trabajador'),
+                  items: const [
+                    DropdownMenuItem(value: 'worker', child: Text('Trabajador')),
+                    DropdownMenuItem(value: 'supervisor', child: Text('Supervisor')),
+                  ],
+                  onChanged: (value) => setState(() => _operationalRole = value ?? 'worker'),
+                ),
+                const SizedBox(height: 4),
+                const Text('El rol de empresa del miembro, como Co-Administrador, se conserva.'),
+              ],
               const SizedBox(height: 12),
               _RoleCard(
                 l: l,
@@ -253,6 +303,10 @@ class _IdentityCard extends StatelessWidget {
     required this.linkToExistingUser,
     required this.userIdCtrl,
     required this.displayNameCtrl,
+    required this.members,
+    required this.loadingMembers,
+    required this.membersError,
+    required this.onRetryMembers,
   });
 
   final AppLocalizations l;
@@ -260,6 +314,10 @@ class _IdentityCard extends StatelessWidget {
   final bool linkToExistingUser;
   final TextEditingController userIdCtrl;
   final TextEditingController displayNameCtrl;
+  final List<User> members;
+  final bool loadingMembers;
+  final String? membersError;
+  final VoidCallback onRetryMembers;
 
   @override
   Widget build(BuildContext context) {
@@ -279,23 +337,21 @@ class _IdentityCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             if (linkToExistingUser)
-              TextFormField(
-                controller: userIdCtrl,
-                decoration: InputDecoration(
-                  labelText: l.userIdLabel,
-                  hintText: l.userIdHint,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                style: t.bodyMedium,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return l.userIdRequired;
-                  }
-                  return null;
-                },
-              )
+              if (loadingMembers)
+                const Center(child: CircularProgressIndicator())
+              else if (membersError != null)
+                TextButton(onPressed: onRetryMembers, child: Text(membersError!))
+              else
+                DropdownButtonFormField<String>(
+                  initialValue: userIdCtrl.text.isEmpty ? null : userIdCtrl.text,
+                  decoration: const InputDecoration(labelText: 'Miembro de la empresa'),
+                  items: members.map((member) => DropdownMenuItem(
+                    value: member.id,
+                    child: Text(member.displayName ?? member.name),
+                  )).toList(),
+                  onChanged: (value) => userIdCtrl.text = value ?? '',
+                  validator: (value) => value == null ? l.userIdRequired : null,
+                )
             else
               TextFormField(
                 controller: displayNameCtrl,
