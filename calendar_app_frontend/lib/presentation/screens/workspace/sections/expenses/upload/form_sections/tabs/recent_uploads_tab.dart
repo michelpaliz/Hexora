@@ -15,7 +15,6 @@ import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/e
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/expense_upload_models.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/operations/form_helpers.dart';
 import 'package:hexora/presentation/shared/utils/formatting/money_format_utils.dart';
-import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
@@ -78,6 +77,7 @@ class _ExpenseToolbarDragScrollBehavior extends MaterialScrollBehavior {
 
 class ExpenseRecentUploadsTab extends StatefulWidget {
   final List<Map<String, String>> recentUploads;
+  final bool loadingRecentUploads;
   final Future<void> Function(String id) onDeleteExpense;
   final Map<String, String>? selectedExpense;
   final ValueChanged<Map<String, String>> onSelectExpense;
@@ -91,6 +91,7 @@ class ExpenseRecentUploadsTab extends StatefulWidget {
   const ExpenseRecentUploadsTab({
     super.key,
     required this.recentUploads,
+    this.loadingRecentUploads = false,
     required this.onDeleteExpense,
     required this.selectedExpense,
     required this.onSelectExpense,
@@ -152,6 +153,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   final Map<int, bool> _summaryLoading = {};
   final Map<String, Uint8List> _pdfPreviewCache = {};
   final Map<String, Future<Uint8List?>> _pdfPreviewInflight = {};
+  final ValueNotifier<_ExpensePreviewTotals?> _editorPreviewTotals =
+      ValueNotifier<_ExpensePreviewTotals?>(null);
   final Set<String> _reprocessingExpenseIds = <String>{};
   final Set<String> _deletingExpenseIds = <String>{};
   bool _bulkReprocessingVat = false;
@@ -215,6 +218,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     _bulkReprocessPollTimer?.cancel();
     _searchDebounce?.cancel();
     _columnFilterBusy.dispose();
+    _editorPreviewTotals.dispose();
     _tabs.dispose();
     _searchController.dispose();
     _desktopToolbarScrollController.removeListener(_syncToolbarScrollState);
@@ -427,6 +431,35 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         .trim();
     return currency.isEmpty ? 'EUR' : currency;
   }
+
+  /// The totals endpoint is authoritative. This only reads optional
+  /// adjustment aggregates when the API sends them; it never infers a
+  /// retention or credit note from a difference between totals.
+  List<({String label, double value})> _summaryAdjustments(
+    Map<String, dynamic>? summary,
+    bool isSpanish,
+  ) {
+    const keys = <(String, String, String)>[
+      ('discountTotal', 'Discount', 'Descuento'),
+      ('withholdingTotal', 'Withholding', 'Retención'),
+      ('retentionTotal', 'Withholding', 'Retención'),
+      ('creditNoteTotal', 'Credit notes', 'Abonos'),
+      ('adjustmentsTotal', 'Adjustments', 'Ajustes'),
+    ];
+    return [
+      for (final entry in keys)
+        if (summary?.containsKey(entry.$1) == true)
+          (
+            label: isSpanish ? entry.$3 : entry.$2,
+            value: _summaryNum(summary, entry.$1)
+          ),
+    ].where((entry) => entry.value.abs() >= .005).toList(growable: false);
+  }
+
+  double _summaryResidual(Map<String, dynamic>? summary) =>
+      _summaryNum(summary, 'total') -
+      _summaryNum(summary, 'subtotal') -
+      _summaryNum(summary, 'taxTotal');
 
   String _normalizedInvoiceId(Map<String, String> item) {
     return (item['invoice'] ?? '').trim().toLowerCase();
@@ -1200,6 +1233,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       _editingExpense = item;
       _editorPanelIndex = 0;
     });
+    _editorPreviewTotals.value = null;
 
     if (!mounted || MediaQuery.sizeOf(context).width >= 760) return;
 
@@ -1220,7 +1254,6 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                   AppLocalizations.of(routeContext)!,
                   AppTypography.of(routeContext),
                   Theme.of(routeContext).colorScheme,
-                  scrim: false,
                   showHeaderTab: false,
                 ),
               ),
@@ -1317,6 +1350,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   void _closeExpenseEditor() {
     final wasPushedAsRoute = _editorPushedAsRoute;
     setState(() => _editingExpense = null);
+    _editorPreviewTotals.value = null;
     if (wasPushedAsRoute && Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     }
@@ -1836,84 +1870,123 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
         _buildExpenseResultsAmountStrip(t, cs, isSpanish),
         const SizedBox(height: 8),
         Expanded(
-          child: visibleUploads.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        widget.recentUploads.isEmpty
-                            ? Icons.receipt_long_outlined
-                            : Icons.filter_alt_off_outlined,
-                        size: 28,
-                        color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+          child: widget.loadingRecentUploads && widget.recentUploads.isEmpty
+              ? _buildLoadingExpensesState(t, cs, isSpanish)
+              : visibleUploads.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            widget.recentUploads.isEmpty
+                                ? Icons.receipt_long_outlined
+                                : Icons.filter_alt_off_outlined,
+                            size: 28,
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            widget.recentUploads.isNotEmpty &&
+                                    _hasActiveExpenseFilters
+                                ? (isSpanish
+                                    ? 'No hay gastos que coincidan con los filtros'
+                                    : 'No expenses match the current filters')
+                                : (isSpanish
+                                    ? 'Todavía no hay gastos'
+                                    : 'No expenses yet'),
+                            style: t.bodySmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.recentUploads.isNotEmpty &&
+                                    _hasActiveExpenseFilters
+                                ? (isSpanish
+                                    ? 'Prueba con otros filtros o vuelve a Todos.'
+                                    : 'Try other filters or switch back to All.')
+                                : (isSpanish
+                                    ? 'Los gastos registrados aparecerán aquí.'
+                                    : 'Registered expenses will appear here.'),
+                            style: t.bodySmall.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          if (widget.recentUploads.isNotEmpty &&
+                              _hasActiveExpenseFilters) ...[
+                            const SizedBox(height: 10),
+                            TextButton.icon(
+                              onPressed: _resetExpenseFilters,
+                              icon: const Icon(Icons.filter_alt_off_outlined,
+                                  size: 16),
+                              label: Text(isSpanish
+                                  ? 'Restablecer filtros'
+                                  : 'Reset filters'),
+                            ),
+                          ],
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        widget.recentUploads.isNotEmpty &&
-                                _hasActiveExpenseFilters
-                            ? (isSpanish
-                                ? 'No hay gastos que coincidan con los filtros'
-                                : 'No expenses match the current filters')
-                            : (isSpanish
-                                ? 'Todavía no hay gastos'
-                                : 'No expenses yet'),
-                        style: t.bodySmall.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: cs.onSurface,
+                    )
+                  : useFullTable
+                      ? _buildExpenseTable(visibleUploads, l, t, cs, isSpanish)
+                      : ListView.separated(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          itemCount: visibleUploads.length,
+                          separatorBuilder: (_, __) => Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: cs.outlineVariant.withValues(alpha: .28),
+                          ),
+                          itemBuilder: (_, index) => _buildExpenseSplitRow(
+                            visibleUploads[index],
+                            l,
+                            t,
+                            cs,
+                            isSpanish,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.recentUploads.isNotEmpty &&
-                                _hasActiveExpenseFilters
-                            ? (isSpanish
-                                ? 'Prueba con otros filtros o vuelve a Todos.'
-                                : 'Try other filters or switch back to All.')
-                            : (isSpanish
-                                ? 'Los gastos registrados aparecerán aquí.'
-                                : 'Registered expenses will appear here.'),
-                        style: t.bodySmall.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      if (widget.recentUploads.isNotEmpty &&
-                          _hasActiveExpenseFilters) ...[
-                        const SizedBox(height: 10),
-                        TextButton.icon(
-                          onPressed: _resetExpenseFilters,
-                          icon: const Icon(Icons.filter_alt_off_outlined,
-                              size: 16),
-                          label: Text(isSpanish
-                              ? 'Restablecer filtros'
-                              : 'Reset filters'),
-                        ),
-                      ],
-                    ],
-                  ),
-                )
-              : useFullTable
-                  ? _buildExpenseTable(visibleUploads, l, t, cs, isSpanish)
-                  : ListView.separated(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      itemCount: visibleUploads.length,
-                      separatorBuilder: (_, __) => Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: cs.outlineVariant.withValues(alpha: .28),
-                      ),
-                      itemBuilder: (_, index) => _buildExpenseSplitRow(
-                        visibleUploads[index],
-                        l,
-                        t,
-                        cs,
-                        isSpanish,
-                      ),
-                    ),
         ),
       ]);
     });
+  }
+
+  Widget _buildLoadingExpensesState(
+    AppTypography t,
+    ColorScheme cs,
+    bool isSpanish,
+  ) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 28,
+            width: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: cs.primary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            isSpanish ? 'Cargando gastos…' : 'Loading expenses…',
+            style: t.bodySmall.copyWith(
+              fontWeight: FontWeight.w700,
+              color: cs.onSurface,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            isSpanish
+                ? 'Estamos preparando tus gastos registrados.'
+                : 'We are preparing your registered expenses.',
+            style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCompactListToolbar(
@@ -2068,6 +2141,10 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     final taxSum = _summaryNum(summary, 'taxTotal');
     final total = _summaryNum(summary, 'total');
     final currency = _summaryCurrency(summary);
+    final adjustments = _summaryAdjustments(summary, isSpanish);
+    // Some APIs expose signed adjustments. Do not apply a UI-side sign rule;
+    // when present, show them and leave reconciliation to the source data.
+    final residual = adjustments.isEmpty ? _summaryResidual(summary) : 0.0;
     final summaryLoading = _summaryLoading[_selectedQuarterFilter ?? 0] == true;
     final summaryError = _summaryErrors[_selectedQuarterFilter ?? 0];
     final totalColor = cs.primary;
@@ -2177,6 +2254,12 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
           divider(),
           const SizedBox(width: 12),
           metric('IVA', _formatMoney(taxSum)),
+          for (final adjustment in adjustments) ...[
+            const SizedBox(width: 12),
+            divider(),
+            const SizedBox(width: 12),
+            metric(adjustment.label, _formatMoney(adjustment.value)),
+          ],
           const SizedBox(width: 12),
           divider(),
           const SizedBox(width: 12),
@@ -2185,6 +2268,26 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
             currency: currency,
             color: totalColor,
           ),
+          if (residual.abs() >= .01) ...[
+            const SizedBox(width: 8),
+            Tooltip(
+              message: isSpanish
+                  ? 'La diferencia no está desglosada por el resumen recibido.'
+                  : 'The received summary does not itemize this difference.',
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.info_outline_rounded, size: 14, color: cs.error),
+                const SizedBox(width: 4),
+                Text(
+                  '${isSpanish ? 'Diferencia' : 'Difference'} ${_formatMoney(residual)}',
+                  style: t.bodySmall.copyWith(
+                    color: cs.error,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ]),
+            ),
+          ],
         ],
       );
     }

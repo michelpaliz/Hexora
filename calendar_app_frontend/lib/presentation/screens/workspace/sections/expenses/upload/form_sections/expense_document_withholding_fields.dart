@@ -89,7 +89,7 @@ class ExpenseDocumentWithholdingFields extends StatelessWidget {
         Row(
           children: [
             Text(
-              'RETENCIÃ“N',
+              'RETENCIÓN',
               style: ts.bodySmall?.copyWith(
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
@@ -100,7 +100,7 @@ class ExpenseDocumentWithholdingFields extends StatelessWidget {
             const SizedBox(width: 5),
             Tooltip(
               message:
-                  'La retenciÃ³n se descuenta del total bruto para calcular el importe lÃ­quido a pagar.',
+                  'La retención se descuenta del total bruto para calcular el importe líquido a pagar.',
               child: Icon(
                 Icons.info_outline_rounded,
                 size: 15,
@@ -134,7 +134,7 @@ class ExpenseDocumentWithholdingFields extends StatelessWidget {
                     decimal: true,
                   ),
                   decoration: _decor(
-                    'Retencion %',
+                    'Retención %',
                     cs,
                     icon: Icons.percent_outlined,
                   ),
@@ -153,7 +153,7 @@ class ExpenseDocumentWithholdingFields extends StatelessWidget {
                     decimal: true,
                   ),
                   decoration: _decor(
-                    'Retencion €',
+                    'Retención €',
                     cs,
                     icon: Icons.remove_circle_outline,
                   ),
@@ -190,7 +190,7 @@ class ExpenseDocumentWithholdingFields extends StatelessWidget {
                         cs: cs,
                       ),
                       _WithholdingSummaryChip(
-                        label: 'Retencion',
+                        label: 'Retención',
                         value:
                             '${ExpenseFormHelpers.formatAmount(activePreview.amount)} · ${activePreview.percent.toStringAsFixed(2)}%',
                         cs: cs,
@@ -236,7 +236,7 @@ class ExpenseDocumentWithholdingFields extends StatelessWidget {
                             cs: cs,
                           ),
                           _WithholdingSummaryChip(
-                            label: 'Retencion',
+                            label: 'Retención',
                             value:
                                 '${ExpenseFormHelpers.formatAmount(activePreview.amount)} · ${activePreview.percent.toStringAsFixed(2)}%',
                             cs: cs,

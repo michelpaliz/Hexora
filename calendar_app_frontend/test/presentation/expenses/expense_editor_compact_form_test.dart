@@ -122,24 +122,24 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text('Origen de los importes'), findsOneWidget);
-    expect(find.text('Desde líneas'), findsOneWidget);
-    expect(find.text('Desde documento'), findsOneWidget);
+    expect(find.text('Método de cálculo'), findsOneWidget);
+    expect(find.text('Calcular desde líneas'), findsOneWidget);
+    expect(find.text('Introducir totales del documento'), findsOneWidget);
     expect(find.text('Resumen financiero'), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
     expect(find.textContaining('Puedes revisar'), findsNothing);
 
-    await tester.tap(find.text('Desde documento'));
+    await tester.tap(find.text('Introducir totales del documento'));
     await tester.pump();
     expect(find.byType(TextField), findsNWidgets(3));
     await tester.enterText(find.byType(TextField).first, '200');
 
-    await tester.tap(find.text('Desde líneas'));
+    await tester.tap(find.text('Calcular desde líneas'));
     await tester.pump();
     expect(find.byType(TextField), findsNothing);
     expect(base.text, '200');
 
-    await tester.tap(find.text('Desde documento'));
+    await tester.tap(find.text('Introducir totales del documento'));
     await tester.pump();
     expect(find.byType(TextField), findsNWidgets(3));
     expect(base.text, '200');

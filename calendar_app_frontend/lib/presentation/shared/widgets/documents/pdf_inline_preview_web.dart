@@ -76,6 +76,7 @@ class _PdfInlinePreviewState extends State<_BrowserPdfPreview> {
       ..style.border = '0'
       ..style.width = '100%'
       ..style.height = '100%'
+      ..title = 'Documento PDF'
       ..style.pointerEvents = _pointerEvents;
     _setUrl(widget.bytes);
     documentSplitDragging.addListener(_syncPointerEvents);
@@ -112,7 +113,7 @@ class _PdfInlinePreviewState extends State<_BrowserPdfPreview> {
     _url = html.URL.createObjectURL(blob);
     // Native viewers may ignore PDF open parameters depending on the browser.
     _element.src =
-        '${_url!}#toolbar=${widget.showToolbar ? 1 : 0}&navpanes=0&pagemode=none&view=FitH';
+        '${_url!}#toolbar=${widget.showToolbar ? 1 : 0}&navpanes=0&pagemode=none&view=FitH&filename=Documento.pdf';
   }
 
   @override

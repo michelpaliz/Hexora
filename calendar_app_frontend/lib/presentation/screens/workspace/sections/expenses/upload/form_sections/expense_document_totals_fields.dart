@@ -102,7 +102,7 @@ class ExpenseDocumentTotalsFields extends StatelessWidget {
         Row(
           children: [
             Text(
-              l10n.expenseTotalsUseSummaryLabel,
+              'Método de cálculo',
               style: ts.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: cs.onSurface,
@@ -133,16 +133,16 @@ class ExpenseDocumentTotalsFields extends StatelessWidget {
               EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             ),
           ),
-          segments: [
+          segments: const [
             ButtonSegment<bool>(
               value: false,
-              icon: const Icon(Icons.format_list_numbered, size: 15),
-              label: Text(l10n.expenseTotalsCalculateMode),
+              icon: Icon(Icons.format_list_numbered, size: 15),
+              label: Text('Calcular desde líneas'),
             ),
             ButtonSegment<bool>(
               value: true,
-              icon: const Icon(Icons.receipt_long_outlined, size: 15),
-              label: Text(l10n.expenseTotalsSummaryMode),
+              icon: Icon(Icons.receipt_long_outlined, size: 15),
+              label: Text('Introducir totales del documento'),
             ),
           ],
           selected: {useSummaryTotals},
@@ -155,10 +155,6 @@ class ExpenseDocumentTotalsFields extends StatelessWidget {
                 }
               : null,
         ),
-        if (financialSummary != null) ...[
-          const SizedBox(height: 8),
-          financialSummary!,
-        ],
         if (useSummaryTotals) ...[
           const SizedBox(height: 8),
           LayoutBuilder(
@@ -207,6 +203,10 @@ class ExpenseDocumentTotalsFields extends StatelessWidget {
               );
             },
           ),
+        ],
+        if (financialSummary != null) ...[
+          const SizedBox(height: 8),
+          financialSummary!,
         ],
         if ((validationError ?? '').trim().isNotEmpty) ...[
           const SizedBox(height: 6),

@@ -111,10 +111,9 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
     Map<String, String> item,
     AppLocalizations l,
     AppTypography t,
-    ColorScheme cs,
-  ) {
-    final isLight = cs.brightness == Brightness.light;
-
+    ColorScheme cs, {
+    _ExpensePreviewTotals? previewTotals,
+  }) {
     final id = (item['id'] ?? '').toString();
     final reprocessing = _reprocessingExpenseIds.contains(id);
     final vendor = (item['vendor'] ?? '-').toString();
@@ -184,8 +183,26 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
       tax.isNotEmpty || (item['subtotal'] ?? '').isNotEmpty,
     ].where((v) => v).length;
 
-    // Total color matching summary bar
-    final totalColor = isLight ? const Color(0xFFE65100) : cs.secondary;
+    final registeredTotal = previewTotals?.storedTotal ?? _parseMoney(total);
+    final currentEditedTotal = previewTotals?.currentTotal;
+    final extractedTotal = previewTotals?.extractedTotal;
+    final previewCurrency = (previewTotals?.currency.trim().isNotEmpty ?? false)
+        ? previewTotals!.currency.trim().toUpperCase()
+        : currency.trim().toUpperCase();
+    final hasRegisteredDifference = registeredTotal != null &&
+        currentEditedTotal != null &&
+        (registeredTotal - currentEditedTotal).abs() >
+            ExpenseFormHelpers.summaryTotalsTolerance;
+    String formatPreviewAmount(double amount) {
+      final suffix = previewCurrency.isEmpty || previewCurrency == 'EUR'
+          ? '€'
+          : previewCurrency;
+      return '${ExpenseFormHelpers.formatAmount(amount)} $suffix';
+    }
+
+    final registeredTotalDisplay = registeredTotal == null
+        ? totalDisplay
+        : formatPreviewAmount(registeredTotal);
 
     // ── Preview media widget ──────────────────────────────────────
     Widget previewMedia;
@@ -387,21 +404,58 @@ extension _ExpenseRecentUploadsPreviewSection on _ExpenseRecentUploadsTabState {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  if (totalDisplay.isNotEmpty)
-                    Tooltip(
-                      message: 'Total registrado en el gasto',
-                      child: Text(
-                        [
-                          'Registrado',
-                          totalDisplay,
-                          if (currency.isNotEmpty) currency,
-                        ].join(' · '),
-                        style: t.bodySmall.copyWith(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 12,
-                          color: totalColor,
+                  if (registeredTotalDisplay.isNotEmpty)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Total registrado',
+                          style: t.bodySmall.copyWith(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: cs.onSurfaceVariant,
+                          ),
                         ),
-                      ),
+                        Text(
+                          registeredTotalDisplay,
+                          style: t.bodySmall.copyWith(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                            color: cs.onSurface,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                        if (hasRegisteredDifference)
+                          Tooltip(
+                            message: [
+                              'Registrado: ${formatPreviewAmount(registeredTotal)}',
+                              'Sin guardar: ${formatPreviewAmount(currentEditedTotal)}',
+                              if (extractedTotal != null)
+                                'Extraído por OCR: ${formatPreviewAmount(extractedTotal)}',
+                              'Diferencia: ${formatPreviewAmount((currentEditedTotal - registeredTotal).abs())}',
+                            ].join('\n'),
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.info_outline,
+                                      size: 12, color: cs.tertiary),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    'Revisar diferencia',
+                                    style: t.bodySmall.copyWith(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: cs.tertiary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                 ],
               ),

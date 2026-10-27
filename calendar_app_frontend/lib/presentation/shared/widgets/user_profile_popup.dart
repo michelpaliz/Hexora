@@ -16,20 +16,68 @@ import 'package:hexora/theme/theme_provider.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 /// Circular avatar button.  Tap → shows a profile card popup anchored
 /// to the top-right of the screen (near the nav bar).
-class UserProfilePopup extends StatelessWidget {
+class UserProfilePopup extends StatefulWidget {
   const UserProfilePopup({super.key, required this.user, this.onSettings});
 
   final User? user;
   final VoidCallback? onSettings;
 
   @override
+  State<UserProfilePopup> createState() => _UserProfilePopupState();
+}
+
+class _UserProfilePopupState extends State<UserProfilePopup> {
+  OverlayEntry? _popupEntry;
+
+  @override
+  void dispose() {
+    _dismissPopup();
+    super.dispose();
+  }
+
+  void _dismissPopup() {
+    _popupEntry?.remove();
+    _popupEntry = null;
+  }
+
+  void _togglePopup(User user) {
+    if (_popupEntry != null) {
+      _dismissPopup();
+      return;
+    }
+    final renderBox = context.findRenderObject() as RenderBox?;
+    final anchor = renderBox?.localToGlobal(Offset.zero) ?? Offset.zero;
+    final anchorSize = renderBox?.size ?? Size.zero;
+    final overlay = Overlay.of(context, rootOverlay: true);
+    _popupEntry = OverlayEntry(
+      builder: (overlayContext) => PositionedDirectional(
+        top: anchor.dy + anchorSize.height + 8,
+        end: 16,
+        child: TapRegion(
+          onTapOutside: (_) => _dismissPopup(),
+          child: Material(
+            color: Colors.transparent,
+            elevation: 8,
+            borderRadius: BorderRadius.circular(16),
+            child: _UserProfileCard(
+              initialUser: user,
+              onSettings: widget.onSettings,
+              onClose: _dismissPopup,
+            ),
+          ),
+        ),
+      ),
+    );
+    overlay.insert(_popupEntry!);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final liveUser = context.watch<UserDomain>().user;
-    final u = liveUser ?? user;
+    final u = liveUser ?? widget.user;
     if (u == null) return const SizedBox(width: 32, height: 32);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -39,7 +87,7 @@ class UserProfilePopup extends StatelessWidget {
     return Tooltip(
       message: u.displayName?.isNotEmpty == true ? u.displayName! : u.name,
       child: GestureDetector(
-        onTap: () => _openPopup(context, u),
+        onTap: () => _togglePopup(u),
         child: CircleAvatar(
           radius: 16,
           backgroundColor: textColor.withValues(alpha: 0.12),
@@ -60,24 +108,6 @@ class UserProfilePopup extends StatelessWidget {
       ),
     );
   }
-
-  void _openPopup(BuildContext context, User u) {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black12,
-      builder: (_) => PointerInterceptor(
-        child: Dialog(
-          alignment: Alignment.topRight,
-          insetPadding:
-              const EdgeInsets.only(top: 56, right: 14, bottom: 0, left: 0),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          elevation: 8,
-          child: _UserProfileCard(initialUser: u, onSettings: onSettings),
-        ),
-      ),
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -85,9 +115,14 @@ class UserProfilePopup extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _UserProfileCard extends StatefulWidget {
-  const _UserProfileCard({required this.initialUser, this.onSettings});
+  const _UserProfileCard({
+    required this.initialUser,
+    required this.onClose,
+    this.onSettings,
+  });
   final User initialUser;
   final VoidCallback? onSettings;
+  final VoidCallback onClose;
 
   @override
   State<_UserProfileCard> createState() => _UserProfileCardState();
@@ -225,80 +260,96 @@ class _UserProfileCardState extends State<_UserProfileCard> {
                   const BorderRadius.vertical(top: Radius.circular(16)),
             ),
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-            child: Column(
+            child: Stack(
               children: [
-                GestureDetector(
-                  onTap: _openImageViewer,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      CircleAvatar(
-                        radius: 38,
-                        backgroundColor: textColor.withValues(alpha: 0.12),
-                        backgroundImage:
-                            _user.photoUrl?.trim().isNotEmpty == true
-                                ? NetworkImage(_user.photoUrl!.trim())
+                Column(
+                  children: [
+                    GestureDetector(
+                      onTap: _openImageViewer,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CircleAvatar(
+                            radius: 38,
+                            backgroundColor: textColor.withValues(alpha: 0.12),
+                            backgroundImage:
+                                _user.photoUrl?.trim().isNotEmpty == true
+                                    ? NetworkImage(_user.photoUrl!.trim())
+                                    : null,
+                            child: _user.photoUrl?.trim().isNotEmpty != true
+                                ? Text(
+                                    _user.name.isNotEmpty
+                                        ? _user.name[0].toUpperCase()
+                                        : '?',
+                                    style: t.titleLarge.copyWith(
+                                      color: textColor,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  )
                                 : null,
-                        child: _user.photoUrl?.trim().isNotEmpty != true
-                            ? Text(
-                                _user.name.isNotEmpty
-                                    ? _user.name[0].toUpperCase()
-                                    : '?',
-                                style: t.titleLarge.copyWith(
-                                  color: textColor,
-                                  fontWeight: FontWeight.w700,
+                          ),
+                          // Camera overlay
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: cardBg,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color:
+                                      cs.outlineVariant.withValues(alpha: 0.5),
                                 ),
-                              )
-                            : null,
-                      ),
-                      // Camera overlay
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            color: cardBg,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: cs.outlineVariant.withValues(alpha: 0.5),
+                              ),
+                              child: _uploading
+                                  ? SizedBox(
+                                      width: 12,
+                                      height: 12,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 1.5,
+                                        color: activeColor,
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.camera_alt_outlined,
+                                      size: 12,
+                                      color: activeColor,
+                                    ),
                             ),
                           ),
-                          child: _uploading
-                              ? SizedBox(
-                                  width: 12,
-                                  height: 12,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 1.5,
-                                    color: activeColor,
-                                  ),
-                                )
-                              : Icon(
-                                  Icons.camera_alt_outlined,
-                                  size: 12,
-                                  color: activeColor,
-                                ),
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      displayName,
+                      style: t.bodyLarge.copyWith(
+                        color: textColor,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '@${_user.userName}',
+                      style: t.bodySmall.copyWith(color: subColor),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  displayName,
-                  style: t.bodyLarge.copyWith(
-                    color: textColor,
-                    fontWeight: FontWeight.w800,
+                PositionedDirectional(
+                  top: 0,
+                  end: 0,
+                  child: IconButton(
+                    tooltip: 'Cerrar',
+                    onPressed: widget.onClose,
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    visualDensity: VisualDensity.compact,
+                    color: subColor,
                   ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '@${_user.userName}',
-                  style: t.bodySmall.copyWith(color: subColor),
-                  textAlign: TextAlign.center,
                 ),
               ],
             ),
@@ -407,7 +458,7 @@ class _UserProfileCardState extends State<_UserProfileCard> {
                           borderRadius: BorderRadius.circular(8)),
                     ),
                     onPressed: () {
-                      Navigator.of(context).pop();
+                      widget.onClose();
                       if (widget.onSettings != null) {
                         widget.onSettings!();
                       } else {

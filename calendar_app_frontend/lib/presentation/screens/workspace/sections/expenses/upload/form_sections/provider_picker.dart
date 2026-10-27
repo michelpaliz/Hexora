@@ -42,7 +42,8 @@ class _ExpenseProviderPickerState extends State<ExpenseProviderPicker> {
     super.didUpdateWidget(oldWidget);
     if (!_focusNode.hasFocus &&
         (oldWidget.selectedProviderId != widget.selectedProviderId ||
-            oldWidget.manualMode != widget.manualMode)) {
+            oldWidget.manualMode != widget.manualMode ||
+            oldWidget.providers.length != widget.providers.length)) {
       _searchController.text = _selectedLabel();
     }
   }
@@ -81,7 +82,9 @@ class _ExpenseProviderPickerState extends State<ExpenseProviderPicker> {
           (item) => item != null && _providerId(item) == id,
           orElse: () => null,
         );
-    return provider == null ? '' : _providerName(provider);
+    return provider == null
+        ? 'Proveedor no vinculado'
+        : _providerName(provider);
   }
 
   String _fold(String value) {

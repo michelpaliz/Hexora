@@ -459,6 +459,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   String? _error;
   bool _submitting = false;
   final List<Map<String, String>> _recentUploads = [];
+  bool _loadingRecentUploads = true;
   late TabController _tabs;
   late TabController _importTabs;
 
@@ -608,6 +609,10 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   ExpensesApi get expensesApi => _api;
   @override
   List<Map<String, String>> get recentUploads => _recentUploads;
+  @override
+  bool get loadingRecentUploads => _loadingRecentUploads;
+  @override
+  set loadingRecentUploads(bool value) => _loadingRecentUploads = value;
   @override
   Map<String, String>? get selectedRecentExpense => _selectedRecentExpense;
   @override
@@ -2679,6 +2684,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                 padding: const EdgeInsets.all(16),
                 child: ExpenseRecentUploadsTab(
                   recentUploads: _recentUploads,
+                  loadingRecentUploads: _loadingRecentUploads,
                   onDeleteExpense: deleteRecentExpense,
                   canDeleteExpenses: canDeleteExpenses,
                   selectedExpense: _selectedRecentExpense,
@@ -2749,6 +2755,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
                   children: [
                     ExpenseRecentUploadsTab(
                       recentUploads: _recentUploads,
+                      loadingRecentUploads: _loadingRecentUploads,
                       onDeleteExpense: deleteRecentExpense,
                       canDeleteExpenses: canDeleteExpenses,
                       selectedExpense: _selectedRecentExpense,

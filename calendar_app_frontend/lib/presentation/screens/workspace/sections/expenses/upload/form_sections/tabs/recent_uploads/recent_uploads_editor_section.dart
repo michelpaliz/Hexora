@@ -5,63 +5,98 @@ extension _ExpenseRecentUploadsEditorSection on _ExpenseRecentUploadsTabState {
     AppLocalizations l,
     AppTypography t,
     ColorScheme cs, {
-    bool scrim = true,
     bool showHeaderTab = true,
   }) {
     final editing = _latestExpenseSnapshot(_editingExpense!);
-    final panel = FolderPanel(
-      title: 'Editar gasto',
-      onBack: showHeaderTab ? _closeExpenseEditor : null,
-      showTab: showHeaderTab,
-      contentTopPadding: showHeaderTab ? 36 : 12,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final useSplitView = constraints.maxWidth >= 860;
-          if (useSplitView) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  flex: 9,
-                  child: _buildEditorFormPanel(editing, l, t, cs),
+    final border = cs.outlineVariant.withValues(alpha: 0.35);
+    final panel = Material(
+      color: cs.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (showHeaderTab)
+            SizedBox(
+              height: 44,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: border)),
                 ),
-                VerticalDivider(
-                  width: 9,
-                  thickness: 1,
-                  color: cs.outlineVariant.withValues(alpha: 0.35),
-                ),
-                Expanded(
-                  flex: 11,
-                  child: _buildEditorPreviewPanel(editing, l, t, cs),
-                ),
-              ],
-            );
-          }
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildEditorPanelSwitcher(cs),
-              const SizedBox(height: 8),
-              Expanded(
-                child: IndexedStack(
-                  index: _editorPanelIndex,
-                  children: [
-                    _buildEditorFormPanel(editing, l, t, cs),
-                    _buildEditorPreviewPanel(editing, l, t, cs),
-                  ],
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        tooltip: 'Volver',
+                        onPressed: _closeExpenseEditor,
+                        icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                        color: cs.onSurfaceVariant,
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints.tightFor(
+                            width: 28, height: 28),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Editar gasto',
+                        style:
+                            t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          );
-        },
+            ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final useSplitView = constraints.maxWidth >= 860;
+                  if (useSplitView) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          flex: 9,
+                          child: _buildEditorFormPanel(editing, l, t, cs),
+                        ),
+                        Container(width: 1, color: border),
+                        Expanded(
+                          flex: 11,
+                          child: _buildEditorPreviewPanel(editing, l, t, cs),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildEditorPanelSwitcher(cs),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: IndexedStack(
+                          index: _editorPanelIndex,
+                          children: [
+                            _buildEditorFormPanel(editing, l, t, cs),
+                            _buildEditorPreviewPanel(editing, l, t, cs),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
-    if (!scrim) return panel;
-    return ColoredBox(
-      color: Colors.black.withValues(alpha: 0.25),
-      child: panel,
-    );
+    return panel;
   }
 
   Widget _buildEditorFormPanel(
@@ -70,15 +105,15 @@ extension _ExpenseRecentUploadsEditorSection on _ExpenseRecentUploadsTabState {
     AppTypography t,
     ColorScheme cs,
   ) {
-    return ColoredBox(
+    return KeyedSubtree(
       key: const ValueKey('expense-editor-form-panel'),
-      color: cs.surface,
       child: _ExpenseInlineEditor(
         expenseId: (editing['id'] ?? '').trim(),
         groupId: widget.groupId,
         expensesApi: _expensesApi,
         seedItem: editing,
         availableAdvanceExpenses: widget.recentUploads,
+        onPreviewTotalsChanged: (totals) => _editorPreviewTotals.value = totals,
         onSaved: _applyEditedExpense,
         onCancel: _closeExpenseEditor,
       ),
@@ -91,12 +126,17 @@ extension _ExpenseRecentUploadsEditorSection on _ExpenseRecentUploadsTabState {
     AppTypography t,
     ColorScheme cs,
   ) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: ColoredBox(
+    return ValueListenableBuilder<_ExpensePreviewTotals?>(
+      valueListenable: _editorPreviewTotals,
+      builder: (context, previewTotals, _) => KeyedSubtree(
         key: const ValueKey('expense-editor-preview-panel'),
-        color: cs.surface,
-        child: _buildPreviewContent(item, l, t, cs),
+        child: _buildPreviewContent(
+          item,
+          l,
+          t,
+          cs,
+          previewTotals: previewTotals,
+        ),
       ),
     );
   }
@@ -184,6 +224,7 @@ class _ExpenseInlineEditor extends StatefulWidget {
   final ExpensesApi expensesApi;
   final Map<String, String> seedItem;
   final List<Map<String, String>> availableAdvanceExpenses;
+  final ValueChanged<_ExpensePreviewTotals> onPreviewTotalsChanged;
   final ValueChanged<Map<String, String>> onSaved;
   final VoidCallback onCancel;
 
@@ -193,6 +234,7 @@ class _ExpenseInlineEditor extends StatefulWidget {
     required this.expensesApi,
     required this.seedItem,
     required this.availableAdvanceExpenses,
+    required this.onPreviewTotalsChanged,
     required this.onSaved,
     required this.onCancel,
   });
@@ -214,6 +256,20 @@ class _ExpenseTotalsSnapshot {
   const _ExpenseTotalsSnapshot({this.subtotal, this.tax, this.total});
 
   bool get hasValues => subtotal != null || tax != null || total != null;
+}
+
+class _ExpensePreviewTotals {
+  const _ExpensePreviewTotals({
+    required this.storedTotal,
+    required this.currentTotal,
+    required this.extractedTotal,
+    required this.currency,
+  });
+
+  final double? storedTotal;
+  final double? currentTotal;
+  final double? extractedTotal;
+  final String currency;
 }
 
 class _ExpenseTotalsDifference {
@@ -280,8 +336,10 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
         TextEditingController(text: widget.seedItem['currency'] ?? 'EUR');
     _notesController = TextEditingController();
     _totalController.addListener(_syncBaseFromTotalTax);
+    _totalController.addListener(_publishPreviewTotals);
     _taxController.addListener(_syncBaseFromTotalTax);
     _baseController.addListener(_syncTotalFromBaseTax);
+    _currencyController.addListener(_publishPreviewTotals);
     final seedProviderId = (widget.seedItem['providerId'] ?? '').trim();
     _selectedProviderId = seedProviderId.isEmpty ? null : seedProviderId;
     _manualProviderMode =
@@ -603,6 +661,7 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
       _selectedProviderId = (providerId ?? '').isEmpty ? null : providerId;
       _manualProviderMode = _selectedProviderId == null &&
           _vendorController.text.trim().isNotEmpty;
+      _publishPreviewTotals();
     } on ExpensesApiException catch (e) {
       if (!mounted) return;
       _error = e.message;
@@ -1006,6 +1065,17 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
         (_hasEditableLines ? _linesTotal() : 0);
   }
 
+  void _publishPreviewTotals() {
+    widget.onPreviewTotalsChanged(
+      _ExpensePreviewTotals(
+        storedTotal: _storedTotals?.total,
+        currentTotal: _currentTotal(),
+        extractedTotal: _extractedDocumentTotals?.total,
+        currency: _currencyLabel(),
+      ),
+    );
+  }
+
   ExpenseDocumentDiscountPreview? _lineFinancialPreview() {
     if (!_hasEditableLines) return null;
     return _documentDiscount.buildPreview(
@@ -1058,21 +1128,13 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
       ));
     }
 
-    if (_useSummaryTotals) {
-      compare(
-        label: 'Documento frente a líneas',
-        other: lineTotals,
-        targetTab: _ExpenseEditorTab.lines,
-      );
-    } else {
-      compare(
-        label: 'Líneas frente a registrado',
-        other: _storedTotals,
-        targetTab: _ExpenseEditorTab.amounts,
-      );
-    }
     compare(
-      label: 'Origen activo frente a extraído',
+      label: 'Total actual frente a líneas',
+      other: lineTotals,
+      targetTab: _ExpenseEditorTab.lines,
+    );
+    compare(
+      label: 'Total actual frente a OCR',
       other: _extractedDocumentTotals,
       targetTab: _ExpenseEditorTab.amounts,
     );
@@ -1208,7 +1270,7 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
     return Container(
       key: const ValueKey('expense-editor-sticky-footer'),
       constraints: const BoxConstraints(minHeight: 52),
-      padding: const EdgeInsets.fromLTRB(8, 7, 8, 5),
+      padding: const EdgeInsets.fromLTRB(16, 7, 16, 7),
       decoration: BoxDecoration(
         color: cs.surface,
         border: Border(
@@ -1230,7 +1292,7 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(
-                    '${ExpenseFormHelpers.formatAmount(_currentTotal())} ${_currencyController.text.trim().isEmpty ? 'EUR' : _currencyController.text.trim().toUpperCase()}',
+                    '${ExpenseFormHelpers.formatAmount(_currentTotal())} ${_currencyController.text.trim().toUpperCase() == 'EUR' || _currencyController.text.trim().isEmpty ? '€' : _currencyController.text.trim().toUpperCase()}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -1415,7 +1477,6 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
                 preview: displayedFinancialPreview,
                 withholding: withholdingPreview,
                 currency: _currencyLabel(),
-                sourceUsesDocumentTotals: _useSummaryTotals,
                 storedTotals: _storedTotals,
                 extractedDocumentTotals: _extractedDocumentTotals,
                 lineTotals: lineTotals,
@@ -1471,7 +1532,7 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
                 Expanded(
                   child: ListView(
                     key: ValueKey('expense-editor-${_activeTab.name}-content'),
-                    padding: EdgeInsets.zero,
+                    padding: const EdgeInsets.only(bottom: 76),
                     children: [
                       // ── Proveedor ──────────────────────────────────────
                       if (_activeTab == _ExpenseEditorTab.general) ...[
@@ -1611,7 +1672,6 @@ class _ExpenseFinancialSummary extends StatelessWidget {
   final ExpenseDocumentDiscountPreview preview;
   final ExpenseWithholdingPreview withholding;
   final String currency;
-  final bool sourceUsesDocumentTotals;
   final _ExpenseTotalsSnapshot? storedTotals;
   final _ExpenseTotalsSnapshot? extractedDocumentTotals;
   final _ExpenseTotalsSnapshot? lineTotals;
@@ -1622,7 +1682,6 @@ class _ExpenseFinancialSummary extends StatelessWidget {
     required this.preview,
     required this.withholding,
     required this.currency,
-    required this.sourceUsesDocumentTotals,
     required this.storedTotals,
     required this.extractedDocumentTotals,
     required this.lineTotals,
@@ -1647,7 +1706,7 @@ class _ExpenseFinancialSummary extends StatelessWidget {
       if (withholding.hasWithholding)
         (label: 'Retención', value: withholding.amount, accent: false),
       (
-        label: sourceUsesDocumentTotals ? 'Total documento' : 'Total calculado',
+        label: 'Total del gasto',
         value: preview.total,
         accent: true,
       ),
@@ -1657,7 +1716,7 @@ class _ExpenseFinancialSummary extends StatelessWidget {
       key: const ValueKey('expense-editor-financial-summary'),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.32)),
       ),
@@ -1665,18 +1724,8 @@ class _ExpenseFinancialSummary extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Resumen financiero',
+            'Desglose de importes',
             style: ts.labelMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            sourceUsesDocumentTotals
-                ? 'Origen activo: desde documento'
-                : 'Origen activo: desde líneas',
-            style: ts.bodySmall?.copyWith(
-              fontSize: 11,
-              color: cs.onSurfaceVariant,
-            ),
           ),
           const SizedBox(height: 7),
           LayoutBuilder(
@@ -1704,6 +1753,7 @@ class _ExpenseFinancialSummary extends StatelessWidget {
           const SizedBox(height: 8),
           _ExpenseTotalsSources(
             format: _format,
+            currentTotal: preview.total,
             storedTotals: storedTotals,
             extractedDocumentTotals: extractedDocumentTotals,
             lineTotals: lineTotals,
@@ -1737,7 +1787,7 @@ class _ExpenseFinancialSummary extends StatelessWidget {
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       visualDensity: VisualDensity.compact,
                     ),
-                    child: const Text('Revisar'),
+                    child: const Text('Ver diferencia'),
                   ),
                 ],
               ),
@@ -1751,12 +1801,14 @@ class _ExpenseFinancialSummary extends StatelessWidget {
 
 class _ExpenseTotalsSources extends StatelessWidget {
   final String Function(double) format;
+  final double currentTotal;
   final _ExpenseTotalsSnapshot? storedTotals;
   final _ExpenseTotalsSnapshot? extractedDocumentTotals;
   final _ExpenseTotalsSnapshot? lineTotals;
 
   const _ExpenseTotalsSources({
     required this.format,
+    required this.currentTotal,
     required this.storedTotals,
     required this.extractedDocumentTotals,
     required this.lineTotals,
@@ -1766,8 +1818,9 @@ class _ExpenseTotalsSources extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final ts = Theme.of(context).textTheme;
-    String valueOf(_ExpenseTotalsSnapshot? value) =>
-        value?.total == null ? 'No disponible' : format(value!.total!);
+    String valueOf(_ExpenseTotalsSnapshot? value,
+            {String empty = 'Sin datos de OCR'}) =>
+        value?.total == null ? empty : format(value!.total!);
 
     Widget source(String label, String value) => Row(
           children: [
@@ -1791,21 +1844,17 @@ class _ExpenseTotalsSources extends StatelessWidget {
           ],
         );
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Column(
-        children: [
-          source('Registrado en el gasto', valueOf(storedTotals)),
-          const SizedBox(height: 3),
-          source('Calculado desde líneas', valueOf(lineTotals)),
-          const SizedBox(height: 3),
-          source('Extraído del documento', valueOf(extractedDocumentTotals)),
-        ],
-      ),
+    return Column(
+      children: [
+        source('Total guardado', valueOf(storedTotals, empty: 'Sin datos')),
+        const SizedBox(height: 3),
+        source('Total actual del formulario', format(currentTotal)),
+        const SizedBox(height: 3),
+        source('Total calculado por líneas',
+            valueOf(lineTotals, empty: 'Sin datos')),
+        const SizedBox(height: 3),
+        source('Total detectado por OCR', valueOf(extractedDocumentTotals)),
+      ],
     );
   }
 }

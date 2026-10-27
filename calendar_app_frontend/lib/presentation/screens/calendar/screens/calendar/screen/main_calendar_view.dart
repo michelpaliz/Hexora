@@ -644,8 +644,11 @@ class _MainCalendarViewState extends State<MainCalendarView> {
           }) {
             return Container(
               decoration: BoxDecoration(
-                color: cs.surface.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(16),
+                color: cs.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.28),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -842,90 +845,47 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
                         // ── Empty workspace with CTAs ──────────────────
                         Widget emptyDayWorkspace() {
-                          return Center(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 300),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 52,
-                                    height: 52,
-                                    decoration: BoxDecoration(
-                                      color: cs.primary.withValues(alpha: 0.09),
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: Icon(
+                          return Align(
+                            alignment: Alignment.topCenter,
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 28),
+                              child: ConstrainedBox(
+                                constraints:
+                                    const BoxConstraints(maxWidth: 300),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
                                       Icons.calendar_today_outlined,
-                                      size: 26,
-                                      color: cs.primary.withValues(alpha: 0.65),
+                                      size: 22,
+                                      color: cs.onSurfaceVariant
+                                          .withValues(alpha: 0.55),
                                     ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    isSpanish
-                                        ? 'No hay eventos para este día'
-                                        : 'No events for this day',
-                                    textAlign: TextAlign.center,
-                                    style: typo.bodyLarge.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      color: cs.onSurface,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    isSpanish
-                                        ? 'Organiza tu jornada creando un evento o recordatorio.'
-                                        : 'Plan your day by creating an event or reminder.',
-                                    textAlign: TextAlign.center,
-                                    style: typo.bodySmall.copyWith(
-                                      color: cs.onSurfaceVariant,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                  if (canAddEvents) ...[
-                                    const SizedBox(height: 24),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: FilledButton.icon(
-                                        onPressed: () =>
-                                            _openAddEventForSlot(selectedDate),
-                                        icon: const Icon(Icons.add_rounded,
-                                            size: 16),
-                                        label: Text(
-                                          isSpanish
-                                              ? 'Crear evento'
-                                              : 'Create event',
-                                          style: typo.bodySmall.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                            color: cs.onPrimary,
-                                          ),
-                                        ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      isSpanish
+                                          ? 'No hay eventos para este día'
+                                          : 'No events for this day',
+                                      textAlign: TextAlign.center,
+                                      style: typo.bodyLarge.copyWith(
+                                        fontWeight: FontWeight.w800,
+                                        color: cs.onSurface,
+                                        fontSize: 15,
                                       ),
                                     ),
                                     const SizedBox(height: 8),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: OutlinedButton.icon(
-                                        onPressed: () =>
-                                            _openAddEventForSlot(selectedDate),
-                                        icon: const Icon(
-                                            Icons.notifications_outlined,
-                                            size: 16),
-                                        label: Text(
-                                          isSpanish
-                                              ? 'Crear recordatorio'
-                                              : 'Create reminder',
-                                          style: typo.bodySmall.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                            color: cs.primary,
-                                          ),
-                                        ),
+                                    Text(
+                                      isSpanish
+                                          ? 'Organiza tu jornada creando un evento o recordatorio.'
+                                          : 'Plan your day by creating an event or reminder.',
+                                      textAlign: TextAlign.center,
+                                      style: typo.bodySmall.copyWith(
+                                        color: cs.onSurfaceVariant,
+                                        height: 1.4,
                                       ),
                                     ),
                                   ],
-                                ],
+                                ),
                               ),
                             ),
                           );
@@ -1024,8 +984,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                                         ),
                                       ),
                                       // Quick-add action
-                                      if (canAddEvents &&
-                                          eventsForDay.isNotEmpty) ...[
+                                      if (canAddEvents) ...[
                                         const SizedBox(width: 6),
                                         FilledButton.tonal(
                                           onPressed: () => _openAddEventForSlot(
@@ -1047,7 +1006,9 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                                                   size: 14),
                                               const SizedBox(width: 3),
                                               Text(
-                                                isSpanish ? 'Nuevo' : 'New',
+                                                isSpanish
+                                                    ? 'Nuevo evento'
+                                                    : 'New event',
                                                 style: typo.bodySmall.copyWith(
                                                   fontWeight: FontWeight.w700,
                                                   fontSize: 11,
@@ -1280,18 +1241,22 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                 children: [
                   // Calendar panel — fixed 30%
                   Expanded(
-                    flex: 3,
+                    flex: 12,
                     child: miniPanelShell(
                       title: loc.sectionOverview,
                       child: miniMonthGrid(),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  Container(
+                    width: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 10),
+                    color: cs.outlineVariant.withValues(alpha: 0.35),
+                  ),
                   // Dynamic workspace — 70%
                   // No event: full workspace (date header + events/empty+CTA)
                   // Event active: events list | detail panel split
                   Expanded(
-                    flex: 7,
+                    flex: 13,
                     child: noEventSelected
                         ? miniPanelShell(
                             title: 'Eventos del dia',

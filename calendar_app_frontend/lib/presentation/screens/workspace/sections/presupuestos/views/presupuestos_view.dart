@@ -20,6 +20,7 @@ import 'package:hexora/presentation/screens/workspace/sections/presupuestos/docu
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/json_import_service.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/prompt_clipboard_helper.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
@@ -2517,7 +2518,9 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     final activeList =
         _budgetsTabIndex == 0 ? filteredDrafts : filteredIssuedBudgets;
     // Same width on every row so totals align whether or not a row is a draft.
-    final primaryActionWidth = activeList.any(_isDraftBudget) ? 84.0 : 0.0;
+    // Every document has one compact primary action; secondary actions stay
+    // in overflow so the column remains stable across statuses.
+    final primaryActionWidth = activeList.isEmpty ? 0.0 : 84.0;
     final selected = activeList.cast<Map<String, dynamic>?>().firstWhere(
           (e) =>
               _budgetId(e ?? const {}).trim() ==
@@ -2571,15 +2574,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
               ? 'Completa datos del cliente antes de emitir: ${missingClientFields.join(', ')}'
               : 'Emitir';
 
-      Widget busySpinner(Color color) => SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: color,
-            ),
-          );
-
       final statusLabel = _budgetStatusLabel(normalizedStatus);
       final documentStatus = switch (normalizedStatus) {
         'draft' => HexoraDocumentStatus.draft,
@@ -2608,54 +2602,44 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         status: HexoraStatusBadge.document(context,
             status: documentStatus, label: statusLabel),
         primaryActionWidth: primaryActionWidth,
-        primaryAction: !isDraft
-            ? null
-            : Tooltip(
+        primaryAction: isDraft
+            ? Tooltip(
                 message: canIssueBudget
                     ? (_isSpanishLocale
                         ? 'Emitir presupuesto: asigna número y lo marca como emitido'
                         : 'Issue budget: assigns a number and marks it issued')
                     : issueTooltip,
-                child: TextButton.icon(
+                child: HexoraButton(
                   onPressed: (canIssueBudget && !isIssuing && !isDeleting)
                       ? () => _issueBudgetFromList(item)
                       : null,
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size(0, 30),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                    foregroundColor: cs.primary,
-                    textStyle:
-                        t.labelMedium?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  icon: isIssuing
-                      ? busySpinner(cs.primary)
-                      : const Icon(Icons.publish_outlined, size: 16),
-                  label: Text(_isSpanishLocale ? 'Emitir' : 'Issue'),
+                  icon: Icons.publish_outlined,
+                  label: _isSpanishLocale ? 'Emitir' : 'Issue',
+                  loading: isIssuing,
+                  size: HexoraButtonSize.compact,
+                  variant: HexoraButtonVariant.primary,
                 ),
+              )
+            : HexoraButton(
+                onPressed: selectBudget,
+                icon: Icons.visibility_outlined,
+                label: _isSpanishLocale ? 'Ver' : 'View',
+                size: HexoraButtonSize.compact,
+                variant: HexoraButtonVariant.ghost,
               ),
-        quickActionSlots: 3,
-        quickActions: [
-          CompactDocumentQuickAction(
-            icon: Icons.visibility_outlined,
-            tooltip: _isSpanishLocale ? 'Vista previa' : 'Preview',
-            onPressed: selectBudget,
-            opensPreviewDrawer: true,
-          ),
-          if (widget.onEditDraftBudget != null)
-            CompactDocumentQuickAction(
-              icon: Icons.edit_outlined,
-              tooltip: _isSpanishLocale ? 'Editar presupuesto' : 'Edit budget',
-              onPressed: () => widget.onEditDraftBudget!.call(id),
-            ),
-          CompactDocumentQuickAction(
-            icon: Icons.download_rounded,
-            tooltip: l.download,
-            onPressed: () => _downloadBudgetPdf(item),
-          ),
-        ],
+        quickActionSlots: 0,
         actions: [
+          if (isDraft && widget.onEditDraftBudget != null)
+            CompactDocumentAction(
+              _isSpanishLocale ? 'Editar presupuesto' : 'Edit budget',
+              () => widget.onEditDraftBudget!.call(id),
+              icon: Icons.edit_outlined,
+            ),
+          CompactDocumentAction(
+            l.download,
+            () => _downloadBudgetPdf(item),
+            icon: Icons.download_rounded,
+          ),
           if (isDraft)
             CompactDocumentAction(
               isDeleting
@@ -2665,6 +2649,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                   ? () => _deleteDraftBudget(item)
                   : null,
               destructive: true,
+              icon: Icons.delete_outline_rounded,
             ),
         ],
       );
@@ -2943,7 +2928,8 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                     CompactDocumentTableHeader(
                       identityLabel: 'Presupuesto',
                       visibleFinancialColumns: _budgetVisibleColumns,
-                      actionsWidth: primaryActionWidth + 128,
+                      actionsWidth: primaryActionWidth + 36,
+                      previewActionInFullView: false,
                       headerBuilder: _budgetHeader,
                     ),
                   Expanded(

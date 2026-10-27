@@ -953,17 +953,6 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                       padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
                       child: filter,
                     ),
-                  if (isWide)
-                    Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                        child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                                Localizations.localeOf(context).languageCode ==
-                                        'es'
-                                    ? 'Mantente al día con la actividad de tu cuenta.'
-                                    : 'Stay up to date with your account activity.',
-                                style: Theme.of(context).textTheme.bodySmall))),
                   Expanded(
                     child: _ocrJobsMode
                         ? ocrJobsList
@@ -984,7 +973,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                       flex: 3,
                       child: FolderPanel(
                         title: l.notifications,
-                        contentTopPadding: 44,
+                        contentTopPadding: 8,
                         actions: [
                           _compactRefreshAction(context, l.refreshAction),
                           _compactActionsMenu(context),
@@ -996,7 +985,9 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                     Expanded(
                       flex: 2,
                       child: FolderPanel(
-                        title: l.details,
+                        title: null,
+                        showTab: false,
+                        contentTopPadding: 0,
                         actions: [
                           if (!_downloadsMode &&
                               !_ocrJobsMode &&
@@ -1057,6 +1048,10 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                                         ? null
                                         : () =>
                                             _handleDelete(effectiveSelected),
+                                    onClose: effectiveSelected == null
+                                        ? null
+                                        : () => setState(
+                                            () => _detailsClosed = true),
                                   ),
                       ),
                     ),

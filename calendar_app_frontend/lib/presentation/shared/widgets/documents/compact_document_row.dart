@@ -421,12 +421,20 @@ class CompactDocumentRow extends StatelessWidget {
         emptySlots +
         (showFallbackPreview ? 1 : 0) +
         (actions.isNotEmpty ? 1 : 0);
+    final hasPrimaryAction = primaryActionWidth > 0 || primaryAction != null;
+    // Quick-action buttons are separated by [_actionGap] in [actionsWidget].
+    // Reserve those gaps too so three action buttons fit their table cell.
+    final quickActionGaps =
+        visibleQuickActions.length > 1 ? visibleQuickActions.length - 1 : 0;
     final actionSeparators = actions.isNotEmpty &&
             (visibleQuickActions.isNotEmpty || showFallbackPreview)
         ? 1
         : 0;
-    final actionsColumnWidth =
-        target * iconSlots + _actionGap * actionSeparators + primaryActionWidth;
+    final primaryActionGap = hasPrimaryAction && iconSlots > 0 ? 4.0 : 0.0;
+    final actionsColumnWidth = target * iconSlots +
+        _actionGap * (quickActionGaps + actionSeparators) +
+        primaryActionGap +
+        primaryActionWidth;
     return Column(mainAxisSize: MainAxisSize.min, children: [
       HexoraListRow(
           selected: selected,
@@ -541,117 +549,133 @@ class CompactDocumentRow extends StatelessWidget {
                 width: 16,
                 height: 16,
                 child: CircularProgressIndicator(strokeWidth: 2));
-            final actionsWidget =
-                Row(mainAxisSize: MainAxisSize.min, children: [
-              if (primaryActionWidth > 0)
-                SizedBox(
-                    width: primaryActionWidth,
-                    child: Align(
-                        alignment: AlignmentDirectional.centerEnd,
-                        child: primaryAction))
-              else if (primaryAction != null)
-                primaryAction!,
-              for (var i = 0; i < emptySlots; i++) SizedBox(width: target),
-              if (visibleQuickActions.isNotEmpty)
-                for (var i = 0; i < visibleQuickActions.length; i++) ...[
-                  if (i > 0) const SizedBox(width: _actionGap),
-                  SizedBox(
-                      width: target,
-                      height: target,
-                      child: IconButton(
-                          tooltip: visibleQuickActions[i].tooltip,
-                          onPressed: visibleQuickActions[i].busy ||
-                                  visibleQuickActions[i].onPressed == null
-                              ? null
-                              : () {
-                                  if (visibleQuickActions[i]
-                                      .opensPreviewDrawer) {
-                                    workspace?.openPreviewDrawer();
-                                  }
-                                  visibleQuickActions[i].onPressed!.call();
-                                },
-                          iconSize: 16,
-                          padding: EdgeInsets.zero,
-                          style: IconButton.styleFrom(
-                              minimumSize: const Size.square(32),
-                              maximumSize: const Size.square(32),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                          icon: visibleQuickActions[i].busy
-                              ? busyIndicator()
-                              : Icon(visibleQuickActions[i].icon)))
-                ]
-              else if (showFallbackPreview)
-                SizedBox(
-                    width: target,
-                    height: target,
-                    child: IconButton(
-                        tooltip: previewLabel,
-                        onPressed: previewBusy ? null : onPreview,
-                        iconSize: 16,
-                        padding: EdgeInsets.zero,
-                        style: IconButton.styleFrom(
-                            minimumSize: const Size.square(32),
-                            maximumSize: const Size.square(32),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                        icon: previewBusy
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2))
-                            : const Icon(Icons.visibility_outlined))),
-              if (actions.isNotEmpty)
-                if (visibleQuickActions.isNotEmpty || showFallbackPreview)
-                  const SizedBox(width: _actionGap),
-              if (actions.isNotEmpty)
-                SizedBox(
-                    width: target,
-                    height: target,
-                    child: Center(
-                      child: SizedBox.square(
-                        dimension: 32,
-                        child: PopupMenuButton<int>(
-                            tooltip: MaterialLocalizations.of(context)
-                                .moreButtonTooltip,
-                            icon: const Icon(Icons.more_vert, size: 16),
+            final actionsWidget = SizedBox(
+              width: actionsColumnWidth,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.center,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  if (primaryActionWidth > 0)
+                    SizedBox(
+                        width: primaryActionWidth,
+                        child: Align(
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: primaryAction))
+                  else if (primaryAction != null)
+                    primaryAction!,
+                  if (hasPrimaryAction && iconSlots > 0)
+                    SizedBox(width: primaryActionGap),
+                  for (var i = 0; i < emptySlots; i++) SizedBox(width: target),
+                  if (visibleQuickActions.isNotEmpty)
+                    for (var i = 0; i < visibleQuickActions.length; i++) ...[
+                      if (i > 0) const SizedBox(width: _actionGap),
+                      SizedBox(
+                          width: target,
+                          height: target,
+                          child: IconButton(
+                              tooltip: visibleQuickActions[i].tooltip,
+                              onPressed: visibleQuickActions[i].busy ||
+                                      visibleQuickActions[i].onPressed == null
+                                  ? null
+                                  : () {
+                                      if (visibleQuickActions[i]
+                                          .opensPreviewDrawer) {
+                                        workspace?.openPreviewDrawer();
+                                      }
+                                      visibleQuickActions[i].onPressed!.call();
+                                    },
+                              iconSize: 16,
+                              padding: EdgeInsets.zero,
+                              style: IconButton.styleFrom(
+                                  minimumSize: const Size.square(32),
+                                  maximumSize: const Size.square(32),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap),
+                              icon: visibleQuickActions[i].busy
+                                  ? busyIndicator()
+                                  : Icon(visibleQuickActions[i].icon)))
+                    ]
+                  else if (showFallbackPreview)
+                    SizedBox(
+                        width: target,
+                        height: target,
+                        child: IconButton(
+                            tooltip: previewLabel,
+                            onPressed: previewBusy ? null : onPreview,
+                            iconSize: 16,
                             padding: EdgeInsets.zero,
-                            onSelected: (index) =>
-                                actions[index].onPressed?.call(),
-                            itemBuilder: (_) => [
-                                  for (var i = 0; i < actions.length; i++)
-                                    NavigationPopupMenuItem(
-                                        value: i,
-                                        enabled: actions[i].onPressed != null,
-                                        child: Row(
-                                          children: [
-                                            if (actions[i].icon != null) ...[
-                                              Icon(
-                                                actions[i].icon,
-                                                size: 16,
-                                                color: actions[i].destructive
-                                                    ? cs.error
-                                                    : null,
-                                              ),
-                                              const SizedBox(width: 8),
-                                            ],
-                                            Expanded(
-                                              child: Text(
-                                                actions[i].label,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: actions[i].destructive
-                                                    ? TextStyle(color: cs.error)
-                                                    : null,
-                                              ),
-                                            ),
-                                          ],
-                                        ))
-                                ]),
-                      ),
-                    ))
-              else
-                SizedBox(width: target),
-            ]);
+                            style: IconButton.styleFrom(
+                                minimumSize: const Size.square(32),
+                                maximumSize: const Size.square(32),
+                                tapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap),
+                            icon: previewBusy
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2))
+                                : const Icon(Icons.visibility_outlined))),
+                  if (actions.isNotEmpty)
+                    if (visibleQuickActions.isNotEmpty || showFallbackPreview)
+                      const SizedBox(width: _actionGap),
+                  if (actions.isNotEmpty)
+                    SizedBox(
+                        width: target,
+                        height: target,
+                        child: Center(
+                          child: SizedBox.square(
+                            dimension: 32,
+                            child: PopupMenuButton<int>(
+                                tooltip: MaterialLocalizations.of(context)
+                                    .moreButtonTooltip,
+                                icon: const Icon(Icons.more_vert, size: 16),
+                                padding: EdgeInsets.zero,
+                                onSelected: (index) =>
+                                    actions[index].onPressed?.call(),
+                                itemBuilder: (_) => [
+                                      for (var i = 0; i < actions.length; i++)
+                                        NavigationPopupMenuItem(
+                                            value: i,
+                                            enabled:
+                                                actions[i].onPressed != null,
+                                            child: Row(
+                                              children: [
+                                                if (actions[i].icon !=
+                                                    null) ...[
+                                                  Icon(
+                                                    actions[i].icon,
+                                                    size: 16,
+                                                    color:
+                                                        actions[i].destructive
+                                                            ? cs.error
+                                                            : null,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                ],
+                                                Expanded(
+                                                  child: Text(
+                                                    actions[i].label,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style:
+                                                        actions[i].destructive
+                                                            ? TextStyle(
+                                                                color: cs.error)
+                                                            : null,
+                                                  ),
+                                                ),
+                                              ],
+                                            ))
+                                    ]),
+                          ),
+                        ))
+                  else
+                    SizedBox(width: target),
+                ]),
+              ),
+            );
             if (useCompactSplitLayout) {
               final compactDate = HexoraFinancialFormat.date(date);
               final compactIdentity = (compactTitle ?? title).trim();

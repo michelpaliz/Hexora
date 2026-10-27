@@ -9,6 +9,8 @@ import 'package:url_launcher/url_launcher.dart';
 mixin ExpenseOperationsMixin<T extends StatefulWidget> on State<T> {
   ExpensesApi get expensesApi;
   List<Map<String, String>> get recentUploads;
+  bool get loadingRecentUploads;
+  set loadingRecentUploads(bool value);
   Map<String, String>? get selectedRecentExpense;
   set selectedRecentExpense(Map<String, String>? value);
   bool get loadingPreview;
@@ -20,6 +22,7 @@ mixin ExpenseOperationsMixin<T extends StatefulWidget> on State<T> {
 
   /// Load recent expense uploads
   Future<void> loadRecentUploads() async {
+    if (mounted) setState(() => loadingRecentUploads = true);
     try {
       final groupId = resolveGroupId();
       if (groupId.isEmpty) {
@@ -53,6 +56,8 @@ mixin ExpenseOperationsMixin<T extends StatefulWidget> on State<T> {
       if (kDebugMode) {
         debugPrint('Failed to load expenses: $e');
       }
+    } finally {
+      if (mounted) setState(() => loadingRecentUploads = false);
     }
   }
 
@@ -184,12 +189,9 @@ mixin ExpenseOperationsMixin<T extends StatefulWidget> on State<T> {
           (finalSettlement['deductedTax'] ?? '').toString(),
       'settlementDeductedTotal':
           (finalSettlement['deductedTotal'] ?? '').toString(),
-      'settlementGrossBase':
-          (finalSettlement['grossBase'] ?? '').toString(),
-      'settlementGrossTax':
-          (finalSettlement['grossTax'] ?? '').toString(),
-      'settlementGrossTotal':
-          (finalSettlement['grossTotal'] ?? '').toString(),
+      'settlementGrossBase': (finalSettlement['grossBase'] ?? '').toString(),
+      'settlementGrossTax': (finalSettlement['grossTax'] ?? '').toString(),
+      'settlementGrossTotal': (finalSettlement['grossTotal'] ?? '').toString(),
       'settlementRemainingBase':
           (finalSettlement['remainingBase'] ?? '').toString(),
       'settlementRemainingTax':
@@ -414,8 +416,8 @@ mixin ExpenseOperationsMixin<T extends StatefulWidget> on State<T> {
           linesSubtotal: linesSubtotal,
           linesTotal: linesTotal,
           subtotal: (result['subtotal'] ?? '').toString(),
-          taxSource: (result['taxSource'] ?? result['totalsSource'] ?? '')
-              .toString(),
+          taxSource:
+              (result['taxSource'] ?? result['totalsSource'] ?? '').toString(),
           expenseType: (result['expenseType'] ?? '').toString(),
           advancePercent: (advancePayment['percent'] ?? '').toString(),
           advanceProjectBaseAmount:
@@ -431,10 +433,8 @@ mixin ExpenseOperationsMixin<T extends StatefulWidget> on State<T> {
               (finalSettlement['deductedTax'] ?? '').toString(),
           settlementDeductedTotal:
               (finalSettlement['deductedTotal'] ?? '').toString(),
-          settlementGrossBase:
-              (finalSettlement['grossBase'] ?? '').toString(),
-          settlementGrossTax:
-              (finalSettlement['grossTax'] ?? '').toString(),
+          settlementGrossBase: (finalSettlement['grossBase'] ?? '').toString(),
+          settlementGrossTax: (finalSettlement['grossTax'] ?? '').toString(),
           settlementGrossTotal:
               (finalSettlement['grossTotal'] ?? '').toString(),
           settlementRemainingBase:

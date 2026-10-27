@@ -464,6 +464,19 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
               refreshImmediately: true,
             ),
           ),
+          if (_vatColumnStates.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              isSpanish
+                  ? 'Seleccionado: ${_vatColumnStates.map((state) => _vatStateLabel(state, isSpanish)).join(', ')}'
+                  : 'Selected: ${_vatColumnStates.map((state) => _vatStateLabel(state, isSpanish)).join(', ')}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ],
           const SizedBox(height: 8),
           Align(
             alignment: AlignmentDirectional.centerEnd,
@@ -1040,7 +1053,9 @@ class _ExpenseActionGroup extends StatelessWidget {
       children: [
         for (var index = 0; index < actions.length; index++) ...[
           if (index > 0) const SizedBox(width: 4),
-          actions[index],
+          // A fixed slot keeps all row actions aligned even when an action is
+          // disabled or replaced by the OCR progress indicator.
+          SizedBox.square(dimension: 32, child: Center(child: actions[index])),
         ],
       ],
     );
