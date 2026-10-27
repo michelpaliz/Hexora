@@ -32,6 +32,7 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
   late TextEditingController _notesCtrl;
   String _currency = defaultWorkerCurrency;
   late WorkerStatus _status;
+  late String _operationalRole;
   bool _saving = false;
 
   @override
@@ -46,6 +47,7 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
     _notesCtrl = TextEditingController(text: w.notes ?? '');
     _currency = (w.currency ?? defaultWorkerCurrency);
     _status = w.status;
+    _operationalRole = w.operationalRole;
   }
 
   @override
@@ -72,6 +74,7 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
         currency: _currency,
         roleTag:
             _roleTagCtrl.text.trim().isEmpty ? null : _roleTagCtrl.text.trim(),
+        operationalRole: _operationalRole,
         notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
         status: _status,
       );
@@ -144,6 +147,16 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
               },
             ),
             const SizedBox(height: 8),
+            if (widget.worker.userId != null && widget.worker.account == null)
+              DropdownButtonFormField<String>(
+                initialValue: _operationalRole,
+                decoration: const InputDecoration(labelText: 'Rol de trabajador'),
+                items: const [
+                  DropdownMenuItem(value: 'worker', child: Text('Trabajador')),
+                  DropdownMenuItem(value: 'supervisor', child: Text('Supervisor')),
+                ],
+                onChanged: (value) => setState(() => _operationalRole = value ?? 'worker'),
+              ),
             Row(
               children: [
                 Expanded(

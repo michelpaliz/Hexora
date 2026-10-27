@@ -42,7 +42,7 @@ class BottomBar extends StatelessWidget {
                       onPressed: () => state.openSection('calendar'),
                     ),
             ),
-            if (!kIsWeb) ...[
+            if (!kIsWeb && state.canSeeAdmin) ...[
               const SizedBox(width: 12),
               SizedBox(
                 width: 48,

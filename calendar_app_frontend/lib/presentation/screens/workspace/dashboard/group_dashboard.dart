@@ -34,7 +34,8 @@ class GroupDashboard extends StatelessWidget {
           ),
           bottomNavigationBar:
               state.showBottomBar ? BottomBar(state: state) : null,
-          floatingActionButton: kIsWeb || state.showBottomBar
+          floatingActionButton:
+              kIsWeb || state.showBottomBar || !state.canSeeAdmin
               ? null
               : InsightsChatFab(
                   groupId: group.id,

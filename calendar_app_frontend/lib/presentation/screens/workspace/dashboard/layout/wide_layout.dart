@@ -211,16 +211,21 @@ List<HexoraNavDestination> _dashboardDestinations(
       ),
     ],
     const HexoraNavDestination(
-      id: Sections.chat,
+      id: Sections.businessChat,
       icon: Icons.chat_bubble_outline_rounded,
       label: 'Chat',
     ),
-    HexoraNavDestination(
-      id: Sections.workers,
-      icon: Icons.access_time_rounded,
-      label: es ? 'Trabajadores' : 'Workers',
-    ),
     if (canSeeAdmin) ...[
+      HexoraNavDestination(
+        id: Sections.chat,
+        icon: Icons.auto_awesome_outlined,
+        label: es ? 'Asistente IA' : 'AI assistant',
+      ),
+      HexoraNavDestination(
+        id: Sections.workers,
+        icon: Icons.access_time_rounded,
+        label: es ? 'Trabajadores' : 'Workers',
+      ),
       HexoraNavDestination(
         id: Sections.enableBanking,
         icon: Icons.account_balance_outlined,
@@ -321,12 +326,14 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
       notificationCount: unreadNotifications,
       notificationsSelected: state.activeSection == Sections.notifications,
       onOpenNotifications: () => state.openSection(Sections.notifications),
-      onlineMembers: WorkerStatusIndicator(
-        groupId: state.group.id,
-        memberIds: memberIds.toList(),
-        groupRoles: state.group.userRoles,
-        onOpenWorkers: () => state.openSection(Sections.workers),
-      ),
+      onlineMembers: state.canSeeAdmin
+          ? WorkerStatusIndicator(
+              groupId: state.group.id,
+              memberIds: memberIds.toList(),
+              groupRoles: state.group.userRoles,
+              onOpenWorkers: () => state.openSection(Sections.workers),
+            )
+          : null,
       profile: UserProfilePopup(
         user: user,
         onSettings: () => state.openSection('settings'),

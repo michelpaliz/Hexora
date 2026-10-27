@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/presupuestos_module_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/business_chat/business_chat_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
 import 'package:hexora/services/telegram/domain/telegram_domain.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +15,9 @@ import 'group_dashboard_state.dart';
 
 class DashboardActions {
   static void openSection(GroupDashboardState state, String section) {
+    if (section == Sections.chat && !state.canSeeAdmin) return;
+    if (section == Sections.services && !state.canSeeAdmin) return;
+    if (section == Sections.workers && !state.canSeeAdmin) return;
     final context = state.context;
 
     if (state.isWide) {
@@ -62,6 +66,17 @@ class DashboardActions {
           AppRoutes.groupServicesClients,
           arguments: state.group,
         );
+        break;
+      case Sections.businessChat:
+        Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => Scaffold(
+            appBar: AppBar(title: const Text('Chat de la empresa')),
+            body: BusinessChatScreen(
+              groupId: state.group.id,
+              currentUserId: state.user?.id,
+            ),
+          ),
+        ));
         break;
       case Sections.maps:
         Navigator.of(context).push(

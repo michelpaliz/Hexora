@@ -195,6 +195,8 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
                 Sections.services),
             destination(Icons.map_outlined,
                 es ? 'Mapa y visitas' : 'Map and visits', Sections.maps),
+            destination(Icons.forum_outlined,
+                es ? 'Chat de la empresa' : 'Business chat', Sections.businessChat),
           ]),
           const SizedBox(height: 12),
           group([

@@ -224,6 +224,7 @@ class WorkerMobileCard extends StatelessWidget {
                         worker.status == WorkerStatus.archived
                             ? l.statusInactive
                             : l.statusActive,
+                        if (worker.operationalRole == 'supervisor') 'Supervisor',
                         if (role.isNotEmpty) role,
                       ].join(' · '),
                       style: TextStyle(color: cs.onSurfaceVariant)),

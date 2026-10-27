@@ -94,6 +94,9 @@ class GroupDashboardState extends ChangeNotifier {
   int invoicesNavigationRevision = 0;
 
   void selectSection(String section) {
+    if (section == Sections.chat && !canSeeAdmin) return;
+    if (section == Sections.services && !canSeeAdmin) return;
+    if (section == Sections.workers && !canSeeAdmin) return;
     if (activeSection == section) return;
     activeSection = section;
     notifyListeners();
@@ -170,6 +173,12 @@ class GroupDashboardState extends ChangeNotifier {
 
     role = await RoleResolver.resolve(group: target, userDomain: _ud);
     user = await _getSafeUser();
+    if ((activeSection == Sections.chat ||
+            activeSection == Sections.services ||
+            activeSection == Sections.workers) &&
+        !canSeeAdmin) {
+      activeSection = Sections.calendar;
+    }
 
     if (refreshed != null) group = refreshed;
 

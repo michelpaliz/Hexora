@@ -16,6 +16,7 @@ class Sections {
   static const expenses = 'expenses';
   static const emails = 'emails';
   static const chat = 'chat';
+  static const businessChat = 'businessChat';
   static const enableBanking = 'enableBanking';
   static const telegram = 'telegram';
 }
