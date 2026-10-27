@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/l10n/build_context_locale.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/workers/worker.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_directory_tabs.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_list_section.dart';
 
@@ -98,46 +99,39 @@ class _WorkerDirectoryViewState extends State<WorkerDirectoryView> {
       decorated: true,
       compact: true,
     );
-    final search = TextField(
-      controller: _search,
-      style: const TextStyle(fontSize: 13),
-      onChanged: (_) => setState(() => _page = 0),
-      decoration: InputDecoration(
-        hintText: widget.showPartners
-            ? (isEs ? 'Buscar socio…' : 'Search partners…')
-            : (isEs ? 'Buscar trabajador…' : 'Search workers…'),
-        prefixIcon: const Icon(Icons.search_rounded, size: 20),
-        suffixIcon: query.isEmpty
-            ? null
-            : IconButton(
-                tooltip: isEs ? 'Limpiar búsqueda' : 'Clear search',
-                icon: const Icon(Icons.close_rounded, size: 18),
-                onPressed: () => setState(_search.clear),
-              ),
-        isDense: true,
-        prefixIconConstraints:
-            const BoxConstraints(minWidth: 36, minHeight: 36),
-        enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(11),
-            borderSide:
-                BorderSide(color: cs.outlineVariant.withValues(alpha: .6))),
-        focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(11),
-            borderSide: BorderSide(color: cs.primary)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+    final search = SizedBox(
+      height: 34,
+      child: TextField(
+        controller: _search,
+        style: const TextStyle(fontSize: 13),
+        onChanged: (_) => setState(() => _page = 0),
+        decoration: InputDecoration(
+          hintText: widget.showPartners
+              ? (isEs ? 'Buscar socio…' : 'Search partners…')
+              : (isEs ? 'Buscar trabajador…' : 'Search workers…'),
+          hintStyle: const TextStyle(fontSize: 13),
+          prefixIcon: const Icon(Icons.search_rounded, size: 18),
+          suffixIcon: query.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: isEs ? 'Limpiar búsqueda' : 'Clear search',
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  onPressed: () => setState(_search.clear),
+                ),
+          isDense: true,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
       ),
     );
-    final add = FilledButton.icon(
+    final add = HexoraButton(
+      icon: Icons.add_rounded,
+      label: isEs ? 'Añadir trabajador' : 'Add worker',
+      size: HexoraButtonSize.compact,
       onPressed: widget.onCreate,
-      icon: const Icon(Icons.add_rounded, size: 20),
-      label: Text(isEs ? 'Añadir trabajador' : 'Add worker'),
-      style: FilledButton.styleFrom(
-        minimumSize: const Size(0, 36),
-        visualDensity: VisualDensity.compact,
-        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
     );
     final pageCount = (visible.length / _pageSize).ceil().clamp(1, 1000000);
     final page = _page.clamp(0, pageCount - 1);
@@ -148,111 +142,95 @@ class _WorkerDirectoryViewState extends State<WorkerDirectoryView> {
         ? (isEs ? 'socios' : 'partners')
         : (isEs ? 'trabajadores' : 'workers');
     final showing = pageCount == 1
-        ? (isEs
-            ? 'Mostrando ${visible.length} de ${visible.length} $noun'
-            : 'Showing ${visible.length} of ${visible.length} $noun')
-        : (isEs
-            ? 'Mostrando $first–$last de ${visible.length} $noun'
-            : 'Showing $first–$last of ${visible.length} $noun');
-    final iconStyle = IconButton.styleFrom(
-      minimumSize: const Size(34, 34),
-      padding: EdgeInsets.zero,
-      visualDensity: VisualDensity.compact,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
-      side: BorderSide(color: cs.outlineVariant.withValues(alpha: .55)),
-    );
+        ? '${visible.length} $noun'
+        : '$first–$last / ${visible.length} $noun';
+
     final viewToggle = Row(mainAxisSize: MainAxisSize.min, children: [
       for (final grid in [false, true]) ...[
-        if (grid) const SizedBox(width: 8),
-        IconButton.outlined(
+        if (grid) const SizedBox(width: 6),
+        HexoraButton.iconOnly(
           tooltip: grid
               ? (isEs ? 'Vista de tarjetas' : 'Card view')
               : (isEs ? 'Vista de lista' : 'List view'),
-          isSelected: _grid == grid,
-          style: iconStyle.copyWith(
-            backgroundColor: WidgetStatePropertyAll(_grid == grid
-                ? cs.primaryContainer.withValues(alpha: .5)
-                : cs.surface),
-            foregroundColor: WidgetStatePropertyAll(
-                _grid == grid ? cs.primary : cs.onSurfaceVariant),
-          ),
+          icon: grid
+              ? Icons.grid_view_rounded
+              : Icons.format_list_bulleted_rounded,
+          size: HexoraButtonSize.compact,
+          variant: _grid == grid
+              ? HexoraButtonVariant.tonal
+              : HexoraButtonVariant.ghost,
           onPressed: () => setState(() => _grid = grid),
-          icon: Icon(
-              grid
-                  ? Icons.grid_view_rounded
-                  : Icons.format_list_bulleted_rounded,
-              size: 21),
         ),
       ],
     ]);
-    final sorting = Wrap(
-        spacing: 12,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-                color: cs.surface,
-                borderRadius: BorderRadius.circular(11),
-                border: Border.all(
-                    color: cs.outlineVariant.withValues(alpha: .55))),
-            child: DropdownButtonHideUnderline(
-                child: DropdownButton<bool>(
-              value: _ascending,
-              isDense: true,
-              borderRadius: BorderRadius.circular(12),
-              style: TextStyle(fontSize: 13, color: cs.onSurface),
-              icon: const Padding(
-                  padding: EdgeInsets.only(left: 14),
-                  child: Icon(Icons.expand_more_rounded)),
-              items: [
-                DropdownMenuItem(
-                    value: true,
-                    child: Text(isEs ? 'Nombre (A–Z)' : 'Name (A–Z)')),
-                DropdownMenuItem(
-                    value: false,
-                    child: Text(isEs ? 'Nombre (Z–A)' : 'Name (Z–A)')),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() {
-                    _ascending = value;
-                    _page = 0;
-                  });
-                }
-              },
-            )),
+
+    final sorting = Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .45)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<bool>(
+          value: _ascending,
+          isDense: true,
+          borderRadius: BorderRadius.circular(8),
+          style: TextStyle(fontSize: 13, color: cs.onSurface),
+          icon: const Padding(
+            padding: EdgeInsets.only(left: 8),
+            child: Icon(Icons.expand_more_rounded, size: 18),
           ),
-        ]);
+          items: [
+            DropdownMenuItem(
+                value: true,
+                child: Text(isEs ? 'Nombre (A–Z)' : 'Name (A–Z)')),
+            DropdownMenuItem(
+                value: false,
+                child: Text(isEs ? 'Nombre (Z–A)' : 'Name (Z–A)')),
+          ],
+          onChanged: (value) {
+            if (value != null) {
+              setState(() {
+                _ascending = value;
+                _page = 0;
+              });
+            }
+          },
+        ),
+      ),
+    );
+
     return LayoutBuilder(builder: (context, constraints) {
       final inline = constraints.maxWidth >= 520 &&
           MediaQuery.textScalerOf(context).scale(1) < 1.5;
       return SingleChildScrollView(
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        if (inline)
-          Row(children: [Expanded(child: tabs), const SizedBox(width: 8), add])
-        else
-          Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [tabs, add]),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-              color: cs.surface,
-              borderRadius: BorderRadius.circular(11),
-              border:
-                  Border.all(color: cs.outlineVariant.withValues(alpha: .35))),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Wrap(
-                spacing: 10,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── tabs + add button ──
+            if (inline)
+              Row(children: [
+                Expanded(child: tabs),
+                const SizedBox(width: 8),
+                add,
+              ])
+            else
+              Wrap(
+                spacing: 8,
                 runSpacing: 6,
                 crossAxisAlignment: WrapCrossAlignment.center,
-                children: [widget.monthSummary, widget.statusFilter]),
+                children: [tabs, add],
+              ),
+            const SizedBox(height: 10),
+
+            // ── toolbar (flat, no border) ──
+            Wrap(
+              spacing: 10,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [widget.monthSummary, widget.statusFilter],
+            ),
             const SizedBox(height: 8),
             if (inline)
               Row(children: [
@@ -260,113 +238,121 @@ class _WorkerDirectoryViewState extends State<WorkerDirectoryView> {
                 const SizedBox(width: 8),
                 sorting,
                 const SizedBox(width: 8),
-                viewToggle
+                viewToggle,
               ])
             else
               Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    SizedBox(
-                        width: (constraints.maxWidth - 24)
-                            .clamp(160, 320)
-                            .toDouble(),
-                        child: search),
-                    sorting,
-                    viewToggle
-                  ]),
-          ]),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(5),
-          decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border:
-                  Border.all(color: cs.outlineVariant.withValues(alpha: .35))),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  SizedBox(
+                    width: (constraints.maxWidth - 24)
+                        .clamp(160, 320)
+                        .toDouble(),
+                    child: search,
+                  ),
+                  sorting,
+                  viewToggle,
+                ],
+              ),
+            const SizedBox(height: 10),
+
+            // ── worker list (flat) ──
             if (visible.isEmpty)
               Padding(
-                  padding: const EdgeInsets.all(28),
-                  child: Text(
-                    query.isNotEmpty
-                        ? (isEs
-                            ? 'No hay resultados para esta búsqueda.'
-                            : 'No results for this search.')
-                        : (isEs
-                            ? (widget.showPartners
-                                ? 'No hay socios con este estado.'
-                                : 'No hay trabajadores con este estado.')
-                            : (widget.showPartners
-                                ? 'No partners with this status.'
-                                : 'No workers with this status.')),
-                    textAlign: TextAlign.center,
-                  ))
+                padding: const EdgeInsets.all(28),
+                child: Text(
+                  query.isNotEmpty
+                      ? (isEs
+                          ? 'No hay resultados para esta búsqueda.'
+                          : 'No results for this search.')
+                      : (isEs
+                          ? (widget.showPartners
+                              ? 'No hay socios con este estado.'
+                              : 'No hay trabajadores con este estado.')
+                          : (widget.showPartners
+                              ? 'No partners with this status.'
+                              : 'No workers with this status.')),
+                  textAlign: TextAlign.center,
+                ),
+              )
             else
               WorkerListSection(
-                  workers: pageWorkers,
-                  partnerRoles: {
-                    for (final worker in pageWorkers)
-                      if (partnerRoleForWorker(worker, widget.group)
-                          case final role?)
-                        worker.id: role,
-                  },
-                  selectedWorkerId: widget.selectedWorkerId,
-                  tapSelects: true,
-                  onSelect: widget.onEdit,
-                  onEdit: widget.onEdit,
-                  onAddHours: widget.onAddHours,
-                  onOpenOverview: widget.onOverview,
-                  spacious: true,
-                  grid: _grid),
-            Padding(
-                padding: const EdgeInsets.fromLTRB(6, 8, 6, 4),
-                child: Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 16,
-                  runSpacing: 10,
+                workers: pageWorkers,
+                partnerRoles: {
+                  for (final worker in pageWorkers)
+                    if (partnerRoleForWorker(worker, widget.group)
+                        case final role?)
+                      worker.id: role,
+                },
+                selectedWorkerId: widget.selectedWorkerId,
+                tapSelects: true,
+                onSelect: widget.onEdit,
+                onEdit: widget.onEdit,
+                onAddHours: widget.onAddHours,
+                onOpenOverview: widget.onOverview,
+                spacious: true,
+                grid: _grid,
+              ),
+
+            // ── pagination (compact, no border) ──
+            if (pageCount > 1)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(showing,
-                        style: TextStyle(
-                            fontSize: 13, color: cs.onSurfaceVariant)),
+                    Text(
+                      showing,
+                      style:
+                          TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                    ),
                     Row(mainAxisSize: MainAxisSize.min, children: [
-                      IconButton.outlined(
-                          tooltip: isEs ? 'Página anterior' : 'Previous page',
-                          style: iconStyle,
-                          onPressed: page == 0
-                              ? null
-                              : () => setState(() => _page = page - 1),
-                          icon: const Icon(Icons.chevron_left_rounded)),
-                      const SizedBox(width: 8),
-                      Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 13, vertical: 8),
-                          decoration: BoxDecoration(
-                              color: cs.primaryContainer.withValues(alpha: .6),
-                              borderRadius: BorderRadius.circular(11),
-                              border: Border.all(
-                                  color: cs.primary.withValues(alpha: .25))),
-                          child: Text('${page + 1}',
-                              style: TextStyle(
-                                  color: cs.primary,
-                                  fontWeight: FontWeight.w600))),
-                      const SizedBox(width: 8),
-                      IconButton.outlined(
-                          tooltip: isEs ? 'Página siguiente' : 'Next page',
-                          style: iconStyle,
-                          onPressed: page >= pageCount - 1
-                              ? null
-                              : () => setState(() => _page = page + 1),
-                          icon: const Icon(Icons.chevron_right_rounded)),
+                      HexoraButton.iconOnly(
+                        tooltip: isEs ? 'Página anterior' : 'Previous page',
+                        icon: Icons.chevron_left_rounded,
+                        size: HexoraButtonSize.compact,
+                        variant: HexoraButtonVariant.ghost,
+                        onPressed: page == 0
+                            ? null
+                            : () => setState(() => _page = page - 1),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: Text(
+                          '${page + 1} / $pageCount',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      HexoraButton.iconOnly(
+                        tooltip: isEs ? 'Página siguiente' : 'Next page',
+                        icon: Icons.chevron_right_rounded,
+                        size: HexoraButtonSize.compact,
+                        variant: HexoraButtonVariant.ghost,
+                        onPressed: page >= pageCount - 1
+                            ? null
+                            : () => setState(() => _page = page + 1),
+                      ),
                     ]),
                   ],
-                )),
-          ]),
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.fromLTRB(2, 6, 2, 2),
+                child: Text(
+                  showing,
+                  style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                ),
+              ),
+          ],
         ),
-      ]));
+      );
     });
   }
 }

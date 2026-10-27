@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../../../models/telegram/telegram.dart';
+import '../../errors/error_classes/error_classes.dart';
 import '../api/telegram_api_client.dart';
 
 /// Telegram domain manages connection state, chats, message history, and exports.
@@ -934,6 +935,12 @@ class TelegramDomain extends ChangeNotifier {
     final replyTarget = composer.replyTarget;
 
     try {
+      final documentAttachments =
+          attachments.where((a) => !a.isPresupuesto).toList(growable: false);
+      final presupuestoIds = attachments
+          .where((a) => a.isPresupuesto)
+          .map((a) => a.presupuestoId!)
+          .toList(growable: false);
       final sentMessages = attachments.isEmpty
           ? <TelegramChatMessage>[
               await _apiClient.sendChatMessage(
@@ -944,25 +951,37 @@ class TelegramDomain extends ChangeNotifier {
                 forumTopicId: effectiveTopicId,
               ),
             ]
-          : await _apiClient.sendChatDocuments(
-              chatId: chatId,
-              accountId: account!.id,
-              files: attachments
-                  .where((a) => !a.isPresupuesto)
-                  .map((a) => TelegramDocumentUpload(
-                        bytes: a.bytes,
-                        fileName: a.fileName,
-                        mimeType: a.mimeType,
-                      ))
-                  .toList(growable: false),
-              presupuestoIds: attachments
-                  .where((a) => a.isPresupuesto)
-                  .map((a) => a.presupuestoId!)
-                  .toList(growable: false),
-              caption: payloadText.isEmpty ? null : payloadText,
-              replyToMessageId: replyTarget?.messageId,
-              forumTopicId: effectiveTopicId,
-            );
+          // The document endpoint accepts a single upload under `file`; using
+          // the batch `files` field for one attachment makes some Telegram
+          // gateway deployments reject the request.
+          : documentAttachments.length == 1 && presupuestoIds.isEmpty
+              ? <TelegramChatMessage>[
+                  await _apiClient.sendChatDocument(
+                    chatId: chatId,
+                    accountId: account!.id,
+                    fileBytes: documentAttachments.single.bytes,
+                    fileName: documentAttachments.single.fileName,
+                    mimeType: documentAttachments.single.mimeType,
+                    caption: payloadText.isEmpty ? null : payloadText,
+                    replyToMessageId: replyTarget?.messageId,
+                    forumTopicId: effectiveTopicId,
+                  ),
+                ]
+              : await _apiClient.sendChatDocuments(
+                  chatId: chatId,
+                  accountId: account!.id,
+                  files: documentAttachments
+                      .map((a) => TelegramDocumentUpload(
+                            bytes: a.bytes,
+                            fileName: a.fileName,
+                            mimeType: a.mimeType,
+                          ))
+                      .toList(growable: false),
+                  presupuestoIds: presupuestoIds,
+                  caption: payloadText.isEmpty ? null : payloadText,
+                  replyToMessageId: replyTarget?.messageId,
+                  forumTopicId: effectiveTopicId,
+                );
       if (sentMessages.isEmpty) {
         throw StateError('Telegram did not confirm the sent message.');
       }
@@ -1000,12 +1019,29 @@ class TelegramDomain extends ChangeNotifier {
       composer.error = null;
       return hydrated;
     } catch (e) {
-      composer.error = e.toString();
+      composer.error = _composerSendError(e);
       return null;
     } finally {
       composer.sending = false;
       notifyListeners();
     }
+  }
+
+  String _composerSendError(Object error) {
+    if (error is HttpFailure) {
+      if (error.statusCode == 502 ||
+          error.statusCode == 503 ||
+          error.statusCode == 504) {
+        return 'No se pudo enviar el archivo temporalmente. Inténtalo de nuevo.';
+      }
+      if (error.statusCode == 413) {
+        return 'El archivo supera el tamaño permitido para Telegram.';
+      }
+      if (error.statusCode == 401 || error.statusCode == 403) {
+        return 'No tienes permiso para enviar archivos en este chat.';
+      }
+    }
+    return 'No se pudo enviar el mensaje. Inténtalo de nuevo.';
   }
 
   Future<bool> sendPresupuesto(

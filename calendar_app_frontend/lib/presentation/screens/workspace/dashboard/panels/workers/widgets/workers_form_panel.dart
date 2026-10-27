@@ -4,6 +4,7 @@ import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/shared/currency_options.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/create_time_entry_screen.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -40,9 +41,11 @@ class WorkersFormPanel extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = isDark ? cs.surface : cs.surfaceContainerHighest;
 
-    return Card(
-      color: cardBg,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
         child: Column(
@@ -54,7 +57,7 @@ class WorkersFormPanel extends StatelessWidget {
                         ? cs.surfaceContainerHigh
                         : cs.surfaceContainerHighest)
                     .withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: TabBar(
                 controller: tabController,
@@ -69,7 +72,7 @@ class WorkersFormPanel extends StatelessWidget {
                     t.bodySmall.copyWith(fontWeight: FontWeight.w600),
                 indicator: BoxDecoration(
                   color: cs.primary,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 tabs: [
                   Tab(text: l.editWorker),
@@ -388,11 +391,13 @@ class _WorkerEditorFormState extends State<_WorkerEditorForm> {
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
-                    child: FilledButton.icon(
+                    child: HexoraButton(
+                      icon: Icons.save_outlined,
+                      label:
+                          widget.isCreate ? l.createWorkerCta : l.saveChanges,
+                      size: HexoraButtonSize.large,
+                      loading: _saving,
                       onPressed: _saving ? null : _save,
-                      icon: const Icon(Icons.save_outlined),
-                      label: Text(
-                          widget.isCreate ? l.createWorkerCta : l.saveChanges),
                     ),
                   ),
                   const SizedBox(height: 4),

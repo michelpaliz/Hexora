@@ -62,6 +62,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
   int _step = 0;
   String? _clientId;
   _DateFilter _dateFilter = _DateFilter.all;
+  int _documentTab = 0;
   // Tracks the last recipient-client we synced from the compose form so we can
   // detect a real change even though widget.state is the same mutable object.
   String? _lastSyncedRecipientClientId;
@@ -1727,6 +1728,33 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
             ),
             const SizedBox(height: 8),
             // ── Count badge ──────────────────────────────────────────────────
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: List.generate(3, (index) {
+                  final labels = [
+                    invoicesLabel,
+                    isSpanish ? 'Recibos' : 'Receipts',
+                    isSpanish ? 'Presupuestos' : 'Budgets'
+                  ];
+                  final counts = [
+                    filteredInvoices.length,
+                    filteredReceipts.length,
+                    filteredPresupuestos.length
+                  ];
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text('${labels[index]} (${counts[index]})'),
+                      selected: _documentTab == index,
+                      onSelected: (_) => setState(() => _documentTab = index),
+                      showCheckmark: false,
+                    ),
+                  );
+                }),
+              ),
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Text(
@@ -1774,170 +1802,189 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Left column: invoices + presupuestos
-                            Expanded(
-                              child: ListView(
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 6),
-                                    child: Text(
-                                      invoicesLabel,
-                                      style: t.bodySmall.copyWith(
-                                        color: cs.onSurface,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                  ...filteredInvoices.map((invoice) {
-                                    final selected = _selectedInvoiceIds
-                                        .contains(invoice.id);
-                                    return _buildItemCard(
-                                      number:
-                                          invoice.invoiceNumber.trim().isEmpty
-                                              ? invoice.id
-                                              : invoice.invoiceNumber,
-                                      statusLabel: _localizedStatusLabel(
-                                          l, invoice.status),
-                                      selected: selected,
-                                      cs: cs,
-                                      date: invoice.issueDate ??
-                                          invoice.registeredAt,
-                                      isSent: invoice.sentAt != null,
-                                      onTap: () => setState(() => selected
-                                          ? _selectedInvoiceIds
-                                              .remove(invoice.id)
-                                          : _selectedInvoiceIds
-                                              .add(invoice.id)),
-                                      previewKey: 'invoice:${invoice.id}',
-                                      onPreview: () =>
-                                          _openInvoicePdfPreview(invoice),
-                                    );
-                                  }),
-                                  if (filteredStructuredPresupuestos
-                                      .isNotEmpty) ...[
+                            if (_documentTab != 1)
+                              Expanded(
+                                child: ListView(
+                                  children: [
                                     Padding(
-                                      padding: const EdgeInsets.only(
-                                          top: 6, bottom: 6),
+                                      padding: const EdgeInsets.only(bottom: 6),
                                       child: Text(
-                                        l.budgetsMenuSection,
+                                        _documentTab == 2
+                                            ? (isSpanish
+                                                ? 'Presupuestos'
+                                                : 'Budgets')
+                                            : invoicesLabel,
                                         style: t.bodySmall.copyWith(
                                           color: cs.onSurface,
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                     ),
-                                    ...filteredStructuredPresupuestos
-                                        .map((item) {
-                                      final id = _presupuestoId(item);
-                                      final number = _presupuestoNumber(item);
-                                      final selected =
-                                          _selectedPresupuestoIds.contains(id);
+                                    ...(_documentTab == 0
+                                            ? filteredInvoices
+                                            : const <Invoice>[])
+                                        .map((invoice) {
+                                      final selected = _selectedInvoiceIds
+                                          .contains(invoice.id);
                                       return _buildItemCard(
-                                        number: number.isEmpty ? id : number,
-                                        statusLabel: _presupuestoStatus(item),
-                                        selected: selected,
-                                        cs: cs,
-                                        date: _presupuestoDate(item),
-                                        onTap: () => setState(() => selected
-                                            ? _selectedPresupuestoIds.remove(id)
-                                            : _selectedPresupuestoIds.add(id)),
-                                        previewKey: 'budget:$id',
-                                        onPreview: id.isEmpty
-                                            ? null
-                                            : () => widget.state
-                                                ._openPresupuestoPdfPreviewById(
-                                                    id),
-                                      );
-                                    }),
-                                  ],
-                                  if (filteredWordPresupuestos.isNotEmpty) ...[
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                          top: 6, bottom: 6),
-                                      child: Text(
-                                        widget.state
-                                            ._wordPresupuestoSectionLabel(l),
-                                        style: t.bodySmall.copyWith(
-                                          color: cs.onSurface,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    ...filteredWordPresupuestos.map((item) {
-                                      final id = _presupuestoId(item);
-                                      final number = _presupuestoNumber(item);
-                                      final selected =
-                                          _selectedPresupuestoIds.contains(id);
-                                      return _buildItemCard(
-                                        number: number.isEmpty
-                                            ? presupuestoDocumentTitle(item)
-                                            : number,
+                                        number:
+                                            invoice.invoiceNumber.trim().isEmpty
+                                                ? invoice.id
+                                                : invoice.invoiceNumber,
                                         statusLabel: _localizedStatusLabel(
-                                          l,
-                                          _presupuestoStatus(item),
-                                        ),
+                                            l, invoice.status),
                                         selected: selected,
                                         cs: cs,
-                                        date: _presupuestoDate(item),
+                                        date: invoice.issueDate ??
+                                            invoice.registeredAt,
+                                        isSent: invoice.sentAt != null,
                                         onTap: () => setState(() => selected
-                                            ? _selectedPresupuestoIds.remove(id)
-                                            : _selectedPresupuestoIds.add(id)),
-                                        previewKey: 'budget:$id',
-                                        onPreview: id.isEmpty
-                                            ? null
-                                            : () => widget.state
-                                                ._openPresupuestoPdfPreviewById(
-                                                    id),
+                                            ? _selectedInvoiceIds
+                                                .remove(invoice.id)
+                                            : _selectedInvoiceIds
+                                                .add(invoice.id)),
+                                        previewKey: 'invoice:${invoice.id}',
+                                        onPreview: () =>
+                                            _openInvoicePdfPreview(invoice),
+                                      );
+                                    }),
+                                    if (_documentTab == 2 &&
+                                        filteredStructuredPresupuestos
+                                            .isNotEmpty) ...[
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                            top: 6, bottom: 6),
+                                        child: Text(
+                                          l.budgetsMenuSection,
+                                          style: t.bodySmall.copyWith(
+                                            color: cs.onSurface,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                      ...filteredStructuredPresupuestos
+                                          .map((item) {
+                                        final id = _presupuestoId(item);
+                                        final number = _presupuestoNumber(item);
+                                        final selected = _selectedPresupuestoIds
+                                            .contains(id);
+                                        return _buildItemCard(
+                                          number: number.isEmpty ? id : number,
+                                          statusLabel: _presupuestoStatus(item),
+                                          selected: selected,
+                                          cs: cs,
+                                          date: _presupuestoDate(item),
+                                          onTap: () => setState(() => selected
+                                              ? _selectedPresupuestoIds
+                                                  .remove(id)
+                                              : _selectedPresupuestoIds
+                                                  .add(id)),
+                                          previewKey: 'budget:$id',
+                                          onPreview: id.isEmpty
+                                              ? null
+                                              : () => widget.state
+                                                  ._openPresupuestoPdfPreviewById(
+                                                      id),
+                                        );
+                                      }),
+                                    ],
+                                    if (_documentTab == 2 &&
+                                        filteredWordPresupuestos
+                                            .isNotEmpty) ...[
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                            top: 6, bottom: 6),
+                                        child: Text(
+                                          widget.state
+                                              ._wordPresupuestoSectionLabel(l),
+                                          style: t.bodySmall.copyWith(
+                                            color: cs.onSurface,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                      ...filteredWordPresupuestos.map((item) {
+                                        final id = _presupuestoId(item);
+                                        final number = _presupuestoNumber(item);
+                                        final selected = _selectedPresupuestoIds
+                                            .contains(id);
+                                        return _buildItemCard(
+                                          number: number.isEmpty
+                                              ? presupuestoDocumentTitle(item)
+                                              : number,
+                                          statusLabel: _localizedStatusLabel(
+                                            l,
+                                            _presupuestoStatus(item),
+                                          ),
+                                          selected: selected,
+                                          cs: cs,
+                                          date: _presupuestoDate(item),
+                                          onTap: () => setState(() => selected
+                                              ? _selectedPresupuestoIds
+                                                  .remove(id)
+                                              : _selectedPresupuestoIds
+                                                  .add(id)),
+                                          previewKey: 'budget:$id',
+                                          onPreview: id.isEmpty
+                                              ? null
+                                              : () => widget.state
+                                                  ._openPresupuestoPdfPreviewById(
+                                                      id),
+                                        );
+                                      }),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            if (_documentTab == 1) const SizedBox(width: 8),
+                            // Right column: receipts
+                            if (_documentTab == 1)
+                              Expanded(
+                                child: ListView(
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 6),
+                                      child: Text(
+                                        l.receiptsTitle,
+                                        style: t.bodySmall.copyWith(
+                                          color: cs.onSurface,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    ...(_documentTab == 1
+                                            ? filteredReceipts
+                                            : const <Receipt>[])
+                                        .map((receipt) {
+                                      final selected = _selectedReceiptIds
+                                          .contains(receipt.id);
+                                      final number = (receipt.receiptNumber
+                                                  ?.trim()
+                                                  .isNotEmpty ==
+                                              true)
+                                          ? receipt.receiptNumber!.trim()
+                                          : receipt.id;
+                                      return _buildItemCard(
+                                        number: number,
+                                        statusLabel: _localizedStatusLabel(
+                                            l, receipt.status),
+                                        selected: selected,
+                                        cs: cs,
+                                        date: receipt.issueDate ??
+                                            receipt.registeredAt,
+                                        onTap: () => setState(() => selected
+                                            ? _selectedReceiptIds
+                                                .remove(receipt.id)
+                                            : _selectedReceiptIds
+                                                .add(receipt.id)),
+                                        previewKey: 'receipt:${receipt.id}',
+                                        onPreview: () =>
+                                            _openReceiptPdfPreview(receipt),
                                       );
                                     }),
                                   ],
-                                ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            // Right column: receipts
-                            Expanded(
-                              child: ListView(
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 6),
-                                    child: Text(
-                                      l.receiptsTitle,
-                                      style: t.bodySmall.copyWith(
-                                        color: cs.onSurface,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                  ...filteredReceipts.map((receipt) {
-                                    final selected = _selectedReceiptIds
-                                        .contains(receipt.id);
-                                    final number = (receipt.receiptNumber
-                                                ?.trim()
-                                                .isNotEmpty ==
-                                            true)
-                                        ? receipt.receiptNumber!.trim()
-                                        : receipt.id;
-                                    return _buildItemCard(
-                                      number: number,
-                                      statusLabel: _localizedStatusLabel(
-                                          l, receipt.status),
-                                      selected: selected,
-                                      cs: cs,
-                                      date: receipt.issueDate ??
-                                          receipt.registeredAt,
-                                      onTap: () => setState(() => selected
-                                          ? _selectedReceiptIds
-                                              .remove(receipt.id)
-                                          : _selectedReceiptIds
-                                              .add(receipt.id)),
-                                      previewKey: 'receipt:${receipt.id}',
-                                      onPreview: () =>
-                                          _openReceiptPdfPreview(receipt),
-                                    );
-                                  }),
-                                ],
-                              ),
-                            ),
                           ],
                         ),
             ),

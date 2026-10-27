@@ -10,6 +10,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/group_in
 import 'package:hexora/presentation/screens/workspace/sections/private_documents/widgets/private_document_detail_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/private_documents/widgets/private_document_upload_dialog.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:intl/intl.dart';
@@ -113,6 +114,14 @@ class _PrivateDocumentVaultScreenState
     return filtered;
   }
 
+  void _clearFilters() {
+    setState(() {
+      _categoryFilter = 'all';
+      _statusFilter = 'all';
+      _search.clear();
+    });
+  }
+
   Future<void> _openUploadDialog() async {
     final created = await PrivateDocumentUploadDialog.show(
       context,
@@ -165,7 +174,7 @@ class _PrivateDocumentVaultScreenState
                               setState(() => _categoryFilter = v),
                           isEs: _isEs,
                         ),
-                        Expanded(child: _content()),
+                        Expanded(child: _content(isNarrow: true)),
                       ],
                     )
                   : Row(
@@ -180,13 +189,12 @@ class _PrivateDocumentVaultScreenState
                               categoryFilter: _categoryFilter,
                               onCategoryChanged: (v) =>
                                   setState(() => _categoryFilter = v),
-                              onUpload: _openUploadDialog,
                               isEs: _isEs,
                             ),
                           ),
                         ),
                         const VerticalDivider(width: 1),
-                        Expanded(child: _content()),
+                        Expanded(child: _content(isNarrow: false)),
                       ],
                     ),
     );
@@ -203,88 +211,122 @@ class _PrivateDocumentVaultScreenState
     return body;
   }
 
-  Widget _content() {
+  Widget _content({required bool isNarrow}) {
     final isEs = _isEs;
     final documents = _visibleDocuments;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // ── compact toolbar: search + upload ──
         Padding(
-          padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final search = TextField(
-                controller: _search,
-                decoration: InputDecoration(
-                  hintText:
-                      isEs ? 'Buscar documentos...' : 'Search documents...',
-                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                  isDense: true,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+              final search = SizedBox(
+                height: 34,
+                child: TextField(
+                  controller: _search,
+                  style: const TextStyle(fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText:
+                        isEs ? 'Buscar documentos...' : 'Search documents...',
+                    hintStyle: const TextStyle(fontSize: 13),
+                    prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                    isDense: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(vertical: 0, horizontal: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               );
-              final upload = FilledButton.icon(
-                onPressed: _openUploadDialog,
-                icon: const Icon(Icons.upload_file_rounded, size: 18),
-                label: Text(isEs ? 'Subir documento' : 'Upload document'),
-              );
-              if (constraints.maxWidth < 430) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [search, const SizedBox(height: 8), upload],
-                );
+              if (constraints.maxWidth < 380) {
+                return Row(children: [
+                  Expanded(child: search),
+                  const SizedBox(width: 8),
+                  HexoraButton.iconOnly(
+                    icon: Icons.upload_file_rounded,
+                    tooltip: isEs ? 'Subir documento' : 'Upload document',
+                    size: HexoraButtonSize.compact,
+                    onPressed: _openUploadDialog,
+                  ),
+                ]);
               }
               return Row(children: [
                 Expanded(child: search),
-                const SizedBox(width: 10),
-                upload,
+                const SizedBox(width: 8),
+                HexoraButton(
+                  icon: Icons.upload_file_rounded,
+                  label: isEs ? 'Subir' : 'Upload',
+                  size: HexoraButtonSize.compact,
+                  onPressed: _openUploadDialog,
+                ),
               ]);
             },
           ),
         ),
+
+        // ── status filter pills ──
         Padding(
-          padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _StatusFilterChip(
-                label: isEs ? 'Todos' : 'All',
-                selected: _statusFilter == 'all',
-                onTap: () => setState(() => _statusFilter = 'all'),
-              ),
-              for (final s in PrivateDocumentReviewStatus.values)
-                _StatusFilterChip(
-                  label: isEs
-                      ? PrivateDocumentReviewStatus.labelEs(s)
-                      : PrivateDocumentReviewStatus.labelEn(s),
-                  selected: _statusFilter == s,
-                  onTap: () => setState(() => _statusFilter = s),
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _StatusPill(
+                  label: isEs ? 'Todos' : 'All',
+                  selected: _statusFilter == 'all',
+                  onTap: () => setState(() => _statusFilter = 'all'),
                 ),
-            ],
+                for (final s in PrivateDocumentReviewStatus.values) ...[
+                  const SizedBox(width: 6),
+                  _StatusPill(
+                    label: isEs
+                        ? PrivateDocumentReviewStatus.labelEs(s)
+                        : PrivateDocumentReviewStatus.labelEn(s),
+                    selected: _statusFilter == s,
+                    onTap: () => setState(() => _statusFilter = s),
+                    dotColor: _statusColor(s, Theme.of(context).colorScheme),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
+
+        // ── document list / table ──
         Expanded(
           child: documents.isEmpty
-              ? _EmptyState(isEs: isEs)
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
-                  itemCount: documents.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) => _DocumentListTile(
-                    document: documents[index],
-                    isEs: isEs,
-                    onTap: () => _openDetail(documents[index]),
-                  ),
-                ),
+              ? _documents.isEmpty
+                  ? _EmptyVaultState(
+                      isEs: isEs, onUpload: _openUploadDialog)
+                  : _EmptyFilterState(
+                      isEs: isEs, onClear: _clearFilters)
+              : isNarrow
+                  ? ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+                      itemCount: documents.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 6),
+                      itemBuilder: (context, index) => _DocumentListTile(
+                        document: documents[index],
+                        isEs: isEs,
+                        onTap: () => _openDetail(documents[index]),
+                      ),
+                    )
+                  : _DocumentTable(
+                      documents: documents,
+                      isEs: isEs,
+                      onTap: _openDetail,
+                    ),
         ),
       ],
     );
   }
 }
+
+// ── helpers ──────────────────────────────────────────────────────────────────
 
 IconData _categoryIcon(String category) => switch (category) {
       PrivateDocumentCategory.contract => Icons.description_outlined,
@@ -302,19 +344,19 @@ Color _statusColor(String status, ColorScheme cs) => switch (status) {
       _ => Colors.orange,
     };
 
+// ── sidebar (desktop) ───────────────────────────────────────────────────────
+
 class _Sidebar extends StatelessWidget {
   const _Sidebar({
     required this.documents,
     required this.categoryFilter,
     required this.onCategoryChanged,
-    required this.onUpload,
     required this.isEs,
   });
 
   final List<PrivateDocument> documents;
   final String categoryFilter;
   final ValueChanged<String> onCategoryChanged;
-  final VoidCallback onUpload;
   final bool isEs;
 
   int _countFor(String category) => category == 'all'
@@ -389,14 +431,6 @@ class _Sidebar extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                GroupInvoicesSubMenuItem(
-                  icon: Icons.upload_file_rounded,
-                  label: isEs ? 'Subir documento' : 'Upload document',
-                  selected: false,
-                  primaryAction: true,
-                  onPressed: onUpload,
-                ),
-                const SizedBox(height: 4),
                 GroupInvoicesSectionLabel(isEs ? 'Categorías' : 'Categories'),
                 GroupInvoicesSubMenuItem(
                   icon: Icons.folder_open_rounded,
@@ -406,15 +440,16 @@ class _Sidebar extends StatelessWidget {
                   onPressed: () => onCategoryChanged('all'),
                 ),
                 for (final category in PrivateDocumentCategory.values)
-                  GroupInvoicesSubMenuItem(
-                    icon: _categoryIcon(category),
-                    label: isEs
-                        ? PrivateDocumentCategory.labelEs(category)
-                        : PrivateDocumentCategory.labelEn(category),
-                    selected: categoryFilter == category,
-                    count: _countFor(category),
-                    onPressed: () => onCategoryChanged(category),
-                  ),
+                  if (_countFor(category) > 0)
+                    GroupInvoicesSubMenuItem(
+                      icon: _categoryIcon(category),
+                      label: isEs
+                          ? PrivateDocumentCategory.labelEs(category)
+                          : PrivateDocumentCategory.labelEn(category),
+                      selected: categoryFilter == category,
+                      count: _countFor(category),
+                      onPressed: () => onCategoryChanged(category),
+                    ),
               ],
             ),
           ),
@@ -423,6 +458,8 @@ class _Sidebar extends StatelessWidget {
     );
   }
 }
+
+// ── mobile category bar ─────────────────────────────────────────────────────
 
 class _MobileCategoryBar extends StatelessWidget {
   const _MobileCategoryBar({
@@ -473,24 +510,250 @@ class _MobileCategoryBar extends StatelessWidget {
   }
 }
 
-class _StatusFilterChip extends StatelessWidget {
-  const _StatusFilterChip({
+// ── status filter pill ──────────────────────────────────────────────────────
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({
     required this.label,
     required this.selected,
     required this.onTap,
+    this.dotColor,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final Color? dotColor;
 
   @override
-  Widget build(BuildContext context) => ChoiceChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-      );
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final fg = selected ? cs.onPrimary : cs.onSurfaceVariant;
+    final bg = selected
+        ? cs.primary
+        : cs.surfaceContainerHighest.withValues(alpha: 0.5);
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (dotColor != null && !selected) ...[
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: dotColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 5),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: fg,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
+
+// ── document table (desktop) ────────────────────────────────────────────────
+
+class _DocumentTable extends StatelessWidget {
+  const _DocumentTable({
+    required this.documents,
+    required this.isEs,
+    required this.onTap,
+  });
+
+  final List<PrivateDocument> documents;
+  final bool isEs;
+  final ValueChanged<PrivateDocument> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final headerStyle = t.bodySmall.copyWith(
+      fontWeight: FontWeight.w700,
+      color: cs.onSurfaceVariant,
+      fontSize: 11,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+          child: Row(
+            children: [
+              const SizedBox(width: 42),
+              Expanded(
+                flex: 4,
+                child: Text(isEs ? 'Documento' : 'Document',
+                    style: headerStyle),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(isEs ? 'Categoría' : 'Category',
+                    style: headerStyle),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(isEs ? 'Estado' : 'Status', style: headerStyle),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(isEs ? 'Fecha' : 'Date', style: headerStyle),
+              ),
+              const SizedBox(width: 36),
+            ],
+          ),
+        ),
+        Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
+            itemCount: documents.length,
+            itemBuilder: (context, index) => _DocumentTableRow(
+              document: documents[index],
+              isEs: isEs,
+              onTap: () => onTap(documents[index]),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DocumentTableRow extends StatelessWidget {
+  const _DocumentTableRow({
+    required this.document,
+    required this.isEs,
+    required this.onTap,
+  });
+
+  final PrivateDocument document;
+  final bool isEs;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final dateStr = document.createdAt != null
+        ? DateFormat('dd/MM/yy').format(document.createdAt!.toLocal())
+        : '—';
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                margin: const EdgeInsets.only(right: 10),
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  _categoryIcon(document.category),
+                  color: cs.primary,
+                  size: 16,
+                ),
+              ),
+              Expanded(
+                flex: 4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      document.displayTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                    Text(
+                      document.fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _Chip(
+                    label: isEs
+                        ? PrivateDocumentCategory.labelEs(document.category)
+                        : PrivateDocumentCategory.labelEn(document.category),
+                    color: cs.primary,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _Chip(
+                    label: isEs
+                        ? PrivateDocumentReviewStatus.labelEs(document.status)
+                        : PrivateDocumentReviewStatus.labelEn(document.status),
+                    color: _statusColor(document.status, cs),
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  dateStr,
+                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ),
+              HexoraButton.iconOnly(
+                icon: Icons.chevron_right_rounded,
+                tooltip: isEs ? 'Ver detalle' : 'View detail',
+                size: HexoraButtonSize.compact,
+                onPressed: onTap,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── mobile list tile ────────────────────────────────────────────────────────
 
 class _DocumentListTile extends StatelessWidget {
   const _DocumentListTile({
@@ -513,29 +776,29 @@ class _DocumentListTile extends StatelessWidget {
 
     return Material(
       color: cs.surfaceContainerHighest.withValues(alpha: 0.22),
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(10),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(10),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
                   color: cs.primary.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   _categoryIcon(document.category),
                   color: cs.primary,
-                  size: 20,
+                  size: 18,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -545,30 +808,26 @@ class _DocumentListTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: t.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         color: cs.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       [
                         document.fileName,
-                        if (document.uploadedByName != null)
-                          '${isEs ? "Subido por" : "Uploaded by"} ${document.uploadedByName}',
                         if (document.createdAt != null)
-                          DateFormat('dd/MM/yyyy HH:mm')
+                          DateFormat('dd/MM/yyyy')
                               .format(document.createdAt!.toLocal()),
-                        if (document.fileReplacedAt != null)
-                          '${isEs ? "Archivo reemplazado" : "File replaced"} ${DateFormat('dd/MM/yyyy HH:mm').format(document.fileReplacedAt!.toLocal())}',
                       ].join(' · '),
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 5),
                     Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
+                      spacing: 5,
+                      runSpacing: 5,
                       children: [
                         _Chip(
                           label: isEs
@@ -588,21 +847,21 @@ class _DocumentListTile extends StatelessWidget {
                         ),
                         if (expiryLabel != null)
                           _Chip(
-                            label: '${isEs ? "Vence" : "Expires"} $expiryLabel',
+                            label:
+                                '${isEs ? "Vence" : "Expires"} $expiryLabel',
                             color: document.isExpired
                                 ? cs.error
                                 : document.isExpiringSoon
                                     ? Colors.orange
                                     : cs.onSurfaceVariant,
                           ),
-                        for (final tag in document.tags.take(4))
-                          _Chip(label: tag, color: cs.onSurfaceVariant),
                       ],
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+              Icon(Icons.chevron_right_rounded,
+                  size: 18, color: cs.onSurfaceVariant),
             ],
           ),
         ),
@@ -610,6 +869,8 @@ class _DocumentListTile extends StatelessWidget {
     );
   }
 }
+
+// ── chip ─────────────────────────────────────────────────────────────────────
 
 class _Chip extends StatelessWidget {
   const _Chip({required this.label, required this.color});
@@ -619,17 +880,16 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.28)),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
       ),
       child: Text(
         label,
-        style: t.bodySmall.copyWith(
+        style: TextStyle(
           color: color,
           fontWeight: FontWeight.w700,
           fontSize: 10.5,
@@ -639,10 +899,13 @@ class _Chip extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.isEs});
+// ── empty states ────────────────────────────────────────────────────────────
+
+class _EmptyVaultState extends StatelessWidget {
+  const _EmptyVaultState({required this.isEs, required this.onUpload});
 
   final bool isEs;
+  final VoidCallback onUpload;
 
   @override
   Widget build(BuildContext context) {
@@ -651,17 +914,81 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.folder_off_outlined, size: 40, color: cs.onSurfaceVariant),
-          const SizedBox(height: 10),
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: cs.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(Icons.lock_outline_rounded,
+                size: 26, color: cs.primary.withValues(alpha: 0.6)),
+          ),
+          const SizedBox(height: 14),
           Text(
-            isEs ? 'No hay documentos todavía' : 'No documents yet',
-            style: TextStyle(color: cs.onSurfaceVariant),
+            isEs ? 'La bóveda está vacía' : 'The vault is empty',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: cs.onSurface,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            isEs
+                ? 'Sube tu primer documento privado'
+                : 'Upload your first private document',
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+          ),
+          const SizedBox(height: 16),
+          HexoraButton(
+            icon: Icons.upload_file_rounded,
+            label: isEs ? 'Subir documento' : 'Upload document',
+            size: HexoraButtonSize.compact,
+            onPressed: onUpload,
           ),
         ],
       ),
     );
   }
 }
+
+class _EmptyFilterState extends StatelessWidget {
+  const _EmptyFilterState({required this.isEs, required this.onClear});
+
+  final bool isEs;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.filter_list_off_rounded,
+              size: 36, color: cs.onSurfaceVariant),
+          const SizedBox(height: 10),
+          Text(
+            isEs
+                ? 'Sin resultados para los filtros actuales'
+                : 'No results for current filters',
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          HexoraButton(
+            label: isEs ? 'Limpiar filtros' : 'Clear filters',
+            variant: HexoraButtonVariant.secondary,
+            size: HexoraButtonSize.compact,
+            onPressed: onClear,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── error state ─────────────────────────────────────────────────────────────
 
 class _ErrorState extends StatelessWidget {
   const _ErrorState({required this.message, required this.onRetry});
@@ -677,10 +1004,12 @@ class _ErrorState extends StatelessWidget {
         children: [
           Text(message, textAlign: TextAlign.center),
           const SizedBox(height: 12),
-          OutlinedButton.icon(
+          HexoraButton(
+            icon: Icons.refresh_rounded,
+            label: 'Reintentar',
+            variant: HexoraButtonVariant.secondary,
+            size: HexoraButtonSize.compact,
             onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Reintentar'),
           ),
         ],
       ),

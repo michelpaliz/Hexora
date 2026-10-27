@@ -371,19 +371,19 @@ abstract class AppLocalizations {
   /// No description provided for @currentPassword.
   ///
   /// In en, this message translates to:
-  /// **'Insert your current password'**
+  /// **'Current password'**
   String get currentPassword;
 
   /// No description provided for @newPassword.
   ///
   /// In en, this message translates to:
-  /// **'Update your current password'**
+  /// **'New password'**
   String get newPassword;
 
   /// No description provided for @confirmPassword.
   ///
   /// In en, this message translates to:
-  /// **'Confirm password'**
+  /// **'Confirm new password'**
   String get confirmPassword;
 
   /// No description provided for @password.
@@ -457,6 +457,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New password and confirmation password do not match.'**
   String get passwordNotMatch;
+
+  /// No description provided for @newPasswordMustDiffer.
+  ///
+  /// In en, this message translates to:
+  /// **'New password must be different from the current password.'**
+  String get newPasswordMustDiffer;
 
   /// No description provided for @userNameTaken.
   ///

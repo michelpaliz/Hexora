@@ -3,13 +3,17 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
+import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/blob_storage/blob_server.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/hexora_user_avatar.dart';
+import 'package:hexora/presentation/screens/settings/dialogs/logout_dialog.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/theme_provider.dart';
@@ -58,14 +62,24 @@ class _UserProfilePopupState extends State<UserProfilePopup> {
         end: 16,
         child: TapRegion(
           onTapOutside: (_) => _dismissPopup(),
-          child: Material(
-            color: Colors.transparent,
-            elevation: 8,
-            borderRadius: BorderRadius.circular(16),
-            child: _UserProfileCard(
-              initialUser: user,
-              onSettings: widget.onSettings,
-              onClose: _dismissPopup,
+          child: Focus(
+            autofocus: true,
+            onKeyEvent: (_, event) {
+              if (event.logicalKey == LogicalKeyboardKey.escape) {
+                _dismissPopup();
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: Material(
+              color: Colors.transparent,
+              elevation: 8,
+              borderRadius: BorderRadius.circular(16),
+              child: _UserProfileCard(
+                initialUser: user,
+                onSettings: widget.onSettings,
+                onClose: _dismissPopup,
+              ),
             ),
           ),
         ),
@@ -80,30 +94,16 @@ class _UserProfilePopupState extends State<UserProfilePopup> {
     final u = liveUser ?? widget.user;
     if (u == null) return const SizedBox(width: 32, height: 32);
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor =
-        isDark ? AppDarkColors.textPrimary : AppColors.textPrimary;
-
     return Tooltip(
       message: u.displayName?.isNotEmpty == true ? u.displayName! : u.name,
       child: GestureDetector(
         onTap: () => _togglePopup(u),
-        child: CircleAvatar(
-          radius: 16,
-          backgroundColor: textColor.withValues(alpha: 0.12),
-          backgroundImage: u.photoUrl?.trim().isNotEmpty == true
-              ? NetworkImage(u.photoUrl!.trim())
-              : null,
-          child: u.photoUrl?.trim().isNotEmpty != true
-              ? Text(
-                  u.name.isNotEmpty ? u.name[0].toUpperCase() : '?',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: textColor,
-                  ),
-                )
-              : null,
+        child: HexoraUserAvatar(
+          userId: u.id,
+          displayName: u.displayName ?? u.name,
+          username: u.userName,
+          photoUrl: u.photoUrl,
+          size: 32,
         ),
       ),
     );
@@ -227,7 +227,10 @@ class _UserProfileCardState extends State<_UserProfileCard> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => buildCompact(context);
+
+  // ignore: unused_element
+  Widget _buildLegacyProfileCard(BuildContext context) {
     final themeModeProvider = context.watch<ThemeModeProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final t = AppTypography.of(context);
@@ -483,6 +486,144 @@ class _UserProfileCardState extends State<_UserProfileCard> {
 /// Public reusable avatar viewer dialog.
 /// Pass [onChangePhoto] to show a "Change photo" button (e.g. for own profile).
 /// Omit it for read-only viewing (e.g. viewing another member's avatar).
+// The popup intentionally keeps profile editing in account settings.
+extension _CompactProfileCard on _UserProfileCardState {
+  Widget buildCompact(BuildContext context) {
+    final theme = context.watch<ThemeModeProvider>();
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final name = _user.displayName?.trim().isNotEmpty == true
+        ? _user.displayName!.trim()
+        : _user.name;
+    return Container(
+      width: 304,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: ThemeColors.cardBg(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .35)),
+      ),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Row(children: [
+          HexoraUserAvatar(
+            userId: _user.id,
+            displayName: name,
+            username: _user.userName,
+            photoUrl: _user.photoUrl,
+            size: 48,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text(name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 2),
+                Text('@${_user.userName}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.caption.copyWith(color: cs.onSurfaceVariant)),
+              ])),
+          IconButton(
+              tooltip: 'Cerrar',
+              visualDensity: VisualDensity.compact,
+              onPressed: widget.onClose,
+              icon: const Icon(Icons.close_rounded, size: 18)),
+        ]),
+        if (_user.email.trim().isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Row(children: [
+            Icon(Icons.email_outlined, size: 15, color: cs.onSurfaceVariant),
+            const SizedBox(width: 8),
+            Expanded(
+                child: Text(_user.email,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.caption.copyWith(color: cs.onSurfaceVariant))),
+            if (_user.emailVerified)
+              Tooltip(
+                  message: 'Correo electrónico verificado',
+                  child: Icon(Icons.verified_rounded,
+                      size: 16, color: Colors.green.shade600)),
+          ]),
+        ],
+        Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Divider(
+                height: 1, color: cs.outlineVariant.withValues(alpha: .45))),
+        _compactMenuRow(context,
+            icon: Icons.settings_outlined, label: 'Configuración', onTap: () {
+          widget.onClose();
+          if (widget.onSettings != null) {
+            widget.onSettings!();
+          } else {
+            Navigator.of(context).pushNamed(AppRoutes.settings);
+          }
+        }),
+        _compactMenuRow(context,
+            icon: isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+            label: 'Modo oscuro',
+            trailing: Switch(
+                value: isDark,
+                onChanged: (_) =>
+                    theme.setMode(isDark ? ThemeMode.light : ThemeMode.dark)),
+            onTap: () =>
+                theme.setMode(isDark ? ThemeMode.light : ThemeMode.dark)),
+        _compactMenuRow(context,
+            icon: Icons.logout_rounded,
+            label: 'Cerrar sesión',
+            danger: true,
+            onTap: () => _compactLogout(context)),
+      ]),
+    );
+  }
+
+  Widget _compactMenuRow(BuildContext context,
+      {required IconData icon,
+      required String label,
+      required VoidCallback onTap,
+      Widget? trailing,
+      bool danger = false}) {
+    final cs = Theme.of(context).colorScheme;
+    final color = danger ? cs.error : cs.onSurface;
+    return SizedBox(
+        height: 40,
+        child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: onTap,
+              child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(children: [
+                    Icon(icon, size: 18, color: color),
+                    const SizedBox(width: 10),
+                    Expanded(
+                        child: Text(label, style: TextStyle(color: color))),
+                    trailing ??
+                        Icon(Icons.chevron_right_rounded,
+                            size: 18, color: cs.onSurfaceVariant),
+                  ])),
+            )));
+  }
+
+  Future<void> _compactLogout(BuildContext context) async {
+    final confirmed = await showLogoutDialog(context);
+    if (!context.mounted || confirmed != true) return;
+    try {
+      await context.read<AuthService>().logOut();
+    } catch (_) {}
+    if (!context.mounted) return;
+    widget.onClose();
+    Navigator.of(context)
+        .pushNamedAndRemoveUntil(AppRoutes.loginRoute, (_) => false);
+  }
+}
+
 class UserAvatarViewerDialog extends StatelessWidget {
   const UserAvatarViewerDialog({
     super.key,

@@ -156,13 +156,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get userName => 'Nombre de usuario';
 
   @override
-  String get currentPassword => 'Introduce tu contraseña actual';
+  String get currentPassword => 'Contraseña actual';
 
   @override
-  String get newPassword => 'Actualiza tu contraseña actual';
+  String get newPassword => 'Nueva contraseña';
 
   @override
-  String get confirmPassword => 'Confirmar contraseña';
+  String get confirmPassword => 'Confirmar nueva contraseña';
 
   @override
   String get password => 'Contraseña';
@@ -201,6 +201,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get passwordNotMatch =>
       'La nueva contraseña y la confirmación no coinciden.';
+
+  @override
+  String get newPasswordMustDiffer =>
+      'La nueva contraseña debe ser distinta de la contraseña actual.';
 
   @override
   String get userNameTaken => 'El nombre de usuario ya está en uso';

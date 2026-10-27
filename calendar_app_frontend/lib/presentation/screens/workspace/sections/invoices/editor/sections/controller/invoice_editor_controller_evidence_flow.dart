@@ -921,6 +921,10 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
         ),
       );
     } finally {
+      // showDialog completes before its exit transition has removed the
+      // TextFormField. Disposing immediately makes the still-mounted field
+      // read a disposed controller during that final frame.
+      await Future<void>.delayed(kThemeAnimationDuration);
       controller.dispose();
     }
   }

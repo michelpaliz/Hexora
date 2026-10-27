@@ -29,24 +29,30 @@ extension _SettingsMembersTabsPart on _SettingsMembersSectionState {
         icon: Icons.cancel_outlined,
         tabIndex: 2,
       ),
-      _TabDef(
-        label: l.rolesTabLabel,
-        count: null,
-        icon: Icons.shield_outlined,
-        tabIndex: 4,
-      ),
     ];
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (int i = 0; i < tabs.length; i++) ...[
-            if (i > 0) const SizedBox(width: 6),
-            _buildChip(context, tabs[i]),
-          ],
-        ],
-      ),
+    return Row(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (int i = 0; i < tabs.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 6),
+                  _buildChip(context, tabs[i]),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        TextButton.icon(
+          onPressed: () => _showPermissionsGuide(context),
+          icon: const Icon(Icons.shield_outlined, size: 16),
+          label: const Text('Guía de permisos'),
+        ),
+      ],
     );
   }
 

@@ -5,9 +5,13 @@ import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/group_profile/dialog_choosement/action/edit_group_arg.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/group-settings/widgets/delete_group_dialog.dart';
-import 'package:hexora/presentation/screens/workspace/sections/enable_banking/widgets/folder_section_card.dart';
+import 'package:hexora/presentation/screens/calendar/screens/group/create_edit/widgets/images/group_image.dart';
+import 'package:hexora/presentation/screens/calendar/screens/group/create_edit/widgets/fields/group_name_field.dart';
+import 'package:hexora/presentation/screens/calendar/screens/group/create_edit/widgets/fields/group_description_field.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/viewmodels/groups/use_cases/upload_group_photo_usecase.dart';
+import 'package:hexora/presentation/viewmodels/groups/use_cases/update_group_usecase.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:image_picker/image_picker.dart';
@@ -26,26 +30,38 @@ class SettingsInfoSection extends StatefulWidget {
 }
 
 class _SettingsInfoSectionState extends State<SettingsInfoSection> {
-  bool _uploading = false;
   bool _removing = false;
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _editBusiness(Group group) async {
-    final userDomain = context.read<UserDomain>();
-    try {
-      final users = await userDomain.getUsersForGroup(group);
-      if (!mounted) return;
-      await Navigator.of(context).pushNamed(
-        AppRoutes.editGroupData,
-        arguments: EditGroupArguments(group: group, users: users),
+  Future<void> _openEditDialog(Group group) async {
+    final isWide = MediaQuery.of(context).size.width >= 600;
+    if (isWide) {
+      await showDialog<bool>(
+        context: context,
+        builder: (_) => _EditBusinessDialog(group: group),
       );
       if (!mounted) return;
       await context.read<GroupDomain>().refreshCurrentGroup();
-    } catch (_) {
-      if (mounted) _showError(AppLocalizations.of(context)!.failedToEditGroup);
+    } else {
+      final userDomain = context.read<UserDomain>();
+      try {
+        final users = await userDomain.getUsersForGroup(group);
+        if (!mounted) return;
+        await Navigator.of(context).pushNamed(
+          AppRoutes.editGroupData,
+          arguments: EditGroupArguments(group: group, users: users),
+        );
+        if (!mounted) return;
+        await context.read<GroupDomain>().refreshCurrentGroup();
+      } catch (_) {
+        if (mounted) {
+          _showError(AppLocalizations.of(context)!.failedToEditGroup);
+        }
+      }
     }
   }
 
@@ -86,43 +102,14 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
         (route) => false,
       );
     } catch (_) {
-      if (mounted) _showError(AppLocalizations.of(context)!.failedToEditGroup);
+      if (mounted) {
+        _showError(AppLocalizations.of(context)!.failedToEditGroup);
+      }
     } finally {
       if (mounted) setState(() => _removing = false);
     }
   }
 
-  Future<void> _pickAndUploadPhoto() async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-    );
-    if (image == null || !mounted) return;
-
-    setState(() => _uploading = true);
-    try {
-      final useCase = context.read<UploadGroupPhotoUseCase>();
-      await useCase.call(groupId: widget.group.id, file: image);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.groupPhotoUpdated),
-        ),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.groupPhotoUpdateFailed),
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _uploading = false);
-    }
-  }
-
-  /// Count roles from the group's userRoles map.
   Map<String, int> _roleCounts(Group g) {
     final counts = <String, int>{};
     for (final role in g.userRoles.values) {
@@ -151,9 +138,7 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    final isLight = Theme.of(context).brightness == Brightness.light;
 
-    // Listen to GroupDomain so photoUrl refreshes after upload
     final groupDomain = context.watch<GroupDomain>();
     final currentUserId = context.watch<UserDomain>().user?.id;
     final liveGroup = groupDomain.currentGroup?.id == widget.group.id
@@ -169,316 +154,476 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
     final hasTimeTracking = liveGroup.features?.timeTracking.enabled == true;
     final currency = liveGroup.features?.timeTracking.currency ?? 'EUR';
 
-    return FolderSectionCard(
-      label: l.groupInfo,
-      showTitle: false,
-      leftTabOffset: 0,
-      backgroundColor: isLight ? Colors.white : null,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-        child: Column(
-          children: [
-            // ── Photo + Name hero ──
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    cs.primaryContainer.withValues(alpha: isLight ? 0.42 : 0.2),
-                    cs.surface.withValues(alpha: isLight ? 0.92 : 0.18),
-                    cs.secondaryContainer
-                        .withValues(alpha: isLight ? 0.20 : 0.08),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(
-                  color: cs.primary.withValues(alpha: 0.12),
-                ),
-                boxShadow: isLight
-                    ? [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.035),
-                          blurRadius: 24,
-                          offset: const Offset(0, 12),
-                        ),
-                      ]
-                    : null,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Compact business header ──
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AvatarUtils.groupAvatar(
+                context,
+                liveGroup.photoUrl,
+                radius: 28,
               ),
-              child: Column(
-                children: [
-                  // Avatar with camera overlay
-                  Stack(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: cs.surface,
-                          boxShadow: [
-                            BoxShadow(
-                              color: cs.primary.withValues(alpha: 0.16),
-                              blurRadius: 22,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: AvatarUtils.groupAvatar(
-                          context,
-                          liveGroup.photoUrl,
-                          radius: 44,
-                          borderColor: cs.primary.withValues(alpha: 0.3),
-                          borderWidth: 2,
-                        ),
-                      ),
-                      if (canEdit)
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: GestureDetector(
-                            onTap: _uploading ? null : _pickAndUploadPhoto,
-                            child: Container(
-                              width: 30,
-                              height: 30,
-                              decoration: BoxDecoration(
-                                color: cs.primary,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: cs.surface,
-                                  width: 2,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: cs.shadow.withValues(alpha: 0.15),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: _uploading
-                                  ? Padding(
-                                      padding: const EdgeInsets.all(6),
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: cs.onPrimary,
-                                      ),
-                                    )
-                                  : Icon(
-                                      Icons.camera_alt_rounded,
-                                      size: 15,
-                                      color: cs.onPrimary,
-                                    ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    liveGroup.name,
-                    style: t.titleLarge.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: cs.onSurface,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (liveGroup.description.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      liveGroup.description,
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
+                      liveGroup.name,
+                      style: t.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
-                      textAlign: TextAlign.center,
-                      maxLines: 3,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ],
-                ],
-              ),
-            ),
-            if (canEdit) ...[
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: () => _editBusiness(liveGroup),
-                      icon: const Icon(Icons.edit_outlined),
-                      label: Text(l.edit),
-                    ),
-                    if (isOwner)
-                      OutlinedButton.icon(
-                        onPressed: _removing ? null : () => _removeBusiness(liveGroup),
-                        icon: const Icon(Icons.delete_outline),
-                        label: Text(l.groupSettingsDeleteGroup),
-                        style: OutlinedButton.styleFrom(foregroundColor: cs.error),
+                    if (liveGroup.description.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        liveGroup.description,
+                        style: t.bodySmall
+                            .copyWith(color: cs.onSurfaceVariant),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
+                    ],
+                    const SizedBox(height: 4),
+                    Text(
+                      createdStr,
+                      style: t.caption
+                          .copyWith(color: cs.onSurfaceVariant),
+                    ),
                   ],
                 ),
+              ),
+              if (canEdit)
+                IconButton(
+                  tooltip: l.edit,
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(34, 34),
+                    padding: EdgeInsets.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    side: BorderSide(
+                        color:
+                            cs.outlineVariant.withValues(alpha: .55)),
+                  ),
+                  onPressed: () => _openEditDialog(liveGroup),
+                ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // ── Business information rows ──
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.35)),
+          ),
+          child: Column(
+            children: [
+              _InfoRow(
+                icon: Icons.people_outline_rounded,
+                label: l.membersTitle,
+                value: '${liveGroup.userIds.length}',
+                detail: _rolesSummary(liveGroup, l),
+              ),
+              Divider(
+                  height: 1,
+                  indent: 44,
+                  color: cs.outlineVariant.withValues(alpha: 0.25)),
+              _InfoRow(
+                icon: Icons.mail_outline_rounded,
+                label: 'Invitaciones',
+                value: '${liveGroup.inviteCount}',
+                detail: liveGroup.lastInviteAt != null
+                    ? '${liveGroup.lastInviteAt!.day}/${liveGroup.lastInviteAt!.month}/${liveGroup.lastInviteAt!.year}'
+                    : null,
+              ),
+              Divider(
+                  height: 1,
+                  indent: 44,
+                  color: cs.outlineVariant.withValues(alpha: 0.25)),
+              _InfoRow(
+                icon: Icons.tune_rounded,
+                label: 'Features',
+                value: hasTimeTracking ? 'Time tracking' : 'N/A',
+                detail: hasTimeTracking ? currency : null,
+              ),
+              Divider(
+                  height: 1,
+                  indent: 44,
+                  color: cs.outlineVariant.withValues(alpha: 0.25)),
+              _InfoRow(
+                icon: Icons.calendar_today_rounded,
+                label: l.statementsHeaderDate,
+                value: createdStr,
               ),
             ],
-            const SizedBox(height: 16),
-            // ── Detail cards 2×2 ──
-            Row(
-              children: [
-                Expanded(
-                  child: _DetailCard(
-                    icon: Icons.people_outline_rounded,
-                    label: l.membersTitle,
-                    value: '${liveGroup.userIds.length}',
-                    subtitle: _rolesSummary(liveGroup, l),
-                    accent: cs.primary,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _DetailCard(
-                    icon: Icons.calendar_today_rounded,
-                    label: l.statementsHeaderDate,
-                    value: createdStr,
-                    subtitle: l.groupInfo,
-                    accent: cs.tertiary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _DetailCard(
-                    icon: Icons.mail_outline_rounded,
-                    label: 'Invitaciones',
-                    value: '${liveGroup.inviteCount}',
-                    subtitle: liveGroup.lastInviteAt != null
-                        ? '${liveGroup.lastInviteAt!.day}/${liveGroup.lastInviteAt!.month}/${liveGroup.lastInviteAt!.year}'
-                        : '-',
-                    accent: cs.secondary,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _DetailCard(
-                    icon: Icons.settings_outlined,
-                    label: 'Features',
-                    value: hasTimeTracking ? 'Time tracking' : 'N/A',
-                    subtitle: hasTimeTracking ? currency : '-',
-                    accent: cs.primary,
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
-      ),
+
+        // ── Danger zone (owner only) ──
+        if (isOwner) ...[
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cs.errorContainer.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border:
+                  Border.all(color: cs.error.withValues(alpha: 0.25)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded,
+                        size: 16, color: cs.error),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Zona de peligro',
+                      style: t.bodySmall.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: cs.error,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Eliminar este negocio es permanente y no se puede deshacer.',
+                  style:
+                      t.caption.copyWith(color: cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 12),
+                HexoraButton(
+                  onPressed:
+                      _removing ? null : () => _removeBusiness(liveGroup),
+                  label: l.groupSettingsDeleteGroup,
+                  icon: Icons.delete_outline,
+                  variant: HexoraButtonVariant.danger,
+                  size: HexoraButtonSize.compact,
+                  loading: _removing,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
 
-class _DetailCard extends StatelessWidget {
+class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  final String? subtitle;
-  final Color? accent;
+  final String? detail;
 
-  const _DetailCard({
+  const _InfoRow({
     required this.icon,
     required this.label,
     required this.value,
-    this.subtitle,
-    this.accent,
+    this.detail,
   });
 
   @override
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    final color = accent ?? cs.primary;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isLight
-            ? Colors.white
-            : cs.surfaceContainerHighest.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: isLight ? 0.45 : 0.28),
-        ),
-        boxShadow: isLight
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.025),
-                  blurRadius: 14,
-                  offset: const Offset(0, 8),
-                ),
-              ]
-            : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
         children: [
-          Row(
+          Icon(icon, size: 16, color: cs.onSurfaceVariant),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: t.bodySmall.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+              Text(
+                value,
+                style: t.bodySmall
+                    .copyWith(fontWeight: FontWeight.w600),
+              ),
+              if (detail != null && detail!.isNotEmpty)
+                Text(
+                  detail!,
+                  style: t.caption
+                      .copyWith(color: cs.onSurfaceVariant),
                 ),
-                child: Icon(
-                  icon,
-                  size: 14,
-                  color: color,
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Compact edit dialog for desktop ──
+
+class _EditBusinessDialog extends StatefulWidget {
+  final Group group;
+  const _EditBusinessDialog({required this.group});
+
+  @override
+  State<_EditBusinessDialog> createState() => _EditBusinessDialogState();
+}
+
+class _EditBusinessDialogState extends State<_EditBusinessDialog> {
+  late TextEditingController _nameC;
+  late TextEditingController _descC;
+  XFile? _pickedImage;
+  bool _saving = false;
+  bool _dirty = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameC = TextEditingController(text: widget.group.name);
+    _descC = TextEditingController(text: widget.group.description);
+    _nameC.addListener(_markDirty);
+    _descC.addListener(_markDirty);
+  }
+
+  void _markDirty() {
+    if (!_dirty) setState(() => _dirty = true);
+  }
+
+  @override
+  void dispose() {
+    _nameC.dispose();
+    _descC.dispose();
+    super.dispose();
+  }
+
+  Future<bool> _onWillPop() async {
+    if (!_dirty && _pickedImage == null) return true;
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Descartar cambios'),
+        content: const Text(
+            'Tienes cambios sin guardar. ¿Deseas descartarlos?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Descartar'),
+          ),
+        ],
+      ),
+    );
+    return discard == true;
+  }
+
+  Future<void> _save() async {
+    final name = _nameC.text.trim();
+    final desc = _descC.text.trim();
+    if (name.isEmpty || desc.isEmpty) return;
+
+    setState(() => _saving = true);
+    try {
+      final updateGroup = context.read<UpdateGroupUseCase>();
+      await updateGroup(
+        original: widget.group,
+        name: name,
+        description: desc,
+      );
+
+      if (_pickedImage != null && mounted) {
+        final uploadPhoto = context.read<UploadGroupPhotoUseCase>();
+        await uploadPhoto(groupId: widget.group.id, file: _pickedImage!);
+      }
+
+      if (mounted) {
+        Navigator.pop(context, true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content:
+                  Text(AppLocalizations.of(context)!.groupPhotoUpdated)),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(
+                  AppLocalizations.of(context)!.failedToEditGroup)),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final canSave =
+        _nameC.text.trim().isNotEmpty && _descC.text.trim().isNotEmpty;
+
+    return PopScope(
+      canPop: !_dirty && _pickedImage == null,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop && context.mounted) Navigator.pop(context);
+      },
+      child: Dialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 12, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l.editGroup,
+                        style: t.bodyLarge
+                            .copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () async {
+                        if (await _onWillPop()) {
+                          if (context.mounted) Navigator.pop(context);
+                        }
+                      },
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  style: t.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.1,
+
+              const SizedBox(height: 12),
+
+              // Scrollable content
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Compact image selector
+                      Center(
+                        child: GroupImage(
+                          imageUrl: widget.group.photoUrl,
+                          size: 80,
+                          borderRadius: 14,
+                          onPicked: (file) {
+                            setState(() {
+                              _pickedImage = file;
+                              _dirty = true;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Name field
+                      Text(
+                        l.title(50),
+                        style: t.caption.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      GroupNameField(
+                        controller: _nameC,
+                        onChanged: (_) => _markDirty(),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Description field
+                      Text(
+                        l.description(200),
+                        style: t.caption.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      GroupDescriptionField(
+                        controller: _descC,
+                        onChanged: (_) => _markDirty(),
+                      ),
+                    ],
                   ),
-                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Footer actions
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    HexoraButton(
+                      onPressed: () async {
+                        if (await _onWillPop()) {
+                          if (context.mounted) Navigator.pop(context);
+                        }
+                      },
+                      label: 'Cancelar',
+                      variant: HexoraButtonVariant.ghost,
+                    ),
+                    const SizedBox(width: 8),
+                    HexoraButton(
+                      onPressed:
+                          canSave && !_saving ? _save : null,
+                      label: 'Guardar cambios',
+                      icon: Icons.save_outlined,
+                      loading: _saving,
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: t.bodyLarge.copyWith(
-              color: cs.onSurface,
-              fontWeight: FontWeight.w900,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (subtitle != null && subtitle!.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            Text(
-              subtitle!,
-              style: t.caption.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }

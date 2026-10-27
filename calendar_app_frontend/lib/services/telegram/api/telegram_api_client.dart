@@ -481,7 +481,7 @@ class TelegramApiClient implements ITelegramApiClient {
 
     final req = http.MultipartRequest(
       'POST',
-      _u('/chats/$chatId/documents'),
+      _u('/chats/${Uri.encodeComponent(chatId)}/documents'),
     );
     req.headers['Authorization'] = auth;
     req.fields['accountId'] = accountId;
@@ -530,7 +530,7 @@ class TelegramApiClient implements ITelegramApiClient {
 
     final req = http.MultipartRequest(
       'POST',
-      _u('/chats/$chatId/documents'),
+      _u('/chats/${Uri.encodeComponent(chatId)}/documents'),
     );
     req.headers['Authorization'] = auth;
     req.fields['accountId'] = accountId;

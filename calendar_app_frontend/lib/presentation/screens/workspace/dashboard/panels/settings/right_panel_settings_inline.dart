@@ -1,6 +1,5 @@
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
@@ -13,7 +12,6 @@ import 'package:hexora/services/invoicing/billing_profile_api.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/notification/notification_api_client.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard/header/group_header_view.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/sections/settings_info_section.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/sections/settings_members_section.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/sections/settings_notifications_section.dart';
@@ -396,30 +394,9 @@ class _SettingsInlinePanelState extends State<SettingsInlinePanel> {
       return _buildSectionContent(context);
     }
 
-    // Show group header only for info section and only on non-web platforms
-    final showGroupHeader = _selectedSection == 'info' && !kIsWeb;
-
     return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (showGroupHeader) ...[
-            Card(
-              elevation: 0,
-              clipBehavior: Clip.antiAlias,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                ),
-              ),
-              child: GroupHeaderView(group: widget.group, onEditGroup: () {}),
-            ),
-            const SizedBox(height: 20),
-          ],
-          _buildSectionContent(context),
-        ],
-      ),
+      padding: const EdgeInsets.all(12),
+      child: _buildSectionContent(context),
     );
   }
 

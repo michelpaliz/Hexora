@@ -98,11 +98,16 @@ class _WorkerStatusIndicatorState extends State<WorkerStatusIndicator> {
     final int? onlineCount =
         presence.hasReceivedPresence ? onlineMembers.length : null;
 
-    final compact = MediaQuery.sizeOf(context).width < 760;
+    final viewportWidth = MediaQuery.sizeOf(context).width;
+    final compact = viewportWidth < 760;
+    final menuWidth = viewportWidth >= 296 ? 280.0 : viewportWidth - 16;
 
     return MenuAnchor(
       alignmentOffset: const Offset(0, 8),
-      style: hexoraDropdownMenuStyle(),
+      style: hexoraDropdownMenuStyle().copyWith(
+        minimumSize: WidgetStatePropertyAll(Size(menuWidth, 0)),
+        maximumSize: WidgetStatePropertyAll(Size(menuWidth, double.infinity)),
+      ),
       menuChildren: _buildMenu(context, onlineCount),
       builder: (context, controller, _) => HexoraNavTile(
         tooltip: _isSpanish ? 'Estado de los trabajadores' : 'Worker status',
@@ -187,6 +192,7 @@ class _WorkerStatusIndicatorState extends State<WorkerStatusIndicator> {
       const Divider(height: 8),
       MenuItemButton(
         leadingIcon: const Icon(Icons.group_outlined, size: 16),
+        trailingIcon: const Icon(Icons.chevron_right_rounded, size: 18),
         onPressed: widget.onOpenWorkers,
         child: Text(_isSpanish ? 'Ver trabajadores' : 'View workers'),
       ),
@@ -230,6 +236,7 @@ class _StatusRow extends StatelessWidget {
             ),
           ),
           trailing ??
+              (count == null ? null : _StatusCountBadge(count: count!)) ??
               Text(
                 count == null ? '—' : '$count',
                 style: text.bodyMedium?.copyWith(
@@ -238,6 +245,33 @@ class _StatusRow extends StatelessWidget {
                 ),
               ),
         ],
+      ),
+    );
+  }
+}
+
+class _StatusCountBadge extends StatelessWidget {
+  const _StatusCountBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      constraints: const BoxConstraints(minWidth: 24, minHeight: 22),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: cs.primaryContainer,
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: Text(
+        '$count',
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: cs.onPrimaryContainer,
+              fontWeight: FontWeight.w800,
+            ),
       ),
     );
   }

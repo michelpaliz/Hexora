@@ -497,9 +497,8 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: LayoutBuilder(builder: (context, constraints) {
         if (constraints.maxWidth < 700 ||

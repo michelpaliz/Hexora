@@ -53,6 +53,7 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
   late Set<String> _selectedPresupuestoIds;
   late Set<String> _selectedReceiptIds;
   bool _showClientPicker = true;
+  int _documentTab = 0;
 
   bool _loadingInvoices = false;
   bool _loadingReceipts = false;
@@ -278,6 +279,153 @@ class _InvoicePickerSheetState extends State<_InvoicePickerSheet> {
   }
 
   Widget _buildInvoicePanel(
+    BuildContext context,
+    List<Invoice> invoices,
+    List<Map<String, dynamic>> presupuestos,
+    List<Receipt> receipts,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final selectedTotal = _selectedInvoiceIds.length +
+        _selectedPresupuestoIds.length +
+        _selectedReceiptIds.length;
+    final labels = ['Facturas', 'Recibos', 'Presupuestos'];
+    final counts = [invoices.length, receipts.length, presupuestos.length];
+    final isBusy = [
+      _loadingInvoices,
+      _loadingReceipts,
+      _loadingPresupuestos
+    ][_documentTab];
+
+    Widget row(
+        {required String id,
+        required String number,
+        required String status,
+        required IconData icon,
+        required bool selected,
+        required VoidCallback onToggle,
+        VoidCallback? onPreview}) {
+      return SizedBox(
+        height: 60,
+        child: ListTile(
+          dense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          leading: Checkbox(value: selected, onChanged: (_) => onToggle()),
+          title: Row(children: [
+            Icon(icon, size: 18, color: cs.primary),
+            const SizedBox(width: 8),
+            Expanded(
+                child: Text(number,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w700))),
+          ]),
+          subtitle: Text(status,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.caption.copyWith(color: cs.onSurfaceVariant)),
+          trailing: IconButton(
+              tooltip: 'Vista previa',
+              onPressed: onPreview,
+              icon: const Icon(Icons.visibility_outlined, size: 18)),
+          onTap: onToggle,
+        ),
+      );
+    }
+
+    final rows = <Widget>[];
+    if (_documentTab == 0) {
+      rows.addAll(invoices.map((invoice) => row(
+          id: invoice.id,
+          number: invoice.invoiceNumber,
+          status: invoice.status ?? 'Emitida',
+          icon: Icons.description_outlined,
+          selected: _selectedInvoiceIds.contains(invoice.id),
+          onToggle: () => setState(() =>
+              _selectedInvoiceIds.contains(invoice.id)
+                  ? _selectedInvoiceIds.remove(invoice.id)
+                  : _selectedInvoiceIds.add(invoice.id)))));
+    } else if (_documentTab == 1) {
+      rows.addAll(receipts.map((receipt) => row(
+          id: receipt.id,
+          number: receipt.receiptNumber?.trim().isNotEmpty == true
+              ? receipt.receiptNumber!.trim()
+              : receipt.id,
+          status: receipt.status ?? 'Emitido',
+          icon: Icons.receipt_long_outlined,
+          selected: _selectedReceiptIds.contains(receipt.id),
+          onToggle: () => setState(() =>
+              _selectedReceiptIds.contains(receipt.id)
+                  ? _selectedReceiptIds.remove(receipt.id)
+                  : _selectedReceiptIds.add(receipt.id)))));
+    } else {
+      rows.addAll(presupuestos.map((item) {
+        final id = _presupuestoId(item);
+        return row(
+            id: id,
+            number: _presupuestoNumber(item).isEmpty
+                ? presupuestoDocumentTitle(item)
+                : _presupuestoNumber(item),
+            status: _presupuestoStatus(item),
+            icon: Icons.request_quote_outlined,
+            selected: _selectedPresupuestoIds.contains(id),
+            onPreview: id.isEmpty ? null : () => _previewPresupuesto(id),
+            onToggle: () => setState(() => _selectedPresupuestoIds.contains(id)
+                ? _selectedPresupuestoIds.remove(id)
+                : _selectedPresupuestoIds.add(id)));
+      }));
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: .45))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        TextField(
+            controller: _invoiceSearchCtrl,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+                prefixIcon: Icon(Icons.search),
+                hintText: 'Buscar por número',
+                isDense: true)),
+        const SizedBox(height: 8),
+        Wrap(
+            spacing: 8,
+            children: List.generate(
+                labels.length,
+                (index) => ChoiceChip(
+                    label: Text('${labels[index]} (${counts[index]})'),
+                    selected: _documentTab == index,
+                    onSelected: (_) => setState(() => _documentTab = index)))),
+        const SizedBox(height: 8),
+        Text('Seleccionadas: $selectedTotal',
+            style: t.bodySmall.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 6),
+        Expanded(
+            child: isBusy
+                ? const Center(child: CircularProgressIndicator())
+                : rows.isEmpty
+                    ? Align(
+                        alignment: Alignment.topLeft,
+                        child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text(
+                                'No hay ${labels[_documentTab].toLowerCase()} disponibles para este cliente.',
+                                style: t.bodySmall
+                                    .copyWith(color: cs.onSurfaceVariant))))
+                    : ListView.separated(
+                        itemCount: rows.length,
+                        separatorBuilder: (_, __) => Divider(
+                            height: 1,
+                            color: cs.outlineVariant.withValues(alpha: .3)),
+                        itemBuilder: (_, index) => rows[index])),
+      ]),
+    );
+  }
+
+  // ignore: unused_element
+  Widget _buildLegacyInvoicePanel(
     BuildContext context,
     List<Invoice> filteredInvoices,
     List<Map<String, dynamic>> filteredPresupuestos,

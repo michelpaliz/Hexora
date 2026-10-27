@@ -94,6 +94,11 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
         controller: controller,
         textInputAction: inputAction,
         obscureText: obscure,
+        autocorrect: false,
+        enableSuggestions: false,
+        autofillHints: controller == _currentController
+            ? const [AutofillHints.password]
+            : const ['newPassword'],
         style: typography.bodyLarge,
         decoration: InputDecoration(
           labelText: label,
@@ -115,7 +120,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
             onPressed: onToggleVisibility,
           ),
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           border: inputBorder(outlineColor),
           enabledBorder: inputBorder(outlineColor),
           focusedBorder: inputBorder(theme.colorScheme.primary, 1.6),
@@ -130,15 +135,15 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
     return AlertDialog(
       backgroundColor: theme.colorScheme.surface,
       surfaceTintColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-      contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-      actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      actionsPadding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
       title: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(9),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: theme.colorScheme.primary.withValues(alpha: 0.1),
@@ -152,53 +157,56 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
           Expanded(
             child: Text(
               l.changePassword,
-              style: typography.displayMedium,
+              style: typography.titleLarge,
             ),
           ),
         ],
       ),
       content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            passwordField(
-              controller: _currentController,
-              label: l.currentPassword,
-              icon: Icons.lock_outline_rounded,
-              obscure: _currentObscured,
-              onToggleVisibility: () => setState(
-                () => _currentObscured = !_currentObscured,
+        constraints: BoxConstraints(
+          maxWidth: 420,
+          maxHeight: MediaQuery.sizeOf(context).height * 0.62,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              passwordField(
+                controller: _currentController,
+                label: l.currentPassword,
+                icon: Icons.lock_outline_rounded,
+                obscure: _currentObscured,
+                onToggleVisibility: () => setState(
+                  () => _currentObscured = !_currentObscured,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            passwordField(
-              controller: _newPassController,
-              label: l.newPassword,
-              icon: Icons.shield_moon_outlined,
-              obscure: _newObscured,
-              onToggleVisibility: () =>
-                  setState(() => _newObscured = !_newObscured),
-              helper: l.passwordHint,
-              error: newTooShort
-                  ? 'New password must be at least 8 characters'
-                  : (sameAsCurrent
-                      ? 'New password must be different from current password'
-                      : null),
-            ),
-            const SizedBox(height: 16),
-            passwordField(
-              controller: _confirmController,
-              label: l.confirmPassword,
-              icon: Icons.verified_user_outlined,
-              obscure: _confirmObscured,
-              onToggleVisibility: () =>
-                  setState(() => _confirmObscured = !_confirmObscured),
-              helper: l.confirmPasswordHint,
-              error: confirmMismatch ? l.passwordNotMatch : null,
-              inputAction: TextInputAction.done,
-            ),
-          ],
+              const SizedBox(height: 16),
+              passwordField(
+                controller: _newPassController,
+                label: l.newPassword,
+                icon: Icons.shield_moon_outlined,
+                obscure: _newObscured,
+                onToggleVisibility: () =>
+                    setState(() => _newObscured = !_newObscured),
+                helper: l.passwordMinLength,
+                error: newTooShort
+                    ? l.passwordMinLength
+                    : (sameAsCurrent ? l.newPasswordMustDiffer : null),
+              ),
+              const SizedBox(height: 16),
+              passwordField(
+                controller: _confirmController,
+                label: l.confirmPassword,
+                icon: Icons.verified_user_outlined,
+                obscure: _confirmObscured,
+                onToggleVisibility: () =>
+                    setState(() => _confirmObscured = !_confirmObscured),
+                helper: l.confirmPasswordHint,
+                error: confirmMismatch ? l.passwordNotMatch : null,
+                inputAction: TextInputAction.done,
+              ),
+            ],
+          ),
         ),
       ),
       actions: [
@@ -221,7 +229,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                     ),
                   )
               : null,
-          label: l.save,
+          label: l.changePassword,
         ),
       ],
     );

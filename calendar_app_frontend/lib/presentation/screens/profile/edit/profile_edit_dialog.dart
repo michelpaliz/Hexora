@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/profile/edit/controller/profile_edit_controller.dart';
 import 'package:hexora/presentation/screens/profile/edit/controller/profile_update_contract.dart';
-import 'package:hexora/presentation/shared/widgets/avatars/user_avatar.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/hexora_user_avatar.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -36,6 +36,7 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
 
   bool _saving = false;
   bool _seeded = false;
+  bool _dirty = false;
 
   String? _displayNameError;
   String? _usernameError;
@@ -56,8 +57,46 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
       _phoneCtrl.text = user.phoneNumber ?? '';
       _locationCtrl.text = user.location ?? '';
       _bioCtrl.text = user.bio ?? '';
+      for (final controller in [
+        _displayNameCtrl,
+        _usernameCtrl,
+        _phoneCtrl,
+        _locationCtrl,
+        _bioCtrl,
+      ]) {
+        controller.addListener(_markDirty);
+      }
       _seeded = true;
     }
+  }
+
+  void _markDirty() {
+    if (!_dirty && mounted) setState(() => _dirty = true);
+  }
+
+  Future<void> _requestClose() async {
+    if (!_dirty || _saving) {
+      if (!_saving) Navigator.of(context).pop();
+      return;
+    }
+    final discard = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Descartar cambios'),
+            content: const Text(
+                'Tienes cambios sin guardar. ¿Quieres descartarlos?'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Seguir editando')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Descartar')),
+            ],
+          ),
+        ) ??
+        false;
+    if (discard && mounted) Navigator.of(context).pop();
   }
 
   @override
@@ -142,11 +181,27 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
     });
 
     if (result.success) {
+      _dirty = false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result.message ?? 'Profile saved')),
       );
       if (mounted) Navigator.pop(context);
     }
+  }
+
+  Widget _responsivePair(BuildContext context, Widget first, Widget second) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 520) {
+          return Column(children: [first, const SizedBox(height: 12), second]);
+        }
+        return Row(children: [
+          Expanded(child: first),
+          const SizedBox(width: 12),
+          Expanded(child: second)
+        ]);
+      },
+    );
   }
 
   @override
@@ -184,7 +239,10 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       clipBehavior: Clip.antiAlias,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560, maxHeight: 680),
+        constraints: BoxConstraints(
+          maxWidth: 720,
+          maxHeight: MediaQuery.sizeOf(context).height * .82,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -213,7 +271,7 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.close_rounded, size: 20),
-                    onPressed: _saving ? null : () => Navigator.pop(context),
+                    onPressed: _saving ? null : _requestClose,
                   ),
                 ],
               ),
@@ -226,10 +284,12 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
                 shrinkWrap: true,
                 children: [
                   Row(children: [
-                    UserAvatar(
-                      user: user,
-                      fetchReadSas: (_) async => null,
-                      radius: 28,
+                    HexoraUserAvatar(
+                      userId: user.id,
+                      displayName: user.displayName ?? user.name,
+                      username: user.userName,
+                      photoUrl: user.photoUrl,
+                      size: 64,
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -237,38 +297,36 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
                         alignment: Alignment.centerLeft,
                         child: TextButton.icon(
                           onPressed: _saving ? null : _handleChangePhoto,
-                          icon: const Icon(Icons.add_a_photo_outlined,
-                              size: 18),
-                          label: Text(
-                              spanish ? 'Cambiar foto' : 'Change photo'),
+                          icon:
+                              const Icon(Icons.add_a_photo_outlined, size: 18),
+                          label:
+                              Text(spanish ? 'Cambiar foto' : 'Change photo'),
                         ),
                       ),
                     ),
                   ]),
                   const SizedBox(height: 18),
                   section(
-                    spanish
-                        ? 'Información personal'
-                        : 'Personal information',
+                    spanish ? 'Información personal' : 'Personal information',
                     [
-                      LabeledField(
-                        label: l.displayName,
-                        controller: _displayNameCtrl,
-                        enabled: !_saving,
-                        errorText: _displayNameError,
-                        maxLength:
-                            ProfileUpdateContract.maxDisplayNameLength,
-                      ),
-                      const SizedBox(height: 12),
-                      LabeledField(
-                        label: l.username,
-                        controller: _usernameCtrl,
-                        enabled: !_saving,
-                        errorText: _usernameError,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                              RegExp(r'[a-zA-Z0-9._-]')),
-                        ],
+                      _responsivePair(
+                        context,
+                        LabeledField(
+                            label: l.displayName,
+                            controller: _displayNameCtrl,
+                            enabled: !_saving,
+                            errorText: _displayNameError,
+                            maxLength:
+                                ProfileUpdateContract.maxDisplayNameLength),
+                        LabeledField(
+                            label: l.username,
+                            controller: _usernameCtrl,
+                            enabled: !_saving,
+                            errorText: _usernameError,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                  RegExp(r'[a-zA-Z0-9._-]'))
+                            ]),
                       ),
                       const SizedBox(height: 12),
                       LabeledField(
@@ -283,31 +341,34 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
                   ),
                   const SizedBox(height: 14),
                   section(
-                    spanish
-                        ? 'Contacto y ubicación'
-                        : 'Contact and location',
+                    spanish ? 'Contacto y ubicación' : 'Contact and location',
                     [
-                      LabeledField(
-                        label: l.phoneLabel,
-                        controller: _phoneCtrl,
-                        enabled: !_saving,
-                        keyboardType: TextInputType.phone,
-                        errorText: _phoneError,
-                        maxLength: ProfileUpdateContract.maxPhoneLength,
+                      _responsivePair(
+                        context,
+                        LabeledField(
+                            label: l.phoneLabel,
+                            controller: _phoneCtrl,
+                            enabled: !_saving,
+                            keyboardType: TextInputType.phone,
+                            errorText: _phoneError,
+                            maxLength: ProfileUpdateContract.maxPhoneLength),
+                        LabeledField(
+                            label: l.location,
+                            controller: _locationCtrl,
+                            enabled: !_saving,
+                            errorText: _locationError,
+                            maxLength: ProfileUpdateContract.maxLocationLength),
                       ),
                       const SizedBox(height: 12),
-                      LabeledField(
-                        label: l.location,
-                        controller: _locationCtrl,
-                        enabled: !_saving,
-                        errorText: _locationError,
-                        maxLength: ProfileUpdateContract.maxLocationLength,
-                      ),
-                      const SizedBox(height: 12),
-                      LabeledField(
-                        label: l.email,
-                        controller: _emailCtrl,
-                        enabled: false,
+                      Row(
+                        children: [
+                          Icon(Icons.email_outlined,
+                              size: 16, color: cs.onSurfaceVariant),
+                          const SizedBox(width: 8),
+                          Expanded(
+                              child:
+                                  Text(_emailCtrl.text, style: t.bodyMedium)),
+                        ],
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -346,13 +407,12 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
               child: Row(
                 children: [
                   OutlinedButton(
-                    onPressed:
-                        _saving ? null : () => Navigator.pop(context),
+                    onPressed: _saving ? null : _requestClose,
                     child: Text(spanish ? 'Cancelar' : 'Cancel'),
                   ),
                   const Spacer(),
                   FilledButton.icon(
-                    onPressed: _saving ? null : _handleSave,
+                    onPressed: _saving || !_dirty ? null : _handleSave,
                     icon: _saving
                         ? const SizedBox(
                             width: 16,
@@ -362,9 +422,7 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
                           )
                         : const Icon(Icons.check, size: 18),
                     label: Text(
-                      _saving
-                          ? l.saving
-                          : (spanish ? 'Guardar' : 'Save'),
+                      _saving ? l.saving : (spanish ? 'Guardar' : 'Save'),
                     ),
                   ),
                 ],

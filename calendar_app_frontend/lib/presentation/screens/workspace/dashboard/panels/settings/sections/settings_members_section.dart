@@ -19,7 +19,7 @@ import 'package:hexora/presentation/screens/workspace/sections/members/presentat
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/add_users_flow/widgets/add_user_bottom_sheet.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/member_row/components/members_role_chip.dart';
 import 'package:hexora/presentation/shared/widgets/user_profile_popup.dart';
-import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/hexora_user_avatar.dart';
 import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/presentation/utils/roles/group_role_labels.dart';
 import 'package:hexora/presentation/utils/roles/role_policy.dart';
@@ -69,8 +69,11 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
   MemberRef? _selectedMember;
   User? _selectedUser;
   Invitation? _selectedInvitation;
+  GroupRole? _pendingRole;
+  final Map<String, String> _confirmedRoleOverrides = {};
   bool _loadingUser = false;
   bool _sendingInvitations = false;
+  bool _activityExpanded = false;
 
   @override
   void initState() {
@@ -106,23 +109,38 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
   }
 
   List<MemberRef> get _currentMembers {
-    switch (_selectedTab) {
-      case 0:
-        return widget.membersVM.accepted;
-      case 1:
-        return widget.membersVM.pending;
-      case 2:
-        return widget.membersVM.notAccepted;
-      default:
-        return [];
-    }
+    final members = switch (_selectedTab) {
+      0 => widget.membersVM.accepted,
+      1 => widget.membersVM.pending,
+      2 => widget.membersVM.notAccepted,
+      _ => <MemberRef>[],
+    };
+
+    return members
+        .map(
+          (member) => MemberRef(
+            username: member.username,
+            role: _confirmedRoleOverrides[member.username] ?? member.role,
+            statusToken: member.statusToken,
+            ownerId: member.ownerId,
+          ),
+        )
+        .toList(growable: false);
   }
 
   Future<void> _selectMember(MemberRef ref) async {
+    final isChangingMember = _selectedMember?.username != ref.username;
+    if (_pendingRole != null && isChangingMember) {
+      final discard = await _confirmDiscardPendingRole(context);
+      if (!discard) return;
+      if (!mounted) return;
+    }
+
     setState(() {
       _selectedMember = ref;
       _selectedUser = null;
       _selectedInvitation = null;
+      _pendingRole = null;
       _loadingUser = true;
       _roleHistoryFuture = null; // reset for new member
     });
@@ -179,14 +197,25 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
     final l = AppLocalizations.of(context)!;
     final isLight = Theme.of(context).brightness == Brightness.light;
 
-    return Padding(
-      padding: const EdgeInsets.only(top: 24),
-      child: FolderSectionCard(
-        label: l.membersTitle,
-        showTitle: false,
-        leftTabOffset: 0,
-        backgroundColor: isLight ? Colors.white : null,
-        child: _buildContent(context),
+    return PopScope(
+      canPop: _pendingRole == null,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop || _pendingRole == null) return;
+        final discard = await _confirmDiscardPendingRole(context);
+        if (discard && context.mounted) {
+          setState(() => _pendingRole = null);
+          Navigator.of(context).maybePop();
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(top: 24),
+        child: FolderSectionCard(
+          label: l.membersTitle,
+          showTitle: false,
+          leftTabOffset: 0,
+          backgroundColor: isLight ? Colors.white : null,
+          child: _buildContent(context),
+        ),
       ),
     );
   }
@@ -215,21 +244,11 @@ class _SettingsMembersSectionState extends State<SettingsMembersSection> {
               maxHeight: 400,
               child: _buildAddMembersTab(context),
             )
-          else if (_selectedTab == 4)
-            _buildRolesTab(context)
           else
             _buildSplitPanel(context),
         ],
       ),
     );
-  }
-
-  String _initials(String text) {
-    final t = text.trim();
-    if (t.isEmpty) return '?';
-    final parts = t.split(RegExp(r'\s+'));
-    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-    return (parts.first[0] + parts.last[0]).toUpperCase();
   }
 
   void _updateUi([VoidCallback? updater]) {

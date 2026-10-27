@@ -45,11 +45,10 @@ class WorkerDirectoryCard extends StatelessWidget {
     String number(num amount) =>
         NumberFormat('#,##0.##', l.localeName).format(amount);
     Widget chip(IconData icon, String label, Color color) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
           decoration: BoxDecoration(
               color: color.withValues(alpha: .07),
-              border: Border.all(color: color.withValues(alpha: .14)),
-              borderRadius: BorderRadius.circular(11)),
+              borderRadius: BorderRadius.circular(6)),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(icon, size: 15, color: color),
             const SizedBox(width: 7),

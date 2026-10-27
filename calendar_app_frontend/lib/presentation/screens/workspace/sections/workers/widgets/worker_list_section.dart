@@ -182,24 +182,10 @@ class _WorkerRowState extends State<_WorkerRow> {
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
           color: rowBg,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected
-                ? cs.primary.withValues(alpha: 0.35)
-                : cs.outlineVariant.withValues(alpha: _hovered ? 0.55 : 0.38),
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: cs.primary.withValues(alpha: 0.10),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
+          borderRadius: BorderRadius.circular(10),
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(10),
           child: IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -211,20 +197,20 @@ class _WorkerRowState extends State<_WorkerRow> {
                   decoration: BoxDecoration(
                     color: cs.primary,
                     borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(13),
-                      bottomLeft: Radius.circular(13),
+                      topLeft: Radius.circular(10),
+                      bottomLeft: Radius.circular(10),
                     ),
                   ),
                 ),
                 // Main row content
                 Expanded(
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(13),
+                    borderRadius: BorderRadius.circular(10),
                     onTap: widget.onTap,
                     child: Padding(
                       padding: EdgeInsets.symmetric(
-                          horizontal: widget.spacious ? 18 : 12,
-                          vertical: widget.spacious ? 18 : 10),
+                          horizontal: widget.spacious ? 14 : 10,
+                          vertical: widget.spacious ? 12 : 8),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -668,11 +654,10 @@ class _MetricChip extends StatelessWidget {
     final t = AppTypography.of(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         color: color.withValues(alpha: 0.08),
-        border: Border.all(color: color.withValues(alpha: 0.22)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

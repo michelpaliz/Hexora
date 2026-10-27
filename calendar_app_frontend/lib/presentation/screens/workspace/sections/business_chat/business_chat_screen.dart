@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hexora/services/business_chat/business_chat_api.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/hexora_user_avatar.dart';
 import 'package:intl/intl.dart';
 
 class BusinessChatScreen extends StatefulWidget {
@@ -15,6 +16,7 @@ class BusinessChatScreen extends StatefulWidget {
 class _BusinessChatScreenState extends State<BusinessChatScreen> {
   final _api = BusinessChatApi();
   final _composer = TextEditingController();
+  final _conversationSearch = TextEditingController();
   final _scroll = ScrollController();
   List<BusinessChatConversation> _conversations = const [];
   List<BusinessChatMessage> _messages = const [];
@@ -34,6 +36,8 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
   void initState() {
     super.initState();
     _refresh();
+    _composer.addListener(() => mounted ? setState(() {}) : null);
+    _conversationSearch.addListener(() => mounted ? setState(() {}) : null);
     _timer = Timer.periodic(const Duration(seconds: 8), (_) => _refresh(silent: true));
   }
 
@@ -51,6 +55,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
   void dispose() {
     _timer?.cancel();
     _composer.dispose();
+    _conversationSearch.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -249,6 +254,48 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final query = _conversationSearch.text.trim().toLowerCase();
+    final visible = _conversations.where((conversation) => query.isEmpty || conversation.title.toLowerCase().contains(query) || (conversation.lastMessage?.body ?? '').toLowerCase().contains(query)).toList();
+    final general = visible.where((item) => item.type == 'general').toList();
+    final teams = visible.where((item) => item.type == 'team').toList();
+    final issues = visible.where((item) => item.type == 'issue').toList();
+
+    Widget conversationRow(BusinessChatConversation conversation) {
+      final selected = _selected?.id == conversation.id;
+      final preview = conversation.lastMessage?.body ?? _typeLabel(conversation.type);
+      final icon = conversation.type == 'issue' ? Icons.report_outlined : conversation.type == 'team' ? Icons.groups_outlined : Icons.campaign_outlined;
+      return ListTile(
+        dense: true,
+        selected: selected,
+        selectedTileColor: cs.primaryContainer.withValues(alpha: .4),
+        leading: Icon(icon, size: 19, color: selected ? cs.primary : cs.onSurfaceVariant),
+        title: Text(conversation.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text(preview, maxLines: 1, overflow: TextOverflow.ellipsis),
+        trailing: conversation.unreadCount > 0 ? Badge(label: Text('${conversation.unreadCount}')) : null,
+        onTap: () { setState(() { _selected = conversation; _messages = const []; }); _loadMessages(conversation); },
+      );
+    }
+    Widget section(String title, List<BusinessChatConversation> items) => items.isEmpty ? const SizedBox.shrink() : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Padding(padding: const EdgeInsets.fromLTRB(12, 14, 12, 4), child: Text(title, style: Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w800, color: cs.onSurfaceVariant))), ...items.map(conversationRow)]);
+
+    return Column(children: [
+      Padding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 8), child: Row(children: [Icon(Icons.forum_outlined, color: cs.primary), const SizedBox(width: 8), Expanded(child: Text('Hexora Chat', style: Theme.of(context).textTheme.titleMedium)), IconButton(onPressed: _loading ? null : _refresh, tooltip: _es ? 'Actualizar' : 'Refresh', icon: const Icon(Icons.refresh)), if (_canCreateIssues) IconButton(onPressed: _createIssue, tooltip: _es ? 'Nueva incidencia' : 'New incident', icon: const Icon(Icons.report_gmailerrorred_outlined)), if (_canCreateTeam) IconButton(onPressed: _createTeam, tooltip: _es ? 'Nuevo chat de equipo' : 'New team chat', icon: const Icon(Icons.group_add_outlined))])),
+      const Divider(height: 1),
+      Expanded(child: Row(children: [
+        SizedBox(width: 300, child: Column(children: [Padding(padding: const EdgeInsets.all(10), child: TextField(controller: _conversationSearch, decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Buscar conversaciones', isDense: true))), Expanded(child: _conversations.isEmpty ? Center(child: Text(_error ?? (_es ? 'No hay conversaciones' : 'No conversations'))) : ListView(children: [section('GENERAL', general), section(_es ? 'EQUIPOS' : 'TEAMS', teams), section(_es ? 'INCIDENCIAS' : 'ISSUES', issues)]))])),
+        VerticalDivider(width: 1, color: cs.outlineVariant.withValues(alpha: .5)),
+        Expanded(child: Column(children: [
+          if (_selected != null) Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: .4)))), child: Row(children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(_selected!.title, style: const TextStyle(fontWeight: FontWeight.w700)), Text(_typeLabel(_selected!.type), style: Theme.of(context).textTheme.bodySmall)])), if (_selected!.type == 'issue' && _canAssignIssues) IconButton(tooltip: _es ? 'Cambiar responsable' : 'Change assignee', onPressed: () => _assignIssue(_selected!), icon: const Icon(Icons.assignment_ind_outlined)), PopupMenuButton<String>(tooltip: _es ? 'Más opciones' : 'More options', itemBuilder: (_) => const [])])),
+          Expanded(child: _messages.isEmpty ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.chat_bubble_outline_rounded, size: 34, color: cs.onSurfaceVariant), const SizedBox(height: 10), Text(_es ? 'Todavía no hay mensajes' : 'No messages yet', style: const TextStyle(fontWeight: FontWeight.w700)), const SizedBox(height: 4), Text(_es ? 'Escribe el primer mensaje para comenzar.' : 'Write the first message to get started.', style: TextStyle(color: cs.onSurfaceVariant))])) : ListView.builder(controller: _scroll, padding: const EdgeInsets.all(14), itemCount: _messages.length, itemBuilder: (context, index) { final message = _messages[index]; final mine = message.senderId == widget.currentUserId; return Align(alignment: mine ? Alignment.centerRight : Alignment.centerLeft, child: Card(color: mine ? cs.primaryContainer : cs.surfaceContainerHighest, child: Padding(padding: const EdgeInsets.all(10), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(message.senderName, style: const TextStyle(fontWeight: FontWeight.w700)), Text(message.isDeleted ? (_es ? 'Mensaje eliminado' : 'Message deleted') : message.body), Text(DateFormat('HH:mm').format(message.createdAt.toLocal()), style: Theme.of(context).textTheme.labelSmall)])))); })),
+          const Divider(height: 1),
+          Padding(padding: const EdgeInsets.all(10), child: SafeArea(top: false, child: Row(children: [Expanded(child: TextField(controller: _composer, enabled: _selected != null && !_sending, minLines: 1, maxLines: 4, textInputAction: TextInputAction.newline, decoration: InputDecoration(hintText: _es ? 'Escribe un mensaje…' : 'Write a message…', border: const OutlineInputBorder()))), const SizedBox(width: 8), IconButton.filled(onPressed: _sending || _selected == null || _composer.text.trim().isEmpty ? null : _send, tooltip: _es ? 'Enviar' : 'Send', icon: _sending ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.send))]))),
+        ])),
+      ])),
+    ]);
+  }
+
+  // ignore: unused_element
+  Widget _buildLegacyChat(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Column(children: [
       Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 8), child: Row(children: [
@@ -278,7 +325,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
             final canEdit = mine && !message.isDeleted && DateTime.now().difference(message.createdAt.toLocal()).inMinutes < 15;
             final canDelete = !message.isDeleted && (mine || _canModerateMessages);
             return Align(alignment: mine ? Alignment.centerRight : Alignment.centerLeft, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 520), child: Card(color: mine ? colors.primaryContainer : colors.surfaceContainerHighest, child: Padding(padding: const EdgeInsets.all(10), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [Expanded(child: Text(message.senderName, style: const TextStyle(fontWeight: FontWeight.w700))), if (canEdit || canDelete) PopupMenuButton<String>(onSelected: (value) => _messageAction(message, value), itemBuilder: (_) => [if (canEdit) PopupMenuItem(value: 'edit', child: Text(_es ? 'Editar' : 'Edit')), if (canDelete) PopupMenuItem(value: 'delete', child: Text(_es ? 'Eliminar' : 'Delete'))])]),
+              Row(children: [HexoraUserAvatar(userId: message.senderId, displayName: message.senderName, username: message.senderName, size: 24), const SizedBox(width: 8), Expanded(child: Text(message.senderName, style: const TextStyle(fontWeight: FontWeight.w700))), if (canEdit || canDelete) PopupMenuButton<String>(onSelected: (value) => _messageAction(message, value), itemBuilder: (_) => [if (canEdit) PopupMenuItem(value: 'edit', child: Text(_es ? 'Editar' : 'Edit')), if (canDelete) PopupMenuItem(value: 'delete', child: Text(_es ? 'Eliminar' : 'Delete'))])]),
               Text(message.isDeleted ? (_es ? 'Mensaje eliminado' : 'Message deleted') : message.body),
               Align(alignment: Alignment.centerRight, child: Text('${DateFormat('HH:mm').format(message.createdAt.toLocal())}${message.editedAt != null ? (_es ? ' · Editado' : ' · Edited') : ''}', style: Theme.of(context).textTheme.labelSmall)),
             ])))));
