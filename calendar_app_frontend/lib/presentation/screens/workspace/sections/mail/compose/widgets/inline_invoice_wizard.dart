@@ -207,6 +207,10 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     return status.isEmpty ? 'draft' : status;
   }
 
+  bool _presupuestoIsSent(Map<String, dynamic> item) =>
+      item['deliveryStatus']?.toString().toLowerCase() == 'sent' ||
+      (item['sentAt']?.toString().trim().isNotEmpty ?? false);
+
   DateTime? _presupuestoDate(Map<String, dynamic> item) {
     final v = item['issueDate'] ?? item['issuedAt'] ?? item['createdAt'];
     if (v == null) return null;
@@ -1188,6 +1192,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                                         selected: selected,
                                         cs: cs,
                                         date: _presupuestoDate(item),
+                                        isSent: _presupuestoIsSent(item),
                                         onTap: () => setState(() => selected
                                             ? _selectedPresupuestoIds.remove(id)
                                             : _selectedPresupuestoIds.add(id)),
@@ -1228,6 +1233,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                                         selected: selected,
                                         cs: cs,
                                         date: _presupuestoDate(item),
+                                        isSent: _presupuestoIsSent(item),
                                         onTap: () => setState(() => selected
                                             ? _selectedPresupuestoIds.remove(id)
                                             : _selectedPresupuestoIds.add(id)),
@@ -1274,6 +1280,10 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                                       cs: cs,
                                       date: receipt.issueDate ??
                                           receipt.registeredAt,
+                                      isSent: receipt.deliveryStatus
+                                                  .toLowerCase() ==
+                                              'sent' ||
+                                          receipt.sentAt != null,
                                       onTap: () => setState(() => selected
                                           ? _selectedReceiptIds
                                               .remove(receipt.id)
@@ -1381,6 +1391,9 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                                 _localizedStatusLabel(l, receipt.status),
                             cs: cs,
                             amount: receipt.total,
+                            isSent: receipt.deliveryStatus.toLowerCase() ==
+                                    'sent' ||
+                                receipt.sentAt != null,
                             onPreview: () => _openReceiptPdfPreview(receipt),
                           ),
                         ),
@@ -1396,6 +1409,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                             statusLabel: _presupuestoStatus(item),
                             cs: cs,
                             amount: _presupuestoTotal(item),
+                            isSent: _presupuestoIsSent(item),
                             onPreview: id.isEmpty
                                 ? null
                                 : () => widget.state
@@ -1422,6 +1436,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                             ),
                             cs: cs,
                             amount: _presupuestoTotal(item),
+                            isSent: _presupuestoIsSent(item),
                             onPreview: id.isEmpty
                                 ? null
                                 : () => widget.state

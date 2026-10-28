@@ -507,6 +507,9 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
         });
         widget.onReceiptsSent?.call(refreshedReceipts);
       }
+      if (selectedPresupuestoIds.isNotEmpty) {
+        _pickerPresupuestosByClient.clear();
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l.mailComposeSentToast)),
       );
@@ -559,6 +562,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
         filename: fileName,
         contentType: 'application/pdf',
         size: bytes.length,
+        presupuestoId: id,
       );
       _wordPresupuestoAttachments[id] = attachment;
       attachments.add(attachment);
