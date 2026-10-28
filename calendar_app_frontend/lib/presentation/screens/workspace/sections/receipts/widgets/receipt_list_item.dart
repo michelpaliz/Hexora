@@ -419,7 +419,7 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
         if (canMarkUnsent && widget.onMarkUnsent != null)
           CompactDocumentAction('Marcar como no enviado', widget.onMarkUnsent),
         if (widget.onIssue != null)
-          CompactDocumentAction(l.invoiceIssueCta, widget.onIssue),
+          CompactDocumentAction(l.receiptIssueCta, widget.onIssue),
         if (widget.onDelete != null)
           CompactDocumentAction(l.delete, widget.onDelete, destructive: true),
       ],

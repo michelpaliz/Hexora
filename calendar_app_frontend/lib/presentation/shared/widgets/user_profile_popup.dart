@@ -612,15 +612,29 @@ extension _CompactProfileCard on _UserProfileCardState {
   }
 
   Future<void> _compactLogout(BuildContext context) async {
-    final confirmed = await showLogoutDialog(context);
-    if (!context.mounted || confirmed != true) return;
-    try {
-      await context.read<AuthService>().logOut();
-    } catch (_) {}
-    if (!context.mounted) return;
+    // This card lives in a root OverlayEntry. Dismiss it before presenting the
+    // confirmation dialog so the overlay cannot sit above and intercept the
+    // dialog's taps.
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final auth = context.read<AuthService>();
     widget.onClose();
-    Navigator.of(context)
-        .pushNamedAndRemoveUntil(AppRoutes.loginRoute, (_) => false);
+    await Future<void>.delayed(Duration.zero);
+    if (!navigator.mounted) return;
+
+    final confirmed = await showLogoutDialog(navigator.context);
+    if (confirmed != true || !navigator.mounted) return;
+    try {
+      await auth.logOut();
+    } catch (_) {
+      if (navigator.mounted) {
+        ScaffoldMessenger.of(navigator.context).showSnackBar(
+          const SnackBar(content: Text('No se pudo cerrar la sesión.')),
+        );
+      }
+      return;
+    }
+    if (!navigator.mounted) return;
+    navigator.pushNamedAndRemoveUntil(AppRoutes.loginRoute, (_) => false);
   }
 }
 

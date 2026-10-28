@@ -3,37 +3,60 @@ part of '../receipt_editor_wizard_screen.dart';
 // ignore_for_file: invalid_use_of_protected_member
 
 extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
+  Widget _buildWizardToolbarContent(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final title = Text(
+      l.createReceiptCta,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 760) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              title,
+              const SizedBox(height: 2),
+              _buildStepIndicator(context),
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Flexible(flex: 2, child: title),
+            const SizedBox(width: 12),
+            Expanded(flex: 5, child: _buildStepIndicator(context)),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildStepIndicator(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.65),
+    return HexoraDocumentStepper(
+      steps: [
+        HexoraDocumentStep(
+          label: l.invoiceBillToLabel,
+          icon: Icons.person_outline_rounded,
         ),
-      ),
-      child: HexoraDocumentStepper(
-        steps: [
-          HexoraDocumentStep(
-            label: l.invoiceBillToLabel,
-            icon: Icons.person_outline_rounded,
-          ),
-          HexoraDocumentStep(
-            label: l.receiptLinesTitle,
-            icon: Icons.format_list_bulleted_rounded,
-          ),
-          HexoraDocumentStep(
-            label: l.preview,
-            icon: Icons.picture_as_pdf_outlined,
-          ),
-        ],
-        currentStep: _step,
-        onStepTapped: _tryGoToStep,
-        itemKeyBuilder: (index, _) => ValueKey('receipt-editor-step-$index'),
-      ),
+        HexoraDocumentStep(
+          label: l.receiptLinesTitle,
+          icon: Icons.format_list_bulleted_rounded,
+        ),
+        HexoraDocumentStep(
+          label: l.preview,
+          icon: Icons.picture_as_pdf_outlined,
+        ),
+      ],
+      currentStep: _step,
+      onStepTapped: _tryGoToStep,
+      itemKeyBuilder: (index, _) => ValueKey('receipt-editor-step-$index'),
     );
   }
 
@@ -47,16 +70,16 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
     Widget? selectedDetails;
     if (client != null) {
       selectedDetails = Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: cs.primary.withValues(alpha: 0.04),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 children: [
@@ -66,7 +89,7 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: cs.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       client.name.trim().isEmpty
@@ -92,7 +115,7 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 5),
+                        const SizedBox(height: 3),
                         Wrap(
                           spacing: 5,
                           runSpacing: 5,
@@ -125,8 +148,9 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
                 ],
               ),
             ),
-            const SizedBox(height: 8),
-            Expanded(
+            const SizedBox(height: 6),
+            SizedBox(
+              height: 204,
               child: _ClientReceiptStatsBox(
                 issuedCount: _clientIssuedCount,
                 draftCount: _clientDraftCount,
@@ -180,6 +204,7 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
       emptySelectionLabel: isEs
           ? 'Selecciona un cliente para continuar'
           : 'Select a client to continue',
+      clientSearchController: _clientSearchCtrl,
     );
   }
 
@@ -742,20 +767,20 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
     final t = AppTypography.of(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: cs.tertiaryContainer.withValues(alpha: 0.42),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.tertiary.withValues(alpha: 0.24)),
+        color: cs.tertiaryContainer.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.tertiary.withValues(alpha: 0.18)),
       ),
       child: Row(
         children: [
-          Icon(Icons.edit_note_outlined, color: cs.tertiary, size: 22),
-          const SizedBox(width: 10),
+          Icon(Icons.edit_note_outlined, color: cs.tertiary, size: 18),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               isEs
-                  ? 'Hay un borrador de recibo sin numerar pendiente.'
+                  ? 'Tienes un borrador de recibo pendiente'
                   : 'There is a pending unnumbered receipt draft.',
               style: t.bodyMedium.copyWith(
                 color: cs.onTertiaryContainer,
@@ -787,10 +812,6 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
 
   Widget _buildContent(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final hasExistingDraft = (_existingUnnumberedReceiptId != null ||
-            _existingUnnumberedReceipt != null) &&
-        _draftReceipt?.id != _existingUnnumberedReceiptId &&
-        _draftReceipt?.id != _existingUnnumberedReceipt?.id;
     final statusText = _draftSaveFailed
         ? (l.localeName.startsWith('es')
             ? 'No se pudo guardar el borrador'
@@ -805,12 +826,8 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildStepIndicator(context),
-        if (hasExistingDraft) ...[
-          const SizedBox(height: 8),
-          _buildExistingDraftBanner(context),
-        ],
-        const SizedBox(height: 8),
+        if (widget.embedded != true) _buildStepIndicator(context),
+        const SizedBox(height: 6),
         Expanded(
           child: _step == 0
               ? _buildClientStep(context)

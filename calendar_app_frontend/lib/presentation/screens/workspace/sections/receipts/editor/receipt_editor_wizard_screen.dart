@@ -62,6 +62,7 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
   final _clientAddressCtrl = TextEditingController();
   final _clientCityCtrl = TextEditingController();
   final _clientPostalCodeCtrl = TextEditingController();
+  final _clientSearchCtrl = TextEditingController();
   final List<ReceiptLineDraft> _lines = [];
 
   String? _clientId;
@@ -245,6 +246,7 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
     _clientAddressCtrl.dispose();
     _clientCityCtrl.dispose();
     _clientPostalCodeCtrl.dispose();
+    _clientSearchCtrl.dispose();
     for (final line in _lines) {
       line.dispose();
     }
@@ -300,16 +302,15 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
   Widget build(BuildContext context) {
     final isEmbedded = widget.embedded == true;
     if (isEmbedded) {
-      final l = AppLocalizations.of(context)!;
       return Padding(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
         child: FolderPanel(
-          title: l.receiptEditorTitle(_receiptNumber(l)),
           onBack: _requestClose,
           showTab: true,
           contentTopPadding: 0,
+          tabContent: _buildWizardToolbarContent(context),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
             child: _buildContent(context),
           ),
         ),

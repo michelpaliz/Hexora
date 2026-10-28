@@ -40,6 +40,8 @@ class ClientSearchSelect extends StatefulWidget {
   final Map<String, ClientUnsentDocumentCounts> unsentDocumentCounts;
   final bool unsentDocumentCountsLoading;
   final String? unsentDocumentCountsError;
+  final double searchDesktopHeight;
+  final TextEditingController? searchController;
 
   const ClientSearchSelect({
     super.key,
@@ -54,6 +56,8 @@ class ClientSearchSelect extends StatefulWidget {
     this.unsentDocumentCounts = const {},
     this.unsentDocumentCountsLoading = false,
     this.unsentDocumentCountsError,
+    this.searchDesktopHeight = 36,
+    this.searchController,
   });
 
   @override
@@ -61,7 +65,8 @@ class ClientSearchSelect extends StatefulWidget {
 }
 
 class _ClientSearchSelectState extends State<ClientSearchSelect> {
-  final TextEditingController _searchCtrl = TextEditingController();
+  late final TextEditingController _searchCtrl;
+  late final bool _ownsSearchController;
   bool _showInactive = false;
   String? _entityFilter;
   String? _propertyFilter;
@@ -70,6 +75,8 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
   @override
   void initState() {
     super.initState();
+    _searchCtrl = widget.searchController ?? TextEditingController();
+    _ownsSearchController = widget.searchController == null;
     _syncDefaultPropertyFilter();
   }
 
@@ -119,7 +126,7 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
 
   @override
   void dispose() {
-    _searchCtrl.dispose();
+    if (_ownsSearchController) _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -517,6 +524,7 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                     : null,
                 extraActiveFilterCount: _onlyWithUnsentDocuments ? 1 : 0,
                 moveSummaryIntoFilters: widget.compact,
+                searchDesktopHeight: widget.searchDesktopHeight,
               ),
             ),
             SizedBox(height: widget.compact ? 2 : 6),

@@ -28,6 +28,7 @@ class SearchFiltersHeader extends StatefulWidget {
       this.persistentContent,
       this.onClearFilters,
       this.padding = const EdgeInsets.fromLTRB(12, 0, 12, 10),
+      this.searchDesktopHeight = 36,
       this.showClearAction = true,
       this.autoExpandWhenActive = false});
   final TextEditingController searchController;
@@ -43,6 +44,7 @@ class SearchFiltersHeader extends StatefulWidget {
   final EdgeInsetsGeometry padding;
   final bool showClearAction;
   final bool autoExpandWhenActive;
+  final double searchDesktopHeight;
   @override
   State<SearchFiltersHeader> createState() => _SearchFiltersHeaderState();
 }
@@ -59,7 +61,10 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final height = clientFilterControlHeight(context);
+    final height = clientFilterControlHeight(
+      context,
+      desktop: widget.searchDesktopHeight,
+    );
     final hasFilters = widget.hasFilterOptions && widget.filtersContent != null;
     return Padding(
         padding: widget.padding,

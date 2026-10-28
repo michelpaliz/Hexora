@@ -53,6 +53,7 @@ class DocumentClientStep extends StatelessWidget {
     this.selectClientLabel = 'Selecciona cliente',
     this.emptySelectionLabel = 'Selecciona un cliente para continuar',
     this.twoColumnBreakpoint = 980,
+    this.clientSearchController,
   });
 
   final List<GroupClient> clients;
@@ -69,69 +70,199 @@ class DocumentClientStep extends StatelessWidget {
   final String selectClientLabel;
   final String emptySelectionLabel;
   final double twoColumnBreakpoint;
+  final TextEditingController? clientSearchController;
 
   @override
   Widget build(BuildContext context) {
-    if (mode == DocumentClientMode.manual && allowManual && manual != null) {
-      return _ManualClientPanel(
-        mode: mode,
-        onModeChanged: onModeChanged,
-        config: manual!,
-        enabled: enabled,
-        existingLabel: existingLabel,
-        manualLabel: manualLabel,
-      );
-    }
-
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= twoColumnBreakpoint;
-        final listHeight =
-            constraints.maxHeight.isFinite ? constraints.maxHeight : 520.0;
-        final list = _ExistingClientPanel(
-          clients: clients,
-          selectedClientId: selectedClientId,
-          onClientChanged: onClientChanged,
-          mode: mode,
-          onModeChanged: onModeChanged,
-          enabled: enabled,
-          allowManual: allowManual && manual != null,
-          existingLabel: existingLabel,
-          manualLabel: manualLabel,
-          title: selectClientLabel,
-          maxListHeight: listHeight,
-        );
-        final details = _ClientDetailsPanel(
-          hasSelection: selectedClientId != null,
-          emptyLabel: emptySelectionLabel,
-          child: selectedDetails,
-        );
+        final canUseManual = allowManual && manual != null;
+        final reducedMotion =
+            MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+        final duration =
+            reducedMotion ? Duration.zero : const Duration(milliseconds: 220);
 
-        if (wide) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(flex: 3, child: list),
-              const SizedBox(width: 12),
-              Expanded(flex: 2, child: details),
-            ],
+        Widget existingContent() {
+          final wide = constraints.maxWidth >= twoColumnBreakpoint;
+          final listHeight =
+              constraints.maxHeight.isFinite ? constraints.maxHeight : 520.0;
+          final list = _ExistingClientPanel(
+            clients: clients,
+            selectedClientId: selectedClientId,
+            onClientChanged: onClientChanged,
+            enabled: enabled,
+            maxListHeight: listHeight,
+            searchController: clientSearchController,
+          );
+          final details = _ClientDetailsPanel(
+            hasSelection: selectedClientId != null,
+            emptyLabel: emptySelectionLabel,
+            child: selectedDetails,
+          );
+
+          if (wide) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: 3, child: list),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: VerticalDivider(
+                    width: 1,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .outlineVariant
+                        .withValues(alpha: .45),
+                  ),
+                ),
+                Expanded(flex: 2, child: details),
+              ],
+            );
+          }
+
+          if (selectedClientId == null) return list;
+          final availableHeight =
+              constraints.maxHeight.isFinite ? constraints.maxHeight : 700.0;
+          final listSlot = (availableHeight * .62).clamp(280.0, 460.0);
+          final detailsSlot = (availableHeight * .45).clamp(240.0, 360.0);
+          return SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(height: listSlot, child: list),
+                const SizedBox(height: 10),
+                SizedBox(height: detailsSlot, child: details),
+              ],
+            ),
           );
         }
 
-        if (selectedClientId == null) return list;
-        final availableHeight =
-            constraints.maxHeight.isFinite ? constraints.maxHeight : 700.0;
-        final listSlot = (availableHeight * .62).clamp(280.0, 460.0);
-        final detailsSlot = (availableHeight * .45).clamp(240.0, 360.0);
-        return SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(height: listSlot, child: list),
-              const SizedBox(height: 10),
-              SizedBox(height: detailsSlot, child: details),
-            ],
+        final manualMode = mode == DocumentClientMode.manual && canUseManual;
+        final modeContent = manualMode
+            ? _ManualClientPanel(config: manual!, enabled: enabled)
+            : existingContent();
+        final title = manualMode ? manualLabel : selectClientLabel;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _ClientModeHeader(
+              title: title,
+              count: manualMode ? null : clients.length,
+              selector: canUseManual
+                  ? _ModeSelector(
+                      mode: mode,
+                      onChanged: onModeChanged,
+                      enabled: enabled,
+                      existingLabel: existingLabel,
+                      manualLabel: manualLabel,
+                    )
+                  : null,
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: AnimatedSize(
+                duration: duration,
+                curve: Curves.easeInOutCubic,
+                alignment: Alignment.topCenter,
+                child: AnimatedSwitcher(
+                  duration: duration,
+                  switchInCurve: Curves.easeInOutCubic,
+                  switchOutCurve: Curves.easeInOutCubic,
+                  layoutBuilder: (currentChild, previousChildren) => ClipRect(
+                    child: Stack(
+                      alignment: Alignment.topCenter,
+                      children: [
+                        ...previousChildren,
+                        if (currentChild != null) currentChild
+                      ],
+                    ),
+                  ),
+                  transitionBuilder: (child, animation) {
+                    final slide = Tween<Offset>(
+                      begin: const Offset(.025, 0),
+                      end: Offset.zero,
+                    ).animate(animation);
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(position: slide, child: child),
+                    );
+                  },
+                  child: KeyedSubtree(
+                    key: ValueKey(
+                        manualMode ? 'manual-client' : 'existing-client'),
+                    child: modeContent,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ClientModeHeader extends StatelessWidget {
+  const _ClientModeHeader({
+    required this.title,
+    required this.count,
+    required this.selector,
+  });
+
+  final String title;
+  final int? count;
+  final Widget? selector;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+    final heading = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
+        ),
+        if (count != null) ...[
+          const SizedBox(width: 7),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              '$count',
+              style: textTheme.bodySmall?.copyWith(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+    if (selector == null) return heading;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 600) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [heading, const SizedBox(height: 7), selector!],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: heading),
+            const SizedBox(width: 10),
+            selector!
+          ],
         );
       },
     );
@@ -188,32 +319,21 @@ class _ExistingClientPanel extends StatelessWidget {
     required this.clients,
     required this.selectedClientId,
     required this.onClientChanged,
-    required this.mode,
-    required this.onModeChanged,
     required this.enabled,
-    required this.allowManual,
-    required this.existingLabel,
-    required this.manualLabel,
-    required this.title,
     required this.maxListHeight,
+    this.searchController,
   });
 
   final List<GroupClient> clients;
   final String? selectedClientId;
   final ValueChanged<String?> onClientChanged;
-  final DocumentClientMode mode;
-  final ValueChanged<DocumentClientMode> onModeChanged;
   final bool enabled;
-  final bool allowManual;
-  final String existingLabel;
-  final String manualLabel;
-  final String title;
   final double maxListHeight;
+  final TextEditingController? searchController;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
     return Container(
       decoration: BoxDecoration(
         color: cs.surface,
@@ -223,77 +343,6 @@ class _ExistingClientPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final heading = Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 7),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: cs.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        '${clients.length}',
-                        style: textTheme.bodySmall?.copyWith(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-                if (!allowManual) return heading;
-                if (constraints.maxWidth < 600) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      heading,
-                      const SizedBox(height: 7),
-                      _ModeSelector(
-                        mode: mode,
-                        onChanged: onModeChanged,
-                        enabled: enabled,
-                        existingLabel: existingLabel,
-                        manualLabel: manualLabel,
-                      ),
-                    ],
-                  );
-                }
-                return Row(
-                  children: [
-                    Expanded(child: heading),
-                    const SizedBox(width: 10),
-                    _ModeSelector(
-                      mode: mode,
-                      onChanged: onModeChanged,
-                      enabled: enabled,
-                      existingLabel: existingLabel,
-                      manualLabel: manualLabel,
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 8),
           Expanded(
             child: IgnorePointer(
               ignoring: !enabled,
@@ -305,6 +354,9 @@ class _ExistingClientPanel extends StatelessWidget {
                   onClientChanged: onClientChanged,
                   useDefaultPropertyKind: false,
                   showAdvancedFilters: false,
+                  compact: false,
+                  searchDesktopHeight: 42,
+                  searchController: searchController,
                   maxListHeight: maxListHeight,
                 ),
               ),
@@ -341,7 +393,7 @@ class _ClientDetailsPanel extends StatelessWidget {
         ),
       ),
       child: hasSelection && child != null
-          ? child
+          ? Align(alignment: Alignment.topCenter, child: child)
           : Center(
               child: Padding(
                 padding: const EdgeInsets.all(18),
@@ -371,20 +423,12 @@ class _ClientDetailsPanel extends StatelessWidget {
 
 class _ManualClientPanel extends StatelessWidget {
   const _ManualClientPanel({
-    required this.mode,
-    required this.onModeChanged,
     required this.config,
     required this.enabled,
-    required this.existingLabel,
-    required this.manualLabel,
   });
 
-  final DocumentClientMode mode;
-  final ValueChanged<DocumentClientMode> onModeChanged;
   final DocumentManualClientConfig config;
   final bool enabled;
-  final String existingLabel;
-  final String manualLabel;
 
   InputDecoration _decoration(
     BuildContext context,
@@ -451,9 +495,10 @@ class _ManualClientPanel extends StatelessWidget {
         ),
     ];
     return SingleChildScrollView(
-      child: Center(
+      child: Align(
+        alignment: Alignment.topLeft,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 860),
+          constraints: const BoxConstraints(maxWidth: 760),
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -466,35 +511,6 @@ class _ManualClientPanel extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                LayoutBuilder(builder: (context, constraints) {
-                  final selector = _ModeSelector(
-                    mode: mode,
-                    onChanged: onModeChanged,
-                    enabled: enabled,
-                    existingLabel: existingLabel,
-                    manualLabel: manualLabel,
-                  );
-                  final title = Text(
-                    manualLabel,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                  );
-                  if (constraints.maxWidth < 600) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [title, const SizedBox(height: 7), selector],
-                    );
-                  }
-                  return Row(
-                    children: [
-                      Expanded(child: title),
-                      const SizedBox(width: 10),
-                      selector,
-                    ],
-                  );
-                }),
-                const SizedBox(height: 12),
                 _field(
                   context,
                   config.nameController,

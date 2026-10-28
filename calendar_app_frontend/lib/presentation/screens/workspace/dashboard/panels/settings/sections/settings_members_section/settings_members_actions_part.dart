@@ -23,7 +23,9 @@ extension _SettingsMembersActionsPart on _SettingsMembersSectionState {
       );
 
       gd.userRoles.value = updatedRoles;
-      gd.currentGroup = widget.group.copyWith(userRoles: updatedRoles);
+      gd.publishCurrentGroupUpdate(
+        widget.group.copyWith(userRoles: updatedRoles),
+      );
       _updateUi(() {
         _confirmedRoleOverrides[user.id] = newRole.wire;
         _pendingRole = null;
@@ -113,9 +115,11 @@ extension _SettingsMembersActionsPart on _SettingsMembersSectionState {
       final updatedRoles = Map<String, String>.from(gd.userRoles.value)
         ..remove(user.id);
       gd.userRoles.value = updatedRoles;
-      gd.currentGroup = widget.group.copyWith(
-        userIds: updatedUserIds,
-        userRoles: updatedRoles,
+      gd.publishCurrentGroupUpdate(
+        widget.group.copyWith(
+          userIds: updatedUserIds,
+          userRoles: updatedRoles,
+        ),
       );
 
       widget.membersVM.refreshAll();

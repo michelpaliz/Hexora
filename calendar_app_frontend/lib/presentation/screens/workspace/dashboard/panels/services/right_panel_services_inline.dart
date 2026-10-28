@@ -679,17 +679,18 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 14),
-                          OutlinedButton.icon(
-                            style: ThemedButtons.button(
-                              context,
-                              variant: ButtonVariant.secondary,
+                          if (!showClientsEmptyState) ...[
+                            const SizedBox(height: 14),
+                            OutlinedButton.icon(
+                              style: ThemedButtons.button(
+                                context,
+                                variant: ButtonVariant.secondary,
+                              ),
+                              onPressed: _startAddService,
+                              icon: const Icon(Icons.add_rounded, size: 18),
+                              label: Text(l.addService),
                             ),
-                            onPressed:
-                                isClients ? _startAddClient : _startAddService,
-                            icon: const Icon(Icons.add_rounded, size: 18),
-                            label: Text(isClients ? l.addClient : l.addService),
-                          ),
+                          ],
                         ],
                       ),
                     ),
@@ -699,15 +700,33 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
                 content = Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
-                    child: Text(
-                      isClients
-                          ? l.selectClientFirst
-                          : l.createServicesSubtitle,
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      textAlign: TextAlign.center,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          isClients
+                              ? l.selectClientFirst
+                              : l.createServicesSubtitle,
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        if (isClients) ...[
+                          const SizedBox(height: 14),
+                          FilledButton.icon(
+                            onPressed: _startAddClient,
+                            icon: const Icon(Icons.person_add_alt_1_rounded,
+                                size: 18),
+                            label: Text(l.addClient),
+                            style: ThemedButtons.button(
+                              context,
+                              variant: ButtonVariant.primary,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 );
