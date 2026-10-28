@@ -528,6 +528,9 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
         });
         widget.onReceiptsSent?.call(refreshedReceipts);
       }
+      if (selectedPresupuestoIds.isNotEmpty) {
+        _pickerPresupuestosByClient.clear();
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l.mailComposeSentToast)),
       );
@@ -580,6 +583,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
         filename: fileName,
         contentType: 'application/pdf',
         size: bytes.length,
+        presupuestoId: id,
       );
       _wordPresupuestoAttachments[id] = attachment;
       attachments.add(attachment);
@@ -738,6 +742,17 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     if (filename.isNotEmpty) return filename;
     final storageKey = (attachment.storageKey ?? '').trim();
     return storageKey.isNotEmpty ? storageKey : 'PDF';
+  }
+
+  String _manualPdfAttachmentNamesSummary({int maxNames = 2}) {
+    final names = _manualPdfAttachments
+        .map(_manualPdfAttachmentName)
+        .where((name) => name.trim().isNotEmpty)
+        .toList(growable: false);
+    if (names.isEmpty) return '';
+    final visible = names.take(maxNames).join(', ');
+    final hidden = names.length - maxNames;
+    return hidden > 0 ? '$visible +$hidden' : visible;
   }
 
   bool get _isSpanishLocale => Localizations.localeOf(context)

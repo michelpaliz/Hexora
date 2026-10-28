@@ -4,6 +4,7 @@ class MailOutgoingAttachment {
   final String? filename;
   final String? contentType;
   final int? size;
+  final String? presupuestoId;
 
   const MailOutgoingAttachment({
     this.id,
@@ -11,6 +12,7 @@ class MailOutgoingAttachment {
     this.filename,
     this.contentType,
     this.size,
+    this.presupuestoId,
   });
 
   Map<String, dynamic> toJson() {
@@ -20,6 +22,7 @@ class MailOutgoingAttachment {
       if (filename != null) 'filename': filename,
       if (contentType != null) 'contentType': contentType,
       if (size != null) 'size': size,
+      if (presupuestoId != null) 'presupuestoId': presupuestoId,
     };
   }
 }

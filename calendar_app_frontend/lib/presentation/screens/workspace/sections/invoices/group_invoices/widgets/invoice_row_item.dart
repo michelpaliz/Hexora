@@ -166,23 +166,26 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
 
   Widget _paymentBadge(BuildContext context) {
     final invoice = widget.invoice;
-    final status = (invoice.paymentStatus ?? 'unpaid').toLowerCase();
+    final status = (invoice.paymentStatus ?? 'unpaid').trim().toLowerCase();
     final isEs = Localizations.localeOf(context).languageCode == 'es';
     final paid = status == 'paid';
     final partial = status == 'partial';
+    final hasPayment = paid || partial;
     final label = paid
         ? (isEs ? 'Pagada' : 'Paid')
         : partial
-            ? (isEs ? 'Parcial' : 'Partial')
+            ? (isEs ? 'Pago parcial' : 'Partial payment')
             : (isEs ? 'Pendiente' : 'Unpaid');
     final color = paid
         ? const Color(0xFF27724B)
-        : Theme.of(context).colorScheme.onSurfaceVariant;
-    final date = invoice.paidAt == null
+        : partial
+            ? const Color(0xFF1D5FBF)
+            : const Color(0xFF57667A);
+    final date = !hasPayment || invoice.paidAt == null
         ? null
         : DateFormat.yMMMd(Localizations.localeOf(context).toString())
             .format(invoice.paidAt!.toLocal());
-    final amount = invoice.paidAmount == null
+    final amount = !hasPayment || invoice.paidAmount == null
         ? null
         : NumberFormat.currency(
             locale: Localizations.localeOf(context).toString(),
@@ -190,16 +193,16 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                 ? '€'
                 : (invoice.currency ?? '€'),
           ).format(invoice.paidAmount);
-    final source = invoice.paymentSource == 'bank_link'
+    final source = hasPayment && invoice.paymentSource == 'bank_link'
         ? (isEs ? 'Transferencia bancaria' : 'Bank transfer')
         : null;
     final details = [
       label,
-      if (amount != null && status != 'unpaid') amount,
+      if (amount != null) amount,
       if (date != null) date,
       if (source != null) source
     ].join(' · ');
-    final visibleLabel = date == null || status == 'unpaid'
+    final visibleLabel = date == null
         ? label
         : '$label · ${DateFormat('d MMM', Localizations.localeOf(context).toString()).format(invoice.paidAt!.toLocal())}';
     return Tooltip(
@@ -208,7 +211,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.09),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(999),
         ),
         child: Text(visibleLabel,
             style: TextStyle(
