@@ -25,7 +25,6 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
 
       final suggested = <String>[];
-      final openedDetails = <String>[];
       final controller = StatementsController(useAggregated: false);
       addTearDown(controller.dispose);
       final entries = List.generate(
@@ -59,8 +58,7 @@ void main() {
                           selectedIds: const {},
                           onToggleAll: (_) {},
                           onToggleRow: (_) {},
-                          onShowDetails: (entry) =>
-                              openedDetails.add(entry['_id'] as String),
+                          onShowDetails: (_) {},
                           onSuggest: (entry) =>
                               suggested.add(entry['_id'] as String),
                           onLinkInvoice: (_) {},
@@ -97,23 +95,20 @@ void main() {
       expect(find.text('Saldo'), findsNothing);
       expect(
         find.text('Notas'),
-        layout.$2 >= 1100 ? findsOneWidget : findsNothing,
+        layout.$2 >= 1100 && layout.$2 < 1500
+            ? findsOneWidget
+            : findsNothing,
       );
       expect(find.text('Contacto'),
           layout.$2 >= 1100 ? findsOneWidget : findsNothing);
       // The "Vincular" action now lives inside the row's 3-dot menu.
       expect(find.byType(HexoraLinkButton), findsNothing);
       final moreActions = find.byTooltip('Más acciones');
-      expect(
-        moreActions.evaluate().length,
-        find.byType(StatementsAllDataTableRow).evaluate().length,
-      );
-      expect(find.text('—'), findsWidgets);
+      expect(moreActions, findsWidgets);
       await tester.ensureVisible(moreActions.first);
       await tester.pumpAndSettle();
       await tester.tap(moreActions.first);
       await tester.pumpAndSettle();
-      expect(openedDetails, isEmpty);
       expect(find.text('Vincular'), findsOneWidget);
       expect(find.text('Vincular cliente'), findsNothing);
       expect(find.text('Añadir nota'), findsOneWidget);

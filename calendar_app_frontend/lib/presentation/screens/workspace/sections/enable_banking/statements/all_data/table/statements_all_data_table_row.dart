@@ -1,5 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/services/expenses/expenses_api.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
@@ -57,6 +58,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
     String amount, {
     required bool emphasize,
     required Color amountColor,
+    bool asPill = false,
     TextStyle? textStyle,
   }) {
     final typography = AppTypography.of(context);
@@ -73,7 +75,33 @@ class StatementsAllDataTableRow extends StatelessWidget {
         fontFeatures: const [FontFeature.tabularFigures()],
       ),
     );
-    return text;
+    if (!asPill) return text;
+    return Container(
+      height: 28,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 9),
+      decoration: BoxDecoration(
+        color: amountColor.withValues(alpha: 0.11),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: text,
+    );
+  }
+
+  Widget _actionButton({
+    required String tooltip,
+    required IconData icon,
+    required VoidCallback? onPressed,
+    Color? activeColor,
+  }) {
+    return Builder(
+        builder: (context) => IconButton(
+              tooltip: tooltip,
+              onPressed: onPressed,
+              icon: Icon(icon, size: 17),
+              padding: EdgeInsets.zero,
+              style: ThemedButtons.iconAction(context, color: activeColor),
+            ));
   }
 
   String _displayDescription(String value) {
@@ -93,7 +121,9 @@ class StatementsAllDataTableRow extends StatelessWidget {
     final balanceMaxWidth =
         isWide ? 200.0 : StatementsAllDataTableLayout.balanceMaxWidth;
     final isDesktop = !isCompact && !isTablet;
-    final showNotes = !isCompact;
+    // Show notes in the expanded tablet layout only. The fully expanded
+    // desktop layout already exposes the wider primary columns.
+    final showNotes = !isCompact && isTablet;
     final actionsWidth = isDesktop
         ? StatementsAllDataTableLayout.actionsWidth
         : StatementsAllDataTableLayout.compactActionsWidth;
@@ -206,6 +236,12 @@ class StatementsAllDataTableRow extends StatelessWidget {
     final previewActionLabel = isNegative
         ? (isEs ? 'Ver gasto vinculado' : 'View linked expense')
         : (isEs ? 'Ver factura vinculada' : 'View linked invoice');
+    final notesPreview =
+        notes.length > 90 ? '${notes.substring(0, 90)}...' : notes;
+    final notesActionLabel = hasNotes
+        ? 'Editar nota${notesPreview.isNotEmpty ? '\n$notesPreview' : ''}'
+        : 'Añadir nota';
+
     Future<void> previewLinkedInvoice() async {
       if (hasExpenseDocument) {
         final expenseId = primaryExpenseDocumentId.trim();
@@ -335,9 +371,11 @@ class StatementsAllDataTableRow extends StatelessWidget {
         isNegative ? tableTheme.amountNegative : tableTheme.amountPositive;
 
     return _StatementRowSurface(
-      borderColor: isActive || isSelected
-          ? rowAccent.withValues(alpha: 0.45)
-          : Colors.transparent,
+      borderColor: isActive
+          ? cs.primary
+          : isSelected
+              ? rowAccent.withValues(alpha: 0.65)
+              : tableTheme.border.withValues(alpha: 0.82),
       child: Material(
         color: rowColor,
         borderRadius: BorderRadius.zero,
@@ -357,19 +395,20 @@ class StatementsAllDataTableRow extends StatelessWidget {
               ),
               child: Stack(
                 children: [
-                  if (isSelected || isActive)
-                    Positioned(
-                      left: -6,
-                      top: 8,
-                      bottom: 8,
-                      child: Container(
-                        width: 3,
-                        decoration: BoxDecoration(
-                          color: rowAccent.withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(6),
+                  Positioned(
+                    left: -6,
+                    top: 8,
+                    bottom: 8,
+                    child: Container(
+                      width: 4,
+                      decoration: BoxDecoration(
+                        color: rowAccent.withValues(
+                          alpha: isSelected ? 0.9 : 0.48,
                         ),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                     ),
+                  ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -383,9 +422,6 @@ class StatementsAllDataTableRow extends StatelessWidget {
                             width: StatementsAllDataTableLayout.checkWidth,
                             child: Checkbox(
                               value: isSelected,
-                              visualDensity: VisualDensity.compact,
-                              materialTapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
                               onChanged: entryId.isEmpty
                                   ? null
                                   : (_) => onToggleRow(entryId),
@@ -525,6 +561,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                 amount,
                                 emphasize: true,
                                 amountColor: amountColor,
+                                asPill: true,
                               ),
                             ),
                           ),
@@ -560,14 +597,50 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                 return Tooltip(
                                   message: displayName,
                                   child: isUnlinked
-                                      ? Text(
-                                          displayName,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: typography.bodySmall.copyWith(
-                                            fontSize: 12.5,
-                                            color: tableTheme.textSecondary,
-                                            fontWeight: FontWeight.w500,
+                                      ? Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: tableTheme.chipBg,
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                              border: Border.all(
+                                                color: tableTheme.border,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.circle,
+                                                  size: 6,
+                                                  color: tableTheme
+                                                      .textSecondary
+                                                      .withValues(alpha: 0.7),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Flexible(
+                                                  child: Text(
+                                                    displayName,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: typography.bodySmall
+                                                        .copyWith(
+                                                      fontSize: 12.5,
+                                                      color: tableTheme
+                                                          .textSecondary,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         )
                                       : Text(
@@ -740,36 +813,53 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                     displayText = l.statementsUnlinked;
                                     textColor = tableTheme.textSecondary;
                                   }
+                                  final pillColor = hasNoProcede
+                                      ? cs.tertiary
+                                      : hasLinkedDocument
+                                          ? tableTheme.amountPositive
+                                          : tableTheme.textSecondary;
                                   return Tooltip(
                                     message: hasNoProcede
                                         ? noProcedeReason!
                                         : (hasRepetitiveInvoiceLink
-                                            ? l
-                                                .statementsRepetitiveInvoiceTooltip(
+                                            ? l.statementsRepetitiveInvoiceTooltip(
                                                 (invoiceLinkedRowsCount > 0
                                                         ? invoiceLinkedRowsCount
                                                         : 2)
                                                     .toString(),
                                               )
-                                            : docNumber.isEmpty
-                                                ? (isEs
-                                                    ? 'Sin factura vinculada'
-                                                    : 'No linked invoice')
-                                                : docNumber),
+                                            : docNumber),
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text(
-                                          hasLinkedDocument || hasNoProcede
-                                              ? displayText
-                                              : '—',
-                                          overflow: TextOverflow.ellipsis,
-                                          textAlign: TextAlign.center,
-                                          style: typography.bodySmall.copyWith(
-                                            color: textColor,
-                                            fontWeight: docNumber.isNotEmpty
-                                                ? FontWeight.w600
-                                                : FontWeight.w500,
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: pillColor.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            borderRadius:
+                                                BorderRadius.circular(999),
+                                            border: Border.all(
+                                              color: pillColor.withValues(
+                                                alpha: 0.28,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            displayText,
+                                            overflow: TextOverflow.ellipsis,
+                                            textAlign: TextAlign.center,
+                                            style:
+                                                typography.bodySmall.copyWith(
+                                              color: textColor,
+                                              fontWeight: docNumber.isNotEmpty
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w500,
+                                            ),
                                           ),
                                         ),
                                         if (hasInvoice &&
@@ -817,36 +907,88 @@ class StatementsAllDataTableRow extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.max,
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
-                                    PopupMenuButton<String>(
-                                      tooltip: isEs
-                                          ? 'Más acciones'
-                                          : 'More actions',
-                                      padding: EdgeInsets.zero,
-                                      position: PopupMenuPosition.under,
-                                      menuPadding: const EdgeInsets.symmetric(
-                                        vertical: 4,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      surfaceTintColor: Colors.transparent,
-                                      style: IconButton.styleFrom(
-                                        minimumSize: const Size(30, 30),
-                                        backgroundColor: Colors.transparent,
-                                        tapTargetSize:
-                                            MaterialTapTargetSize.shrinkWrap,
+                                    if (!isDesktop) ...[
+                                      PopupMenuButton<String>(
+                                        tooltip: isEs
+                                            ? 'Más acciones'
+                                            : 'More actions',
+                                        padding: EdgeInsets.zero,
+                                        position: PopupMenuPosition.under,
+                                        menuPadding: const EdgeInsets.symmetric(
+                                          vertical: 4,
+                                        ),
                                         shape: RoundedRectangleBorder(
                                           borderRadius:
-                                              BorderRadius.circular(8),
+                                              BorderRadius.circular(10),
                                         ),
+                                        surfaceTintColor: Colors.transparent,
+                                        style: IconButton.styleFrom(
+                                          backgroundColor: tableTheme.chipBg,
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(9),
+                                          ),
+                                        ),
+                                        icon: const Icon(
+                                          Icons.more_horiz_rounded,
+                                          size: 17,
+                                        ),
+                                        itemBuilder: (_) => rowMenuItems(),
+                                        onSelected: handleRowMenuSelection,
                                       ),
-                                      icon: const Icon(
-                                        Icons.more_horiz_rounded,
-                                        size: 17,
+                                    ],
+                                    if (isDesktop) ...[
+                                      _actionButton(
+                                        tooltip: previewActionLabel,
+                                        onPressed: hasLinkedDocument
+                                            ? previewLinkedInvoice
+                                            : null,
+                                        icon: Icons.visibility_outlined,
                                       ),
-                                      itemBuilder: (_) => rowMenuItems(),
-                                      onSelected: handleRowMenuSelection,
-                                    ),
+                                      const SizedBox(width: 4),
+                                      _actionButton(
+                                        tooltip: notesActionLabel,
+                                        onPressed: (entryId.isEmpty ||
+                                                savingNotes)
+                                            ? null
+                                            : () =>
+                                                StatementEntryNotesDialog.show(
+                                                  context,
+                                                  controller,
+                                                  entry,
+                                                ),
+                                        icon: savingNotes
+                                            ? Icons.hourglass_top_rounded
+                                            : hasNotes
+                                                ? Icons.sticky_note_2
+                                                : Icons.sticky_note_2_outlined,
+                                        activeColor:
+                                            hasNotes ? cs.primary : null,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      PopupMenuButton<String>(
+                                        tooltip: isEs
+                                            ? 'Más acciones'
+                                            : 'More actions',
+                                        padding: EdgeInsets.zero,
+                                        style: IconButton.styleFrom(
+                                          minimumSize: const Size(28, 28),
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          backgroundColor: tableTheme.chipBg,
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8)),
+                                        ),
+                                        icon: const Icon(
+                                            Icons.more_horiz_rounded,
+                                            size: 17),
+                                        itemBuilder: (_) => rowMenuItems(),
+                                        onSelected: handleRowMenuSelection,
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),

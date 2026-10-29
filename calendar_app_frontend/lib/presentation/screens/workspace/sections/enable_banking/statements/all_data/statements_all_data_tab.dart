@@ -1753,6 +1753,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         FolderSectionCard(
           label: l.statementsAllDataTitle,
           showTitle: false,
+          showBorder: false,
           leftTabOffset: 0,
           rightTabOffset: 0,
           child: Padding(
@@ -1760,8 +1761,14 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: tableTheme.border),
+                  ),
                   child: LayoutBuilder(builder: (context, constraints) {
                     final es = l.localeName.startsWith('es');
                     final dateLabel = [
@@ -1840,7 +1847,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                       ],
                       child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 7),
+                              horizontal: 10, vertical: 9),
                           decoration: BoxDecoration(
                               border: Border.all(color: tableTheme.border),
                               borderRadius: BorderRadius.circular(10)),
@@ -2008,7 +2015,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                           );
                         },
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 14),
                       Row(
                         children: [
                           Expanded(

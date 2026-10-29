@@ -12,6 +12,7 @@ class FolderSectionCard extends StatelessWidget {
     this.leftTabOffset = 10,
     this.rightTabOffset = 10,
     this.backgroundColor,
+    this.showBorder = true,
   });
 
   final String label;
@@ -22,6 +23,7 @@ class FolderSectionCard extends StatelessWidget {
   final double leftTabOffset;
   final double rightTabOffset;
   final Color? backgroundColor;
+  final bool showBorder;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +40,7 @@ class FolderSectionCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: bg,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: border),
+            border: showBorder ? Border.all(color: border) : null,
           ),
           child: child,
         ),
