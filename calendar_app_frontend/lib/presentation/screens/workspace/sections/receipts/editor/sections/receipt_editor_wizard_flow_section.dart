@@ -4,10 +4,7 @@ part of '../receipt_editor_wizard_screen.dart';
 
 extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
   bool get _shouldRefreshReceiptList =>
-      _didPersist ||
-      (_draftReceipt?.id.trim().isNotEmpty ?? false) ||
-      (_existingUnnumberedReceiptId?.trim().isNotEmpty ?? false) ||
-      _existingUnnumberedReceipt != null;
+      _didPersist || (_draftReceipt?.id.trim().isNotEmpty ?? false);
 
   void _releasePreviewSurface() {
     _previewPdfBytes = null;
@@ -137,88 +134,6 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
     return true;
   }
 
-  Future<void> _openExistingUnnumberedDraft({
-    String? receiptId,
-    Receipt? receipt,
-  }) async {
-    Receipt? existing = receipt;
-    final id = receiptId ?? receipt?.id;
-    if (existing == null && id != null && id.trim().isNotEmpty) {
-      try {
-        existing = await _receiptsApi.getById(id.trim());
-      } catch (e) {
-        if (!mounted) return;
-        showErrorSnack(
-          context,
-          e.toString().replaceFirst('Exception: ', '').trim(),
-        );
-        return;
-      }
-    }
-    if (existing == null || !mounted) return;
-    setState(() {
-      _applyReceiptDraft(existing!);
-      _step = 1;
-      _releasePreviewSurface();
-    });
-    if (_clientId != null) {
-      await _loadClientReceiptStats(_clientId);
-    }
-  }
-
-  void _showDraftsList() {
-    _close(changed: _shouldRefreshReceiptList);
-  }
-
-  Future<void> _showExistingUnnumberedDraftDialog(
-    ReceiptsApiException error,
-  ) async {
-    final isEs =
-        Localizations.localeOf(context).languageCode.toLowerCase().startsWith(
-              'es',
-            );
-    final receipt = error.receipt;
-    final receiptId = error.existingReceiptId ?? receipt?.id;
-    final action = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(isEs ? 'Borrador existente' : 'Existing draft'),
-        content: Text(
-          isEs
-              ? 'Ya existe un recibo borrador sin numerar para este grupo.'
-              : 'An unnumbered receipt draft already exists for this group.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop('cancel'),
-            child: Text(isEs ? 'Cancelar' : 'Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop('list'),
-            child: Text(isEs ? 'Ver lista de borradores' : 'View drafts list'),
-          ),
-          FilledButton(
-            onPressed: (receiptId ?? '').trim().isEmpty && receipt == null
-                ? null
-                : () => Navigator.of(dialogContext).pop('open'),
-            child: Text(
-              isEs ? 'Abrir borrador existente' : 'Open existing draft',
-            ),
-          ),
-        ],
-      ),
-    );
-    if (!mounted) return;
-    if (action == 'open') {
-      await _openExistingUnnumberedDraft(
-        receiptId: receiptId,
-        receipt: receipt,
-      );
-    } else if (action == 'list') {
-      _showDraftsList();
-    }
-  }
-
   Future<Receipt?> _saveDraft({
     bool showSavedSnack = true,
     String? successSnackMessage,
@@ -274,17 +189,6 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
       return saved;
     } catch (e) {
       if (!mounted) return null;
-      if (e is ReceiptsApiException &&
-          e.statusCode == 409 &&
-          e.code == 'RECEIPT_UNNUMBERED_DRAFT_EXISTS') {
-        setState(() {
-          _existingUnnumberedReceiptId = e.existingReceiptId ?? e.receipt?.id;
-          _existingUnnumberedReceipt = e.receipt;
-          _draftSaveFailed = true;
-        });
-        await _showExistingUnnumberedDraftDialog(e);
-        return null;
-      }
       var msg = e.toString().replaceFirst('Exception: ', '').trim();
       if (msg.toLowerCase().contains('e11000 duplicate key error')) {
         msg = l.somethingWentWrong;

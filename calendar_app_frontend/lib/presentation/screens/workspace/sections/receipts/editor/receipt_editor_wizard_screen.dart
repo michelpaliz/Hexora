@@ -18,6 +18,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/j
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/prompt_clipboard_helper.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/widgets/lines_json_import_panel.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_editor_components.dart';
@@ -90,10 +91,6 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
   List<Map<String, dynamic>> _extractedDraftLines = const [];
   String? _extractMethodUsed;
   List<String> _extractDiagnostics = const [];
-  bool _checkingUnnumberedDraft = false;
-  String? _existingUnnumberedReceiptId;
-  Receipt? _existingUnnumberedReceipt;
-
   // ── Client receipt stats (right panel) ──────────────────────────────────
   int _clientIssuedCount = 0;
   int _clientDraftCount = 0;
@@ -192,29 +189,7 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
         _lines.add(ReceiptLineDraft.fromLine(line));
       }
     }
-    _existingUnnumberedReceiptId = null;
-    _existingUnnumberedReceipt = null;
     _markDraftSynced();
-  }
-
-  Future<void> _checkExistingUnnumberedDraft() async {
-    if (widget.initialReceipt != null || widget.group.id.trim().isEmpty) return;
-    setState(() => _checkingUnnumberedDraft = true);
-    try {
-      final result = await _receiptsApi.lookupUnnumberedDraft(
-        groupId: widget.group.id,
-      );
-      if (!mounted) return;
-      setState(() {
-        _existingUnnumberedReceiptId =
-            result.exists ? result.existingReceiptId : null;
-        _existingUnnumberedReceipt = result.exists ? result.receipt : null;
-      });
-    } catch (_) {
-      // Non-blocking helper only; creation still handles the conflict safely.
-    } finally {
-      if (mounted) setState(() => _checkingUnnumberedDraft = false);
-    }
   }
 
   @override
@@ -234,9 +209,6 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
       WidgetsBinding.instance
           .addPostFrameCallback((_) => _loadClientReceiptStats(_clientId));
     }
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _checkExistingUnnumberedDraft(),
-    );
   }
 
   @override
