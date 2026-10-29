@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_list_row.dart';
-import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_popup_menu.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
 
@@ -178,10 +178,11 @@ _DocumentColumnLayout _documentColumnLayout(
 
 class CompactDocumentAction {
   const CompactDocumentAction(this.label, this.onPressed,
-      {this.destructive = false, this.icon});
+      {this.destructive = false, this.primary = false, this.icon});
   final String label;
   final VoidCallback? onPressed;
   final bool destructive;
+  final bool primary;
   final IconData? icon;
 }
 
@@ -626,49 +627,35 @@ class CompactDocumentRow extends StatelessWidget {
                         child: Center(
                           child: SizedBox.square(
                             dimension: 32,
-                            child: PopupMenuButton<int>(
+                            child: HexoraPopupMenuButton<int>(
                                 tooltip: MaterialLocalizations.of(context)
                                     .moreButtonTooltip,
                                 icon: const Icon(Icons.more_vert, size: 16),
-                                padding: EdgeInsets.zero,
                                 onSelected: (index) =>
                                     actions[index].onPressed?.call(),
-                                itemBuilder: (_) => [
-                                      for (var i = 0; i < actions.length; i++)
-                                        NavigationPopupMenuItem(
-                                            value: i,
-                                            enabled:
-                                                actions[i].onPressed != null,
-                                            child: Row(
-                                              children: [
-                                                if (actions[i].icon !=
-                                                    null) ...[
-                                                  Icon(
-                                                    actions[i].icon,
-                                                    size: 16,
-                                                    color:
-                                                        actions[i].destructive
-                                                            ? cs.error
-                                                            : null,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                ],
-                                                Expanded(
-                                                  child: Text(
-                                                    actions[i].label,
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    style:
-                                                        actions[i].destructive
-                                                            ? TextStyle(
-                                                                color: cs.error)
-                                                            : null,
-                                                  ),
-                                                ),
-                                              ],
-                                            ))
-                                    ]),
+                                itemBuilder: (_) {
+                                  final entries = <PopupMenuEntry<int>>[];
+                                  for (var i = 0; i < actions.length; i++) {
+                                    final action = actions[i];
+                                    if (action.destructive &&
+                                        entries.isNotEmpty) {
+                                      entries
+                                          .add(const HexoraPopupMenuDivider());
+                                    }
+                                    entries.add(HexoraPopupMenuActionItem<int>(
+                                      value: i,
+                                      enabled: action.onPressed != null,
+                                      icon: action.icon ?? Icons.more_horiz,
+                                      label: action.label,
+                                      tone: action.destructive
+                                          ? HexoraPopupMenuTone.destructive
+                                          : action.primary
+                                              ? HexoraPopupMenuTone.primary
+                                              : HexoraPopupMenuTone.neutral,
+                                    ));
+                                  }
+                                  return entries;
+                                }),
                           ),
                         ))
                   else

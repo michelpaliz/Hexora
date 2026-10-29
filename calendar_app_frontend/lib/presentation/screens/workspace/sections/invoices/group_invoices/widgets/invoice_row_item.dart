@@ -1,6 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
 import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
-import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_popup_menu.dart';
 import 'package:hexora/presentation/shared/widgets/documents/mobile_document_card.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:flutter/material.dart';
@@ -238,36 +238,42 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
           isDraft: inv.isDraft,
           statusLabel: inv.isDraft ? l.statusDraft : l.statusIssued,
           onTap: widget.onTap,
-          trailing: PopupMenuButton<String>(
+          trailing: HexoraPopupMenuButton<String>(
             tooltip: isEs ? 'Más acciones' : 'More actions',
             onSelected: (value) {
               if (value == 'edit') widget.onEdit?.call();
               if (value == 'download') _downloadPdf();
+              if (value == 'issue') widget.onIssue?.call();
               if (value == 'delete') widget.onDelete?.call();
             },
             itemBuilder: (_) => [
               if (widget.onEdit != null)
-                NavigationPopupMenuItem(
+                HexoraPopupMenuActionItem<String>(
                   value: 'edit',
-                  child: Row(children: [
-                    const Icon(Icons.edit_outlined, size: 16),
-                    const SizedBox(width: 8),
-                    Text(l.edit),
-                  ]),
+                  icon: Icons.edit_outlined,
+                  label: l.edit,
                 ),
-              NavigationPopupMenuItem(
+              HexoraPopupMenuActionItem<String>(
                 value: 'download',
                 enabled: !_downloadingPdf,
-                child: Row(children: [
-                  const Icon(Icons.download_rounded, size: 16),
-                  const SizedBox(width: 8),
-                  Text(isEs ? 'Descargar PDF' : 'Download PDF'),
-                ]),
+                icon: Icons.download_rounded,
+                label: isEs ? 'Descargar PDF' : 'Download PDF',
               ),
+              if (widget.onIssue != null)
+                HexoraPopupMenuActionItem<String>(
+                  value: 'issue',
+                  icon: Icons.fact_check_outlined,
+                  label: l.invoiceIssueCta,
+                  tone: HexoraPopupMenuTone.primary,
+                ),
+              if (widget.onDelete != null) const HexoraPopupMenuDivider(),
               if (widget.onDelete != null)
-                NavigationPopupMenuItem(
-                    value: 'delete',
-                    child: Text(l.remove, style: TextStyle(color: cs.error))),
+                HexoraPopupMenuActionItem<String>(
+                  value: 'delete',
+                  icon: Icons.delete_outline_rounded,
+                  label: l.remove,
+                  tone: HexoraPopupMenuTone.destructive,
+                ),
             ],
           ),
         ),
@@ -519,7 +525,12 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
           icon: Icons.download_rounded,
         ),
         if (widget.onIssue != null)
-          CompactDocumentAction(l.invoiceIssueCta, widget.onIssue),
+          CompactDocumentAction(
+            l.invoiceIssueCta,
+            widget.onIssue,
+            primary: true,
+            icon: Icons.fact_check_outlined,
+          ),
         if (widget.onInspectRecurrence != null)
           CompactDocumentAction(isEs ? 'Ver recurrencia' : 'Recurrence',
               widget.onInspectRecurrence),
