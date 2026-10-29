@@ -114,6 +114,43 @@ void main() {
     expect(find.text('DETAIL-client-1'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('finds clients by PDF alias and shows canonical metadata',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final aliasClients = <GroupClient>[
+      GroupClient(
+        id: 'client-alias',
+        name: 'Comunidad Legal Norte',
+        pdfAlias: 'Residencial Norte',
+        customerType: 'community',
+        propertyType: 'building',
+      ),
+      GroupClient(id: 'client-other', name: 'Cliente diferente'),
+    ];
+
+    await tester.pumpWidget(app(DocumentClientStep(
+      clients: aliasClients,
+      selectedClientId: null,
+      onClientChanged: (_) {},
+      mode: DocumentClientMode.existing,
+      onModeChanged: (_) {},
+      selectedDetails: null,
+      allowManual: false,
+    )));
+
+    expect(find.textContaining('Residencial Norte'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'residencial norte');
+    await tester.pump();
+
+    expect(find.text('Comunidad Legal Norte'), findsOneWidget);
+    expect(find.text('Cliente diferente'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _ClientStepHarness extends StatefulWidget {

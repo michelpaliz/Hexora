@@ -73,6 +73,33 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
   String? _contractsCountClientId;
   String? _receiptsCountRequestKey;
 
+  String _classificationLabel(String value) =>
+      {
+        'particular': 'Particular',
+        'community': 'Comunidad de propietarios',
+        'company': 'Empresa',
+        'chalet': 'Chalet',
+        'apartment': 'Apartamento',
+        'building': 'Edificio / Urbanización',
+        'hotel': 'Hotel',
+        'commercial_premises': 'Local comercial',
+        'owner': 'Propietario',
+        'administrator': 'Administrador',
+        'tenant': 'Inquilino',
+        'other': 'Otro',
+      }[value.toLowerCase()] ??
+      value;
+
+  String _clientMetadata(GroupClient client) => <String>[
+        if ((client.pdfAlias ?? '').trim().isNotEmpty) client.pdfAlias!.trim(),
+        if ((client.effectiveCustomerType ?? '').trim().isNotEmpty)
+          _classificationLabel(client.effectiveCustomerType!.trim()),
+        if ((client.effectivePropertyType ?? '').trim().isNotEmpty)
+          _classificationLabel(client.effectivePropertyType!.trim()),
+        if ((client.effectivePropertyRelationship ?? '').trim().isNotEmpty)
+          _classificationLabel(client.effectivePropertyRelationship!.trim()),
+      ].join(' · ');
+
   @override
   void initState() {
     super.initState();
@@ -135,6 +162,9 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final selectedClientMetadata = widget.selectedClient == null
+        ? ''
+        : _clientMetadata(widget.selectedClient!);
 
     return Card(
       margin: EdgeInsets.zero,
@@ -203,12 +233,34 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                          child: Text(widget.selectedClient!.name,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.selectedClient!.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: t.bodyLarge.copyWith(
                                 fontWeight: FontWeight.w700,
-                              ))),
+                              ),
+                            ),
+                            if (selectedClientMetadata.isNotEmpty)
+                              Tooltip(
+                                message: selectedClientMetadata,
+                                child: Text(
+                                  selectedClientMetadata,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: t.bodySmall.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                       IconButton(
                           onPressed: widget.onEditSelectedClient,
                           tooltip: l.editClient,

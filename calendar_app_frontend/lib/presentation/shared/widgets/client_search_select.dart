@@ -139,11 +139,38 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
       c.billing?.email ?? '',
       c.phone ?? '',
       c.billing?.legalName ?? '',
+      c.pdfAlias ?? '',
+      c.effectiveCustomerType ?? '',
+      c.effectivePropertyType ?? '',
+      c.effectivePropertyRelationship ?? '',
       c.entityType ?? '',
       c.propertyKind ?? '',
     ].join(' ').toLowerCase();
     return haystack.contains(q);
   }
+
+  String _customerTypeValue(GroupClient client) =>
+      (client.effectiveCustomerType ?? client.entityType ?? '').trim();
+
+  String _propertyTypeValue(GroupClient client) =>
+      (client.effectivePropertyType ?? client.propertyKind ?? '').trim();
+
+  String _classificationLabel(String value) =>
+      {
+        'particular': 'Particular',
+        'community': 'Comunidad de propietarios',
+        'company': 'Empresa',
+        'chalet': 'Chalet',
+        'apartment': 'Apartamento',
+        'building': 'Edificio / Urbanización',
+        'hotel': 'Hotel',
+        'commercial_premises': 'Local comercial',
+        'owner': 'Propietario',
+        'administrator': 'Administrador',
+        'tenant': 'Inquilino',
+        'other': 'Otro',
+      }[value.toLowerCase()] ??
+      value;
 
   _SavedClientEmail _savedEmail(GroupClient client) {
     final candidates = <String>[
@@ -197,7 +224,7 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
         .startsWith('es');
     final entityOptions = widget.showAdvancedFilters
         ? (widget.clients
-            .map((c) => (c.entityType ?? '').trim())
+            .map(_customerTypeValue)
             .where((v) => v.isNotEmpty)
             .toSet()
             .toList()
@@ -205,7 +232,7 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
         : const <String>[];
     final propertyOptions = widget.showAdvancedFilters
         ? (widget.clients
-            .map((c) => (c.propertyKind ?? '').trim())
+            .map(_propertyTypeValue)
             .where((v) => v.isNotEmpty)
             .toSet()
             .toList()
@@ -214,11 +241,11 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
     final filtered = widget.clients.where((c) {
       if (!_showInactive && c.isActive == false) return false;
       if ((_entityFilter ?? '').trim().isNotEmpty &&
-          (c.entityType ?? '').trim() != (_entityFilter ?? '').trim()) {
+          _customerTypeValue(c) != (_entityFilter ?? '').trim()) {
         return false;
       }
       if ((_propertyFilter ?? '').trim().isNotEmpty &&
-          (c.propertyKind ?? '').trim() != (_propertyFilter ?? '').trim()) {
+          _propertyTypeValue(c) != (_propertyFilter ?? '').trim()) {
         return false;
       }
       if (_onlyWithUnsentDocuments &&
@@ -249,11 +276,13 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                   : '';
               final unsent = widget.unsentDocumentCounts[client.id];
               final hasUnsent = (unsent?.total ?? 0) > 0;
+              final alias = (client.pdfAlias ?? '').trim();
+              final propertyType = _propertyTypeValue(client);
               final meta = <String>[
+                if (alias.isNotEmpty) alias,
                 if (email.isNotEmpty) email,
                 if ((client.phone ?? '').isNotEmpty) client.phone!,
-                if ((client.propertyKind ?? '').isNotEmpty)
-                  client.propertyKind!,
+                if (propertyType.isNotEmpty) _classificationLabel(propertyType),
               ].join(' - ');
               return SizedBox(
                 key: ValueKey('client-select-row-${client.id}'),
@@ -280,6 +309,7 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                   titleWidget: widget.compact
                       ? _CompactClientIdentity(
                           name: client.name,
+                          alias: alias,
                           email: email,
                           emailWarning: switch (savedEmail.state) {
                             _SavedClientEmailState.missing => isSpanish
@@ -539,11 +569,13 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
 class _CompactClientIdentity extends StatelessWidget {
   const _CompactClientIdentity({
     required this.name,
+    required this.alias,
     required this.email,
     required this.emailWarning,
   });
 
   final String name;
+  final String alias;
   final String email;
   final String? emailWarning;
 
@@ -566,6 +598,7 @@ class _CompactClientIdentity extends StatelessWidget {
       ),
     );
     final warning = (emailWarning ?? '').trim();
+    final secondaryValue = alias.isNotEmpty ? alias : email;
     final secondaryWidget = warning.isNotEmpty
         ? Row(
             mainAxisSize: MainAxisSize.min,
@@ -590,9 +623,9 @@ class _CompactClientIdentity extends StatelessWidget {
             ],
           )
         : Tooltip(
-            message: email,
+            message: secondaryValue,
             child: Text(
-              email,
+              secondaryValue,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: t.bodySmall.copyWith(
@@ -603,7 +636,7 @@ class _CompactClientIdentity extends StatelessWidget {
               ),
             ),
           );
-    if (email.isEmpty && warning.isEmpty) return nameWidget;
+    if (secondaryValue.isEmpty && warning.isEmpty) return nameWidget;
 
     return LayoutBuilder(
       builder: (context, constraints) {

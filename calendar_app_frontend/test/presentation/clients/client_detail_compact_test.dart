@@ -15,7 +15,13 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final client = GroupClient(id: 'client-1', name: 'Belman');
+    final client = GroupClient(
+      id: 'client-1',
+      name: 'Belman',
+      pdfAlias: 'Residencial Norte',
+      customerType: 'community',
+      propertyType: 'building',
+    );
     final invoice = Invoice(
       id: 'invoice-1',
       invoiceNumber: '361-26',
@@ -59,6 +65,8 @@ void main() {
 
     expect(
         tester.getSize(find.byType(ClientPropertyImage)), const Size(40, 40));
+    expect(find.textContaining('Residencial Norte'), findsOneWidget);
+    expect(find.textContaining('Comunidad de propietarios'), findsOneWidget);
     expect(find.byKey(const ValueKey('client-document-period-menu')),
         findsOneWidget);
     expect(find.text('ZIP (1)'), findsOneWidget);
