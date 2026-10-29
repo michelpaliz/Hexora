@@ -21,6 +21,7 @@ class SearchFiltersHeader extends StatefulWidget {
       required this.onSearchChanged,
       required this.searchHint,
       this.clearSearchTooltip,
+      this.clearFiltersLabel,
       required this.hasFilterOptions,
       required this.hasActiveFilters,
       this.activeFilterCount = 0,
@@ -30,13 +31,17 @@ class SearchFiltersHeader extends StatefulWidget {
       this.padding = const EdgeInsets.fromLTRB(12, 0, 12, 10),
       this.searchDesktopHeight = 40,
       this.searchMaxWidth = 450,
+      this.topSpacing = 6,
       this.showClearAction = true,
       this.autoExpandWhenActive = false,
+      this.filtersInMenu = false,
+      this.toolbarContent,
       this.trailingActions = const []});
   final TextEditingController searchController;
   final VoidCallback onSearchChanged;
   final String searchHint;
   final String? clearSearchTooltip;
+  final String? clearFiltersLabel;
   final bool hasFilterOptions;
   final bool hasActiveFilters;
   final int activeFilterCount;
@@ -46,8 +51,11 @@ class SearchFiltersHeader extends StatefulWidget {
   final EdgeInsetsGeometry padding;
   final bool showClearAction;
   final bool autoExpandWhenActive;
+  final bool filtersInMenu;
+  final Widget? toolbarContent;
   final double searchDesktopHeight;
   final double searchMaxWidth;
+  final double topSpacing;
   final List<Widget> trailingActions;
   @override
   State<SearchFiltersHeader> createState() => _SearchFiltersHeaderState();
@@ -74,7 +82,7 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
         padding: widget.padding,
         child:
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const SizedBox(height: 6),
+          if (widget.topSpacing > 0) SizedBox(height: widget.topSpacing),
           LayoutBuilder(builder: (context, constraints) {
             final search = ValueListenableBuilder<TextEditingValue>(
                 valueListenable: widget.searchController,
@@ -130,49 +138,142 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                     ),
                   )
                 : Expanded(child: search);
-            return Row(children: [
+            Widget filterButton(VoidCallback onPressed,
+                {bool expanded = false}) {
+              return Semantics(
+                expanded: expanded,
+                child: OutlinedButton(
+                  key: const ValueKey('client-advanced-filters-toggle'),
+                  onPressed: onPressed,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: Size(32, height),
+                    foregroundColor: widget.hasActiveFilters
+                        ? cs.primary
+                        : cs.onSurfaceVariant,
+                    backgroundColor: widget.hasActiveFilters
+                        ? cs.primary.withValues(alpha: .06)
+                        : Colors.transparent,
+                    side: BorderSide(
+                      color: widget.hasActiveFilters
+                          ? cs.primary.withValues(alpha: .55)
+                          : cs.outlineVariant.withValues(alpha: .6),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.tune_rounded, size: 16),
+                      const SizedBox(width: 4),
+                      Text(widget.activeFilterCount > 0
+                          ? '${l.sectionFilters} (${widget.activeFilterCount})'
+                          : l.sectionFilters),
+                      Icon(
+                        widget.filtersInMenu
+                            ? Icons.expand_more
+                            : expanded
+                                ? Icons.expand_less
+                                : Icons.expand_more,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            final filterControl = hasFilters && widget.filtersInMenu
+                ? MenuAnchor(
+                    alignmentOffset: const Offset(0, 6),
+                    style: MenuStyle(
+                      padding: const WidgetStatePropertyAll(
+                        EdgeInsets.symmetric(vertical: 6),
+                      ),
+                      shape: WidgetStatePropertyAll(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    menuChildren: [
+                      SizedBox(
+                        width: math.max(
+                          240,
+                          math.min(360, constraints.maxWidth - 16),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              widget.filtersContent!,
+                              if (widget.hasActiveFilters &&
+                                  widget.onClearFilters != null) ...[
+                                const SizedBox(height: 8),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: HexoraButton(
+                                    onPressed: widget.onClearFilters,
+                                    label: widget.clearFiltersLabel ??
+                                        l.clientFiltersClear,
+                                    variant: HexoraButtonVariant.ghost,
+                                    size: HexoraButtonSize.compact,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                    builder: (context, controller, child) =>
+                        filterButton(controller.open),
+                  )
+                : hasFilters
+                    ? filterButton(
+                        () => setState(() => _expanded = !_expanded),
+                        expanded: _expanded,
+                      )
+                    : null;
+
+            final primaryControls = <Widget>[
               searchSlot,
-              if (hasFilters) ...[
+              if (filterControl != null) ...[
                 const SizedBox(width: 8),
-                Semantics(
-                    expanded: _expanded,
-                    child: OutlinedButton(
-                        key: const ValueKey('client-advanced-filters-toggle'),
-                        onPressed: () => setState(() => _expanded = !_expanded),
-                        style: OutlinedButton.styleFrom(
-                            minimumSize: Size(32, height),
-                            foregroundColor: widget.hasActiveFilters
-                                ? cs.primary
-                                : cs.onSurfaceVariant,
-                            backgroundColor: widget.hasActiveFilters
-                                ? cs.primary.withValues(alpha: .06)
-                                : Colors.transparent,
-                            side: BorderSide(
-                                color: widget.hasActiveFilters
-                                    ? cs.primary.withValues(alpha: .55)
-                                    : cs.outlineVariant.withValues(alpha: .6)),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                            padding: const EdgeInsets.symmetric(horizontal: 8)),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.tune_rounded, size: 16),
-                          const SizedBox(width: 4),
-                          Text(widget.activeFilterCount > 0
-                              ? '${l.sectionFilters} (${widget.activeFilterCount})'
-                              : l.sectionFilters),
-                          Icon(
-                              _expanded ? Icons.expand_less : Icons.expand_more,
-                              size: 16),
-                        ]))),
+                filterControl,
               ],
               if (widget.trailingActions.isNotEmpty) ...[
                 const SizedBox(width: 8),
                 ...widget.trailingActions,
               ],
+            ];
+            if (widget.toolbarContent != null && constraints.maxWidth < 980) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(children: primaryControls),
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: widget.toolbarContent!,
+                  ),
+                ],
+              );
+            }
+            return Row(children: [
+              ...primaryControls,
+              if (widget.toolbarContent != null) ...[
+                const SizedBox(width: 10),
+                widget.toolbarContent!,
+              ],
             ]);
           }),
           if (widget.persistentContent != null ||
-              (widget.hasActiveFilters &&
+              (!widget.filtersInMenu &&
+                  widget.hasActiveFilters &&
                   widget.showClearAction &&
                   widget.onClearFilters != null))
             Padding(
@@ -183,7 +284,8 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                           widget.onClearFilters != null
                       ? HexoraButton(
                           onPressed: widget.onClearFilters,
-                          label: l.clientFiltersClear,
+                          label:
+                              widget.clearFiltersLabel ?? l.clientFiltersClear,
                           variant: HexoraButtonVariant.ghost,
                           size: HexoraButtonSize.compact)
                       : null;
@@ -207,7 +309,7 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                     ],
                   ]);
                 })),
-          if (hasFilters)
+          if (hasFilters && !widget.filtersInMenu)
             AnimatedSize(
                 duration: const Duration(milliseconds: 180),
                 alignment: Alignment.topCenter,

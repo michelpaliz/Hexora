@@ -94,6 +94,7 @@ class ListItemCard extends StatelessWidget {
   final VoidCallback? onTap;
   final bool selected;
   final bool showLeadingStripe;
+  final bool flat;
   final EdgeInsetsGeometry padding;
   final BorderRadius? borderRadius;
 
@@ -110,6 +111,7 @@ class ListItemCard extends StatelessWidget {
     this.onTap,
     this.selected = false,
     this.showLeadingStripe = false,
+    this.flat = false,
     this.padding = const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
     this.borderRadius,
   }) : assert(title != null || titleWidget != null);
@@ -119,11 +121,13 @@ class ListItemCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     final isLight = Theme.of(context).brightness == Brightness.light;
-    final bg = isLight
-        ? (selected
-            ? cs.primaryContainer.withValues(alpha: 0.28)
-            : Colors.white)
-        : Colors.transparent;
+    final bg = selected
+        ? cs.primaryContainer.withValues(alpha: 0.28)
+        : flat
+            ? Colors.transparent
+            : isLight
+                ? Colors.white
+                : Colors.transparent;
     final borderColor = selected
         ? cs.primary.withValues(alpha: 0.35)
         : cs.outlineVariant.withValues(alpha: 0.3);
@@ -146,8 +150,10 @@ class ListItemCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: effectiveRadius,
-        border: Border.all(color: borderColor),
-        boxShadow: isLight
+        border: flat
+            ? (selected ? Border.all(color: borderColor) : null)
+            : Border.all(color: borderColor),
+        boxShadow: isLight && !flat
             ? [
                 BoxShadow(
                   color:

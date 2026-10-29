@@ -6,6 +6,9 @@ class RecurringWizardSectionCard extends StatelessWidget {
   final IconData? icon;
   final String? subtitle;
   final Widget child;
+  final bool showHeader;
+  final bool expandChild;
+  final EdgeInsetsGeometry padding;
 
   const RecurringWizardSectionCard({
     super.key,
@@ -13,6 +16,9 @@ class RecurringWizardSectionCard extends StatelessWidget {
     required this.child,
     this.icon,
     this.subtitle,
+    this.showHeader = true,
+    this.expandChild = false,
+    this.padding = const EdgeInsets.all(16),
   });
 
   @override
@@ -20,33 +26,35 @@ class RecurringWizardSectionCard extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: padding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              if (icon != null) ...[
-                Icon(icon, color: cs.primary),
-                const SizedBox(width: 8),
-              ],
-              Expanded(
-                child: Text(
-                  title,
-                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+          if (showHeader) ...[
+            Row(
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, color: cs.primary),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: Text(
+                    title,
+                    style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+                  ),
                 ),
+              ],
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                subtitle!,
+                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
               ),
             ],
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              subtitle!,
-              style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-            ),
+            const SizedBox(height: 12),
           ],
-          const SizedBox(height: 12),
-          child,
+          if (expandChild) Expanded(child: child) else child,
         ],
       ),
     );

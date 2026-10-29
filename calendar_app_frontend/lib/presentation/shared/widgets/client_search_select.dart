@@ -42,6 +42,8 @@ class ClientSearchSelect extends StatefulWidget {
   final String? unsentDocumentCountsError;
   final double searchDesktopHeight;
   final TextEditingController? searchController;
+  final bool flatRows;
+  final bool compactToolbar;
 
   const ClientSearchSelect({
     super.key,
@@ -58,6 +60,8 @@ class ClientSearchSelect extends StatefulWidget {
     this.unsentDocumentCountsError,
     this.searchDesktopHeight = 36,
     this.searchController,
+    this.flatRows = false,
+    this.compactToolbar = false,
   });
 
   @override
@@ -266,7 +270,13 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
           )
         : ListView.separated(
             itemCount: filtered.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 4),
+            separatorBuilder: (_, __) => widget.flatRows
+                ? Divider(
+                    height: 1,
+                    indent: 44,
+                    color: cs.outlineVariant.withValues(alpha: 0.28),
+                  )
+                : const SizedBox(height: 4),
             itemBuilder: (_, i) {
               final client = filtered[i];
               final selected = client.id == widget.selectedClientId;
@@ -284,10 +294,13 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                 if ((client.phone ?? '').isNotEmpty) client.phone!,
                 if (propertyType.isNotEmpty) _classificationLabel(propertyType),
               ].join(' - ');
-              return SizedBox(
+              return ConstrainedBox(
                 key: ValueKey('client-select-row-${client.id}'),
-                height: widget.compact ? (hasUnsent ? 56 : 44) : 52,
+                constraints: BoxConstraints(
+                  minHeight: widget.compactToolbar ? 50 : 56,
+                ),
                 child: ListItemCard(
+                  flat: widget.flatRows,
                   padding: EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: widget.compact ? 3 : 5,
@@ -350,17 +363,22 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                                 ),
                                 const SizedBox(width: 4),
                                 Expanded(
-                                  child: Text(
-                                    _unsentSummary(
-                                      unsent!,
-                                      isSpanish: isSpanish,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: t.bodySmall.copyWith(
-                                      fontFamily: 'Inter',
-                                      fontSize: 11,
-                                      color: cs.onSurfaceVariant,
+                                  child: Tooltip(
+                                    message: isSpanish
+                                        ? 'Documentos sin enviar disponibles según los datos actuales del negocio'
+                                        : 'Unsent documents available from current business data',
+                                    child: Text(
+                                      _unsentSummary(
+                                        unsent!,
+                                        isSpanish: isSpanish,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: t.bodySmall.copyWith(
+                                        fontFamily: 'Inter',
+                                        fontSize: 11,
+                                        color: cs.onSurfaceVariant,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -396,17 +414,22 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                                         ),
                                         const SizedBox(width: 4),
                                         Expanded(
-                                          child: Text(
-                                            _unsentSummary(
-                                              unsent!,
-                                              isSpanish: isSpanish,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: t.bodySmall.copyWith(
-                                              fontFamily: 'Inter',
-                                              fontSize: 11,
-                                              color: cs.onSurfaceVariant,
+                                          child: Tooltip(
+                                            message: isSpanish
+                                                ? 'Documentos sin enviar disponibles según los datos actuales del negocio'
+                                                : 'Unsent documents available from current business data',
+                                            child: Text(
+                                              _unsentSummary(
+                                                unsent!,
+                                                isSpanish: isSpanish,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: t.bodySmall.copyWith(
+                                                fontFamily: 'Inter',
+                                                fontSize: 11,
+                                                color: cs.onSurfaceVariant,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -421,7 +444,7 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                     fontWeight: FontWeight.w600,
                   ),
                   selected: selected,
-                  showLeadingStripe: true,
+                  showLeadingStripe: false,
                   borderRadius: BorderRadius.circular(8),
                   trailing: selected
                       ? Icon(
@@ -467,6 +490,9 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                 searchController: _searchCtrl,
                 onSearchChanged: () => setState(() {}),
                 searchHint: l.clientSearchHint,
+                clearFiltersLabel: widget.compactToolbar
+                    ? (isSpanish ? 'Limpiar filtros' : 'Clear filters')
+                    : null,
                 padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
                 clientsForCounts:
                     widget.showAdvancedFilters ? widget.clients : null,
@@ -555,9 +581,21 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                 extraActiveFilterCount: _onlyWithUnsentDocuments ? 1 : 0,
                 moveSummaryIntoFilters: widget.compact,
                 searchDesktopHeight: widget.searchDesktopHeight,
+                searchMaxWidth: widget.compactToolbar ? double.infinity : 450,
+                topSpacing: widget.compactToolbar ? 0 : 6,
+                summaryInToolbar: widget.compactToolbar,
+                filtersInMenu: widget.compactToolbar,
+                additionalFiltersInFilterBody: widget.compactToolbar,
+                compactSummary: widget.compactToolbar,
               ),
             ),
-            SizedBox(height: widget.compact ? 2 : 6),
+            SizedBox(
+              height: widget.compactToolbar
+                  ? 4
+                  : widget.compact
+                      ? 2
+                      : 6,
+            ),
             listSlot,
           ],
         );

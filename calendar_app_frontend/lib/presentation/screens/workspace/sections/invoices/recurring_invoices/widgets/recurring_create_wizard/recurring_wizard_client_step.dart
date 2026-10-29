@@ -55,6 +55,9 @@ class RecurringWizardClientStep extends StatelessWidget {
     return RecurringWizardSectionCard(
       title: l.recurringInvoicesStepClient,
       icon: Icons.person_outline,
+      showHeader: false,
+      expandChild: true,
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final wide = constraints.maxWidth >= 720;
@@ -119,10 +122,14 @@ class RecurringWizardClientStep extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
               ],
-              ClientSearchSelect(
-                clients: clients,
-                selectedClientId: clientId,
-                onClientChanged: onClientChanged,
+              Expanded(
+                child: ClientSearchSelect(
+                  clients: clients,
+                  selectedClientId: clientId,
+                  onClientChanged: onClientChanged,
+                  compactToolbar: true,
+                  flatRows: true,
+                ),
               ),
             ],
           );

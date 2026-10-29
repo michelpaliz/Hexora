@@ -8,6 +8,7 @@ class ClientsSearchFilters extends StatelessWidget {
   final TextEditingController searchController;
   final VoidCallback onSearchChanged;
   final String searchHint;
+  final String? clearFiltersLabel;
   final EdgeInsetsGeometry padding;
   final VoidCallback? onClearFilters;
   final int? activeCount;
@@ -44,6 +45,12 @@ class ClientsSearchFilters extends StatelessWidget {
   final bool inactiveValueMeansHidden;
   final bool moveSummaryIntoFilters;
   final double searchDesktopHeight;
+  final double searchMaxWidth;
+  final double topSpacing;
+  final bool summaryInToolbar;
+  final bool filtersInMenu;
+  final bool additionalFiltersInFilterBody;
+  final bool compactSummary;
   final List<Widget> trailingActions;
 
   const ClientsSearchFilters({
@@ -51,6 +58,7 @@ class ClientsSearchFilters extends StatelessWidget {
     required this.searchController,
     required this.onSearchChanged,
     required this.searchHint,
+    this.clearFiltersLabel,
     this.padding = const EdgeInsets.fromLTRB(12, 0, 12, 10),
     this.onClearFilters,
     this.activeCount,
@@ -84,6 +92,12 @@ class ClientsSearchFilters extends StatelessWidget {
     this.inactiveValueMeansHidden = false,
     this.moveSummaryIntoFilters = false,
     this.searchDesktopHeight = 40,
+    this.searchMaxWidth = 450,
+    this.topSpacing = 6,
+    this.summaryInToolbar = false,
+    this.filtersInMenu = false,
+    this.additionalFiltersInFilterBody = false,
+    this.compactSummary = false,
     this.trailingActions = const [],
   });
 
@@ -175,59 +189,87 @@ class ClientsSearchFilters extends StatelessWidget {
                     ?.copyWith(color: cs.onSurfaceVariant)),
           if (hasInactiveToggle)
             Row(mainAxisSize: MainAxisSize.min, children: [
-              Switch.adaptive(
-                value:
-                    inactiveValueMeansHidden ? inactiveValue! : !inactiveValue!,
-                onChanged: (hidden) => onInactiveChanged!(
-                    inactiveValueMeansHidden ? hidden : !hidden),
-                materialTapTargetSize: MaterialTapTargetSize.padded,
-              ),
+              if (compactSummary)
+                SizedBox(
+                  width: 40,
+                  height: 28,
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: Switch.adaptive(
+                      value: inactiveValueMeansHidden
+                          ? inactiveValue!
+                          : !inactiveValue!,
+                      onChanged: (hidden) => onInactiveChanged!(
+                          inactiveValueMeansHidden ? hidden : !hidden),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                )
+              else
+                Switch.adaptive(
+                  value: inactiveValueMeansHidden
+                      ? inactiveValue!
+                      : !inactiveValue!,
+                  onChanged: (hidden) => onInactiveChanged!(
+                      inactiveValueMeansHidden ? hidden : !hidden),
+                  materialTapTargetSize: MaterialTapTargetSize.padded,
+                ),
               Flexible(
                   child: Text(l.hideInactiveClients,
                       style: Theme.of(context).textTheme.labelMedium)),
             ]),
-          if (additionalFilters != null) additionalFilters!,
+          if (additionalFilters != null && !additionalFiltersInFilterBody)
+            additionalFilters!,
         ]);
-    final filterBody = LayoutBuilder(builder: (context, constraints) {
-      final width = constraints.maxWidth >= 520
-          ? (constraints.maxWidth - 12) / 2
-          : constraints.maxWidth;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (moveSummaryIntoFilters) ...[
-            summary,
-            if (hasEntityFilters || hasPropertyFilters)
-              const SizedBox(height: 8),
+    Widget buildFilterBody(double width) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (moveSummaryIntoFilters && !summaryInToolbar) ...[
+              summary,
+              if (hasEntityFilters || hasPropertyFilters)
+                const SizedBox(height: 8),
+            ],
+            Wrap(spacing: 12, runSpacing: 8, children: [
+              if (hasEntityFilters)
+                SizedBox(
+                    width: width,
+                    child: _ClassificationDropdown(
+                        label: entityLabel!,
+                        options: entityOptions,
+                        selected: entityFilter,
+                        onSelect: onToggleEntity!,
+                        onClear: onClearEntity!)),
+              if (hasPropertyFilters)
+                SizedBox(
+                    width: width,
+                    child: _ClassificationDropdown(
+                        label: propertyLabel!,
+                        options: propertyOptions,
+                        selected: propertyFilter,
+                        onSelect: onToggleProperty!,
+                        onClear: onClearProperty!)),
+            ]),
+            if (additionalFilters != null && additionalFiltersInFilterBody) ...[
+              if (hasEntityFilters || hasPropertyFilters)
+                const SizedBox(height: 6),
+              additionalFilters!,
+            ],
           ],
-          Wrap(spacing: 12, runSpacing: 8, children: [
-            if (hasEntityFilters)
-              SizedBox(
-                  width: width,
-                  child: _ClassificationDropdown(
-                      label: entityLabel!,
-                      options: entityOptions,
-                      selected: entityFilter,
-                      onSelect: onToggleEntity!,
-                      onClear: onClearEntity!)),
-            if (hasPropertyFilters)
-              SizedBox(
-                  width: width,
-                  child: _ClassificationDropdown(
-                      label: propertyLabel!,
-                      options: propertyOptions,
-                      selected: propertyFilter,
-                      onSelect: onToggleProperty!,
-                      onClear: onClearProperty!)),
-          ]),
-        ],
-      );
-    });
+        );
+    final filterBody = filtersInMenu
+        ? buildFilterBody(280)
+        : LayoutBuilder(builder: (context, constraints) {
+            final width = constraints.maxWidth >= 520
+                ? (constraints.maxWidth - 12) / 2
+                : constraints.maxWidth;
+            return buildFilterBody(width);
+          });
 
     return SearchFiltersHeader(
       searchController: searchController,
       onSearchChanged: onSearchChanged,
       searchHint: searchHint,
+      clearFiltersLabel: clearFiltersLabel,
       hasFilterOptions: hasEntityFilters ||
           hasPropertyFilters ||
           additionalFilters != null ||
@@ -236,9 +278,14 @@ class ClientsSearchFilters extends StatelessWidget {
       activeFilterCount: activeFilterCount,
       padding: padding,
       searchDesktopHeight: searchDesktopHeight,
+      searchMaxWidth: searchMaxWidth,
+      topSpacing: topSpacing,
       trailingActions: trailingActions,
       autoExpandWhenActive: autoExpandWhenActive,
-      persistentContent: moveSummaryIntoFilters ? null : summary,
+      filtersInMenu: filtersInMenu,
+      toolbarContent: summaryInToolbar ? summary : null,
+      persistentContent:
+          moveSummaryIntoFilters || summaryInToolbar ? null : summary,
       filtersContent: filterBody,
       onClearFilters: () {
         if (onClearFilters != null) {
