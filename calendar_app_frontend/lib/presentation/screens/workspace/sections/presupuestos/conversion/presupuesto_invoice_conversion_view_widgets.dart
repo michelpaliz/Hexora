@@ -128,9 +128,7 @@ class _LinkedInvoiceCard extends StatelessWidget {
                         style: typo.bodySmall.copyWith(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
-                          color: _isIssued
-                              ? cs.tertiary
-                              : cs.onSurfaceVariant,
+                          color: _isIssued ? cs.tertiary : cs.onSurfaceVariant,
                         ),
                       ),
                     ),
@@ -166,55 +164,6 @@ class _LinkedInvoiceCard extends StatelessWidget {
                 ),
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.tone,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color tone;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final typo = AppTypography.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: tone.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: tone.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: tone),
-          const SizedBox(width: 6),
-          Text(
-            '$label: ',
-            style: typo.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          Text(
-            value,
-            style: typo.bodySmall.copyWith(
-              color: tone,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
         ],
       ),
     );
@@ -258,11 +207,13 @@ class _CenteredInfoState extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.action,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -297,6 +248,10 @@ class _CenteredInfoState extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
+            if (action != null) ...[
+              const SizedBox(height: 12),
+              action!,
+            ],
           ],
         ),
       ),

@@ -7,6 +7,9 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
     as pdf_launcher;
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/conversion/presupuesto_advance_final_flow.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_list_row.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:intl/intl.dart';
 
@@ -39,7 +42,6 @@ class PresupuestoInvoiceConversionView extends StatefulWidget {
 class _PresupuestoInvoiceConversionViewState
     extends State<PresupuestoInvoiceConversionView> {
   final PresupuestosApi _presupuestosApi = PresupuestosApi();
-  final TextEditingController _searchController = TextEditingController();
   final TextEditingController _advancePercentController =
       TextEditingController();
   final TextEditingController _advanceFixedAmountController =
@@ -51,15 +53,20 @@ class _PresupuestoInvoiceConversionViewState
 
   int _listRequestId = 0;
   int _detailRequestId = 0;
+  int _pdfRequestId = 0;
   bool _loadingList = true;
-  bool _refreshingList = false;
   bool _loadingDetail = false;
   bool _submitting = false;
   bool _previewingPdf = false;
+  bool _loadingPdf = false;
   bool _showEligibleOnly = true;
+  bool _advanceDescriptionEdited = false;
+  bool _configurationDirty = false;
   String? _listError;
   String? _detailError;
   String? _submitError;
+  String? _pdfError;
+  Uint8List? _pdfBytes;
   List<Map<String, dynamic>> _presupuestos = const [];
   String? _selectedPresupuestoId;
   Map<String, dynamic>? _selectedPresupuesto;
@@ -72,15 +79,11 @@ class _PresupuestoInvoiceConversionViewState
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(() {
-      if (mounted) setState(() {});
-    });
     _loadPresupuestos(keepSelection: false);
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
     _advancePercentController.dispose();
     _advanceFixedAmountController.dispose();
     _advanceDescriptionController.dispose();
@@ -98,47 +101,6 @@ class _PresupuestoInvoiceConversionViewState
         symbol: 'EUR ',
         decimalDigits: 2,
       );
-
-  List<Map<String, dynamic>> get _visiblePresupuestos {
-    final query = _searchController.text.trim().toLowerCase();
-    final filtered = _presupuestos.where((item) {
-      if (_showEligibleOnly && !isPresupuestoIssuedOrAccepted(item)) {
-        return false;
-      }
-      if (query.isEmpty) return true;
-      final haystack = <String>[
-        _presupuestoNumber(item),
-        _presupuestoClientName(item),
-        _presupuestoStatus(item),
-        _presupuestoDate(item)?.toIso8601String() ?? '',
-        (item['notes'] ?? '').toString(),
-      ].join(' ').toLowerCase();
-      return haystack.contains(query);
-    }).toList(growable: false);
-
-    filtered.sort((a, b) {
-      final numberCompare = compareInvoiceLikeNumberDesc(
-        _presupuestoNumber(a),
-        _presupuestoNumber(b),
-      );
-      if (numberCompare != 0) return numberCompare;
-
-      final bDate = _presupuestoDate(b);
-      final aDate = _presupuestoDate(a);
-      if (aDate != null && bDate != null) {
-        final dateCompare = bDate.compareTo(aDate);
-        if (dateCompare != 0) return dateCompare;
-      } else if (aDate != null) {
-        return -1;
-      } else if (bDate != null) {
-        return 1;
-      }
-      return _presupuestoNumber(a)
-          .toLowerCase()
-          .compareTo(_presupuestoNumber(b).toLowerCase());
-    });
-    return filtered;
-  }
 
   PresupuestoInvoiceActionState? get _selectedActionState {
     final presupuesto = _selectedPresupuesto;
@@ -165,8 +127,6 @@ class _PresupuestoInvoiceConversionViewState
       setState(() {
         if (initialLoad) {
           _loadingList = true;
-        } else {
-          _refreshingList = true;
         }
         _listError = null;
       });
@@ -193,30 +153,11 @@ class _PresupuestoInvoiceConversionViewState
           preferredId.isNotEmpty &&
           visibleIds.contains(preferredId)) {
         nextSelectedId = preferredId;
-      } else {
-        final fallbackEligible = items.where((item) {
-          return isPresupuestoIssuedOrAccepted(item) &&
-              _presupuestoId(item).trim().isNotEmpty;
-        });
-        final fallbackAny = items.where(
-          (item) => _presupuestoId(item).trim().isNotEmpty,
-        );
-        nextSelectedId = _presupuestoId(
-          fallbackEligible.isNotEmpty
-              ? fallbackEligible.first
-              : (fallbackAny.isNotEmpty
-                  ? fallbackAny.first
-                  : const <String, dynamic>{}),
-        ).trim();
-        if (nextSelectedId.isEmpty) {
-          nextSelectedId = null;
-        }
       }
 
       setState(() {
         _presupuestos = List<Map<String, dynamic>>.unmodifiable(items);
         _loadingList = false;
-        _refreshingList = false;
         _selectedPresupuestoId = nextSelectedId;
         if (nextSelectedId == null) {
           _selectedPresupuesto = null;
@@ -224,6 +165,9 @@ class _PresupuestoInvoiceConversionViewState
           _loadingDetail = false;
           _formBudgetId = null;
           _submitError = null;
+          _pdfBytes = null;
+          _pdfError = null;
+          _loadingPdf = false;
         }
       });
 
@@ -235,14 +179,12 @@ class _PresupuestoInvoiceConversionViewState
       setState(() {
         _listError = e.message;
         _loadingList = false;
-        _refreshingList = false;
       });
     } catch (e) {
       if (!mounted || requestId != _listRequestId) return;
       setState(() {
         _listError = e.toString().replaceFirst('Exception: ', '');
         _loadingList = false;
-        _refreshingList = false;
       });
     }
   }
@@ -262,6 +204,9 @@ class _PresupuestoInvoiceConversionViewState
       if (resetVisibleState) {
         _selectedPresupuesto = null;
         _selectedAdvanceInvoiceId = null;
+        _pdfBytes = null;
+        _pdfError = null;
+        _loadingPdf = true;
       }
     });
 
@@ -274,6 +219,7 @@ class _PresupuestoInvoiceConversionViewState
         _detailError = null;
       });
       _applyFormDefaults(detail);
+      _loadSelectedPdf(trimmedId, detail);
     } on PresupuestosApiException catch (e) {
       if (!mounted || requestId != _detailRequestId) return;
       setState(() {
@@ -316,8 +262,13 @@ class _PresupuestoInvoiceConversionViewState
     _advanceFixedAmountController.clear();
     _advanceDescriptionController.text =
         _isSpanish ? 'Anticipo 70% del presupuesto' : 'Advance 70% from quote';
+    _advanceDescriptionEdited = false;
+    _configurationDirty = false;
     _advanceNotesController.clear();
-    _finalNotesController.clear();
+    final presupuestoNumber = _presupuestoNumber(presupuesto);
+    _finalNotesController.text = _isSpanish
+        ? 'Factura final del presupuesto $presupuestoNumber'
+        : 'Final invoice from proposal $presupuestoNumber';
 
     setState(() {
       _formBudgetId = presupuestoId;
@@ -382,15 +333,282 @@ class _PresupuestoInvoiceConversionViewState
     return candidates.first.id;
   }
 
-  Future<void> _selectPresupuesto(Map<String, dynamic> presupuesto) async {
-    final presupuestoId = _presupuestoId(presupuesto).trim();
-    if (presupuestoId.isEmpty) return;
-    if (_selectedPresupuestoId == presupuestoId &&
-        _selectedPresupuesto != null &&
-        _detailError == null) {
+  Future<void> _loadSelectedPdf(
+    String presupuestoId,
+    Map<String, dynamic> presupuesto,
+  ) async {
+    final requestId = ++_pdfRequestId;
+    if (mounted) {
+      setState(() {
+        _loadingPdf = true;
+        _pdfError = null;
+        _pdfBytes = null;
+      });
+    }
+
+    try {
+      final response = _isDraftPresupuesto(presupuesto)
+          ? await _presupuestosApi.previewPdf(presupuestoId)
+          : await _presupuestosApi.downloadPdf(presupuestoId);
+      if (!mounted ||
+          requestId != _pdfRequestId ||
+          presupuestoId != (_selectedPresupuestoId ?? '').trim()) {
+        return;
+      }
+      setState(() {
+        _pdfBytes = Uint8List.fromList(response.bodyBytes);
+        _loadingPdf = false;
+        _pdfError = null;
+      });
+    } on PresupuestosApiException catch (e) {
+      if (!mounted || requestId != _pdfRequestId) return;
+      setState(() {
+        _loadingPdf = false;
+        _pdfError = e.message;
+      });
+    } catch (e) {
+      if (!mounted || requestId != _pdfRequestId) return;
+      setState(() {
+        _loadingPdf = false;
+        _pdfError = e.toString().replaceFirst('Exception: ', '').trim();
+      });
+    }
+  }
+
+  Future<void> _showPresupuestoSelector() async {
+    final queryController = TextEditingController();
+    var eligibleOnly = _showEligibleOnly;
+    Map<String, dynamic>? selected;
+    try {
+      selected = await showDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setDialogState) {
+            final query = queryController.text.trim().toLowerCase();
+            final items = _presupuestos.where((item) {
+              if (eligibleOnly && !isPresupuestoIssuedOrAccepted(item)) {
+                return false;
+              }
+              if (query.isEmpty) return true;
+              return <String>[
+                _presupuestoNumber(item),
+                _presupuestoClientName(item),
+                _presupuestoStatus(item),
+                _formatDate(_presupuestoDate(item)),
+              ].join(' ').toLowerCase().contains(query);
+            }).toList(growable: false);
+
+            return Dialog(
+              clipBehavior: Clip.antiAlias,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 760,
+                  maxHeight: 680,
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: MediaQuery.sizeOf(context).height * 0.72,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _isSpanish
+                                    ? 'Seleccionar presupuesto'
+                                    : 'Select proposal',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: _isSpanish ? 'Cerrar' : 'Close',
+                              onPressed: () => Navigator.of(context).pop(),
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: queryController,
+                                autofocus: true,
+                                onChanged: (_) => setDialogState(() {}),
+                                decoration: InputDecoration(
+                                  prefixIcon: const Icon(Icons.search_rounded,
+                                      size: 18),
+                                  hintText: _isSpanish
+                                      ? 'Buscar por número o cliente...'
+                                      : 'Search by number or client...',
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            FilterChip(
+                              selected: eligibleOnly,
+                              onSelected: (value) =>
+                                  setDialogState(() => eligibleOnly = value),
+                              label:
+                                  Text(_isSpanish ? 'Elegibles' : 'Eligible'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      Expanded(
+                        child: items.isEmpty
+                            ? Center(
+                                child: Text(
+                                  _isSpanish
+                                      ? 'No hay presupuestos coincidentes.'
+                                      : 'No matching proposals.',
+                                ),
+                              )
+                            : ListView.builder(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8),
+                                itemCount: items.length,
+                                itemBuilder: (context, index) {
+                                  final item = items[index];
+                                  final id = _presupuestoId(item).trim();
+                                  final isSelected = id ==
+                                      (_selectedPresupuestoId ?? '').trim();
+                                  final status = _presupuestoStatus(item);
+                                  final statusColor = _statusColor(
+                                      Theme.of(context).colorScheme, status);
+                                  final total = _presupuestoTotal(item);
+                                  return HexoraListRow(
+                                    selected: isSelected,
+                                    minHeight: 58,
+                                    verticalPadding: 5,
+                                    onTap: id.isEmpty
+                                        ? null
+                                        : () => Navigator.of(context).pop(item),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.request_quote_outlined,
+                                          size: 18,
+                                          color: isSelected
+                                              ? Theme.of(context)
+                                                  .colorScheme
+                                                  .primary
+                                              : Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                        ),
+                                        const SizedBox(width: 9),
+                                        Expanded(
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                '${_presupuestoNumber(item)} · ${_presupuestoClientName(item)}',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                              Text(
+                                                _formatDate(
+                                                    _presupuestoDate(item)),
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall
+                                                    ?.copyWith(
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .onSurfaceVariant,
+                                                    ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        if (total != null) ...[
+                                          Text(
+                                            _currencyFormatter.format(total),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              fontFeatures: [
+                                                FontFeature.tabularFigures(),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                        ],
+                                        _TinyPill(
+                                          label: _formatStatusLabel(status),
+                                          background: statusColor.withValues(
+                                              alpha: 0.14),
+                                          foreground: statusColor,
+                                        ),
+                                        if (isSelected) ...[
+                                          const SizedBox(width: 8),
+                                          Icon(Icons.check_circle_rounded,
+                                              size: 18,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary),
+                                        ],
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    } finally {
+      queryController.dispose();
+    }
+
+    if (!mounted || selected == null) return;
+    setState(() => _showEligibleOnly = eligibleOnly);
+    final nextId = _presupuestoId(selected).trim();
+    if (nextId.isEmpty || nextId == (_selectedPresupuestoId ?? '').trim()) {
       return;
     }
-    await _loadPresupuestoDetail(presupuestoId, resetVisibleState: true);
+    if (_configurationDirty && _selectedPresupuesto != null) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(_isSpanish ? 'Cambiar presupuesto' : 'Change proposal'),
+          content: Text(_isSpanish
+              ? 'Los cambios de configuración sin guardar se perderán.'
+              : 'Unsaved configuration changes will be lost.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(_isSpanish ? 'Cancelar' : 'Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(_isSpanish ? 'Cambiar' : 'Change'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+    await _loadPresupuestoDetail(nextId, resetVisibleState: true);
   }
 
   Future<void> _previewSelectedPresupuesto() async {
@@ -692,6 +910,44 @@ class _PresupuestoInvoiceConversionViewState
       ..showSnackBar(SnackBar(content: Text(trimmed)));
   }
 
+  bool get _canSubmitSelectedConversion {
+    final actionState = _selectedActionState;
+    final presupuesto = _selectedPresupuesto;
+    if (_submitting || actionState == null || presupuesto == null) return false;
+    switch (_conversionType) {
+      case _PresupuestoConversionType.advance:
+        if (!actionState.canCreateAdvance) return false;
+        if (_advanceAmountMode == _AdvanceAmountMode.percent) {
+          final percent = _parseDouble(_advancePercentController.text);
+          return percent != null && percent > 0 && percent <= 100;
+        }
+        final amount = _parseDouble(_advanceFixedAmountController.text);
+        final total = _presupuestoTotal(presupuesto);
+        return amount != null &&
+            amount > 0 &&
+            (total == null || amount <= total + 0.005);
+      case _PresupuestoConversionType.finalInvoice:
+        return actionState.canCreateFinal;
+      case _PresupuestoConversionType.fullFinalInvoice:
+        return actionState.canCreateFullFinal;
+    }
+  }
+
+  String get _selectedSubmitLabel => switch (_conversionType) {
+        _PresupuestoConversionType.advance =>
+          _isSpanish ? 'Crear factura de anticipo' : 'Create advance invoice',
+        _PresupuestoConversionType.finalInvoice =>
+          _isSpanish ? 'Crear factura final' : 'Create final invoice',
+        _PresupuestoConversionType.fullFinalInvoice =>
+          _isSpanish ? 'Crear factura completa' : 'Create complete invoice',
+      };
+
+  VoidCallback get _selectedSubmitAction => switch (_conversionType) {
+        _PresupuestoConversionType.advance => _submitAdvanceInvoice,
+        _PresupuestoConversionType.finalInvoice => _submitFinalInvoice,
+        _PresupuestoConversionType.fullFinalInvoice => _submitFullFinalInvoice,
+      };
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -710,294 +966,167 @@ class _PresupuestoInvoiceConversionViewState
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final useTwoColumns = constraints.maxWidth >= 1080;
-        final listPanel = _buildListPanel(context, cs, typo);
-        final detailPanel = _buildDetailPanel(context, cs, typo);
-
-        if (!useTwoColumns) {
-          return Column(
-            children: [
-              SizedBox(height: 280, child: listPanel),
-              const SizedBox(height: 14),
-              Expanded(child: detailPanel),
-            ],
+        final configurationPanel = _buildDetailPanel(context, cs, typo);
+        final previewPanel = _buildPdfPanel(context, cs, typo);
+        if (constraints.maxWidth < 820) {
+          return DefaultTabController(
+            length: 2,
+            child: Column(
+              children: [
+                TabBar(
+                  tabs: [
+                    Tab(text: _isSpanish ? 'Configuración' : 'Configuration'),
+                    Tab(text: _isSpanish ? 'Vista previa' : 'Preview'),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: [configurationPanel, previewPanel],
+                  ),
+                ),
+              ],
+            ),
           );
         }
 
         return Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(width: 300, child: listPanel),
-            const SizedBox(width: 14),
-            Expanded(child: detailPanel),
+            Expanded(
+              flex: constraints.maxWidth >= 1180 ? 4 : 5,
+              child: configurationPanel,
+            ),
+            VerticalDivider(
+              width: 1,
+              thickness: 1,
+              color: cs.outlineVariant.withValues(alpha: 0.35),
+            ),
+            Expanded(
+              flex: constraints.maxWidth >= 1180 ? 6 : 5,
+              child: previewPanel,
+            ),
           ],
         );
       },
     );
   }
 
-  Widget _buildListPanel(
+  Widget _buildPdfPanel(
     BuildContext context,
     ColorScheme cs,
     AppTypography typo,
   ) {
-    final visiblePresupuestos = _visiblePresupuestos;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest.withValues(alpha: 0.32),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _isSpanish
-                        ? 'Seleccionar presupuesto'
-                        : 'Select presupuesto',
-                    style: typo.bodyLarge.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: cs.onSurface,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  onPressed: _refreshingList
-                      ? null
-                      : () => _loadPresupuestos(keepSelection: true),
-                  tooltip: _isSpanish ? 'Actualizar' : 'Refresh',
-                  icon: _refreshingList
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.refresh, size: 18),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search, size: 18),
-                suffixIcon: _searchController.text.trim().isEmpty
-                    ? null
-                    : IconButton(
-                        onPressed: _searchController.clear,
-                        icon: const Icon(Icons.close, size: 16),
-                      ),
-                hintText: _isSpanish
-                    ? 'Buscar presupuesto...'
-                    : 'Search presupuesto...',
-                isDense: true,
-                filled: true,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    ChoiceChip(
-                      label: Text(
-                        _isSpanish ? 'Emitidos/Aceptados' : 'Issued/accepted',
-                      ),
-                      selected: _showEligibleOnly,
-                      onSelected: (_) =>
-                          setState(() => _showEligibleOnly = true),
-                    ),
-                    ChoiceChip(
-                      label: Text(_isSpanish ? 'Todos' : 'All'),
-                      selected: !_showEligibleOnly,
-                      onSelected: (_) =>
-                          setState(() => _showEligibleOnly = false),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    _isSpanish
-                        ? '${visiblePresupuestos.length} visibles'
-                        : '${visiblePresupuestos.length} visible',
-                    style: typo.bodySmall.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: _listError != null && _presupuestos.isNotEmpty
-                  ? Column(
-                      children: [
-                        _InlineErrorBanner(message: _listError!),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: _buildPresupuestoList(
-                            context,
-                            cs,
-                            typo,
-                            visiblePresupuestos,
-                          ),
-                        ),
-                      ],
-                    )
-                  : _buildPresupuestoList(
-                      context,
-                      cs,
-                      typo,
-                      visiblePresupuestos,
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+    final presupuesto = _selectedPresupuesto;
+    final presupuestoId = (_selectedPresupuestoId ?? '').trim();
+    if (presupuestoId.isEmpty || presupuesto == null) {
+      return _CenteredInfoState(
+        icon: Icons.picture_as_pdf_outlined,
+        title: _isSpanish ? 'Vista previa del presupuesto' : 'Proposal preview',
+        subtitle: _isSpanish
+            ? 'Selecciona un presupuesto para cargar su PDF original.'
+            : 'Select a proposal to load its original PDF.',
+      );
+    }
 
-  Widget _buildPresupuestoList(
-    BuildContext context,
-    ColorScheme cs,
-    AppTypography typo,
-    List<Map<String, dynamic>> visiblePresupuestos,
-  ) {
-    if (visiblePresupuestos.isEmpty) {
-      return Center(
+    Widget body;
+    if (_loadingPdf) {
+      body = const Center(child: CircularProgressIndicator());
+    } else if (_pdfError != null) {
+      body = Center(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.inbox_outlined,
-                size: 36,
-                color: cs.onSurfaceVariant.withValues(alpha: 0.65),
-              ),
+              Icon(Icons.picture_as_pdf_outlined, size: 34, color: cs.error),
               const SizedBox(height: 8),
               Text(
-                _showEligibleOnly
-                    ? (_isSpanish
-                        ? 'No hay presupuestos emitidos o aceptados para convertir.'
-                        : 'There are no issued or accepted quotes ready to convert.')
-                    : (_isSpanish
-                        ? 'No hay presupuestos para mostrar.'
-                        : 'There are no quotes to show.'),
+                _pdfError!,
                 textAlign: TextAlign.center,
-                style: typo.bodySmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: cs.onSurfaceVariant,
+                style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 10),
+              HexoraButton(
+                onPressed: () => _loadSelectedPdf(
+                  presupuestoId,
+                  presupuesto,
                 ),
+                variant: HexoraButtonVariant.secondary,
+                size: HexoraButtonSize.compact,
+                icon: Icons.refresh_rounded,
+                label: _isSpanish ? 'Reintentar' : 'Retry',
               ),
             ],
           ),
         ),
       );
+    } else if (_pdfBytes == null) {
+      body = _CenteredInfoState(
+        icon: Icons.picture_as_pdf_outlined,
+        title: _isSpanish ? 'PDF no disponible' : 'PDF unavailable',
+        subtitle: _isSpanish
+            ? 'La configuración de la factura sigue disponible.'
+            : 'Invoice configuration remains available.',
+      );
+    } else {
+      body = LayoutBuilder(
+        builder: (context, constraints) => PdfInlinePreview(
+          key: ValueKey(presupuestoId),
+          bytes: _pdfBytes!,
+          height: constraints.maxHeight,
+          interactive: true,
+          showToolbar: true,
+        ),
+      );
     }
 
-    return ListView.separated(
-      itemCount: visiblePresupuestos.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 6),
-      itemBuilder: (context, index) {
-        final presupuesto = visiblePresupuestos[index];
-        final presupuestoId = _presupuestoId(presupuesto).trim();
-        final selected = presupuestoId == (_selectedPresupuestoId ?? '').trim();
-        final status = _presupuestoStatus(presupuesto);
-        final statusColor = _statusColor(cs, status);
-        final total = _presupuestoTotal(presupuesto);
-
-        return InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () => _selectPresupuesto(presupuesto),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-            decoration: BoxDecoration(
-              color: selected
-                  ? cs.primaryContainer.withValues(alpha: 0.28)
-                  : cs.surface.withValues(alpha: 0.34),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: selected
-                    ? cs.primary.withValues(alpha: 0.92)
-                    : cs.outlineVariant.withValues(alpha: 0.4),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return ColoredBox(
+      color: cs.surfaceContainerLowest.withValues(alpha: 0.22),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            child: Row(
               children: [
-                // Row 1: client name + total pill
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _presupuestoClientName(presupuesto),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: typo.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: cs.onSurface,
-                        ),
-                      ),
+                Icon(Icons.picture_as_pdf_outlined,
+                    size: 18, color: cs.primary),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    '${_isSpanish ? 'Presupuesto' : 'Proposal'} ${_presupuestoNumber(presupuesto)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: typo.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
-                    if (total != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: cs.primaryContainer.withValues(alpha: 0.35),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          _currencyFormatter.format(total),
-                          style: typo.bodySmall.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: cs.primary,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 4),
-                // Row 2: number · date + status pill
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '${_presupuestoNumber(presupuesto)} · ${_formatDate(_presupuestoDate(presupuesto))}',
-                        style: typo.bodySmall.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                    _TinyPill(
-                      label: _formatStatusLabel(status),
-                      background: statusColor.withValues(alpha: 0.18),
-                      foreground: statusColor,
-                    ),
-                  ],
+                IconButton(
+                  tooltip: _isSpanish ? 'Actualizar PDF' : 'Refresh PDF',
+                  onPressed: _loadingPdf
+                      ? null
+                      : () => _loadSelectedPdf(presupuestoId, presupuesto),
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                ),
+                HexoraButton(
+                  onPressed:
+                      _previewingPdf ? null : _previewSelectedPresupuesto,
+                  variant: HexoraButtonVariant.secondary,
+                  size: HexoraButtonSize.compact,
+                  loading: _previewingPdf,
+                  icon: Icons.open_in_new_rounded,
+                  label: _isSpanish ? 'Abrir' : 'Open',
                 ),
               ],
             ),
           ),
-        );
-      },
+          Divider(
+            height: 1,
+            color: cs.outlineVariant.withValues(alpha: 0.35),
+          ),
+          Expanded(child: body),
+        ],
+      ),
     );
   }
 
@@ -1018,8 +1147,13 @@ class _PresupuestoInvoiceConversionViewState
         title:
             _isSpanish ? 'Selecciona un presupuesto' : 'Select a presupuesto',
         subtitle: _isSpanish
-            ? 'Elige un presupuesto a la izquierda para crear una factura de anticipo o final.'
-            : 'Choose a presupuesto on the left to create an advance or final invoice.',
+            ? 'Elige el presupuesto que quieres convertir en factura.'
+            : 'Choose the proposal you want to convert into an invoice.',
+        action: HexoraButton(
+          onPressed: _showPresupuestoSelector,
+          icon: Icons.search_rounded,
+          label: _isSpanish ? 'Seleccionar presupuesto' : 'Select proposal',
+        ),
       );
     } else if (_loadingDetail && presupuesto == null) {
       child = const Center(child: CircularProgressIndicator());
@@ -1043,14 +1177,64 @@ class _PresupuestoInvoiceConversionViewState
       final clientName = _presupuestoClientName(presupuesto);
       final statusStr = _presupuestoStatus(presupuesto);
       final statusColor = _statusColor(cs, statusStr);
-      final total = _presupuestoTotal(presupuesto);
       final canDoAnything = actionState != null &&
           (actionState.canCreateAdvance ||
               actionState.canCreateFinal ||
               actionState.canCreateFullFinal);
 
-      child = SingleChildScrollView(
-        padding: const EdgeInsets.all(14),
+      String disabledTypeReason(_PresupuestoConversionType type) {
+        if (actionState == null) {
+          return _isSpanish
+              ? 'No disponible para este presupuesto.'
+              : 'Unavailable for this proposal.';
+        }
+        return switch (type) {
+          _PresupuestoConversionType.advance => actionState.hasAdvance
+              ? (_isSpanish
+                  ? 'Ya existe una factura de anticipo.'
+                  : 'An advance invoice already exists.')
+              : (_isSpanish
+                  ? 'El presupuesto debe estar emitido.'
+                  : 'The proposal must be issued.'),
+          _PresupuestoConversionType.finalInvoice => actionState.hasFinal
+              ? (_isSpanish
+                  ? 'Ya existe una factura final.'
+                  : 'A final invoice already exists.')
+              : !actionState.hasAdvance
+                  ? (_isSpanish
+                      ? 'Requiere una factura de anticipo previa.'
+                      : 'An advance invoice is required first.')
+                  : (_isSpanish
+                      ? 'El presupuesto debe estar emitido.'
+                      : 'The proposal must be issued.'),
+          _PresupuestoConversionType.fullFinalInvoice => actionState.hasAdvance
+              ? (_isSpanish
+                  ? 'Usa Final para descontar el anticipo existente.'
+                  : 'Use Final to deduct the existing advance.')
+              : actionState.hasFinal
+                  ? (_isSpanish
+                      ? 'Ya existe una factura final.'
+                      : 'A final invoice already exists.')
+                  : (_isSpanish
+                      ? 'El presupuesto debe estar emitido.'
+                      : 'The proposal must be issued.'),
+        };
+      }
+
+      Widget typeLabel(
+        String label,
+        _PresupuestoConversionType type,
+        bool enabled,
+      ) =>
+          enabled
+              ? Text(label)
+              : Tooltip(
+                  message: disabledTypeReason(type),
+                  child: Text(label),
+                );
+
+      final formContent = SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1058,10 +1242,9 @@ class _PresupuestoInvoiceConversionViewState
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Avatar circle
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 34,
+                  height: 34,
                   decoration: BoxDecoration(
                     color: cs.primaryContainer.withValues(alpha: 0.55),
                     shape: BoxShape.circle,
@@ -1072,7 +1255,7 @@ class _PresupuestoInvoiceConversionViewState
                       style: typo.bodyLarge.copyWith(
                         fontWeight: FontWeight.w900,
                         color: cs.primary,
-                        fontSize: 16,
+                        fontSize: 14,
                       ),
                     ),
                   ),
@@ -1092,95 +1275,41 @@ class _PresupuestoInvoiceConversionViewState
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      Text(
-                        '${_presupuestoNumber(presupuesto)} · ${_formatDate(_presupuestoDate(presupuesto))}',
-                        style: typo.bodySmall.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              '${_presupuestoNumber(presupuesto)} · ${_formatDate(_presupuestoDate(presupuesto))}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: typo.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 7),
+                          _TinyPill(
+                            label: _formatStatusLabel(statusStr),
+                            background: statusColor.withValues(alpha: 0.14),
+                            foreground: statusColor,
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed:
-                      _previewingPdf ? null : _previewSelectedPresupuesto,
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  ),
-                  icon: _previewingPdf
-                      ? const SizedBox(
-                          width: 13,
-                          height: 13,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.visibility_outlined, size: 14),
-                  label: Text(
-                    _isSpanish ? 'Vista previa' : 'Preview',
-                    style: const TextStyle(fontSize: 12),
-                  ),
+                HexoraButton(
+                  onPressed: _showPresupuestoSelector,
+                  variant: HexoraButtonVariant.secondary,
+                  size: HexoraButtonSize.compact,
+                  icon: Icons.swap_horiz_rounded,
+                  label: _isSpanish ? 'Cambiar' : 'Change',
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-
-            // â”€â”€ Status + total strip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withValues(alpha: 0.28),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: cs.outlineVariant.withValues(alpha: 0.25)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                          color: statusColor.withValues(alpha: 0.35)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.circle, size: 6, color: statusColor),
-                        const SizedBox(width: 4),
-                        Text(
-                          _formatStatusLabel(statusStr),
-                          style: typo.bodySmall.copyWith(
-                            color: statusColor,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
-                  if (total != null) ...[
-                    Icon(Icons.payments_outlined,
-                        size: 13, color: cs.onSurfaceVariant),
-                    const SizedBox(width: 4),
-                    Text(
-                      _currencyFormatter.format(total),
-                      style: typo.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: cs.primary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
 
             // â”€â”€ Linked invoices â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if (linkedInvoices.isNotEmpty) ...[
@@ -1287,80 +1416,368 @@ class _PresupuestoInvoiceConversionViewState
                   ],
                 ),
               ),
-            ] else ...[
-              // Section label
-              Row(
-                children: [
-                  Icon(Icons.add_circle_outline_rounded,
-                      size: 13, color: cs.onSurfaceVariant),
-                  const SizedBox(width: 5),
-                  Text(
-                    _isSpanish ? 'Crear factura' : 'Create invoice',
-                    style: typo.bodySmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: cs.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              SegmentedButton<_PresupuestoConversionType>(
-                style: ButtonStyle(
-                  visualDensity: VisualDensity.compact,
-                  textStyle: WidgetStateProperty.all(
-                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            ] else
+              Align(
+                alignment: AlignmentDirectional.topStart,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _isSpanish ? 'Tipo de factura' : 'Invoice type',
+                        style: typo.bodySmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: cs.onSurfaceVariant,
+                          fontSize: 11,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Tooltip(
+                        message: _isSpanish
+                            ? 'Las opciones desactivadas no están disponibles según las facturas ya vinculadas y el estado del presupuesto.'
+                            : 'Disabled options are unavailable because of the proposal status or its linked invoices.',
+                        child: SegmentedButton<_PresupuestoConversionType>(
+                          style: const ButtonStyle(
+                            visualDensity: VisualDensity.compact,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            minimumSize: WidgetStatePropertyAll(Size(0, 36)),
+                            padding: WidgetStatePropertyAll(
+                              EdgeInsets.symmetric(horizontal: 10),
+                            ),
+                          ),
+                          segments: [
+                            ButtonSegment<_PresupuestoConversionType>(
+                              value: _PresupuestoConversionType.advance,
+                              icon:
+                                  const Icon(Icons.percent_outlined, size: 15),
+                              label: typeLabel(
+                                _isSpanish ? 'Anticipo' : 'Advance',
+                                _PresupuestoConversionType.advance,
+                                actionState.canCreateAdvance,
+                              ),
+                              enabled: actionState.canCreateAdvance,
+                            ),
+                            ButtonSegment<_PresupuestoConversionType>(
+                              value: _PresupuestoConversionType.finalInvoice,
+                              icon: const Icon(Icons.receipt_long_outlined,
+                                  size: 15),
+                              label: typeLabel(
+                                _isSpanish ? 'Final' : 'Final',
+                                _PresupuestoConversionType.finalInvoice,
+                                actionState.canCreateFinal,
+                              ),
+                              enabled: actionState.canCreateFinal,
+                            ),
+                            ButtonSegment<_PresupuestoConversionType>(
+                              value:
+                                  _PresupuestoConversionType.fullFinalInvoice,
+                              icon:
+                                  const Icon(Icons.payments_outlined, size: 15),
+                              label: typeLabel(
+                                _isSpanish ? 'Completa' : 'Complete',
+                                _PresupuestoConversionType.fullFinalInvoice,
+                                actionState.canCreateFullFinal,
+                              ),
+                              enabled: actionState.canCreateFullFinal,
+                            ),
+                          ],
+                          selected: {_conversionType},
+                          onSelectionChanged: (selected) {
+                            setState(() {
+                              _conversionType = selected.first;
+                              _submitError = null;
+                              _configurationDirty = true;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      if (_submitError != null &&
+                          _submitError!.trim().isNotEmpty) ...[
+                        _InlineErrorBanner(message: _submitError!),
+                        const SizedBox(height: 8),
+                      ],
+                      if (_conversionType == _PresupuestoConversionType.advance)
+                        _buildAdvanceForm(context, cs, typo)
+                      else if (_conversionType ==
+                          _PresupuestoConversionType.fullFinalInvoice)
+                        _buildFullFinalForm(context, cs, typo)
+                      else
+                        _buildFinalForm(context, cs, typo, advanceCandidates),
+                    ],
                   ),
                 ),
-                segments: [
-                  ButtonSegment<_PresupuestoConversionType>(
-                    value: _PresupuestoConversionType.advance,
-                    icon: const Icon(Icons.percent_outlined, size: 15),
-                    label: Text(_isSpanish ? 'Anticipo' : 'Advance'),
-                    enabled: actionState.canCreateAdvance,
-                  ),
-                  ButtonSegment<_PresupuestoConversionType>(
-                    value: _PresupuestoConversionType.finalInvoice,
-                    icon: const Icon(Icons.receipt_long_outlined, size: 15),
-                    label: Text(_isSpanish ? 'Final' : 'Final'),
-                    enabled: actionState.canCreateFinal,
-                  ),
-                  ButtonSegment<_PresupuestoConversionType>(
-                    value: _PresupuestoConversionType.fullFinalInvoice,
-                    icon: const Icon(Icons.payments_outlined, size: 15),
-                    label: Text(_isSpanish ? 'Completa' : 'Complete'),
-                    enabled: actionState.canCreateFullFinal,
-                  ),
-                ],
-                selected: {_conversionType},
-                onSelectionChanged: (selected) {
-                  setState(() => _conversionType = selected.first);
-                },
               ),
-              const SizedBox(height: 10),
-              if (_submitError != null && _submitError!.trim().isNotEmpty) ...[
-                _InlineErrorBanner(message: _submitError!),
-                const SizedBox(height: 8),
-              ],
-              if (_conversionType == _PresupuestoConversionType.advance)
-                _buildAdvanceForm(context, cs, typo)
-              else if (_conversionType ==
-                  _PresupuestoConversionType.fullFinalInvoice)
-                _buildFullFinalForm(context, cs, typo)
-              else
-                _buildFinalForm(context, cs, typo, advanceCandidates),
-            ],
           ],
         ),
+      );
+      child = Column(
+        children: [
+          Expanded(child: formContent),
+          if (canDoAnything)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: cs.surface,
+                border: Border(
+                  top: BorderSide(
+                    color: cs.outlineVariant.withValues(alpha: 0.35),
+                  ),
+                ),
+              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final button = HexoraButton(
+                    onPressed: _canSubmitSelectedConversion
+                        ? _selectedSubmitAction
+                        : null,
+                    loading: _submitting,
+                    icon: Icons.add_task_outlined,
+                    label: _selectedSubmitLabel,
+                  );
+                  if (constraints.maxWidth < 520) {
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: button,
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _isSpanish
+                              ? 'La factura se creará como borrador.'
+                              : 'The invoice will be created as a draft.',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: typo.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      button,
+                    ],
+                  );
+                },
+              ),
+            ),
+        ],
       );
     }
 
     return DecoratedBox(
       decoration: BoxDecoration(
         color: cs.surfaceContainerLowest.withValues(alpha: 0.32),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: child,
+    );
+  }
+
+  Widget _buildAmountPreview(
+    BuildContext context,
+    ColorScheme cs,
+    AppTypography typo,
+  ) {
+    final presupuesto = _selectedPresupuesto;
+    if (presupuesto == null) return const SizedBox.shrink();
+
+    double? valueFor(List<String> keys) {
+      for (final key in keys) {
+        final value = _toDouble(presupuesto[key]);
+        if (value != null) return value;
+      }
+      return null;
+    }
+
+    final proposalGross = _presupuestoTotal(presupuesto);
+    final proposalBase = valueFor(
+      const ['subtotal', 'taxableBase', 'baseAmount', 'netTotal'],
+    );
+    final proposalVat = valueFor(
+      const ['taxTotal', 'vatTotal', 'ivaTotal', 'totalTax'],
+    );
+
+    double? gross;
+    double? base;
+    double? vat;
+    switch (_conversionType) {
+      case _PresupuestoConversionType.advance:
+        if (_advanceAmountMode == _AdvanceAmountMode.fixedGross) {
+          gross = _parseDouble(_advanceFixedAmountController.text);
+        } else {
+          final percent = _parseDouble(_advancePercentController.text);
+          if (percent != null && percent > 0 && percent <= 100) {
+            final factor = percent / 100;
+            gross = proposalGross == null ? null : proposalGross * factor;
+            base = proposalBase == null ? null : proposalBase * factor;
+            vat = proposalVat == null ? null : proposalVat * factor;
+          }
+        }
+        break;
+      case _PresupuestoConversionType.finalInvoice:
+        // The final amount can depend on the selected advance invoice. The
+        // backend remains authoritative, so no speculative total is shown.
+        break;
+      case _PresupuestoConversionType.fullFinalInvoice:
+        gross = proposalGross;
+        base = proposalBase;
+        vat = proposalVat;
+        break;
+    }
+
+    if (gross == null && proposalGross == null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.hourglass_top_rounded,
+                size: 15, color: cs.onSurfaceVariant),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
+                _isSpanish
+                    ? 'Vista previa no disponible. El importe se confirmará al crear la factura.'
+                    : 'Preview unavailable. The amount will be confirmed when the invoice is created.',
+                style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget metric(String label, double value, {bool emphasized = false}) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$label ',
+              style: typo.bodySmall.copyWith(
+                color: cs.onSurfaceVariant,
+                fontSize: 11,
+              ),
+            ),
+            Text(
+              _currencyFormatter.format(value),
+              style: typo.bodySmall.copyWith(
+                color: emphasized ? cs.primary : cs.onSurface,
+                fontWeight: FontWeight.w800,
+                fontSize: emphasized ? 13 : 11.5,
+              ),
+            ),
+          ],
+        );
+
+    Widget detail(String label, String value) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$label ',
+              style: typo.bodySmall.copyWith(
+                color: cs.onSurfaceVariant,
+                fontSize: 11,
+              ),
+            ),
+            Text(
+              value,
+              style: typo.bodySmall.copyWith(
+                color: cs.onSurface,
+                fontWeight: FontWeight.w800,
+                fontSize: 11.5,
+              ),
+            ),
+          ],
+        );
+
+    final isAdvance = _conversionType == _PresupuestoConversionType.advance;
+    final isFinal = _conversionType == _PresupuestoConversionType.finalInvoice;
+    final percent = _parseDouble(_advancePercentController.text);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+      decoration: BoxDecoration(
+        color: cs.primaryContainer.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Wrap(
+        spacing: 14,
+        runSpacing: 5,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(
+            isAdvance
+                ? (_isSpanish ? 'Estimación' : 'Estimate')
+                : (_isSpanish ? 'Resumen' : 'Summary'),
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (proposalGross != null)
+            metric(
+              _isSpanish ? 'Total del presupuesto' : 'Proposal total',
+              proposalGross,
+            ),
+          if (isAdvance && _advanceAmountMode == _AdvanceAmountMode.percent)
+            detail(
+              _isSpanish ? 'Porcentaje' : 'Percentage',
+              percent == null
+                  ? '—'
+                  : '${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}%',
+            ),
+          if (isAdvance &&
+              _advanceAmountMode == _AdvanceAmountMode.fixedGross &&
+              gross != null)
+            metric(_isSpanish ? 'Importe fijo' : 'Fixed amount', gross),
+          if (isAdvance && gross != null)
+            metric(
+              _isSpanish ? 'Anticipo estimado' : 'Estimated advance',
+              gross,
+              emphasized: true,
+            ),
+          if (base != null)
+            metric(
+              isAdvance && _isSpanish ? 'Base estimada' : 'Base',
+              base,
+            ),
+          if (vat != null)
+            metric(
+              isAdvance && _isSpanish ? 'IVA estimado' : 'VAT',
+              vat,
+            ),
+          if (isFinal)
+            detail(
+              _isSpanish ? 'Importe final' : 'Final amount',
+              _isSpanish ? 'Pendiente de cálculo' : 'Calculation pending',
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVatNotice(ColorScheme cs, AppTypography typo) {
+    return Row(
+      children: [
+        Icon(Icons.calculate_outlined, size: 15, color: cs.primary),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(
+            _isSpanish
+                ? 'El importe y el IVA definitivos se calcularán al crear la factura.'
+                : 'The final amount and VAT will be calculated when the invoice is created.',
+            style: typo.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontSize: 11.5,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1369,201 +1786,142 @@ class _PresupuestoInvoiceConversionViewState
     ColorScheme cs,
     AppTypography typo,
   ) {
-    final actionState = _selectedActionState;
     final presupuesto = _selectedPresupuesto;
-    final vatSummary = presupuesto == null
-        ? (_isSpanish
-            ? 'Calculado automáticamente'
-            : 'Calculated automatically')
-        : _presupuestoVatSummaryLabel(presupuesto);
-    final vatRates = presupuesto == null
-        ? const <double>[]
-        : _presupuestoVatRates(presupuesto);
-    final vatRate = presupuesto == null ? 21.0 : _advanceVatRate(presupuesto);
-    final fixedGross = _parseDouble(_advanceFixedAmountController.text);
-    final fixedBase = fixedGross == null || fixedGross <= 0
-        ? null
-        : double.parse((fixedGross / (1 + vatRate / 100)).toStringAsFixed(2));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SegmentedButton<_AdvanceAmountMode>(
-          segments: [
-            ButtonSegment(
-              value: _AdvanceAmountMode.percent,
-              icon: const Icon(Icons.percent_outlined, size: 16),
-              label: Text(_isSpanish ? 'Porcentaje' : 'Percent'),
-            ),
-            ButtonSegment(
-              value: _AdvanceAmountMode.fixedGross,
-              icon: const Icon(Icons.euro_rounded, size: 16),
-              label: Text(_isSpanish ? 'Importe fijo' : 'Fixed amount'),
-            ),
-          ],
-          selected: {_advanceAmountMode},
-          onSelectionChanged: _submitting
-              ? null
-              : (selection) {
-                  final mode = selection.first;
-                  setState(() {
-                    _advanceAmountMode = mode;
-                    if (mode == _AdvanceAmountMode.percent) {
-                      final percent =
-                          _parseDouble(_advancePercentController.text) ?? 70;
-                      _advanceDescriptionController.text = _isSpanish
-                          ? 'Anticipo ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% del presupuesto'
-                          : 'Advance ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% from quote';
-                    } else {
-                      final number = presupuesto == null
-                          ? ''
-                          : _presupuestoNumber(presupuesto);
-                      _advanceDescriptionController.text = _isSpanish
-                          ? 'Anticipo correspondiente al presupuesto $number'
-                          : 'Advance corresponding to presupuesto $number';
-                    }
-                  });
-                },
+        Text(
+          _isSpanish ? 'Importe del anticipo' : 'Advance amount',
+          style: typo.bodySmall.copyWith(
+            fontWeight: FontWeight.w700,
+            color: cs.onSurfaceVariant,
+            fontSize: 11,
+          ),
         ),
-        const SizedBox(height: 8),
-        if (_advanceAmountMode == _AdvanceAmountMode.percent)
-          TextFormField(
-            controller: _advancePercentController,
-            keyboardType: const TextInputType.numberWithOptions(
-              decimal: true,
-            ),
-            inputFormatters: <TextInputFormatter>[
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-            ],
-            onChanged: (value) {
-              final percent = _parseDouble(value);
-              if (percent == null) return;
-              _advanceDescriptionController.text = _isSpanish
-                  ? 'Anticipo ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% del presupuesto'
-                  : 'Advance ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% from quote';
-            },
-            decoration: InputDecoration(
-              labelText: _isSpanish ? 'Porcentaje' : 'Percent',
-              suffixText: '%',
-              isDense: true,
-            ),
-          )
-        else
-          TextFormField(
-            controller: _advanceFixedAmountController,
-            keyboardType: const TextInputType.numberWithOptions(
-              decimal: true,
-            ),
-            inputFormatters: <TextInputFormatter>[
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-            ],
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              labelText: _isSpanish
-                  ? 'Importe anticipo con IVA'
-                  : 'Advance total incl. VAT',
-              suffixText: '€',
-              helperText: fixedBase == null
-                  ? (_isSpanish
-                      ? 'Introduce el total que quieres facturar.'
-                      : 'Enter the total amount to invoice.')
-                  : (_isSpanish
-                      ? 'Base enviada: ${_currencyFormatter.format(fixedBase)} · IVA ${_formatVatRateLabel(vatRate)}'
-                      : 'Base sent: ${_currencyFormatter.format(fixedBase)} · VAT ${_formatVatRateLabel(vatRate)}'),
-              isDense: true,
-            ),
-          ),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
-            borderRadius: BorderRadius.circular(12),
-            border:
-                Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _isSpanish ? 'IVA detectado' : 'Detected VAT',
-                style: typo.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
+        const SizedBox(height: 5),
+        Align(
+          alignment: AlignmentDirectional.topStart,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: SegmentedButton<_AdvanceAmountMode>(
+              style: const ButtonStyle(
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                minimumSize: WidgetStatePropertyAll(Size(0, 36)),
+                padding: WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 10),
                 ),
               ),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _InfoChip(
-                    icon: Icons.percent_outlined,
-                    label: _isSpanish && vatRates.length > 1
-                        ? 'IVA mixto'
-                        : (_isSpanish ? 'IVA' : 'VAT'),
-                    value: vatSummary,
-                    tone: cs.primary,
-                  ),
-                  _InfoChip(
-                    icon: Icons.auto_awesome_outlined,
-                    label: _isSpanish
-                        ? 'Calculado automáticamente'
-                        : 'Calculated automatically',
-                    value: _isSpanish
-                        ? 'Según los conceptos'
-                        : 'From presupuesto concepts',
-                    tone: cs.tertiary,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _isSpanish
-                    ? 'El IVA del anticipo se calcula automáticamente según los conceptos del presupuesto.'
-                    : 'Advance VAT is calculated automatically from the presupuesto concepts.',
-                style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
-              ),
-            ],
+              segments: [
+                ButtonSegment(
+                  value: _AdvanceAmountMode.percent,
+                  icon: const Icon(Icons.percent_outlined, size: 16),
+                  label: Text(_isSpanish ? 'Porcentaje' : 'Percent'),
+                ),
+                ButtonSegment(
+                  value: _AdvanceAmountMode.fixedGross,
+                  icon: const Icon(Icons.euro_rounded, size: 16),
+                  label: Text(_isSpanish ? 'Importe fijo' : 'Fixed amount'),
+                ),
+              ],
+              selected: {_advanceAmountMode},
+              onSelectionChanged: _submitting
+                  ? null
+                  : (selection) {
+                      final mode = selection.first;
+                      setState(() {
+                        _advanceAmountMode = mode;
+                        _configurationDirty = true;
+                        if (_advanceDescriptionEdited) return;
+                        if (mode == _AdvanceAmountMode.percent) {
+                          final percent =
+                              _parseDouble(_advancePercentController.text) ??
+                                  70;
+                          _advanceDescriptionController.text = _isSpanish
+                              ? 'Anticipo ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% del presupuesto'
+                              : 'Advance ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% from quote';
+                        } else {
+                          final number = presupuesto == null
+                              ? ''
+                              : _presupuestoNumber(presupuesto);
+                          _advanceDescriptionController.text = _isSpanish
+                              ? 'Anticipo correspondiente al presupuesto $number'
+                              : 'Advance corresponding to presupuesto $number';
+                        }
+                      });
+                    },
+            ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
+        Align(
+          alignment: AlignmentDirectional.topStart,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: _advanceAmountMode == _AdvanceAmountMode.percent
+                ? TextFormField(
+                    controller: _advancePercentController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: <TextInputFormatter>[
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                    ],
+                    onChanged: (value) {
+                      final percent = _parseDouble(value);
+                      setState(() {
+                        _configurationDirty = true;
+                        if (percent == null || _advanceDescriptionEdited) {
+                          return;
+                        }
+                        _advanceDescriptionController.text = _isSpanish
+                            ? 'Anticipo ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% del presupuesto'
+                            : 'Advance ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% from quote';
+                      });
+                    },
+                    decoration: InputDecoration(
+                      labelText: _isSpanish ? 'Porcentaje' : 'Percent',
+                      suffixText: '%',
+                      isDense: true,
+                    ),
+                  )
+                : TextFormField(
+                    controller: _advanceFixedAmountController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: <TextInputFormatter>[
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                    ],
+                    onChanged: (_) => setState(() {
+                      _configurationDirty = true;
+                    }),
+                    decoration: InputDecoration(
+                      labelText: _isSpanish
+                          ? 'Importe anticipo con IVA'
+                          : 'Advance total incl. VAT',
+                      suffixText: '€',
+                      isDense: true,
+                    ),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 6),
         TextFormField(
           controller: _advanceDescriptionController,
+          onChanged: (_) {
+            _advanceDescriptionEdited = true;
+            _configurationDirty = true;
+          },
           decoration: InputDecoration(
             labelText: _isSpanish ? 'Descripción' : 'Description',
             isDense: true,
           ),
         ),
-        const SizedBox(height: 10),
-        Text(
-          _isSpanish
-              ? 'Los importes y el desglose final del IVA se confirman con la respuesta del backend.'
-              : 'Final totals and VAT breakdown are confirmed by the backend response.',
-          style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
-        ),
-        const SizedBox(height: 10),
-        Align(
-          alignment: Alignment.centerRight,
-          child: FilledButton.icon(
-            onPressed: (_submitting || actionState?.canCreateAdvance != true)
-                ? null
-                : _submitAdvanceInvoice,
-            icon: _submitting
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.playlist_add_check_circle_outlined,
-                    size: 16),
-            label: Text(
-              _isSpanish
-                  ? 'Crear factura de anticipo'
-                  : 'Create advance invoice',
-            ),
-          ),
-        ),
+        const SizedBox(height: 6),
+        _buildAmountPreview(context, cs, typo),
+        const SizedBox(height: 6),
+        _buildVatNotice(cs, typo),
       ],
     );
   }
@@ -1574,7 +1932,6 @@ class _PresupuestoInvoiceConversionViewState
     AppTypography typo,
     List<AdvanceInvoiceCandidate> candidates,
   ) {
-    final actionState = _selectedActionState;
     final availableIds = candidates.map((candidate) => candidate.id).toSet();
     final dropdownValue = availableIds.contains(_selectedAdvanceInvoiceId)
         ? _selectedAdvanceInvoiceId
@@ -1608,6 +1965,7 @@ class _PresupuestoInvoiceConversionViewState
             setState(() {
               _selectedAdvanceInvoiceId =
                   (value ?? '').trim().isEmpty ? null : value;
+              _configurationDirty = true;
             });
           },
           decoration: InputDecoration(
@@ -1631,34 +1989,18 @@ class _PresupuestoInvoiceConversionViewState
           ),
         ],
         const SizedBox(height: 8),
-        Text(
-          _isSpanish
-              ? 'El IVA y el desglose final se calculan automáticamente según los conceptos del presupuesto.'
-              : 'VAT and the final tax breakdown are calculated automatically from the presupuesto concepts.',
-          style: typo.bodySmall.copyWith(
-            color: cs.onSurfaceVariant,
-            fontWeight: FontWeight.w600,
+        _buildAmountPreview(context, cs, typo),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _finalNotesController,
+          onChanged: (_) => _configurationDirty = true,
+          decoration: InputDecoration(
+            labelText: _isSpanish ? 'Descripción' : 'Description',
+            isDense: true,
           ),
         ),
-        const SizedBox(height: 10),
-        Align(
-          alignment: Alignment.centerRight,
-          child: FilledButton.icon(
-            onPressed: (_submitting || actionState?.canCreateFinal != true)
-                ? null
-                : _submitFinalInvoice,
-            icon: _submitting
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.request_quote_outlined, size: 16),
-            label: Text(
-              _isSpanish ? 'Crear factura final' : 'Create final invoice',
-            ),
-          ),
-        ),
+        const SizedBox(height: 8),
+        _buildVatNotice(cs, typo),
       ],
     );
   }
@@ -1668,17 +2010,19 @@ class _PresupuestoInvoiceConversionViewState
     ColorScheme cs,
     AppTypography typo,
   ) {
-    final actionState = _selectedActionState;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildAmountPreview(context, cs, typo),
+        const SizedBox(height: 8),
+        _buildVatNotice(cs, typo),
+        const SizedBox(height: 8),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
           decoration: BoxDecoration(
             color: cs.primaryContainer.withValues(alpha: 0.16),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: cs.primary.withValues(alpha: 0.24)),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
             _isSpanish
@@ -1687,27 +2031,6 @@ class _PresupuestoInvoiceConversionViewState
             style: typo.bodySmall.copyWith(
               color: cs.onSurfaceVariant,
               fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        Align(
-          alignment: Alignment.centerRight,
-          child: Tooltip(
-            message: 'Crear factura final por el importe total, sin anticipo',
-            child: FilledButton.icon(
-              onPressed:
-                  (_submitting || actionState?.canCreateFullFinal != true)
-                      ? null
-                      : _submitFullFinalInvoice,
-              icon: _submitting
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.payments_outlined, size: 16),
-              label: const Text('Crear factura completa'),
             ),
           ),
         ),
