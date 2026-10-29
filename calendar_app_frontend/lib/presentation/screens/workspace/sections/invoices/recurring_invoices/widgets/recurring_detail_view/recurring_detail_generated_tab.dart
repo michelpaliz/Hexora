@@ -6,6 +6,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/d
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -36,6 +37,7 @@ class RecurringDetailGeneratedTab extends StatefulWidget {
   final Future<Invoice> Function(String invoiceId) onLoadInvoiceDetails;
   final Future<Uint8List> Function(String invoiceId) onLoadInvoicePreviewBytes;
   final bool receiptsMode;
+  final String? toolbarTitle;
 
   const RecurringDetailGeneratedTab({
     super.key,
@@ -50,6 +52,7 @@ class RecurringDetailGeneratedTab extends StatefulWidget {
     required this.onLoadInvoiceDetails,
     required this.onLoadInvoicePreviewBytes,
     this.receiptsMode = false,
+    this.toolbarTitle,
   });
 
   @override
@@ -337,51 +340,51 @@ class _RecurringDetailGeneratedTabState
       return status ?? '';
     }
 
-    Widget sortIcon({
-      required _GeneratedNumberSort value,
-      required IconData icon,
-      required String tooltip,
-    }) {
-      final active = _numberSort == value;
-      return Tooltip(
-        message: tooltip,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(999),
-          onTap: () => setState(() => _numberSort = value),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: active
-                  ? cs.primaryContainer
-                  : cs.surface.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: active
-                    ? cs.primaryContainer
-                    : cs.outlineVariant.withValues(alpha: 0.2),
-              ),
-            ),
-            child: Icon(
-              icon,
-              size: 16,
-              color: active ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-            ),
+    final sortLabels = <_GeneratedNumberSort, String>{
+      _GeneratedNumberSort.recent: isEs ? 'Recientes' : 'Recent',
+      _GeneratedNumberSort.asc: isEs ? 'Número asc.' : 'Number asc.',
+      _GeneratedNumberSort.desc: isEs ? 'Número desc.' : 'Number desc.',
+    };
+    final sortMenu = MenuAnchor(
+      menuChildren: [
+        for (final value in _GeneratedNumberSort.values)
+          MenuItemButton(
+            onPressed: () => setState(() => _numberSort = value),
+            leadingIcon: _numberSort == value
+                ? Icon(Icons.check_rounded, size: 16, color: cs.primary)
+                : const SizedBox(width: 16),
+            child: Text(sortLabels[value]!),
           ),
-        ),
-      );
-    }
-
-    final header = Container(
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.24),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.28)),
+      ],
+      builder: (context, controller, _) => HexoraButton(
+        onPressed: () =>
+            controller.isOpen ? controller.close() : controller.open(),
+        icon: Icons.sort_rounded,
+        label: sortLabels[_numberSort],
+        trailingIcon: Icons.keyboard_arrow_down_rounded,
+        variant: HexoraButtonVariant.secondary,
+        size: HexoraButtonSize.standard,
       ),
+    );
+
+    final header = SizedBox(
+      height: 38,
       child: Row(
         children: [
+          if ((widget.toolbarTitle ?? '').trim().isNotEmpty) ...[
+            Flexible(
+              child: Text(
+                widget.toolbarTitle!.trim(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: t.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: cs.onSurface,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+          ],
           Text(
             listHeaderLabel,
             style: t.bodySmall.copyWith(
@@ -404,34 +407,15 @@ class _RecurringDetailGeneratedTabState
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          sortIcon(
-            value: _GeneratedNumberSort.recent,
-            icon: Icons.schedule_outlined,
-            tooltip: l.invoiceSortByNumberRecent,
-          ),
-          const SizedBox(width: 4),
-          sortIcon(
-            value: _GeneratedNumberSort.asc,
-            icon: Icons.arrow_upward,
-            tooltip: l.invoiceSortByNumberAsc,
-          ),
-          const SizedBox(width: 4),
-          sortIcon(
-            value: _GeneratedNumberSort.desc,
-            icon: Icons.arrow_downward,
-            tooltip: l.invoiceSortByNumberDesc,
-          ),
           const Spacer(),
-          Tooltip(
-            message: l.recurringInvoicesRefreshCta,
-            child: IconButton(
-              onPressed: widget.loading ? null : widget.onReload,
-              icon: const Icon(Icons.refresh_rounded, size: 16),
-              padding: EdgeInsets.zero,
-              visualDensity: VisualDensity.compact,
-              constraints: const BoxConstraints.tightFor(width: 30, height: 30),
-            ),
+          sortMenu,
+          const SizedBox(width: 6),
+          HexoraButton.iconOnly(
+            onPressed: widget.loading ? null : widget.onReload,
+            icon: Icons.refresh_rounded,
+            tooltip: l.recurringInvoicesRefreshCta,
+            variant: HexoraButtonVariant.secondary,
+            size: HexoraButtonSize.standard,
           ),
         ],
       ),
@@ -640,23 +624,28 @@ class _RecurringDetailGeneratedTabState
                   borderRadius: BorderRadius.circular(HexoraDimensions.radius),
                   child: Container(
                     constraints: const BoxConstraints(
-                      minHeight: HexoraDocumentTokens.rowHeight,
-                      maxHeight: 68,
+                      minHeight: 56,
+                      maxHeight: 60,
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     decoration: BoxDecoration(
                       color: selected
                           ? cs.primaryContainer.withValues(alpha: 0.28)
                           : Colors.transparent,
-                      borderRadius:
-                          BorderRadius.circular(HexoraDimensions.radius),
-                      border: Border.all(
-                        color: selected
-                            ? cs.primary.withValues(alpha: 0.65)
-                            : cs.outlineVariant.withValues(
-                                alpha: HexoraTableTokens.separatorOpacity,
+                      borderRadius: selected
+                          ? BorderRadius.circular(HexoraDimensions.radius)
+                          : BorderRadius.zero,
+                      border: selected
+                          ? Border.all(
+                              color: cs.primary.withValues(alpha: 0.65),
+                            )
+                          : Border(
+                              bottom: BorderSide(
+                                color: cs.outlineVariant.withValues(
+                                  alpha: HexoraTableTokens.separatorOpacity,
+                                ),
                               ),
-                      ),
+                            ),
                     ),
                     child: Row(
                       children: [
@@ -818,7 +807,7 @@ class _RecurringDetailGeneratedTabState
                 key: const PageStorageKey<String>(
                     'recurring-generated-invoice-history'),
                 itemCount: visibleInvoices.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 6),
+                separatorBuilder: (_, __) => const SizedBox(height: 2),
                 itemBuilder: (_, i) => buildInvoiceCard(visibleInvoices[i]),
               );
 

@@ -62,9 +62,6 @@ class RecurringSeriesFilters extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final isEs = l.localeName.startsWith('es');
-    final allLabel =
-        allStatusLabel ?? (statusOptions.isEmpty ? '' : statusOptions.first);
-    final statusFiltered = selectedStatus != allLabel;
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
       borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: .6)),
@@ -145,6 +142,7 @@ class RecurringSeriesFilters extends StatelessWidget {
             ? (isEs ? 'Filtros' : 'Filters')
             : '${isEs ? 'Filtros' : 'Filters'} ($activeFilterCount)',
         variant: HexoraButtonVariant.secondary,
+        size: HexoraButtonSize.large,
       ),
     );
 
@@ -172,6 +170,7 @@ class RecurringSeriesFilters extends StatelessWidget {
         label: sortLabel,
         trailingIcon: Icons.keyboard_arrow_down_rounded,
         variant: HexoraButtonVariant.secondary,
+        size: HexoraButtonSize.large,
       ),
     );
     final clear = activeFilterCount == 0
@@ -182,88 +181,53 @@ class RecurringSeriesFilters extends StatelessWidget {
             icon: Icons.close_rounded,
             label: l.clientFiltersClear,
             variant: HexoraButtonVariant.ghost,
+            size: HexoraButtonSize.large,
           );
-
-    final activeChips = <Widget>[
-      if (statusFiltered)
-        _ActiveFilterChip(
-          label: '${l.recurringInvoicesStatusFilterLabel}: $selectedStatus',
-          onRemove: onStatusClear,
-        ),
-      if (selectedClient != null)
-        _ActiveFilterChip(
-          label: '${l.recurringInvoicesClientFilterLabel}: $selectedClient',
-          onRemove: onClientClear,
-        ),
-      if (selectedFrequency != null)
-        _ActiveFilterChip(
-          label:
-              '${l.recurringInvoicesFrequencyLabel}: ${recurringFrequencyLabel(l, selectedFrequency)}',
-          onRemove: onFrequencyClear,
-        ),
-      if (dueSoonOnly)
-        _ActiveFilterChip(
-          label: l.recurringInvoicesDueSoon,
-          onRemove: () => onDueSoonChanged(false),
-        ),
-      if (showInactiveClients)
-        _ActiveFilterChip(
-          label: l.showInactiveClients,
-          onRemove: () => onShowInactiveChanged(false),
-        ),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            if (constraints.maxWidth < 580) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+    final compactClear = activeFilterCount == 0
+        ? null
+        : HexoraButton.iconOnly(
+            key: const ValueKey('recurring-series-clear-filters'),
+            onPressed: onClearFilters,
+            icon: Icons.close_rounded,
+            tooltip: l.clientFiltersClear,
+            variant: HexoraButtonVariant.ghost,
+            size: HexoraButtonSize.large,
+          );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 540) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              search,
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  search,
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [filtersMenu, sortMenu, if (clear != null) clear],
-                  ),
+                  filtersMenu,
+                  sortMenu,
+                  if (compactClear != null) compactClear,
                 ],
-              );
-            }
-            final searchWidth = constraints.maxWidth >= 760 ? 340.0 : 280.0;
-            return Row(
-              children: [
-                SizedBox(width: searchWidth, child: search),
-                const SizedBox(width: 6),
-                filtersMenu,
-                const SizedBox(width: 6),
-                sortMenu,
-                if (clear != null) ...[
-                  const Spacer(),
-                  clear,
-                ],
-              ],
-            );
-          },
-        ),
-        if (activeChips.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (var i = 0; i < activeChips.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 6),
-                  activeChips[i],
-                ],
-              ],
-            ),
-          ),
-        ],
-      ],
+              ),
+            ],
+          );
+        }
+        final searchWidth = (constraints.maxWidth * .42).clamp(260.0, 320.0);
+        return Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            SizedBox(width: searchWidth, child: search),
+            filtersMenu,
+            sortMenu,
+            if (clear != null)
+              constraints.maxWidth < 650 ? compactClear! : clear,
+          ],
+        );
+      },
     );
   }
 }
@@ -517,33 +481,6 @@ class _PanelToggle extends StatelessWidget {
           onChanged: onChanged,
         ),
       );
-}
-
-class _ActiveFilterChip extends StatelessWidget {
-  const _ActiveFilterChip({required this.label, required this.onRemove});
-  final String label;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return InputChip(
-      label: Text(label),
-      onDeleted: onRemove,
-      deleteIcon: const Icon(Icons.close_rounded, size: 14),
-      avatar: Icon(Icons.check_rounded, size: 14, color: cs.primary),
-      visualDensity: VisualDensity.compact,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      labelStyle: AppTypography.of(context).bodySmall.copyWith(
-            fontSize: 11.5,
-            fontWeight: FontWeight.w600,
-            color: cs.onSurfaceVariant,
-          ),
-      side: BorderSide(color: cs.primary.withValues(alpha: .35)),
-      backgroundColor: cs.primaryContainer.withValues(alpha: .35),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-    );
-  }
 }
 
 class _ClientPickerDialog extends StatefulWidget {

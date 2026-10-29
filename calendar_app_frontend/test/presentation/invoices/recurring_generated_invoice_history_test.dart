@@ -53,6 +53,7 @@ void main() {
             onDownloadPdf: (_) => downloads++,
             onLoadInvoiceDetails: (_) async => invoice,
             onLoadInvoicePreviewBytes: (_) async => Uint8List(0),
+            toolbarTitle: 'PDFs generados',
           ),
         ),
       ));
@@ -60,6 +61,10 @@ void main() {
 
       final row = find.byKey(const ValueKey('generated-invoice-row-invoice-1'));
       expect(row, findsOneWidget);
+      expect(find.text('PDFs generados'), findsOneWidget);
+      expect(find.text('Facturas'), findsOneWidget);
+      expect(find.text('Recientes'), findsOneWidget);
+      expect(find.byTooltip('Actualizar'), findsOneWidget);
       expect(tester.getSize(row).height, inInclusiveRange(60, 68));
       expect(find.byType(HexoraStatusBadge), findsOneWidget);
       expect(find.text('Emitida'), findsOneWidget);

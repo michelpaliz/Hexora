@@ -60,11 +60,15 @@ void main() {
           find.byKey(const ValueKey('recurring-series-search'));
       final filterFinder =
           find.byKey(const ValueKey('recurring-series-filters-button'));
-      expect(tester.getSize(searchFinder).width, 340);
+      expect(tester.getSize(searchFinder).width, 320);
       expect(tester.getSize(searchFinder).height, 38);
       expect(tester.getCenter(filterFinder).dy,
           closeTo(tester.getCenter(searchFinder).dy, 1));
-      expect(find.byType(InputChip), findsOneWidget);
+      expect(find.byType(InputChip), findsNothing);
+      expect(
+        find.byKey(const ValueKey('recurring-series-clear-filters')),
+        findsOneWidget,
+      );
 
       await tester.tap(filterFinder);
       await tester.pumpAndSettle();
@@ -73,11 +77,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(status, 'Inactivas');
 
+      await tester.tap(filterFinder);
+      await tester.pumpAndSettle();
       await tester.tap(
-        find.descendant(
-          of: find.byType(InputChip),
-          matching: find.byIcon(Icons.close_rounded),
-        ),
+        find.byKey(const ValueKey('recurring-series-clear-filters')),
       );
       await tester.pumpAndSettle();
       expect(status, 'Todos');
