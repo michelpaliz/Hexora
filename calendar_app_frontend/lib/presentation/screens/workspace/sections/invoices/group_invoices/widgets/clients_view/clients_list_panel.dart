@@ -31,6 +31,8 @@ class ClientsListPanel extends StatefulWidget {
   final VoidCallback onClearPropertyFilter;
   final ValueChanged<GroupClient> onSelectClient;
   final VoidCallback? onAddClient;
+  final VoidCallback? onRefresh;
+  final bool refreshing;
 
   const ClientsListPanel({
     super.key,
@@ -55,6 +57,8 @@ class ClientsListPanel extends StatefulWidget {
     required this.onClearPropertyFilter,
     required this.onSelectClient,
     this.onAddClient,
+    this.onRefresh,
+    this.refreshing = false,
   });
 
   @override
@@ -141,6 +145,36 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
               propertyFilter: widget.propertyFilter,
               onToggleProperty: widget.onTogglePropertyFilter,
               onClearProperty: widget.onClearPropertyFilter,
+              trailingActions: [
+                if (widget.onRefresh != null)
+                  IconButton.outlined(
+                    onPressed: widget.refreshing ? null : widget.onRefresh,
+                    tooltip: l.refreshAction,
+                    icon: widget.refreshing
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh_rounded, size: 17),
+                    style: IconButton.styleFrom(
+                      fixedSize: const Size.square(32),
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                if (widget.onAddClient != null)
+                  IconButton.filled(
+                    onPressed: widget.onAddClient,
+                    tooltip: l.addClient,
+                    icon: const Icon(Icons.person_add_outlined, size: 17),
+                    style: IconButton.styleFrom(
+                      fixedSize: const Size.square(32),
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+              ],
             ),
           ),
           const Divider(height: 1),

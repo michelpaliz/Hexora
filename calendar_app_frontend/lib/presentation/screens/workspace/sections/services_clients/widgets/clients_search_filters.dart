@@ -44,6 +44,7 @@ class ClientsSearchFilters extends StatelessWidget {
   final bool inactiveValueMeansHidden;
   final bool moveSummaryIntoFilters;
   final double searchDesktopHeight;
+  final List<Widget> trailingActions;
 
   const ClientsSearchFilters({
     super.key,
@@ -83,6 +84,7 @@ class ClientsSearchFilters extends StatelessWidget {
     this.inactiveValueMeansHidden = false,
     this.moveSummaryIntoFilters = false,
     this.searchDesktopHeight = 36,
+    this.trailingActions = const [],
   });
 
   @override
@@ -234,6 +236,7 @@ class ClientsSearchFilters extends StatelessWidget {
       activeFilterCount: activeFilterCount,
       padding: padding,
       searchDesktopHeight: searchDesktopHeight,
+      trailingActions: trailingActions,
       autoExpandWhenActive: autoExpandWhenActive,
       persistentContent: moveSummaryIntoFilters ? null : summary,
       filtersContent: filterBody,

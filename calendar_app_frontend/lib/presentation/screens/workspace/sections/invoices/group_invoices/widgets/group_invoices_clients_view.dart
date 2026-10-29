@@ -21,6 +21,8 @@ class GroupInvoicesClientsView extends StatefulWidget {
   final Future<void> Function(List<Invoice> invoices) onDownloadVisibleInvoices;
   final int initialDetailTabIndex;
   final VoidCallback? onAddClient;
+  final VoidCallback? onRefresh;
+  final bool refreshing;
 
   /// Replaces the client detail panel, e.g. with the inline client form.
   final Widget? detailOverride;
@@ -47,6 +49,8 @@ class GroupInvoicesClientsView extends StatefulWidget {
     this.initialDetailTabIndex = 0,
     this.detailOverride,
     this.onAddClient,
+    this.onRefresh,
+    this.refreshing = false,
     required this.onUpdateClientClassification,
   });
 
@@ -220,6 +224,8 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
                     setState(() => _propertyFilter = null),
                 onSelectClient: widget.onSelectClient,
                 onAddClient: widget.onAddClient,
+                onRefresh: widget.onRefresh,
+                refreshing: widget.refreshing,
               ),
               end: widget.detailOverride ??
                   ClientDetailPanel(

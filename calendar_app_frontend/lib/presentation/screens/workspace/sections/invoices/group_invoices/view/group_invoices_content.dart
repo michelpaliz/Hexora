@@ -111,6 +111,8 @@ class _GroupInvoicesContent extends StatelessWidget {
         onDeleteInvoice: state._deleteInvoice,
         onDownloadVisibleInvoices: state._downloadVisibleInvoicesPdfs,
         onAddClient: state._openCreateClient,
+        onRefresh: state._refreshClientsSection,
+        refreshing: state._refreshingClientsSection == true,
         onUpdateClientClassification: state._updateClientClassification,
       );
     }

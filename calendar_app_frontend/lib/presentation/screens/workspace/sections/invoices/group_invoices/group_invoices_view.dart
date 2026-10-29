@@ -27,15 +27,14 @@ class _GroupInvoicesView extends StatelessWidget {
             : state._selectedMenu;
     final compactPrimaryButtonStyle = FilledButton.styleFrom(
       minimumSize: const Size(32, HexoraDimensions.buttonCompact),
-      padding: const EdgeInsets.symmetric(
-          horizontal: HexoraTableTokens.cellPadding),
+      padding:
+          const EdgeInsets.symmetric(horizontal: HexoraTableTokens.cellPadding),
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(HexoraDimensions.radius)),
       elevation: 0,
     );
     final compactIconButtonStyle = IconButton.styleFrom(
-      minimumSize:
-          const Size.square(HexoraDimensions.buttonCompact),
+      minimumSize: const Size.square(HexoraDimensions.buttonCompact),
       fixedSize: const Size.square(HexoraDimensions.buttonCompact),
       padding: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
@@ -413,7 +412,7 @@ class _GroupInvoicesView extends StatelessWidget {
                   child: (kIsWeb && state._selectedMenu != 'receipt_editor')
                       ? FolderPanel(
                           title: folderTitle,
-                          showTab: true,
+                          showTab: activeMenu != 'clients',
                           tabContent: documentToolbarTabs == null
                               ? null
                               : Row(
@@ -425,9 +424,14 @@ class _GroupInvoicesView extends StatelessWidget {
                                 ),
                           actions: folderActions,
                           actionsSpacing: 6,
-                          contentTopPadding: showInvoiceActions
-                              ? HexoraDimensions.button + HexoraTableTokens.gap
-                              : 30,
+                          showToolbarDivider: activeMenu != 'recurring' &&
+                              activeMenu != 'recurring_receipts',
+                          contentTopPadding: activeMenu == 'clients'
+                              ? 0
+                              : showInvoiceActions
+                                  ? HexoraDimensions.button +
+                                      HexoraTableTokens.gap
+                                  : 30,
                           child: content,
                         )
                       : content,

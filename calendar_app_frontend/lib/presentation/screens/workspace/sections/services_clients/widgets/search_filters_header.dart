@@ -30,7 +30,8 @@ class SearchFiltersHeader extends StatefulWidget {
       this.padding = const EdgeInsets.fromLTRB(12, 0, 12, 10),
       this.searchDesktopHeight = 36,
       this.showClearAction = true,
-      this.autoExpandWhenActive = false});
+      this.autoExpandWhenActive = false,
+      this.trailingActions = const []});
   final TextEditingController searchController;
   final VoidCallback onSearchChanged;
   final String searchHint;
@@ -45,6 +46,7 @@ class SearchFiltersHeader extends StatefulWidget {
   final bool showClearAction;
   final bool autoExpandWhenActive;
   final double searchDesktopHeight;
+  final List<Widget> trailingActions;
   @override
   State<SearchFiltersHeader> createState() => _SearchFiltersHeaderState();
 }
@@ -149,6 +151,10 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                         Icon(_expanded ? Icons.expand_less : Icons.expand_more,
                             size: 16),
                       ]))),
+            ],
+            if (widget.trailingActions.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              ...widget.trailingActions,
             ],
           ]),
           if (widget.persistentContent != null ||
