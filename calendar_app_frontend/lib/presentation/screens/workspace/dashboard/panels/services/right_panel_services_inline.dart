@@ -44,7 +44,8 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
   bool _creatingClient = false;
   Service? _editingService;
   bool _creatingService = false;
-  String? _propertyKindFilter;
+  String? _propertyTypeFilter;
+  String? _customerTypeFilter;
 
   @override
   void initState() {
@@ -401,8 +402,14 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
 
     final clientsTabLabel = '${l.tabClients} · ${_clients.length}';
     final servicesTabLabel = '${l.tabServices} · ${_services.length}';
-    final propertyKindOptions = _clients
-        .map((c) => (c.propertyKind ?? '').trim())
+    final propertyTypeOptions = _clients
+        .map((c) => (c.effectivePropertyType ?? '').trim())
+        .where((v) => v.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    final customerTypeOptions = _clients
+        .map((c) => (c.effectiveCustomerType ?? '').trim())
         .where((v) => v.isNotEmpty)
         .toSet()
         .toList()
@@ -522,10 +529,14 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
                     showInactive: _showInactiveClients,
                     onToggleInactive: (v) =>
                         setState(() => _showInactiveClients = v),
-                    propertyKindFilter: _propertyKindFilter,
-                    propertyKindOptions: propertyKindOptions,
-                    onPropertyKindChanged: (v) =>
-                        setState(() => _propertyKindFilter = v),
+                    propertyTypeFilter: _propertyTypeFilter,
+                    propertyTypeOptions: propertyTypeOptions,
+                    onPropertyTypeChanged: (v) =>
+                        setState(() => _propertyTypeFilter = v),
+                    customerTypeFilter: _customerTypeFilter,
+                    customerTypeOptions: customerTypeOptions,
+                    onCustomerTypeChanged: (v) =>
+                        setState(() => _customerTypeFilter = v),
                     onDelete: _confirmDeleteClient,
                     showInlineCTA: true,
                     onAddTap: () => useSidePanel
