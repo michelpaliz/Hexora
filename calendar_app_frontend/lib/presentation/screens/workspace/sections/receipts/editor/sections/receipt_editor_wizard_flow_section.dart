@@ -229,10 +229,11 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
     }
   }
 
-  Future<void> _preparePreviewStep() async {
+  Future<bool> _preparePreviewStep() async {
     final draft = await _saveDraft(showSavedSnack: false);
-    if (draft == null || !mounted) return;
+    if (draft == null || !mounted) return false;
     await _loadDraftPreview(receiptId: draft.id);
+    return mounted && _previewError == null;
   }
 
   Future<void> _tryGoToStep(int targetStep) async {
@@ -249,8 +250,8 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
     if (targetStep > _step + 1) return;
     if (!_validateCurrentStep()) return;
     if (targetStep == 2) {
-      await _preparePreviewStep();
-      if (!mounted) return;
+      final prepared = await _preparePreviewStep();
+      if (!prepared || !mounted) return;
     }
     setState(() {
       if (targetStep != 2) {

@@ -33,14 +33,6 @@ class ReceiptLinesEditor extends StatefulWidget {
 }
 
 class _ReceiptLinesEditorState extends State<ReceiptLinesEditor> {
-  final ScrollController _horizontal = ScrollController();
-
-  @override
-  void dispose() {
-    _horizontal.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -50,11 +42,11 @@ class _ReceiptLinesEditorState extends State<ReceiptLinesEditor> {
     const minWidth = 690.0;
 
     final inputBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(8),
       borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.36)),
     );
     final focusedBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(8),
       borderSide: BorderSide(color: cs.primary, width: 1.4),
     );
 
@@ -67,7 +59,7 @@ class _ReceiptLinesEditorState extends State<ReceiptLinesEditor> {
         filled: true,
         fillColor: cs.surfaceContainer,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       );
     }
 
@@ -80,9 +72,6 @@ class _ReceiptLinesEditorState extends State<ReceiptLinesEditor> {
 
     Widget buildTable(double availableWidth) {
       final tableWidth = availableWidth < minWidth ? minWidth : availableWidth;
-      final editorTotal =
-          widget.lines.fold<num>(0, (sum, line) => sum + line.total);
-
       return SizedBox(
         width: tableWidth,
         child: Column(
@@ -90,14 +79,8 @@ class _ReceiptLinesEditorState extends State<ReceiptLinesEditor> {
           children: [
             // ── Header ────────────────────────────────────────────────────
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withValues(alpha: 0.36),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.24),
-                ),
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.36),
               child: Row(
                 children: [
                   Expanded(
@@ -141,11 +124,18 @@ class _ReceiptLinesEditorState extends State<ReceiptLinesEditor> {
                     ),
                   ),
                   const SizedBox(width: 4),
-                  const SizedBox(width: ReceiptLinesEditor._deleteWidth),
+                  SizedBox(
+                    width: ReceiptLinesEditor._deleteWidth,
+                    child: Text(
+                      l.localeName.startsWith('es') ? 'Acc.' : 'Actions',
+                      style: headerStyle,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 2),
 
             // ── Lines ──────────────────────────────────────────────────────
             if (widget.lines.isEmpty)
@@ -162,61 +152,29 @@ class _ReceiptLinesEditorState extends State<ReceiptLinesEditor> {
                 final isLast = i == widget.lines.length - 1;
                 final autoFocus = isLast && line.description.trim().isEmpty;
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _ReceiptLineRow(
-                    key: ObjectKey(line),
-                    index: i,
-                    line: line,
-                    canEdit: widget.canEdit,
-                    fieldDec: fieldDec,
-                    onChanged: widget.onChanged,
-                    onRemove: () => widget.onRemove(i),
-                    onAddLine: widget.onAddLine,
-                    canDelete: widget.lines.length > 1,
-                    autoFocus: autoFocus,
-                    isLast: isLast,
-                  ),
+                return Column(
+                  children: [
+                    _ReceiptLineRow(
+                      key: ObjectKey(line),
+                      index: i,
+                      line: line,
+                      canEdit: widget.canEdit,
+                      fieldDec: fieldDec,
+                      onChanged: widget.onChanged,
+                      onRemove: () => widget.onRemove(i),
+                      onAddLine: widget.onAddLine,
+                      canDelete: widget.lines.length > 1,
+                      autoFocus: autoFocus,
+                      isLast: isLast,
+                    ),
+                    if (!isLast)
+                      Divider(
+                        height: 1,
+                        color: cs.outlineVariant.withValues(alpha: 0.35),
+                      ),
+                  ],
                 );
               }),
-            if (widget.lines.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: cs.outlineVariant.withValues(alpha: 0.24),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Total líneas',
-                        style: t.bodySmall.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        NumberFormat.simpleCurrency(name: '')
-                            .format(editorTotal),
-                        style: t.bodyMedium.copyWith(
-                          color: cs.primary,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
           ],
         ),
       );
@@ -224,21 +182,25 @@ class _ReceiptLinesEditorState extends State<ReceiptLinesEditor> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final scrollable = constraints.maxWidth < minWidth;
-        final table = buildTable(constraints.maxWidth);
-
-        if (!scrollable) return table;
-
-        return Scrollbar(
-          controller: _horizontal,
-          thumbVisibility: true,
-          trackVisibility: true,
-          notificationPredicate: (n) => n.depth == 0,
-          child: SingleChildScrollView(
-            controller: _horizontal,
-            scrollDirection: Axis.horizontal,
-            child: table,
-          ),
+        if (constraints.maxWidth >= minWidth) {
+          return buildTable(constraints.maxWidth);
+        }
+        return Column(
+          children: List.generate(widget.lines.length, (index) {
+            final line = widget.lines[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _ReceiptLineMobileCard(
+                key: ObjectKey(line),
+                line: line,
+                canEdit: widget.canEdit,
+                canDelete: widget.lines.length > 1,
+                fieldDec: fieldDec,
+                onChanged: widget.onChanged,
+                onRemove: () => widget.onRemove(index),
+              ),
+            );
+          }),
         );
       },
     );
@@ -323,24 +285,12 @@ class _ReceiptLineRowState extends State<_ReceiptLineRow> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 130),
         curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: _hovered
               ? cs.primaryContainer.withValues(alpha: 0.12)
-              : cs.surface.withValues(alpha: 0.72),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: _hovered
-                ? cs.primary.withValues(alpha: 0.22)
-                : cs.outlineVariant.withValues(alpha: 0.22),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: cs.shadow.withValues(alpha: _hovered ? 0.08 : 0.035),
-              blurRadius: _hovered ? 16 : 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -386,7 +336,7 @@ class _ReceiptLineRowState extends State<_ReceiptLineRow> {
                 enabled: widget.canEdit,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
-                textAlign: TextAlign.center,
+                textAlign: TextAlign.right,
                 textInputAction: TextInputAction.next,
                 style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
                 decoration: widget.fieldDec(hint: '1'),
@@ -472,7 +422,7 @@ class _ReceiptLineRowState extends State<_ReceiptLineRow> {
                 enabled: widget.canEdit,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
-                textAlign: TextAlign.center,
+                textAlign: TextAlign.right,
                 textInputAction: TextInputAction.done,
                 style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
                 decoration: widget.fieldDec(hint: '0.00'),
@@ -490,29 +440,23 @@ class _ReceiptLineRowState extends State<_ReceiptLineRow> {
               width: ReceiptLinesEditor._totalWidth,
               child: Align(
                 alignment: Alignment.centerRight,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                  decoration: BoxDecoration(
-                    color: cs.primaryContainer.withValues(alpha: 0.42),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: cs.primary.withValues(alpha: 0.16),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  transitionBuilder: (child, anim) =>
+                      FadeTransition(opacity: anim, child: child),
+                  child: Text(
+                    NumberFormat.currency(
+                      locale: l.localeName,
+                      symbol: '€',
+                      decimalDigits: 2,
+                    ).format(total),
+                    key: ValueKey<double>(total.toDouble()),
+                    style: t.bodyMedium.copyWith(
+                      color: cs.primary,
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
-                  ),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 180),
-                    transitionBuilder: (child, anim) =>
-                        FadeTransition(opacity: anim, child: child),
-                    child: Text(
-                      NumberFormat.simpleCurrency(name: '').format(total),
-                      key: ValueKey<double>(total.toDouble()),
-                      style: t.bodyMedium.copyWith(
-                        color: cs.primary,
-                        fontWeight: FontWeight.w900,
-                      ),
-                      textAlign: TextAlign.right,
-                    ),
+                    textAlign: TextAlign.right,
                   ),
                 ),
               ),
@@ -526,13 +470,13 @@ class _ReceiptLineRowState extends State<_ReceiptLineRow> {
               child: Tooltip(
                 message: l.remove,
                 child: Material(
-                  color: cs.errorContainer.withValues(alpha: 0.52),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
                   child: InkWell(
                     onTap: (widget.canEdit && widget.canDelete)
                         ? widget.onRemove
                         : null,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(8),
                     child: Icon(
                       Icons.delete_outline_rounded,
                       size: 18,
@@ -546,6 +490,151 @@ class _ReceiptLineRowState extends State<_ReceiptLineRow> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ReceiptLineMobileCard extends StatefulWidget {
+  const _ReceiptLineMobileCard({
+    super.key,
+    required this.line,
+    required this.canEdit,
+    required this.canDelete,
+    required this.fieldDec,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  final ReceiptLineDraft line;
+  final bool canEdit;
+  final bool canDelete;
+  final InputDecoration Function({required String hint}) fieldDec;
+  final VoidCallback onChanged;
+  final VoidCallback onRemove;
+
+  @override
+  State<_ReceiptLineMobileCard> createState() => _ReceiptLineMobileCardState();
+}
+
+class _ReceiptLineMobileCardState extends State<_ReceiptLineMobileCard> {
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final numericFormatters = [
+      FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
+      ),
+      child: Column(
+        children: [
+          TextFormField(
+            controller: widget.line.descriptionCtrl,
+            enabled: widget.canEdit,
+            decoration: widget.fieldDec(hint: l.lineDescription),
+            onChanged: (_) => widget.onChanged(),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: widget.line.qtyCtrl,
+                  enabled: widget.canEdit,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  textAlign: TextAlign.right,
+                  decoration: widget.fieldDec(hint: l.lineQuantity),
+                  inputFormatters: numericFormatters,
+                  onChanged: (_) => widget.onChanged(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: widget.line.unit,
+                  isDense: true,
+                  isExpanded: true,
+                  decoration: widget.fieldDec(hint: 'Unidad'),
+                  items: const [
+                    DropdownMenuItem(value: 'unit', child: Text('Ud.')),
+                    DropdownMenuItem(value: 'hour', child: Text('Hora')),
+                    DropdownMenuItem(value: 'day', child: Text('Día')),
+                    DropdownMenuItem(value: 'service', child: Text('Servicio')),
+                    DropdownMenuItem(value: 'item', child: Text('Artículo')),
+                    DropdownMenuItem(value: 'other', child: Text('Otro')),
+                  ],
+                  onChanged: widget.canEdit
+                      ? (value) {
+                          setState(() {
+                            widget.line.selectedUnit = value ?? 'unit';
+                          });
+                          widget.onChanged();
+                        }
+                      : null,
+                ),
+              ),
+            ],
+          ),
+          if (widget.line.unit == 'other') ...[
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: widget.line.unitLabelCtrl,
+              enabled: widget.canEdit,
+              maxLength: 20,
+              decoration:
+                  widget.fieldDec(hint: 'Unidad').copyWith(counterText: ''),
+              inputFormatters: [LengthLimitingTextInputFormatter(20)],
+              onChanged: (_) => widget.onChanged(),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: widget.line.unitCtrl,
+                  enabled: widget.canEdit,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  textAlign: TextAlign.right,
+                  decoration: widget.fieldDec(hint: l.lineUnitPrice),
+                  inputFormatters: numericFormatters,
+                  onChanged: (_) => widget.onChanged(),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                NumberFormat.currency(
+                  locale: l.localeName,
+                  symbol: '€',
+                  decimalDigits: 2,
+                ).format(widget.line.total),
+                style: t.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                onPressed:
+                    widget.canEdit && widget.canDelete ? widget.onRemove : null,
+                tooltip: l.remove,
+                icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                color: cs.error,
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

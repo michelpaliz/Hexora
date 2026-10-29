@@ -56,6 +56,7 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
       ],
       currentStep: _step,
       onStepTapped: _tryGoToStep,
+      compactConnectors: true,
       itemKeyBuilder: (index, _) => ValueKey('receipt-editor-step-$index'),
     );
   }
@@ -75,12 +76,8 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.04),
-                borderRadius: BorderRadius.circular(10),
-              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
               child: Row(
                 children: [
                   Container(
@@ -150,7 +147,7 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
             ),
             const SizedBox(height: 6),
             SizedBox(
-              height: 204,
+              height: 164,
               child: _ClientReceiptStatsBox(
                 issuedCount: _clientIssuedCount,
                 draftCount: _clientDraftCount,
@@ -205,6 +202,7 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
           ? 'Selecciona un cliente para continuar'
           : 'Select a client to continue',
       clientSearchController: _clientSearchCtrl,
+      flat: true,
     );
   }
 
@@ -216,242 +214,145 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
         ? '-'
         : DateFormat.yMMMd(l.localeName).format(_issueDate!);
     final activeLineCount = _lines.where((line) => line.hasAnyValue).length;
-    final linesTotal = _lines.fold<num>(0, (sum, line) => sum + line.total);
-    final currency = NumberFormat.simpleCurrency(name: '');
-
-    return Card(
-      elevation: 0,
-      color: cs.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withValues(alpha: 0.24),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.24),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: cs.primaryContainer.withValues(alpha: 0.68),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      Icons.receipt_long_outlined,
-                      color: cs.primary,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l.receiptLinesTitle,
-                          style: t.bodyLarge.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: cs.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          children: [
-                            _ReceiptMetaChip(
-                              icon: Icons.event_outlined,
-                              label: l.receiptIssueDateLabel,
-                              value: dateLabel,
-                              onTap: _pickIssueDate,
-                            ),
-                            _ReceiptMetaChip(
-                              icon: Icons.format_list_bulleted_rounded,
-                              label: 'Lineas',
-                              value: '$activeLineCount',
-                            ),
-                            _ReceiptMetaChip(
-                              icon: Icons.payments_outlined,
-                              label: 'Total',
-                              value: currency.format(linesTotal),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  FilledButton.tonalIcon(
-                    onPressed: !_isManualLinesMode
-                        ? null
-                        : () => setState(() {
-                              _lines.add(ReceiptLineDraft.empty());
-                              _markDraftDirty();
-                            }),
-                    icon: const Icon(Icons.add),
-                    label: Text(l.addLine),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 13,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      l.receiptLinesTitle,
+                      style: t.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurface,
                       ),
-                      shape: RoundedRectangleBorder(
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: cs.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(999),
                       ),
+                      child: Text(
+                        '$activeLineCount',
+                        style: t.bodySmall.copyWith(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            Container(
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.45),
-                ),
-              ),
-              child: DefaultTabController(
-                length: 2,
-                initialIndex: _linesInputTabIndex,
-                child: TabBar(
-                  onTap: (index) {
-                    setState(() {
-                      _linesInputTabIndex = index;
-                      _jsonImportError = null;
-                    });
-                  },
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  dividerColor: Colors.transparent,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  indicator: BoxDecoration(
-                    color: cs.primaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  labelColor: cs.onPrimaryContainer,
-                  unselectedLabelColor: cs.onSurfaceVariant,
-                  labelStyle: t.bodySmall.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                  unselectedLabelStyle: t.bodySmall.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                  tabs: [
-                    Tab(text: l.invoiceLinesModeManual),
-                    Tab(text: l.invoiceLinesModeJson),
+                    TextButton.icon(
+                      onPressed: _pickIssueDate,
+                      icon: const Icon(Icons.event_outlined, size: 15),
+                      label: Text(dateLabel),
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 10),
-            if (_isManualLinesMode)
-              ReceiptLinesEditor(
-                lines: _lines,
-                canEdit: true,
-                onRemove: (index) {
-                  setState(() {
-                    _lines.removeAt(index).dispose();
-                    if (_lines.isEmpty) _lines.add(ReceiptLineDraft.empty());
-                    _markDraftDirty();
-                  });
-                },
-                onChanged: () => setState(_markDraftDirty),
-                onAddLine: () => setState(() {
-                  _lines.add(ReceiptLineDraft.empty());
-                  _markDraftDirty();
-                }),
-              )
-            else
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  LinesJsonImportPanel(
-                    loading: _jsonImporting,
-                    loadingPrompt: _jsonPromptLoading,
-                    disabled: false,
-                    fileName: _jsonImportFileName,
-                    errorText: _jsonImportError,
-                    onPickFile: _pickJsonImportFile,
-                    onClearFile: _clearJsonImportFile,
-                    onImportFromText: _importLinesFromJsonText,
-                    onImportFromFile: _importLinesFromJsonFile,
-                    onCopyPrompt: _copyJsonPromptTemplate,
-                    onClearError: () => setState(() => _jsonImportError = null),
-                    showDefaultTaxRate: false,
-                    formatHint:
-                        'Formato: {"items": [{"quantity": 1, "description": "...", "unitPrice": 21.70}]}',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildReceiptOpenAiExtractPanel(context),
-                ],
+              const SizedBox(width: 12),
+              HexoraButton(
+                onPressed: !_isManualLinesMode
+                    ? null
+                    : () => setState(() {
+                          _lines.add(ReceiptLineDraft.empty());
+                          _markDraftDirty();
+                        }),
+                icon: Icons.add_rounded,
+                label: l.addLine,
+                variant: HexoraButtonVariant.secondary,
               ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withValues(alpha: 0.24),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.24),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: SegmentedButton<int>(
+              segments: [
+                ButtonSegment<int>(
+                  value: 0,
+                  label: Text(l.invoiceLinesModeManual),
+                ),
+                ButtonSegment<int>(
+                  value: 1,
+                  label: Text(l.invoiceLinesModeJson),
+                ),
+              ],
+              selected: {_linesInputTabIndex},
+              showSelectedIcon: false,
+              onSelectionChanged: (selection) {
+                setState(() {
+                  _linesInputTabIndex = selection.first;
+                  _jsonImportError = null;
+                });
+              },
+              style: SegmentedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                textStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                minimumSize: const Size(0, 34),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.save_outlined,
-                    color: cs.primary,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      l.localeName.startsWith('es')
-                          ? 'Guarda el borrador antes de generar la vista previa.'
-                          : 'Save the draft before generating the preview.',
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  FilledButton.tonalIcon(
-                    onPressed: _savingDraft ? null : _saveDraft,
-                    icon: _savingDraft
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.save_outlined),
-                    label: Text(l.saveDraft),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: _savingDraft ? null : () => _tryGoToStep(2),
-                    icon: const Icon(Icons.picture_as_pdf_outlined),
-                    label: Text(l.preview),
-                  ),
-                ],
-              ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 10),
+          if (_isManualLinesMode)
+            ReceiptLinesEditor(
+              lines: _lines,
+              canEdit: true,
+              onRemove: (index) {
+                setState(() {
+                  _lines.removeAt(index).dispose();
+                  if (_lines.isEmpty) _lines.add(ReceiptLineDraft.empty());
+                  _markDraftDirty();
+                });
+              },
+              onChanged: () => setState(_markDraftDirty),
+              onAddLine: () => setState(() {
+                _lines.add(ReceiptLineDraft.empty());
+                _markDraftDirty();
+              }),
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LinesJsonImportPanel(
+                  loading: _jsonImporting,
+                  loadingPrompt: _jsonPromptLoading,
+                  disabled: false,
+                  fileName: _jsonImportFileName,
+                  errorText: _jsonImportError,
+                  onPickFile: _pickJsonImportFile,
+                  onClearFile: _clearJsonImportFile,
+                  onImportFromText: _importLinesFromJsonText,
+                  onImportFromFile: _importLinesFromJsonFile,
+                  onCopyPrompt: _copyJsonPromptTemplate,
+                  onClearError: () => setState(() => _jsonImportError = null),
+                  showDefaultTaxRate: false,
+                  formatHint:
+                      'Formato: {"items": [{"quantity": 1, "description": "...", "unitPrice": 21.70}]}',
+                ),
+                const SizedBox(height: 12),
+                _buildReceiptOpenAiExtractPanel(context),
+              ],
+            ),
+        ],
       ),
     );
   }
@@ -751,67 +652,10 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
     return _buildPreviewStep(context);
   }
 
-  Widget _buildExistingDraftBanner(BuildContext context) {
-    final id = _existingUnnumberedReceiptId;
-    final receipt = _existingUnnumberedReceipt;
-    if ((id == null || id.trim().isEmpty) && receipt == null) {
-      return const SizedBox.shrink();
-    }
-    if (_draftReceipt?.id == id || _draftReceipt?.id == receipt?.id) {
-      return const SizedBox.shrink();
-    }
-
-    final l = AppLocalizations.of(context)!;
-    final isEs = l.localeName.toLowerCase().startsWith('es');
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: cs.tertiaryContainer.withValues(alpha: 0.28),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.tertiary.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.edit_note_outlined, color: cs.tertiary, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              isEs
-                  ? 'Tienes un borrador de recibo pendiente'
-                  : 'There is a pending unnumbered receipt draft.',
-              style: t.bodyMedium.copyWith(
-                color: cs.onTertiaryContainer,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          TextButton.icon(
-            onPressed: _checkingUnnumberedDraft
-                ? null
-                : () => _openExistingUnnumberedDraft(
-                      receiptId: id,
-                      receipt: receipt,
-                    ),
-            icon: _checkingUnnumberedDraft
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.open_in_new_outlined, size: 16),
-            label: Text(isEs ? 'Abrir' : 'Open'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildContent(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
     final statusText = _draftSaveFailed
         ? (l.localeName.startsWith('es')
             ? 'No se pudo guardar el borrador'
@@ -823,6 +667,12 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
             : (l.localeName.startsWith('es')
                 ? 'Borrador actualizado'
                 : 'Draft up to date');
+    final receiptTotal = _lines.fold<num>(0, (sum, line) => sum + line.total);
+    final totalLabel = NumberFormat.currency(
+      locale: l.localeName,
+      symbol: '€',
+      decimalDigits: 2,
+    ).format(receiptTotal);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -837,36 +687,67 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
                 ),
         ),
         HexoraDocumentFooter(
-          status: Text(statusText, style: const TextStyle(fontSize: 12)),
-          back: OutlinedButton.icon(
+          compact: true,
+          showStatusWhenNarrow: true,
+          status: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                _draftSaveFailed
+                    ? Icons.error_outline_rounded
+                    : _draftDirty
+                        ? Icons.edit_outlined
+                        : Icons.cloud_done_outlined,
+                size: 15,
+                color: _draftSaveFailed
+                    ? cs.error
+                    : _draftDirty
+                        ? cs.onSurfaceVariant
+                        : cs.primary,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  statusText,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodySmall.copyWith(fontSize: 12),
+                ),
+              ),
+              if (_step == 1) ...[
+                const SizedBox(width: 16),
+                Text(
+                  l.localeName.startsWith('es') ? 'Total' : 'Total',
+                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  totalLabel,
+                  style: t.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
+            ],
+          ),
+          back: HexoraButton(
             onPressed:
                 _step == 0 ? _requestClose : () => _tryGoToStep(_step - 1),
-            icon: const Icon(Icons.arrow_back_rounded, size: 17),
-            label: Text(_step == 0 ? l.close : l.back),
+            icon: Icons.arrow_back_rounded,
+            label: _step == 0 ? l.close : l.back,
+            variant: HexoraButtonVariant.secondary,
           ),
-          primary: FilledButton.icon(
+          primary: HexoraButton(
             onPressed: _savingDraft
                 ? null
                 : _step < 2
                     ? () => _tryGoToStep(_step + 1)
                     : _saveDraft,
-            icon: _savingDraft
-                ? const SizedBox(
-                    width: 15,
-                    height: 15,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Icon(
-                    _step < 2
-                        ? Icons.arrow_forward_rounded
-                        : Icons.save_outlined,
-                    size: 17,
-                  ),
-            label: Text(
-              _step < 2
-                  ? (l.localeName.startsWith('es') ? 'Continuar' : 'Continue')
-                  : l.saveDraft,
-            ),
+            loading: _savingDraft,
+            icon: _step < 2 ? Icons.arrow_forward_rounded : Icons.save_outlined,
+            label: _step < 2
+                ? (l.localeName.startsWith('es') ? 'Continuar' : 'Continue')
+                : l.saveDraft,
           ),
         ),
       ],
@@ -880,76 +761,6 @@ String _wizardMonthLabel(DateTime dt, String locale) {
   final formatter = DateFormat.yMMMM(locale);
   final raw = formatter.format(dt.toLocal());
   return raw[0].toUpperCase() + raw.substring(1);
-}
-
-class _ReceiptMetaChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final VoidCallback? onTap;
-
-  const _ReceiptMetaChip({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final clickable = onTap != null;
-
-    return Material(
-      color: clickable
-          ? cs.primaryContainer.withValues(alpha: 0.42)
-          : cs.surface.withValues(alpha: 0.82),
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: clickable
-                  ? cs.primary.withValues(alpha: 0.18)
-                  : cs.outlineVariant.withValues(alpha: 0.22),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 15,
-                color: clickable ? cs.primary : cs.onSurfaceVariant,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                '$label: ',
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              Text(
-                value,
-                style: t.bodySmall.copyWith(
-                  color: clickable ? cs.primary : cs.onSurface,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _ClientReceiptStatsBox extends StatefulWidget {
@@ -995,80 +806,73 @@ class _ClientReceiptStatsBoxState extends State<_ClientReceiptStatsBox>
     final cs = Theme.of(context).colorScheme;
     final isEs = l.localeName.toLowerCase().startsWith('es');
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
-            child: TabBar(
-              controller: _tab,
-              dividerColor: Colors.transparent,
-              splashFactory: NoSplash.splashFactory,
-              overlayColor: WidgetStatePropertyAll(
-                cs.primary.withValues(alpha: 0.06),
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicator: BoxDecoration(
-                color: cs.primaryContainer,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              indicatorPadding: const EdgeInsets.symmetric(vertical: 3),
-              labelColor: cs.onPrimaryContainer,
-              unselectedLabelColor: cs.onSurfaceVariant,
-              labelStyle: t.bodySmall
-                  .copyWith(fontWeight: FontWeight.w800, fontSize: 11),
-              unselectedLabelStyle: t.bodySmall
-                  .copyWith(fontWeight: FontWeight.w700, fontSize: 11),
-              tabs: [
-                Tab(text: isEs ? 'Este mes' : 'This month'),
-                Tab(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(isEs ? 'Historial' : 'History'),
-                      if (widget.pastReceipts.isNotEmpty) ...[
-                        const SizedBox(width: 5),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: cs.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            '${widget.pastReceipts.length}',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              color: cs.onSurfaceVariant,
-                            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+          child: TabBar(
+            controller: _tab,
+            dividerColor: Colors.transparent,
+            splashFactory: NoSplash.splashFactory,
+            overlayColor: WidgetStatePropertyAll(
+              cs.primary.withValues(alpha: 0.06),
+            ),
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicator: BoxDecoration(
+              color: cs.primaryContainer,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            indicatorPadding: const EdgeInsets.symmetric(vertical: 3),
+            labelColor: cs.onPrimaryContainer,
+            unselectedLabelColor: cs.onSurfaceVariant,
+            labelStyle:
+                t.bodySmall.copyWith(fontWeight: FontWeight.w800, fontSize: 11),
+            unselectedLabelStyle:
+                t.bodySmall.copyWith(fontWeight: FontWeight.w700, fontSize: 11),
+            tabs: [
+              Tab(text: isEs ? 'Este mes' : 'This month'),
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(isEs ? 'Historial' : 'History'),
+                    if (widget.pastReceipts.isNotEmpty) ...[
+                      const SizedBox(width: 5),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: cs.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '${widget.pastReceipts.length}',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: cs.onSurfaceVariant,
                           ),
                         ),
-                      ],
+                      ),
                     ],
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
-          Expanded(
-            child: TabBarView(
-              controller: _tab,
-              children: [
-                _buildThisMonthTab(context, isEs, t, cs),
-                _buildHistoryTab(context, isEs, t, cs),
-              ],
-            ),
+        ),
+        Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
+        Expanded(
+          child: TabBarView(
+            controller: _tab,
+            children: [
+              _buildThisMonthTab(context, isEs, t, cs),
+              _buildHistoryTab(context, isEs, t, cs),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1253,13 +1057,8 @@ class _HistoryReceiptItem extends StatelessWidget {
         : (isEs ? 'Borrador' : 'Draft');
     final isIssued = receipt.status == 'issued';
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       child: Row(
         children: [
           Icon(
@@ -1337,13 +1136,8 @@ class _StatCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       child: Row(
         children: [
           Icon(icon, size: 14, color: color.withValues(alpha: 0.7)),

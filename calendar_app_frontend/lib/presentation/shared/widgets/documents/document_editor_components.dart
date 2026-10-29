@@ -24,12 +24,14 @@ class HexoraDocumentStepper extends StatelessWidget {
     required this.currentStep,
     required this.onStepTapped,
     this.itemKeyBuilder,
+    this.compactConnectors = false,
   });
 
   final List<HexoraDocumentStep> steps;
   final int currentStep;
   final ValueChanged<int> onStepTapped;
   final Key Function(int index, HexoraDocumentStep step)? itemKeyBuilder;
+  final bool compactConnectors;
 
   @override
   Widget build(BuildContext context) {
@@ -136,16 +138,27 @@ class HexoraDocumentStepper extends StatelessWidget {
       final row = Row(mainAxisSize: MainAxisSize.min, children: [
         for (var index = 0; index < steps.length; index++) ...[
           if (index > 0)
-            compact
-                ? SizedBox(
-                    width: 22,
-                    child: Divider(
+            compactConnectors
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: Icon(
+                      Icons.chevron_right_rounded,
+                      size: 15,
                       color: index <= currentStep
-                          ? cs.primary.withValues(alpha: .52)
-                          : cs.outlineVariant,
+                          ? cs.primary.withValues(alpha: .62)
+                          : cs.onSurfaceVariant.withValues(alpha: .5),
                     ),
                   )
-                : connector(index),
+                : compact
+                    ? SizedBox(
+                        width: 22,
+                        child: Divider(
+                          color: index <= currentStep
+                              ? cs.primary.withValues(alpha: .52)
+                              : cs.outlineVariant,
+                        ),
+                      )
+                    : connector(index),
           stepItem(index),
         ],
       ]);
@@ -226,6 +239,102 @@ class HexoraDocumentEditorShell extends StatelessWidget {
       );
 }
 
+/// Shared visual frame for document-editor sections.
+class HexoraDocumentContentPanel extends StatelessWidget {
+  const HexoraDocumentContentPanel({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: .45),
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Shared compact heading used by document-editor steps and panels.
+class HexoraDocumentSectionHeader extends StatelessWidget {
+  const HexoraDocumentSectionHeader({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: cs.primaryContainer.withValues(alpha: .55),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 18, color: cs.onPrimaryContainer),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if ((subtitle ?? '').trim().isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  subtitle!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (trailing != null) ...[
+          const SizedBox(width: 12),
+          trailing!,
+        ],
+      ],
+    );
+  }
+}
+
 class HexoraDocumentFooter extends StatelessWidget {
   const HexoraDocumentFooter({
     super.key,
@@ -233,25 +342,32 @@ class HexoraDocumentFooter extends StatelessWidget {
     this.back,
     required this.primary,
     this.secondaryActions = const [],
+    this.compact = false,
+    this.showStatusWhenNarrow = false,
   });
 
   final Widget? status;
   final Widget? back;
   final Widget primary;
   final List<Widget> secondaryActions;
+  final bool compact;
+  final bool showStatusWhenNarrow;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Material(
       color: cs.surface,
-      elevation: 5,
+      elevation: compact ? 0 : 5,
       shadowColor: cs.shadow.withValues(alpha: .12),
       child: SafeArea(
         top: false,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 58),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          constraints: BoxConstraints(minHeight: compact ? 50 : 58),
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 12 : 16,
+            vertical: compact ? 5 : 8,
+          ),
           decoration: BoxDecoration(
             border: Border(top: BorderSide(color: cs.outlineVariant)),
           ),
@@ -263,11 +379,21 @@ class HexoraDocumentFooter extends StatelessWidget {
               primary,
             ];
             if (compact) {
-              return Row(children: [
+              final actionRow = Row(children: [
                 if (back != null) back!,
                 const Spacer(),
                 Flexible(child: primary),
               ]);
+              if (!showStatusWhenNarrow || status == null) return actionRow;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  status!,
+                  const SizedBox(height: 4),
+                  actionRow,
+                ],
+              );
             }
             return Row(children: [
               if (status != null) Expanded(child: status!) else const Spacer(),
