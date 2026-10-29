@@ -34,7 +34,8 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
   bool _loadingClients = true, _loadingServices = true;
   String? _errClients, _errServices;
   bool _showInactiveClients = false;
-  String? _propertyKindFilter;
+  String? _propertyTypeFilter;
+  String? _customerTypeFilter;
   bool _missingCurrentMonthInvoiceOnly = false;
 
   @override
@@ -277,8 +278,14 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
-    final propertyKindOptions = _clients
-        .map((c) => (c.propertyKind ?? '').trim())
+    final propertyTypeOptions = _clients
+        .map((c) => (c.effectivePropertyType ?? '').trim())
+        .where((v) => v.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    final customerTypeOptions = _clients
+        .map((c) => (c.effectiveCustomerType ?? '').trim())
         .where((v) => v.isNotEmpty)
         .toSet()
         .toList()
@@ -355,10 +362,14 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
                   showInactive: _showInactiveClients,
                   onToggleInactive: (v) =>
                       setState(() => _showInactiveClients = v),
-                  propertyKindFilter: _propertyKindFilter,
-                  propertyKindOptions: propertyKindOptions,
-                  onPropertyKindChanged: (v) =>
-                      setState(() => _propertyKindFilter = v),
+                  propertyTypeFilter: _propertyTypeFilter,
+                  propertyTypeOptions: propertyTypeOptions,
+                  onPropertyTypeChanged: (v) =>
+                      setState(() => _propertyTypeFilter = v),
+                  customerTypeFilter: _customerTypeFilter,
+                  customerTypeOptions: customerTypeOptions,
+                  onCustomerTypeChanged: (v) =>
+                      setState(() => _customerTypeFilter = v),
                   onDelete: _confirmDeleteClient,
                   onEdit: _openEditClientSheet,
                 ),
@@ -412,8 +423,14 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
     // Optional: show counts in tab labels for quick context
     final clientsTabLabel = '${l.tabClients} · ${_clients.length}';
     final servicesTabLabel = '${l.tabServices} · ${_services.length}';
-    final propertyKindOptions = _clients
-        .map((c) => (c.propertyKind ?? '').trim())
+    final propertyTypeOptions = _clients
+        .map((c) => (c.effectivePropertyType ?? '').trim())
+        .where((v) => v.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    final customerTypeOptions = _clients
+        .map((c) => (c.effectiveCustomerType ?? '').trim())
         .where((v) => v.isNotEmpty)
         .toSet()
         .toList()
@@ -480,10 +497,14 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
                 showInactive: _showInactiveClients,
                 onToggleInactive: (v) =>
                     setState(() => _showInactiveClients = v),
-                propertyKindFilter: _propertyKindFilter,
-                propertyKindOptions: propertyKindOptions,
-                onPropertyKindChanged: (v) =>
-                    setState(() => _propertyKindFilter = v),
+                propertyTypeFilter: _propertyTypeFilter,
+                propertyTypeOptions: propertyTypeOptions,
+                onPropertyTypeChanged: (v) =>
+                    setState(() => _propertyTypeFilter = v),
+                customerTypeFilter: _customerTypeFilter,
+                customerTypeOptions: customerTypeOptions,
+                onCustomerTypeChanged: (v) =>
+                    setState(() => _customerTypeFilter = v),
                 onDelete: _confirmDeleteClient,
                 onEdit: _openEditClientSheet,
               ),

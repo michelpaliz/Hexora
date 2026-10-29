@@ -23,12 +23,16 @@ class AddClientController {
 
   // Contact
   final name = TextEditingController();
+  final pdfAlias = TextEditingController();
   final phone = TextEditingController();
   final email = TextEditingController();
 
   // Classification (optional)
   final entityType = TextEditingController();
   final propertyKind = TextEditingController();
+  final customerType = TextEditingController();
+  final propertyType = TextEditingController();
+  final propertyRelationship = TextEditingController();
 
   // Billing
   final billingLegalName = TextEditingController();
@@ -61,10 +65,15 @@ class AddClientController {
     if (c == null) return;
 
     name.text = c.name;
+    pdfAlias.text = c.pdfAlias ?? '';
     phone.text = c.phone ?? '';
     email.text = c.email ?? '';
     entityType.text = c.entityType ?? '';
     propertyKind.text = c.propertyKind ?? '';
+    customerType.text = c.customerType ?? _legacyCustomerType(c.entityType);
+    propertyType.text = c.propertyType ?? _legacyPropertyType(c.propertyKind);
+    propertyRelationship.text = c.propertyRelationship ??
+        _legacyRelationship(c.entityType, c.propertyKind);
     active = c.isActive;
 
     final b = c.billing;
@@ -99,6 +108,39 @@ class AddClientController {
     }
 
     autofillBillingAddressFromPostalCode();
+  }
+
+  String _legacyCustomerType(String? value) {
+    final v = (value ?? '').trim().toLowerCase();
+    if (v == 'community' ||
+        v.contains('comunidad') ||
+        {
+          'c.prop.',
+          'c.prop',
+          'com. de prop.',
+          'com. de prop',
+          'com.de prop.',
+          'com.de prop',
+          'comp.de.prop.',
+          'comp.de.prop',
+        }.contains(v)) {
+      return 'community';
+    }
+    if (v == 'company' || v == 'empresa') return 'company';
+    if (v == 'particular') return 'particular';
+    return '';
+  }
+
+  String _legacyPropertyType(String? value) {
+    final v = (value ?? '').trim().toLowerCase();
+    if (v == 'chalet') return 'chalet';
+    if (v == 'hotel') return 'hotel';
+    return '';
+  }
+
+  String _legacyRelationship(String? first, String? second) {
+    final values = [first, second].map((v) => (v ?? '').trim().toLowerCase());
+    return values.contains('propietario') ? 'owner' : '';
   }
 
   ClientBilling? billingFromInputs({bool includeNulls = false}) {
@@ -189,10 +231,14 @@ class AddClientController {
   void dispose() {
     for (final c in [
       name,
+      pdfAlias,
       phone,
       email,
       entityType,
       propertyKind,
+      customerType,
+      propertyType,
+      propertyRelationship,
       billingLegalName,
       billingTaxId,
       billingStreet,
@@ -228,8 +274,10 @@ class AddClientController {
     if (isEdit) {
       final patch = <String, dynamic>{
         'name': trimmedName,
-        'entityType': norm(entityType.text),
-        'propertyKind': norm(propertyKind.text),
+        'pdfAlias': pdfAlias.text.trim().isEmpty ? null : pdfAlias.text.trim(),
+        'customerType': norm(customerType.text),
+        'propertyType': norm(propertyType.text),
+        'propertyRelationship': norm(propertyRelationship.text),
         'isActive': active,
         'contact': {
           'phone': phone.text.trim().isEmpty ? null : phone.text.trim(),
@@ -250,9 +298,13 @@ class AddClientController {
       GroupClient(
         id: '',
         name: trimmedName,
+        pdfAlias: pdfAlias.text.trim().isEmpty ? null : pdfAlias.text.trim(),
         groupId: groupId,
         entityType: norm(entityType.text),
         propertyKind: norm(propertyKind.text),
+        customerType: norm(customerType.text),
+        propertyType: norm(propertyType.text),
+        propertyRelationship: norm(propertyRelationship.text),
         phone: phone.text.trim().isEmpty ? null : phone.text.trim(),
         email: email.text.trim().isEmpty ? null : email.text.trim(),
         isActive: active,

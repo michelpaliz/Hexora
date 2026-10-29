@@ -5,6 +5,7 @@ import 'package:hexora/models/time_tracking/geofenced_visit.dart';
 class GroupClient {
   String id;
   String name;
+  String? pdfAlias;
   String? groupId;
 
   /// Optional client classification (free text, lowercase suggested)
@@ -12,6 +13,9 @@ class GroupClient {
 
   /// Optional property type classification (free text, lowercase suggested)
   String? propertyKind;
+  String? customerType;
+  String? propertyType;
+  String? propertyRelationship;
   String? imageVersion;
 
   // Nested contact info
@@ -34,9 +38,13 @@ class GroupClient {
   GroupClient({
     required this.id,
     required this.name,
+    this.pdfAlias,
     this.groupId,
     this.entityType,
     this.propertyKind,
+    this.customerType,
+    this.propertyType,
+    this.propertyRelationship,
     this.imageVersion,
     this.phone,
     this.email,
@@ -55,9 +63,13 @@ class GroupClient {
   GroupClient copyWith({
     String? id,
     String? name,
+    String? pdfAlias,
     String? groupId,
     String? entityType,
     String? propertyKind,
+    String? customerType,
+    String? propertyType,
+    String? propertyRelationship,
     String? imageVersion,
     String? phone,
     String? email,
@@ -75,9 +87,13 @@ class GroupClient {
     return GroupClient(
       id: id ?? this.id,
       name: name ?? this.name,
+      pdfAlias: pdfAlias ?? this.pdfAlias,
       groupId: groupId ?? this.groupId,
       entityType: entityType ?? this.entityType,
       propertyKind: propertyKind ?? this.propertyKind,
+      customerType: customerType ?? this.customerType,
+      propertyType: propertyType ?? this.propertyType,
+      propertyRelationship: propertyRelationship ?? this.propertyRelationship,
       imageVersion: imageVersion ?? this.imageVersion,
       phone: phone ?? this.phone,
       email: email ?? this.email,
@@ -101,9 +117,14 @@ class GroupClient {
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
+        if (pdfAlias != null) 'pdfAlias': pdfAlias,
         'groupId': groupId,
         if (entityType != null) 'entityType': entityType,
         if (propertyKind != null) 'propertyKind': propertyKind,
+        if (customerType != null) 'customerType': customerType,
+        if (propertyType != null) 'propertyType': propertyType,
+        if (propertyRelationship != null)
+          'propertyRelationship': propertyRelationship,
         'contact': {
           if (phone != null) 'phone': phone,
           if (email != null) 'email': email,
@@ -139,9 +160,13 @@ class GroupClient {
     return GroupClient(
       id: rawId,
       name: (json['name'] ?? '').toString(),
+      pdfAlias: json['pdfAlias']?.toString(),
       groupId: json['groupId']?.toString(),
       entityType: json['entityType']?.toString(),
       propertyKind: json['propertyKind']?.toString(),
+      customerType: json['customerType']?.toString(),
+      propertyType: json['propertyType']?.toString(),
+      propertyRelationship: json['propertyRelationship']?.toString(),
       imageVersion: (json['image'] as Map?)?['updatedAt']?.toString(),
       phone: contact?['phone']?.toString(),
       email: contact?['email']?.toString(),
@@ -186,26 +211,78 @@ class GroupClient {
       (currentMonthInvoiceCount ?? 0) > 0 ||
       lastCurrentMonthInvoiceAt != null;
 
+  /// Canonical values used by the UI while older records are being migrated.
+  String? get effectiveCustomerType {
+    if ((customerType ?? '').trim().isNotEmpty) return customerType;
+    final value = (entityType ?? '').trim().toLowerCase();
+    if (value == 'particular') return 'particular';
+    if (value == 'empresa' || value == 'company') return 'company';
+    if (value == 'community' ||
+        value.contains('comunidad') ||
+        {
+          'c.prop.',
+          'c.prop',
+          'com. de prop.',
+          'com. de prop',
+          'com.de prop.',
+          'com.de prop',
+          'comp.de.prop.',
+          'comp.de.prop',
+        }.contains(value)) {
+      return 'community';
+    }
+    return null;
+  }
+
+  String? get effectivePropertyType {
+    if ((propertyType ?? '').trim().isNotEmpty) return propertyType;
+    final value = (propertyKind ?? '').trim().toLowerCase();
+    if (value == 'chalet') return 'chalet';
+    if (value == 'hotel') return 'hotel';
+    if (value == 'apartamento' || value == 'apartment') return 'apartment';
+    if (value == 'edificio' || value == 'urbanizacion') return 'building';
+    return null;
+  }
+
+  String? get effectivePropertyRelationship {
+    if ((propertyRelationship ?? '').trim().isNotEmpty) {
+      return propertyRelationship;
+    }
+    return [entityType, propertyKind].any(
+      (value) => (value ?? '').trim().toLowerCase() == 'propietario',
+    )
+        ? 'owner'
+        : null;
+  }
+
   @override
   String toString() =>
-      'Client{id: $id, name: $name, groupId: $groupId, entityType: $entityType, propertyKind: $propertyKind, phone: $phone, email: $email, isActive: $isActive}';
+      'Client{id: $id, name: $name, groupId: $groupId, customerType: $customerType, propertyType: $propertyType, propertyRelationship: $propertyRelationship, phone: $phone, email: $email, isActive: $isActive}';
 
   @override
   bool operator ==(Object other) =>
       other is GroupClient &&
       other.id == id &&
       other.name == name &&
+      other.pdfAlias == pdfAlias &&
       other.groupId == groupId &&
       other.entityType == entityType &&
-      other.propertyKind == propertyKind;
+      other.propertyKind == propertyKind &&
+      other.customerType == customerType &&
+      other.propertyType == propertyType &&
+      other.propertyRelationship == propertyRelationship;
 
   @override
   int get hashCode =>
       id.hashCode ^
       name.hashCode ^
+      (pdfAlias?.hashCode ?? 0) ^
       (groupId?.hashCode ?? 0) ^
       (entityType?.hashCode ?? 0) ^
-      (propertyKind?.hashCode ?? 0);
+      (propertyKind?.hashCode ?? 0) ^
+      (customerType?.hashCode ?? 0) ^
+      (propertyType?.hashCode ?? 0) ^
+      (propertyRelationship?.hashCode ?? 0);
 }
 
 bool? _parseBool(dynamic value) {

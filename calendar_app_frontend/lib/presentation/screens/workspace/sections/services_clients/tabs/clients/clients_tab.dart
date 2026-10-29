@@ -19,9 +19,12 @@ class ClientsTab extends StatefulWidget {
   final ValueChanged<bool>? onToggleInactive;
   final bool missingCurrentMonthInvoiceOnly;
   final ValueChanged<bool>? onToggleMissingCurrentMonthInvoiceOnly;
-  final String? propertyKindFilter;
-  final List<String> propertyKindOptions;
-  final ValueChanged<String?>? onPropertyKindChanged;
+  final String? propertyTypeFilter;
+  final List<String> propertyTypeOptions;
+  final ValueChanged<String?>? onPropertyTypeChanged;
+  final String? customerTypeFilter;
+  final List<String> customerTypeOptions;
+  final ValueChanged<String?>? onCustomerTypeChanged;
   final void Function(GroupClient client)? onDelete;
 
   const ClientsTab({
@@ -37,9 +40,12 @@ class ClientsTab extends StatefulWidget {
     this.onToggleInactive,
     this.missingCurrentMonthInvoiceOnly = false,
     this.onToggleMissingCurrentMonthInvoiceOnly,
-    this.propertyKindFilter,
-    this.propertyKindOptions = const [],
-    this.onPropertyKindChanged,
+    this.propertyTypeFilter,
+    this.propertyTypeOptions = const [],
+    this.onPropertyTypeChanged,
+    this.customerTypeFilter,
+    this.customerTypeOptions = const [],
+    this.onCustomerTypeChanged,
     this.onDelete,
   });
 
@@ -74,16 +80,17 @@ class _ClientsTabState extends State<ClientsTab> {
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
 
-    final filtered =
-        widget.propertyKindFilter == null || widget.propertyKindFilter!.isEmpty
-            ? widget.items
-            : widget.items
-                .where(
-                  (c) =>
-                      (c.propertyKind ?? '').trim() ==
-                      widget.propertyKindFilter!.trim(),
-                )
-                .toList(growable: false);
+    final filtered = widget.items.where((c) {
+      final customerMatches = widget.customerTypeFilter == null ||
+          widget.customerTypeFilter!.isEmpty ||
+          (c.effectiveCustomerType ?? '').trim() ==
+              widget.customerTypeFilter!.trim();
+      final propertyMatches = widget.propertyTypeFilter == null ||
+          widget.propertyTypeFilter!.isEmpty ||
+          (c.effectivePropertyType ?? '').trim() ==
+              widget.propertyTypeFilter!.trim();
+      return customerMatches && propertyMatches;
+    }).toList(growable: false);
     final searched = filtered.where(_matchesSearch).toList(growable: false);
     final flagged = widget.missingCurrentMonthInvoiceOnly
         ? searched
@@ -109,7 +116,7 @@ class _ClientsTabState extends State<ClientsTab> {
     final query = _searchCtrl.text.trim();
     final hasSearch = query.isNotEmpty;
     final hasPropertyFilter =
-        (widget.propertyKindFilter ?? '').trim().isNotEmpty;
+        (widget.propertyTypeFilter ?? '').trim().isNotEmpty;
     final hasSourceData = widget.items.isNotEmpty;
 
     late final Widget content;
@@ -211,18 +218,28 @@ class _ClientsTabState extends State<ClientsTab> {
                     ),
           ),
           extraActiveFilterCount: widget.missingCurrentMonthInvoiceOnly ? 1 : 0,
-          propertyLabel: l.clientPropertyKindLabel,
-          propertyOptions: widget.propertyKindOptions,
-          propertyFilter: widget.propertyKindFilter,
-          onToggleProperty: widget.onPropertyKindChanged == null
+          propertyLabel: 'Tipo de inmueble',
+          propertyOptions: widget.propertyTypeOptions,
+          propertyFilter: widget.propertyTypeFilter,
+          onToggleProperty: widget.onPropertyTypeChanged == null
               ? null
-              : (v) => widget.onPropertyKindChanged!(v),
-          onClearProperty: widget.onPropertyKindChanged == null
+              : (v) => widget.onPropertyTypeChanged!(v),
+          onClearProperty: widget.onPropertyTypeChanged == null
               ? null
-              : () => widget.onPropertyKindChanged!(null),
+              : () => widget.onPropertyTypeChanged!(null),
+          entityLabel: 'Tipo de cliente',
+          entityOptions: widget.customerTypeOptions,
+          entityFilter: widget.customerTypeFilter,
+          onToggleEntity: widget.onCustomerTypeChanged,
+          onClearEntity: widget.onCustomerTypeChanged == null
+              ? null
+              : () => widget.onCustomerTypeChanged!(null),
           onClearFilters: () {
-            if (widget.onPropertyKindChanged != null) {
-              widget.onPropertyKindChanged!(null);
+            if (widget.onPropertyTypeChanged != null) {
+              widget.onPropertyTypeChanged!(null);
+            }
+            if (widget.onCustomerTypeChanged != null) {
+              widget.onCustomerTypeChanged!(null);
             }
             if (widget.onToggleInactive != null && widget.showInactive) {
               widget.onToggleInactive!(false);
@@ -232,9 +249,6 @@ class _ClientsTabState extends State<ClientsTab> {
               widget.onToggleMissingCurrentMonthInvoiceOnly!(false);
             }
           },
-          entityLabel: null,
-          entityOptions: const [],
-          entityFilter: null,
         ),
         Expanded(child: content),
       ],
