@@ -8,6 +8,8 @@ import 'package:hexora/l10n/app_localizations.dart';
 
 import '../add_client_controller.dart';
 
+enum ClientContactSection { general, classification }
+
 class ClientContactForm extends StatelessWidget {
   final AddClientController c;
   final List<String> entityTypeOptions;
@@ -17,6 +19,7 @@ class ClientContactForm extends StatelessWidget {
   final bool showValidation;
   final VoidCallback onFieldChanged;
   final ValueChanged<String> onFieldBlur;
+  final ClientContactSection section;
 
   const ClientContactForm({
     super.key,
@@ -28,6 +31,7 @@ class ClientContactForm extends StatelessWidget {
     required this.showValidation,
     required this.onFieldChanged,
     required this.onFieldBlur,
+    this.section = ClientContactSection.general,
   });
 
   @override
@@ -94,9 +98,8 @@ class ClientContactForm extends StatelessWidget {
 
     return Column(
       children: [
-        _ClientFormSection(
-            title: 'Información general',
-            icon: Icons.person_outline,
+        if (section == ClientContactSection.general)
+          _ClientFormSection(
             children: [
               Focus(
                 onFocusChange: (hasFocus) {
@@ -191,29 +194,18 @@ class ClientContactForm extends StatelessWidget {
                       onChanged: (_) => onFieldChanged(),
                     ),
                   )),
-            ]),
-        const SizedBox(height: 8),
-        _ClientFormSection(
-            title: l.clientClassificationSectionTitle,
-            icon: Icons.badge_outlined,
+            ],
+          ),
+        if (section == ClientContactSection.classification)
+          _ClientFormSection(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      l.clientClassificationSectionTitle,
-                      style: text.bodyLarge!.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  HexoraButton(
-                    onPressed: onManageClassification,
-                    label: l.clientClassificationManageCta,
-                    variant: HexoraButtonVariant.ghost,
-                  ),
-                ],
+              Align(
+                alignment: Alignment.centerRight,
+                child: HexoraButton(
+                  onPressed: onManageClassification,
+                  label: l.clientClassificationManageCta,
+                  variant: HexoraButtonVariant.ghost,
+                ),
               ),
               const SizedBox(height: 8),
               ClientFormFields(
@@ -317,41 +309,16 @@ class ClientContactForm extends StatelessWidget {
                   isFilled: c.propertyRelationship.text.trim().isNotEmpty,
                 ),
               ),
-            ]),
+            ],
+          ),
       ],
     );
   }
 }
 
 class _ClientFormSection extends StatelessWidget {
-  const _ClientFormSection(
-      {required this.title, required this.icon, required this.children});
-  final String title;
-  final IconData icon;
+  const _ClientFormSection({required this.children});
   final List<Widget> children;
   @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: .4)),
-          borderRadius: BorderRadius.circular(10)),
-      child: ExpansionTile(
-        initiallyExpanded: true,
-        maintainState: true,
-        dense: true,
-        shape: const Border(),
-        collapsedShape: const Border(),
-        tilePadding: const EdgeInsets.symmetric(horizontal: 10),
-        childrenPadding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
-        leading: Icon(icon, size: 18, color: cs.primary),
-        title: Text(title,
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(fontWeight: FontWeight.w600)),
-        children: children,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Column(children: children);
 }

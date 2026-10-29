@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import '../../add_client_controller.dart';
+import '../client_form_fields.dart';
 import '../input_border.dart';
 
 class BillingLegalAndTax extends StatelessWidget {
@@ -25,68 +26,65 @@ class BillingLegalAndTax extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final text = Theme.of(context).textTheme;
 
-    return Column(
-      children: [
-        Focus(
-          onFocusChange: (hasFocus) {
-            if (!hasFocus) onFieldBlur('billingLegalName');
-          },
-          child: TextFormField(
-            controller: c.billingLegalName,
-            style: text.bodyLarge,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            decoration: buildInputDecoration(
-              context,
-              label: l.billingLegalName,
-              prefixIcon: const Icon(Icons.badge_outlined),
-              isRequired: c.isBillingRequired('billingLegalName'),
-              isFilled: c.billingLegalName.text.trim().isNotEmpty,
-              showCheck: c.isBillingRequired('billingLegalName') &&
-                  c.billingLegalName.text.trim().isNotEmpty,
-            ),
-            onChanged: (_) => onFieldChanged(),
-            validator: (v) {
-              if (!requireBilling || !c.isBillingRequired('billingLegalName')) {
-                return null;
-              }
-              if (!c.shouldShowError('billingLegalName', showValidation)) {
-                return null;
-              }
-              return (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null;
-            },
+    return ClientFormFields(
+      first: Focus(
+        onFocusChange: (hasFocus) {
+          if (!hasFocus) onFieldBlur('billingLegalName');
+        },
+        child: TextFormField(
+          controller: c.billingLegalName,
+          style: text.bodyLarge,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          decoration: buildInputDecoration(
+            context,
+            label: l.billingLegalName,
+            prefixIcon: const Icon(Icons.badge_outlined),
+            isRequired: c.isBillingRequired('billingLegalName'),
+            isFilled: c.billingLegalName.text.trim().isNotEmpty,
+            showCheck: c.isBillingRequired('billingLegalName') &&
+                c.billingLegalName.text.trim().isNotEmpty,
           ),
-        ),
-        const SizedBox(height: 8),
-        Focus(
-          onFocusChange: (hasFocus) {
-            if (!hasFocus) onFieldBlur('billingTaxId');
+          onChanged: (_) => onFieldChanged(),
+          validator: (v) {
+            if (!requireBilling || !c.isBillingRequired('billingLegalName')) {
+              return null;
+            }
+            if (!c.shouldShowError('billingLegalName', showValidation)) {
+              return null;
+            }
+            return (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null;
           },
-          child: TextFormField(
-            controller: c.billingTaxId,
-            style: text.bodyLarge,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            decoration: buildInputDecoration(
-              context,
-              label: l.billingTaxId,
-              prefixIcon: const Icon(Icons.numbers),
-              isRequired: c.isBillingRequired('billingTaxId'),
-              isFilled: c.billingTaxId.text.trim().isNotEmpty,
-              showCheck: c.isBillingRequired('billingTaxId') &&
-                  c.billingTaxId.text.trim().isNotEmpty,
-            ),
-            onChanged: (_) => onFieldChanged(),
-            validator: (v) {
-              if (!requireBilling || !c.isBillingRequired('billingTaxId')) {
-                return null;
-              }
-              if (!c.shouldShowError('billingTaxId', showValidation)) {
-                return null;
-              }
-              return (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null;
-            },
-          ),
         ),
-      ],
+      ),
+      second: Focus(
+        onFocusChange: (hasFocus) {
+          if (!hasFocus) onFieldBlur('billingTaxId');
+        },
+        child: TextFormField(
+          controller: c.billingTaxId,
+          style: text.bodyLarge,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          decoration: buildInputDecoration(
+            context,
+            label: l.billingTaxId,
+            prefixIcon: const Icon(Icons.numbers),
+            isRequired: c.isBillingRequired('billingTaxId'),
+            isFilled: c.billingTaxId.text.trim().isNotEmpty,
+            showCheck: c.isBillingRequired('billingTaxId') &&
+                c.billingTaxId.text.trim().isNotEmpty,
+          ),
+          onChanged: (_) => onFieldChanged(),
+          validator: (v) {
+            if (!requireBilling || !c.isBillingRequired('billingTaxId')) {
+              return null;
+            }
+            if (!c.shouldShowError('billingTaxId', showValidation)) {
+              return null;
+            }
+            return (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null;
+          },
+        ),
+      ),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/client_classification_store.dart';
@@ -87,8 +88,10 @@ class AddClientSheet extends StatefulWidget {
   State<AddClientSheet> createState() => _AddClientSheetState();
 }
 
-class _AddClientSheetState extends State<AddClientSheet> {
+class _AddClientSheetState extends State<AddClientSheet>
+    with SingleTickerProviderStateMixin {
   late final AddClientController c;
+  late final TabController _sectionTab;
   List<String> _entityTypeOptions = const [];
   List<String> _propertyKindOptions = const [];
   bool _showValidation = false;
@@ -106,7 +109,13 @@ class _AddClientSheetState extends State<AddClientSheet> {
       groupId: widget.groupId,
       client: widget.client,
     );
+    _sectionTab = TabController(length: 3, vsync: this)
+      ..addListener(_handleSectionTabChanged);
     _loadClassificationOptions();
+  }
+
+  void _handleSectionTabChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadClassificationOptions() async {
@@ -137,6 +146,9 @@ class _AddClientSheetState extends State<AddClientSheet> {
 
   @override
   void dispose() {
+    _sectionTab
+      ..removeListener(_handleSectionTabChanged)
+      ..dispose();
     c.dispose();
     super.dispose();
   }
@@ -171,7 +183,13 @@ class _AddClientSheetState extends State<AddClientSheet> {
         return;
       }
     }
-    if (!c.formKey.currentState!.validate()) return;
+    if (!c.formKey.currentState!.validate()) {
+      final generalHasError = c.name.text.trim().isEmpty;
+      final billingHasError = AddClientController.billingRequiredKeys
+          .any((key) => !c.isBillingFieldFilled(key));
+      _sectionTab.animateTo(generalHasError ? 0 : (billingHasError ? 2 : 0));
+      return;
+    }
     final locationError = c.serviceLocationValidationError();
     if (locationError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -376,6 +394,88 @@ class _AddClientSheetState extends State<AddClientSheet> {
     );
   }
 
+  Widget _editorTabs(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    final generalHasError = _showValidation && c.name.text.trim().isEmpty;
+    final billingHasError = _showValidation &&
+        AddClientController.billingRequiredKeys
+            .any((key) => !c.isBillingFieldFilled(key));
+
+    Tab tab({
+      required IconData icon,
+      required String label,
+      bool hasError = false,
+    }) {
+      return Tab(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16),
+            const SizedBox(width: 6),
+            Text(label),
+            if (hasError) ...[
+              const SizedBox(width: 6),
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.error,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+            if (hasError) ...[
+              const SizedBox(width: 6),
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.error,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    return HexoraSectionTabs(
+      controller: _sectionTab,
+      compact: true,
+      tabs: [
+        tab(
+          icon: Icons.person_outline,
+          label: isSpanish ? 'Información general' : 'General information',
+          hasError: generalHasError,
+        ),
+        tab(
+          icon: Icons.badge_outlined,
+          label: l.clientClassificationSectionTitle,
+        ),
+        tab(
+          icon: Icons.receipt_long_outlined,
+          label: isSpanish ? 'Facturación' : 'Billing',
+          hasError: billingHasError,
+        ),
+      ],
+    );
+  }
+
+  ClientContactForm _contactSection(ClientContactSection section) =>
+      ClientContactForm(
+        c: c,
+        section: section,
+        entityTypeOptions: _entityTypeOptions,
+        propertyKindOptions: _propertyKindOptions,
+        onManageClassification: _manageClassificationOptions,
+        onClassificationChanged: () => setState(() {}),
+        showValidation: _showValidation,
+        onFieldChanged: () => setState(() {}),
+        onFieldBlur: (key) => setState(() => c.markTouched(key)),
+      );
+
   @override
   Widget build(BuildContext context) => Theme(
         data: clientEditorThemeOf(context),
@@ -387,11 +487,11 @@ class _AddClientSheetState extends State<AddClientSheet> {
     final inline = !widget.closeOnSave && !widget.fullScreen;
 
     final form = Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, widget.fullScreen ? 16 : pad),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, widget.fullScreen ? 12 : pad),
       child: Form(
         key: c.formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.only(top: 8),
+          padding: EdgeInsets.zero,
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -400,36 +500,42 @@ class _AddClientSheetState extends State<AddClientSheet> {
                 _identityHeader(),
                 const SizedBox(height: 8),
               ],
-              ClientContactForm(
-                c: c,
-                entityTypeOptions: _entityTypeOptions,
-                propertyKindOptions: _propertyKindOptions,
-                onManageClassification: _manageClassificationOptions,
-                onClassificationChanged: () => setState(() {}),
-                showValidation: _showValidation,
-                onFieldChanged: () => setState(() {}),
-                onFieldBlur: (key) => setState(() => c.markTouched(key)),
-              ),
+              _editorTabs(context),
               const SizedBox(height: 8),
-              BillingSection(
-                c: c,
-                showValidation: _showValidation,
-                onFieldChanged: () => setState(() {}),
-                onFieldBlur: (key) => setState(() => c.markTouched(key)),
-              ),
-              if (c.isEdit) ...[
-                const SizedBox(height: 8),
-                ServiceLocationSection(
-                  controller: c,
-                  locating: _locatingServiceAddress,
-                  onUseCurrentLocation: _useCurrentServiceLocation,
-                  onChanged: () => setState(() {}),
+              Offstage(
+                offstage: _sectionTab.index != 0,
+                child: Column(
+                  children: [
+                    _contactSection(ClientContactSection.general),
+                    if (c.isEdit) ...[
+                      const SizedBox(height: 8),
+                      ServiceLocationSection(
+                        controller: c,
+                        locating: _locatingServiceAddress,
+                        onUseCurrentLocation: _useCurrentServiceLocation,
+                        onChanged: () => setState(() {}),
+                      ),
+                    ],
+                    const SizedBox(height: 4),
+                    ActiveSwitch(
+                      value: c.active,
+                      onChanged: (v) => setState(() => c.active = v),
+                    ),
+                  ],
                 ),
-              ],
-              const SizedBox(height: 4),
-              ActiveSwitch(
-                value: c.active,
-                onChanged: (v) => setState(() => c.active = v),
+              ),
+              Offstage(
+                offstage: _sectionTab.index != 1,
+                child: _contactSection(ClientContactSection.classification),
+              ),
+              Offstage(
+                offstage: _sectionTab.index != 2,
+                child: BillingSection(
+                  c: c,
+                  showValidation: _showValidation,
+                  onFieldChanged: () => setState(() {}),
+                  onFieldBlur: (key) => setState(() => c.markTouched(key)),
+                ),
               ),
               const SizedBox(height: 8),
               if (!widget.fullScreen && !inline)
@@ -452,7 +558,7 @@ class _AddClientSheetState extends State<AddClientSheet> {
             child: _identityHeader()),
         Expanded(child: form),
         Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
                 color: cs.surface,
                 border: Border(
@@ -464,7 +570,7 @@ class _AddClientSheetState extends State<AddClientSheet> {
                     onPressed: c.saving ? null : widget.onCancel,
                     label: l.cancel,
                     variant: HexoraButtonVariant.secondary),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
               ],
               Expanded(
                   child: SaveButton(

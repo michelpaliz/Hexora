@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/service_catalog/service.dart';
@@ -46,6 +45,7 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
   bool _creatingService = false;
   String? _propertyTypeFilter;
   String? _customerTypeFilter;
+  double _editorFraction = 0.60;
 
   @override
   void initState() {
@@ -98,7 +98,15 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
     }
   }
 
-  bool _useSidePanel(double width) => width >= 820;
+  bool _useSidePanel(double width) => width >= 1050;
+
+  void _resizePanels(double delta, double availableWidth) {
+    if (availableWidth <= 0) return;
+    setState(() {
+      _editorFraction =
+          (_editorFraction - delta / availableWidth).clamp(0.50, 0.70);
+    });
+  }
 
   void _startAddClient() {
     setState(() {
@@ -598,9 +606,6 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
           );
         }
 
-        final panelWidth =
-            (constraints.maxWidth * 0.35).clamp(420.0, 540.0).toDouble();
-
         final right = AnimatedBuilder(
           animation: _tab,
           builder: (context, _) {
@@ -762,34 +767,55 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
             title: '${l.tabServices} · ${l.tabClients}',
             showTab: false,
             contentTopPadding: 8,
-            child: Row(
-              children: [
-                if (kIsWeb) ...[
-                  Expanded(child: left),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: panelWidth,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: ColoredBox(color: cs.surface, child: right),
-                    ),
-                  ),
-                ] else ...[
-                  Expanded(child: left),
-                  Container(
-                    width: panelWidth,
-                    decoration: BoxDecoration(
-                      color: cs.surface,
-                      border: Border(
-                        left: BorderSide(
-                          color: cs.outlineVariant.withValues(alpha: 0.4),
+            child: LayoutBuilder(
+              builder: (context, splitConstraints) {
+                const dividerWidth = 12.0;
+                final availableWidth =
+                    (splitConstraints.maxWidth - dividerWidth)
+                        .clamp(0.0, double.infinity);
+                final minListWidth = availableWidth >= 1150 ? 420.0 : 380.0;
+                final maxEditorWidth =
+                    (availableWidth - minListWidth).clamp(0.0, double.infinity);
+                final minEditorWidth =
+                    maxEditorWidth < 520.0 ? maxEditorWidth : 520.0;
+                final editorWidth = (availableWidth * _editorFraction)
+                    .clamp(minEditorWidth, maxEditorWidth)
+                    .toDouble();
+                final listWidth = availableWidth - editorWidth;
+
+                return Row(
+                  children: [
+                    SizedBox(width: listWidth, child: left),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.resizeColumn,
+                      child: GestureDetector(
+                        key: const ValueKey('customers-split-divider'),
+                        behavior: HitTestBehavior.opaque,
+                        onHorizontalDragUpdate: (details) => _resizePanels(
+                          details.delta.dx,
+                          availableWidth,
+                        ),
+                        child: SizedBox(
+                          width: dividerWidth,
+                          child: Center(
+                            child: Container(
+                              width: 1,
+                              color: cs.outlineVariant.withValues(alpha: 0.5),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                    child: right,
-                  ),
-                ],
-              ],
+                    SizedBox(
+                      width: editorWidth,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: ColoredBox(color: cs.surface, child: right),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         );

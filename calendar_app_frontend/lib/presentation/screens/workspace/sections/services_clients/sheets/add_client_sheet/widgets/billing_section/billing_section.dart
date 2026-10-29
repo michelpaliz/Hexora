@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_address_form.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_contact_form.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_legal_and_tax.dart';
-import 'package:hexora/l10n/app_localizations.dart';
-
 import '../../add_client_controller.dart';
 
 class BillingSection extends StatefulWidget {
@@ -29,112 +27,34 @@ class _BillingSectionState extends State<BillingSection> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-
-    // mirrors: initiallyExpanded: _billingExpanded || _hasBillingData
-    final initiallyExpanded = c.billingExpanded || c.hasBillingData;
     final requireBilling =
         c.hasBillingData || c.billingExpanded || widget.showValidation;
-    final completed = c.billingCompletedCount;
-    final total = c.billingRequiredTotal;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
-      ),
-      child: ExpansionTile(
-        maintainState: true,
-        dense: true,
-        shape: const Border(),
-        collapsedShape: const Border(),
-        initiallyExpanded: initiallyExpanded,
-        onExpansionChanged: (v) => setState(() => c.billingExpanded = v),
-        tilePadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-        leading: const Icon(Icons.receipt_long_outlined, size: 20),
-        title: Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text(
-              l.billingDetails,
-              style: text.bodyLarge!.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            _BillingStatusChip(
-              completed: completed,
-              total: total,
-            ),
-          ],
+    return Column(
+      children: [
+        BillingLegalAndTax(
+          c: c,
+          requireBilling: requireBilling,
+          showValidation: widget.showValidation,
+          onFieldChanged: widget.onFieldChanged,
+          onFieldBlur: widget.onFieldBlur,
         ),
-        childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-        children: [
-          const SizedBox(height: 6),
-          BillingLegalAndTax(
-            c: c,
-            requireBilling: requireBilling,
-            showValidation: widget.showValidation,
-            onFieldChanged: widget.onFieldChanged,
-            onFieldBlur: widget.onFieldBlur,
-          ),
-          const SizedBox(height: 8),
-          BillingAddressForm(
-            c: c,
-            requireBilling: requireBilling,
-            showValidation: widget.showValidation,
-            onFieldChanged: widget.onFieldChanged,
-            onFieldBlur: widget.onFieldBlur,
-          ),
-          const SizedBox(height: 8),
-          BillingContactForm(
-            c: c,
-            requireBilling: requireBilling,
-            showValidation: widget.showValidation,
-            onFieldChanged: widget.onFieldChanged,
-            onFieldBlur: widget.onFieldBlur,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BillingStatusChip extends StatelessWidget {
-  final int completed;
-  final int total;
-
-  const _BillingStatusChip({
-    required this.completed,
-    required this.total,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-
-    final complete = completed >= total && total > 0;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: complete ? cs.secondaryContainer : cs.errorContainer,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        l.billingProgressLabel(completed, total),
-        style: text.labelMedium!.copyWith(
-          fontWeight: FontWeight.w600,
-          color: complete ? cs.onSecondaryContainer : cs.onErrorContainer,
+        const SizedBox(height: 8),
+        BillingAddressForm(
+          c: c,
+          requireBilling: requireBilling,
+          showValidation: widget.showValidation,
+          onFieldChanged: widget.onFieldChanged,
+          onFieldBlur: widget.onFieldBlur,
         ),
-      ),
+        const SizedBox(height: 8),
+        BillingContactForm(
+          c: c,
+          requireBilling: requireBilling,
+          showValidation: widget.showValidation,
+          onFieldChanged: widget.onFieldChanged,
+          onFieldBlur: widget.onFieldBlur,
+        ),
+      ],
     );
   }
 }
