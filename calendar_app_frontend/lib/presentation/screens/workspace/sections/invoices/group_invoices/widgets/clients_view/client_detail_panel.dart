@@ -1,5 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/client_property_image.dart';
 import 'package:hexora/models/clients/client.dart';
@@ -136,6 +137,7 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
     final cs = Theme.of(context).colorScheme;
 
     return Card(
+      margin: EdgeInsets.zero,
       color: Colors.transparent,
       elevation: 0,
       child: widget.selectedClient == null
@@ -189,19 +191,33 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
               child: Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     child: Row(children: [
-                      ClientPropertyImage(client: widget.selectedClient!),
-                      const SizedBox(width: 16),
+                      ClientPropertyImage(
+                        client: widget.selectedClient!,
+                        width: 40,
+                        height: 40,
+                      ),
+                      const SizedBox(width: 10),
                       Expanded(
                           child: Text(widget.selectedClient!.name,
-                              maxLines: 2,
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: t.bodyLarge)),
+                              style: t.bodyLarge.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ))),
                       IconButton(
                           onPressed: widget.onEditSelectedClient,
                           tooltip: l.editClient,
-                          icon: const Icon(Icons.edit_outlined)),
+                          icon: const Icon(Icons.edit_outlined, size: 17),
+                          visualDensity: VisualDensity.compact,
+                          constraints: const BoxConstraints.tightFor(
+                            width: 32,
+                            height: 32,
+                          )),
                     ]),
                   ),
                   Container(
@@ -396,6 +412,7 @@ class _InvoiceListState extends State<_InvoiceList> {
       _toDate = now;
       _fromDate = now.subtract(Duration(days: days - 1));
       _quickRange = DateQuickRange.month;
+      _filtersExpanded = false;
     });
   }
 
@@ -405,6 +422,7 @@ class _InvoiceListState extends State<_InvoiceList> {
       _toDate = now;
       _fromDate = DateTime(now.year, now.month - (months - 1), now.day);
       _quickRange = DateQuickRange.quarter;
+      _filtersExpanded = false;
     });
   }
 
@@ -475,7 +493,7 @@ class _InvoiceListState extends State<_InvoiceList> {
     }).toList();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -484,7 +502,33 @@ class _InvoiceListState extends State<_InvoiceList> {
             expanded: _filtersExpanded,
             fromDate: _fromDate,
             toDate: _toDate,
-            showLabel: true,
+            showLabel: false,
+            showCollapsedRange: false,
+            showClearAction: false,
+            quickRangeControls: _ClientPeriodMenu(
+              selected: _quickRange,
+              hasFilter: hasFilter,
+              isSpanish: isSpanish,
+              onSelected: (value) {
+                if (value == null) {
+                  setState(() {
+                    _fromDate = null;
+                    _toDate = null;
+                    _quickRange = DateQuickRange.none;
+                    _filtersExpanded = false;
+                  });
+                } else if (value == DateQuickRange.month) {
+                  _setRangeDays(30);
+                } else if (value == DateQuickRange.quarter) {
+                  _setRangeMonths(3);
+                } else {
+                  setState(() {
+                    _quickRange = DateQuickRange.custom;
+                    _filtersExpanded = true;
+                  });
+                }
+              },
+            ),
             trailingActions: [
               Tooltip(
                 message: filtered.isEmpty
@@ -518,6 +562,7 @@ class _InvoiceListState extends State<_InvoiceList> {
               _fromDate = null;
               _toDate = null;
               _quickRange = DateQuickRange.none;
+              _filtersExpanded = false;
             }),
             onPickFrom: _pickFromDate,
             onPickTo: _pickToDate,
@@ -534,7 +579,7 @@ class _InvoiceListState extends State<_InvoiceList> {
               }
             },
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Expanded(
             child: filtered.isEmpty
                 ? Center(
@@ -596,12 +641,100 @@ class _InvoiceListState extends State<_InvoiceList> {
             invoice: inv,
             client: client,
             showClient: false,
+            visibleFinancialColumns: const {
+              HexoraFinancialColumn.date,
+              HexoraFinancialColumn.total,
+            },
             onTap: () => widget.onTap(inv),
             onDelete:
                 widget.onDelete == null ? null : () => widget.onDelete!(inv),
           ),
         );
       },
+    );
+  }
+}
+
+class _ClientPeriodMenu extends StatelessWidget {
+  const _ClientPeriodMenu({
+    required this.selected,
+    required this.hasFilter,
+    required this.isSpanish,
+    required this.onSelected,
+  });
+
+  final DateQuickRange selected;
+  final bool hasFilter;
+  final bool isSpanish;
+  final ValueChanged<DateQuickRange?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final label = switch (selected) {
+      DateQuickRange.month => isSpanish ? '30 días' : '30 days',
+      DateQuickRange.quarter => isSpanish ? '3 meses' : '3 months',
+      DateQuickRange.custom => isSpanish ? 'Personalizado' : 'Custom',
+      DateQuickRange.none => isSpanish ? 'Periodo' : 'Period',
+    };
+
+    return PopupMenuButton<String>(
+      key: const ValueKey('client-document-period-menu'),
+      tooltip: isSpanish ? 'Seleccionar periodo' : 'Select period',
+      onSelected: (value) => onSelected(switch (value) {
+        'month' => DateQuickRange.month,
+        'quarter' => DateQuickRange.quarter,
+        'custom' => DateQuickRange.custom,
+        _ => null,
+      }),
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: 'all',
+          child: Text(isSpanish ? 'Todo el periodo' : 'All time'),
+        ),
+        PopupMenuItem(
+          value: 'month',
+          child: Text(isSpanish ? '30 días' : '30 days'),
+        ),
+        PopupMenuItem(
+          value: 'quarter',
+          child: Text(isSpanish ? '3 meses' : '3 months'),
+        ),
+        PopupMenuItem(
+          value: 'custom',
+          child: Text(isSpanish ? 'Personalizado' : 'Custom'),
+        ),
+      ],
+      child: Container(
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: hasFilter
+              ? cs.primary.withValues(alpha: 0.08)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: cs.outlineVariant),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.date_range_outlined,
+                size: 15, color: hasFilter ? cs.primary : cs.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: t.bodySmall.copyWith(
+                color: hasFilter ? cs.primary : cs.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.expand_more_rounded,
+                size: 15, color: hasFilter ? cs.primary : cs.onSurfaceVariant),
+          ],
+        ),
+      ),
     );
   }
 }
