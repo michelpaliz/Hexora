@@ -7,6 +7,11 @@ import 'package:hexora/presentation/utils/address/spain_postal_code_autofill.dar
 import 'dart:developer' as devtools show log;
 
 class AddClientController {
+  static final RegExp _communityPrefixPattern = RegExp(
+    r'^(c\.?\s*prop\.?|com\.?\s*de\.?\s*prop\.?|comp\.?\s*de\.?\s*prop\.?|comunidad\s+de\s+propietarios)\s+(.+)$',
+    caseSensitive: false,
+  );
+
   AddClientController({
     required this.api,
     required this.groupId,
@@ -24,6 +29,7 @@ class AddClientController {
   // Contact
   final name = TextEditingController();
   final pdfAlias = TextEditingController();
+  final pdfPrefix = TextEditingController();
   final phone = TextEditingController();
   final email = TextEditingController();
 
@@ -66,6 +72,7 @@ class AddClientController {
 
     name.text = c.name;
     pdfAlias.text = c.pdfAlias ?? '';
+    pdfPrefix.text = c.pdfPrefix ?? '';
     phone.text = c.phone ?? '';
     email.text = c.email ?? '';
     entityType.text = c.entityType ?? '';
@@ -141,6 +148,43 @@ class AddClientController {
   String _legacyRelationship(String? first, String? second) {
     final values = [first, second].map((v) => (v ?? '').trim().toLowerCase());
     return values.contains('propietario') ? 'owner' : '';
+  }
+
+  String get pdfBillingNamePreview {
+    final billingName = billingLegalName.text.trim().isEmpty
+        ? name.text.trim()
+        : billingLegalName.text.trim();
+    final prefix = pdfPrefix.text.trim();
+    if (prefix.isEmpty || billingName.isEmpty) return billingName;
+    final embedded = _communityPrefixPattern.firstMatch(billingName);
+    if (embedded != null &&
+        _communityPrefixPattern.hasMatch('$prefix Example')) {
+      return '$prefix ${embedded.group(2)}';
+    }
+    final samePrefix = billingName.toLowerCase() == prefix.toLowerCase() ||
+        billingName.toLowerCase().startsWith('${prefix.toLowerCase()} ');
+    return samePrefix ? billingName : '$prefix $billingName';
+  }
+
+  String? get embeddedBillingPrefix => _communityPrefixPattern
+      .firstMatch(billingLegalName.text.trim())
+      ?.group(1);
+
+  String? get embeddedBillingRemainder => _communityPrefixPattern
+      .firstMatch(billingLegalName.text.trim())
+      ?.group(2);
+
+  String get pdfAliasPreview {
+    final alias = pdfAlias.text.trim();
+    if (alias.isEmpty) return '';
+    final displayName = pdfBillingNamePreview;
+    final shortName =
+        _communityPrefixPattern.firstMatch(displayName)?.group(2) ??
+            displayName;
+    final names = [billingLegalName.text.trim(), displayName, shortName];
+    return names.any((value) => value.toLowerCase() == alias.toLowerCase())
+        ? ''
+        : alias;
   }
 
   ClientBilling? billingFromInputs({bool includeNulls = false}) {
@@ -232,6 +276,7 @@ class AddClientController {
     for (final c in [
       name,
       pdfAlias,
+      pdfPrefix,
       phone,
       email,
       entityType,
@@ -275,6 +320,8 @@ class AddClientController {
       final patch = <String, dynamic>{
         'name': trimmedName,
         'pdfAlias': pdfAlias.text.trim().isEmpty ? null : pdfAlias.text.trim(),
+        'pdfPrefix':
+            pdfPrefix.text.trim().isEmpty ? null : pdfPrefix.text.trim(),
         'customerType': norm(customerType.text),
         'propertyType': norm(propertyType.text),
         'propertyRelationship': norm(propertyRelationship.text),
@@ -299,6 +346,7 @@ class AddClientController {
         id: '',
         name: trimmedName,
         pdfAlias: pdfAlias.text.trim().isEmpty ? null : pdfAlias.text.trim(),
+        pdfPrefix: pdfPrefix.text.trim().isEmpty ? null : pdfPrefix.text.trim(),
         groupId: groupId,
         entityType: norm(entityType.text),
         propertyKind: norm(propertyKind.text),

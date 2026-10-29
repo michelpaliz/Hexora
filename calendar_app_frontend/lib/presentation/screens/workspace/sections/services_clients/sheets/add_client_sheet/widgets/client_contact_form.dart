@@ -1,6 +1,5 @@
 import 'client_form_fields.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/input_border.dart';
 import 'package:hexora/presentation/utils/validation/email_validator.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -85,7 +84,7 @@ class ClientContactForm extends StatelessWidget {
             decoration: buildInputDecoration(
               context,
               label: l.nameLabel,
-              hintText: l.e_gJohnDoe,
+              hintText: 'p. ej., Residencial El Castell',
               prefixIcon: const Icon(Icons.person_outline),
               isRequired: true,
               isFilled: c.name.text.trim().isNotEmpty,
@@ -98,22 +97,6 @@ class ClientContactForm extends StatelessWidget {
               return (v == null || v.trim().isEmpty) ? l.nameIsRequired : null;
             },
           ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: c.pdfAlias,
-          style: text.bodyLarge,
-          inputFormatters: [LengthLimitingTextInputFormatter(120)],
-          decoration: buildInputDecoration(
-            context,
-            label: 'Alias para PDF (opcional)',
-            helperText:
-                'Aparece bajo el nombre legal en facturas, presupuestos y recibos.',
-            prefixIcon: const Icon(Icons.picture_as_pdf_outlined),
-            isFilled: c.pdfAlias.text.trim().isNotEmpty,
-          ),
-          textInputAction: TextInputAction.next,
-          onChanged: (_) => onFieldChanged(),
         ),
         const SizedBox(height: 8),
         Focus(
