@@ -1444,21 +1444,6 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     }
   }
 
-  int _sizeIndexFor(int size) {
-    final direct = _sizeOptions.indexOf(size);
-    if (direct >= 0) return direct;
-    var best = 0;
-    var bestDiff = (size - _sizeOptions.first).abs();
-    for (var i = 1; i < _sizeOptions.length; i++) {
-      final diff = (size - _sizeOptions[i]).abs();
-      if (diff < bestDiff) {
-        best = i;
-        bestDiff = diff;
-      }
-    }
-    return best;
-  }
-
   /// Link panel docked beside the table; `null` while closed. Kept in state
   /// (not rebuilt from the controller) so the panel survives table rebuilds.
   Widget? _linkPanel;
@@ -1473,7 +1458,8 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     StatementsController s,
     Map<String, dynamic> entry, {
     required StatementsTransactionPanelTab initialTab,
-    BankTransactionLinkMode initialLinkMode = BankTransactionLinkMode.suggestions,
+    BankTransactionLinkMode initialLinkMode =
+        BankTransactionLinkMode.suggestions,
   }) {
     final entryId = (entry['_id'] ?? entry['id'])?.toString() ?? '';
     setState(() {
@@ -1626,9 +1612,6 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     final freshnessIsStale = freshnessStatus?['stale'] == true;
     final autoImportEnabled =
         auth.currentUser?.autoStatementImportEnabled ?? false;
-    final sizeIndex = _sizeIndexFor(s.allEntriesSize);
-    final canDecSize = sizeIndex > 0;
-    final canIncSize = sizeIndex < _sizeOptions.length - 1;
     final canNextPage = s.isUsingAggregatedEntriesPath
         ? ((s.allEntriesNextCursor != null &&
                 s.allEntriesNextCursor!.isNotEmpty) ||
@@ -1674,78 +1657,26 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         ),
       ],
     );
-    final headerActions = <Widget>[
-      _HeaderActionGroup(
-        children: [
-          _HeaderIconAction(
-            tooltip: infoTooltipText,
-            onPressed: freshnessBatchId == null
-                ? null
-                : () => s.fetchBatchStatus(freshnessBatchId),
-            icon: freshnessIsStale
-                ? Icons.warning_amber_outlined
-                : Icons.info_outline,
-            color: freshnessIsStale ? cs.error : null,
-          ),
-          _HeaderIconAction(
-            tooltip: _isSoftDarkTable ? 'Tema claro' : 'Tema suave oscuro',
-            onPressed: _toggleTableTheme,
-            icon: _isSoftDarkTable
-                ? Icons.light_mode_outlined
-                : Icons.dark_mode_outlined,
-          ),
-          _HeaderIconAction(
-            tooltip: autoImportEnabled
-                ? '${l.autoStatementImportTitle}: ON\n${l.autoStatementImportHelper}'
-                : '${l.autoStatementImportTitle}: OFF\n${l.autoStatementImportHelper}',
-            onPressed: _autoStatementImportLoading
-                ? null
-                : () => _toggleAutoStatementImport(!autoImportEnabled),
-            icon: autoImportEnabled
-                ? Icons.sync_lock_outlined
-                : Icons.sync_disabled_outlined,
-            selected: autoImportEnabled,
-            loading: _autoStatementImportLoading,
-          ),
-          _HeaderIconAction(
-            tooltip: l.refreshAction,
-            onPressed: s.loadingAllEntries ? null : s.loadAllEntries,
-            icon: Icons.refresh,
-          ),
-          _HeaderIconAction(
-            tooltip: 'Exportar Excel',
-            onPressed: _exportingExcel ? null : () => _exportExcel(s),
-            icon: Icons.table_view_outlined,
-            loading: _exportingExcel,
-          ),
-        ],
-      ),
-      _HeaderActionGroup(
-        children: [
-          _HeaderIconAction(
-            tooltip: '${l.statementsPageSize}: ${s.allEntriesSize} (-)',
-            onPressed: canDecSize
-                ? () => s.loadAllEntries(
-                      size: _sizeOptions[sizeIndex - 1],
-                      page: 1,
-                    )
-                : null,
-            icon: Icons.remove_rounded,
-          ),
-          _HeaderPageSizeBadge(label: '${s.allEntriesSize}'),
-          _HeaderIconAction(
-            tooltip: '${l.statementsPageSize}: ${s.allEntriesSize} (+)',
-            onPressed: canIncSize
-                ? () => s.loadAllEntries(
-                      size: _sizeOptions[sizeIndex + 1],
-                      page: 1,
-                    )
-                : null,
-            icon: Icons.add_rounded,
-          ),
-        ],
-      ),
-    ];
+    void handleSecondaryAction(String value) {
+      switch (value) {
+        case 'info':
+          if (freshnessBatchId != null) {
+            s.fetchBatchStatus(freshnessBatchId);
+          }
+          return;
+        case 'theme':
+          _toggleTableTheme();
+          return;
+        case 'auto_import':
+          if (!_autoStatementImportLoading) {
+            _toggleAutoStatementImport(!autoImportEnabled);
+          }
+          return;
+        case 'export':
+          if (!_exportingExcel) _exportExcel(s);
+          return;
+      }
+    }
 
     final content = ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -1761,14 +1692,8 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: tableTheme.border),
-                  ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
                   child: LayoutBuilder(builder: (context, constraints) {
                     final es = l.localeName.startsWith('es');
                     final dateLabel = [
@@ -1787,7 +1712,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                           : s.allEntriesYear?.toString() ??
                               (es ? 'Todas las fechas' : 'All dates')),
                       style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(0, 36),
+                          minimumSize: const Size(0, 40),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           side: BorderSide(color: tableTheme.border),
                           shape: RoundedRectangleBorder(
@@ -1812,8 +1737,12 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                         isDense: true,
                         filled: true,
                         fillColor: tableTheme.headerBg,
+                        constraints: const BoxConstraints(
+                          minHeight: 40,
+                          maxHeight: 40,
+                        ),
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 9),
+                            horizontal: 10, vertical: 0),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                             borderSide: BorderSide(color: tableTheme.border)),
@@ -1846,8 +1775,9 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                             child: Text(es ? 'Notas' : 'Notes')),
                       ],
                       child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 9),
+                          height: 40,
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
                           decoration: BoxDecoration(
                               border: Border.all(color: tableTheme.border),
                               borderRadius: BorderRadius.circular(10)),
@@ -1859,48 +1789,149 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                     );
                     final resultCount = Text(
                       es ? '$totalResults resultados' : '$totalResults results',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      maxLines: 1,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
                     );
-                    if (constraints.maxWidth < 1200) {
-                      return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (constraints.maxWidth >= 650)
-                              Row(children: [
-                                dateButton,
-                                const SizedBox(width: 8),
-                                Expanded(child: search),
-                                const SizedBox(width: 8),
-                                filters
-                              ])
-                            else ...[
-                              search,
-                              const SizedBox(height: 8),
-                              Wrap(
-                                  spacing: 8,
-                                  runSpacing: 6,
-                                  children: [dateButton, filters]),
-                            ],
-                            const SizedBox(height: 6),
-                            Wrap(
-                                spacing: 8,
-                                runSpacing: 6,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: [...headerActions, resultCount]),
-                          ]);
+                    final refresh = _HeaderIconAction(
+                      tooltip: l.refreshAction,
+                      onPressed: s.loadingAllEntries ? null : s.loadAllEntries,
+                      icon: Icons.refresh,
+                      size: 40,
+                    );
+                    final pageSize = _HeaderPageSizeSelector(
+                      label: l.statementsPageSize,
+                      value: s.allEntriesSize,
+                      options: _sizeOptions,
+                      onSelected: (size) => s.loadAllEntries(
+                        size: size,
+                        page: 1,
+                      ),
+                    );
+                    final secondaryActions = PopupMenuButton<String>(
+                      tooltip: es ? 'Más acciones' : 'More actions',
+                      onSelected: handleSecondaryAction,
+                      itemBuilder: (_) => [
+                        NavigationPopupMenuItem(
+                          value: 'info',
+                          enabled: freshnessBatchId != null,
+                          child: Tooltip(
+                            message: infoTooltipText,
+                            child: _ToolbarMenuLabel(
+                              icon: freshnessIsStale
+                                  ? Icons.warning_amber_outlined
+                                  : Icons.info_outline,
+                              label: es ? 'Información' : 'Information',
+                              color: freshnessIsStale ? cs.error : null,
+                            ),
+                          ),
+                        ),
+                        NavigationPopupMenuItem(
+                          value: 'theme',
+                          child: _ToolbarMenuLabel(
+                            icon: _isSoftDarkTable
+                                ? Icons.light_mode_outlined
+                                : Icons.dark_mode_outlined,
+                            label: _isSoftDarkTable
+                                ? (es ? 'Tema claro' : 'Light theme')
+                                : (es
+                                    ? 'Tema suave oscuro'
+                                    : 'Soft dark theme'),
+                          ),
+                        ),
+                        NavigationPopupMenuItem(
+                          value: 'auto_import',
+                          enabled: !_autoStatementImportLoading,
+                          child: _ToolbarMenuLabel(
+                            icon: autoImportEnabled
+                                ? Icons.sync_lock_outlined
+                                : Icons.sync_disabled_outlined,
+                            label:
+                                '${l.autoStatementImportTitle}: ${autoImportEnabled ? 'ON' : 'OFF'}',
+                          ),
+                        ),
+                        NavigationPopupMenuItem(
+                          value: 'export',
+                          enabled: !_exportingExcel,
+                          child: _ToolbarMenuLabel(
+                            icon: Icons.table_view_outlined,
+                            label: es ? 'Exportar Excel' : 'Export Excel',
+                          ),
+                        ),
+                      ],
+                      child: _ToolbarIconSurface(
+                        tooltip: es ? 'Más acciones' : 'More actions',
+                        icon: Icons.more_horiz_rounded,
+                      ),
+                    );
+                    final searchWidth =
+                        (constraints.maxWidth * 0.34).clamp(320.0, 450.0);
+                    final constrainedSearch = SizedBox(
+                      width: constraints.maxWidth < 650
+                          ? constraints.maxWidth
+                          : searchWidth,
+                      child: search,
+                    );
+
+                    if (constraints.maxWidth >= 1040) {
+                      return Row(
+                        children: [
+                          constrainedSearch,
+                          const SizedBox(width: 8),
+                          dateButton,
+                          const SizedBox(width: 8),
+                          filters,
+                          const SizedBox(width: 8),
+                          refresh,
+                          const SizedBox(width: 8),
+                          pageSize,
+                          const Spacer(),
+                          resultCount,
+                          const SizedBox(width: 8),
+                          secondaryActions,
+                        ],
+                      );
                     }
-                    return Row(children: [
-                      dateButton,
-                      const SizedBox(width: 8),
-                      Expanded(child: search),
-                      const SizedBox(width: 8),
-                      filters,
-                      const SizedBox(width: 12),
-                      resultCount,
-                      const SizedBox(width: 12),
-                      ...headerActions.expand(
-                          (action) => [action, const SizedBox(width: 4)]),
-                    ]);
+
+                    if (constraints.maxWidth >= 820) {
+                      return Row(
+                        children: [
+                          Flexible(child: constrainedSearch),
+                          const SizedBox(width: 8),
+                          dateButton,
+                          const SizedBox(width: 8),
+                          filters,
+                          const SizedBox(width: 8),
+                          refresh,
+                          const SizedBox(width: 8),
+                          pageSize,
+                          const SizedBox(width: 4),
+                          secondaryActions,
+                        ],
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        constrainedSearch,
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            dateButton,
+                            filters,
+                            refresh,
+                            pageSize,
+                            secondaryActions,
+                            resultCount,
+                          ],
+                        ),
+                      ],
+                    );
                   }),
                 ),
                 if (_selectedIds.isNotEmpty)
@@ -2068,43 +2099,39 @@ class _HeaderIconAction extends StatelessWidget {
     required this.tooltip,
     required this.onPressed,
     required this.icon,
-    this.selected = false,
-    this.loading = false,
-    this.color,
+    this.size = 30,
   });
 
   final String tooltip;
   final VoidCallback? onPressed;
   final IconData icon;
-  final bool selected;
-  final bool loading;
-  final Color? color;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final fg = color ?? (selected ? cs.onPrimary : cs.onSurfaceVariant);
+    final isStandalone = size >= 40;
+    final fg = cs.onSurfaceVariant;
     return Tooltip(
       message: tooltip,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 1),
         child: IconButton(
-          onPressed: loading ? null : onPressed,
-          icon: loading
-              ? const SizedBox(
-                  width: 15,
-                  height: 15,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Icon(icon, size: 17),
+          onPressed: onPressed,
+          icon: Icon(icon, size: 17),
           style: IconButton.styleFrom(
-            minimumSize: const Size(30, 30),
+            minimumSize: Size(size, size),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             foregroundColor: fg,
             disabledForegroundColor: fg.withValues(alpha: 0.35),
-            backgroundColor: selected ? cs.primary : Colors.transparent,
+            backgroundColor: isStandalone ? cs.surface : Colors.transparent,
             disabledBackgroundColor: Colors.transparent,
-            shape: const CircleBorder(),
+            side: isStandalone ? BorderSide(color: cs.outlineVariant) : null,
+            shape: isStandalone
+                ? RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  )
+                : const CircleBorder(),
           ),
         ),
       ),
@@ -2112,29 +2139,129 @@ class _HeaderIconAction extends StatelessWidget {
   }
 }
 
-class _HeaderPageSizeBadge extends StatelessWidget {
-  const _HeaderPageSizeBadge({required this.label});
+class _HeaderPageSizeSelector extends StatelessWidget {
+  const _HeaderPageSizeSelector({
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.onSelected,
+  });
 
   final String label;
+  final int value;
+  final List<int> options;
+  final ValueChanged<int> onSelected;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      height: 30,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: cs.surface.withValues(alpha: 0.68),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        label,
-        style: AppTypography.of(context).bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    return PopupMenuButton<int>(
+      tooltip: '$label: $value',
+      initialValue: value,
+      onSelected: onSelected,
+      itemBuilder: (_) => options
+          .map(
+            (option) => PopupMenuItem<int>(
+              value: option,
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 22,
+                    child: option == value
+                        ? Icon(Icons.check_rounded, size: 17, color: cs.primary)
+                        : null,
+                  ),
+                  Text('$option'),
+                ],
+              ),
             ),
+          )
+          .toList(growable: false),
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: cs.outlineVariant),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$value',
+              style: AppTypography.of(context).bodySmall.copyWith(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              isEs ? '/ pág.' : '/ page',
+              style: AppTypography.of(context).bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 17,
+              color: cs.onSurfaceVariant,
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _ToolbarIconSurface extends StatelessWidget {
+  const _ToolbarIconSurface({required this.tooltip, required this.icon});
+
+  final String tooltip;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        width: 40,
+        height: 40,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: cs.outlineVariant),
+        ),
+        child: Icon(icon, size: 18, color: cs.onSurfaceVariant),
+      ),
+    );
+  }
+}
+
+class _ToolbarMenuLabel extends StatelessWidget {
+  const _ToolbarMenuLabel({
+    required this.icon,
+    required this.label,
+    this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 10),
+        Flexible(child: Text(label)),
+      ],
     );
   }
 }
