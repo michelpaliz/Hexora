@@ -83,7 +83,7 @@ class ClientsSearchFilters extends StatelessWidget {
     this.onStatusChanged,
     this.inactiveValueMeansHidden = false,
     this.moveSummaryIntoFilters = false,
-    this.searchDesktopHeight = 36,
+    this.searchDesktopHeight = 40,
     this.trailingActions = const [],
   });
 

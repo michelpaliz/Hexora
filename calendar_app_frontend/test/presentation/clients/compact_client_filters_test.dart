@@ -68,6 +68,10 @@ void main() {
         ));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
+        expect(
+          tester.getSize(find.byType(TextField)).width,
+          lessThanOrEqualTo(width >= 760 ? 450 : width),
+        );
         expect(find.byType(DropdownButton<String>), findsNothing);
         await tester.enterText(find.byType(TextField), 'Mar');
         await tester.tap(find.byType(Switch));

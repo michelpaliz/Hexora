@@ -28,7 +28,8 @@ class SearchFiltersHeader extends StatefulWidget {
       this.persistentContent,
       this.onClearFilters,
       this.padding = const EdgeInsets.fromLTRB(12, 0, 12, 10),
-      this.searchDesktopHeight = 36,
+      this.searchDesktopHeight = 40,
+      this.searchMaxWidth = 450,
       this.showClearAction = true,
       this.autoExpandWhenActive = false,
       this.trailingActions = const []});
@@ -46,6 +47,7 @@ class SearchFiltersHeader extends StatefulWidget {
   final bool showClearAction;
   final bool autoExpandWhenActive;
   final double searchDesktopHeight;
+  final double searchMaxWidth;
   final List<Widget> trailingActions;
   @override
   State<SearchFiltersHeader> createState() => _SearchFiltersHeaderState();
@@ -73,90 +75,102 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
         child:
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           const SizedBox(height: 6),
-          Row(children: [
-            Expanded(
-                child: ValueListenableBuilder<TextEditingValue>(
-              valueListenable: widget.searchController,
-              builder: (context, value, _) => TextField(
-                  controller: widget.searchController,
-                  onChanged: (_) => widget.onSearchChanged(),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                  decoration: InputDecoration(
-                    hintText: widget.searchHint,
-                    isDense: true,
-                    filled: true,
-                    fillColor: cs.surfaceContainerLow,
-                    constraints: BoxConstraints(minHeight: height),
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    prefixIcon: const Icon(Icons.search_rounded, size: 16),
-                    prefixIconConstraints:
-                        BoxConstraints(minWidth: 36, minHeight: height),
-                    suffixIconConstraints:
-                        BoxConstraints(minWidth: 36, minHeight: height),
-                    suffixIcon: value.text.isEmpty
-                        ? null
-                        : IconButton(
-                            constraints: BoxConstraints.tightFor(
-                                width: height, height: height),
-                            padding: const EdgeInsets.all(8),
-                            tooltip: widget.clearSearchTooltip ??
-                                MaterialLocalizations.of(context)
-                                    .deleteButtonTooltip,
-                            onPressed: () {
-                              widget.searchController.clear();
-                              widget.onSearchChanged();
-                            },
-                            icon: const Icon(Icons.close_rounded, size: 16)),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: cs.outlineVariant)),
-                    enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: cs.outlineVariant)),
-                    focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: cs.primary)),
-                  )),
-            )),
-            if (hasFilters) ...[
-              const SizedBox(width: 8),
-              Semantics(
-                  expanded: _expanded,
-                  child: OutlinedButton(
-                      key: const ValueKey('client-advanced-filters-toggle'),
-                      onPressed: () => setState(() => _expanded = !_expanded),
-                      style: OutlinedButton.styleFrom(
-                          minimumSize: Size(32,
-                              clientFilterControlHeight(context, desktop: 32)),
-                          foregroundColor: widget.hasActiveFilters
-                              ? cs.primary
-                              : cs.onSurfaceVariant,
-                          backgroundColor: widget.hasActiveFilters
-                              ? cs.primary.withValues(alpha: .06)
-                              : Colors.transparent,
-                          side: BorderSide(
-                              color: widget.hasActiveFilters
-                                  ? cs.primary.withValues(alpha: .55)
-                                  : cs.outlineVariant.withValues(alpha: .6)),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8)),
-                          padding: const EdgeInsets.symmetric(horizontal: 8)),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.tune_rounded, size: 16),
-                        const SizedBox(width: 4),
-                        Text(widget.activeFilterCount > 0
-                            ? '${l.sectionFilters} (${widget.activeFilterCount})'
-                            : l.sectionFilters),
-                        Icon(_expanded ? Icons.expand_less : Icons.expand_more,
-                            size: 16),
-                      ]))),
-            ],
-            if (widget.trailingActions.isNotEmpty) ...[
-              const SizedBox(width: 8),
-              ...widget.trailingActions,
-            ],
-          ]),
+          LayoutBuilder(builder: (context, constraints) {
+            final search = ValueListenableBuilder<TextEditingValue>(
+                valueListenable: widget.searchController,
+                builder: (context, value, _) => TextField(
+                    controller: widget.searchController,
+                    onChanged: (_) => widget.onSearchChanged(),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    decoration: InputDecoration(
+                      hintText: widget.searchHint,
+                      isDense: true,
+                      filled: true,
+                      fillColor: cs.surfaceContainerLow,
+                      constraints: BoxConstraints(minHeight: height),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      prefixIcon: const Icon(Icons.search_rounded, size: 16),
+                      prefixIconConstraints:
+                          BoxConstraints(minWidth: 36, minHeight: height),
+                      suffixIconConstraints:
+                          BoxConstraints(minWidth: 36, minHeight: height),
+                      suffixIcon: value.text.isEmpty
+                          ? null
+                          : IconButton(
+                              constraints: BoxConstraints.tightFor(
+                                  width: height, height: height),
+                              padding: const EdgeInsets.all(8),
+                              tooltip: widget.clearSearchTooltip ??
+                                  MaterialLocalizations.of(context)
+                                      .deleteButtonTooltip,
+                              onPressed: () {
+                                widget.searchController.clear();
+                                widget.onSearchChanged();
+                              },
+                              icon: const Icon(Icons.close_rounded, size: 16)),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: cs.outlineVariant)),
+                      enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: cs.outlineVariant)),
+                      focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: cs.primary)),
+                    )));
+            final searchSlot = constraints.maxWidth >= 760
+                ? Flexible(
+                    fit: FlexFit.loose,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: widget.searchMaxWidth,
+                      ),
+                      child: search,
+                    ),
+                  )
+                : Expanded(child: search);
+            return Row(children: [
+              searchSlot,
+              if (hasFilters) ...[
+                const SizedBox(width: 8),
+                Semantics(
+                    expanded: _expanded,
+                    child: OutlinedButton(
+                        key: const ValueKey('client-advanced-filters-toggle'),
+                        onPressed: () => setState(() => _expanded = !_expanded),
+                        style: OutlinedButton.styleFrom(
+                            minimumSize: Size(32, height),
+                            foregroundColor: widget.hasActiveFilters
+                                ? cs.primary
+                                : cs.onSurfaceVariant,
+                            backgroundColor: widget.hasActiveFilters
+                                ? cs.primary.withValues(alpha: .06)
+                                : Colors.transparent,
+                            side: BorderSide(
+                                color: widget.hasActiveFilters
+                                    ? cs.primary.withValues(alpha: .55)
+                                    : cs.outlineVariant.withValues(alpha: .6)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(horizontal: 8)),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.tune_rounded, size: 16),
+                          const SizedBox(width: 4),
+                          Text(widget.activeFilterCount > 0
+                              ? '${l.sectionFilters} (${widget.activeFilterCount})'
+                              : l.sectionFilters),
+                          Icon(
+                              _expanded ? Icons.expand_less : Icons.expand_more,
+                              size: 16),
+                        ]))),
+              ],
+              if (widget.trailingActions.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                ...widget.trailingActions,
+              ],
+            ]);
+          }),
           if (widget.persistentContent != null ||
               (widget.hasActiveFilters &&
                   widget.showClearAction &&
