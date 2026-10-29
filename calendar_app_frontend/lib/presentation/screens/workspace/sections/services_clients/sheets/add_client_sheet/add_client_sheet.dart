@@ -451,12 +451,12 @@ class _AddClientSheetState extends State<AddClientSheet> {
       final l = AppLocalizations.of(context)!;
       final cs = Theme.of(context).colorScheme;
       return Column(children: [
-        if (widget.showInlineHeader)
+        if (widget.showInlineHeader && !c.isEdit)
           Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: ClientHeader(isEdit: c.isEdit)),
         Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            padding: EdgeInsets.fromLTRB(16, c.isEdit ? 8 : 12, 16, 0),
             child: _identityHeader()),
         Expanded(child: form),
         Container(
