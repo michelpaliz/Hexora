@@ -111,6 +111,9 @@ class ClientsApi {
     bool? active,
     bool includeCurrentMonthInvoiceFlag = false,
     bool? missingCurrentMonthInvoice,
+    String? customerType,
+    String? propertyType,
+    String? propertyRelationship,
   }) async {
     final r = await AuthenticatedHttpClient.get(
         _u('', {
@@ -121,6 +124,10 @@ class ClientsApi {
             'includeCurrentMonthInvoiceFlag': 'true',
           if (missingCurrentMonthInvoice != null)
             'missingCurrentMonthInvoice': missingCurrentMonthInvoice.toString(),
+          if (customerType != null) 'customerType': customerType,
+          if (propertyType != null) 'propertyType': propertyType,
+          if (propertyRelationship != null)
+            'propertyRelationship': propertyRelationship,
         }),
         headers: _headers());
 
@@ -136,10 +143,18 @@ class ClientsApi {
     final body = <String, dynamic>{
       'groupId': client.groupId,
       'name': client.name.trim(),
+      if ((client.pdfAlias ?? '').trim().isNotEmpty)
+        'pdfAlias': client.pdfAlias!.trim(),
       if ((client.entityType ?? '').trim().isNotEmpty)
         'entityType': client.entityType!.trim(),
       if ((client.propertyKind ?? '').trim().isNotEmpty)
         'propertyKind': client.propertyKind!.trim(),
+      if ((client.customerType ?? '').trim().isNotEmpty)
+        'customerType': client.customerType!.trim(),
+      if ((client.propertyType ?? '').trim().isNotEmpty)
+        'propertyType': client.propertyType!.trim(),
+      if ((client.propertyRelationship ?? '').trim().isNotEmpty)
+        'propertyRelationship': client.propertyRelationship!.trim(),
       'isActive': client.isActive,
       'contact': {
         if ((client.phone ?? '').trim().isNotEmpty)
@@ -190,12 +205,24 @@ class ClientsApi {
     if (client.id.isEmpty) throw Exception('Client.id is required');
     final patch = <String, dynamic>{
       'name': client.name.trim(),
+      if (client.pdfAlias != null)
+        'pdfAlias':
+            client.pdfAlias!.trim().isEmpty ? null : client.pdfAlias!.trim(),
       'entityType': (client.entityType ?? '').trim().isEmpty
           ? null
           : client.entityType!.trim(),
       'propertyKind': (client.propertyKind ?? '').trim().isEmpty
           ? null
           : client.propertyKind!.trim(),
+      'customerType': (client.customerType ?? '').trim().isEmpty
+          ? null
+          : client.customerType!.trim(),
+      'propertyType': (client.propertyType ?? '').trim().isEmpty
+          ? null
+          : client.propertyType!.trim(),
+      'propertyRelationship': (client.propertyRelationship ?? '').trim().isEmpty
+          ? null
+          : client.propertyRelationship!.trim(),
       'isActive': client.isActive,
       'contact': {
         'phone':

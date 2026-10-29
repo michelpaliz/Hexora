@@ -1,5 +1,6 @@
 import 'client_form_fields.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/input_border.dart';
 import 'package:hexora/presentation/utils/validation/email_validator.dart';
@@ -42,9 +43,54 @@ class ClientContactForm extends StatelessWidget {
       return [...options, v]..sort();
     }
 
-    final entityOptions = ensureCurrent(entityTypeOptions, c.entityType.text);
-    final propertyOptions =
-        ensureCurrent(propertyKindOptions, c.propertyKind.text);
+    const canonicalCustomerTypes = <String>[
+      'particular',
+      'community',
+      'company',
+      'other',
+    ];
+    const canonicalPropertyTypes = <String>[
+      'chalet',
+      'apartment',
+      'building',
+      'hotel',
+      'commercial_premises',
+      'other',
+    ];
+    const canonicalRelationships = <String>[
+      'owner',
+      'administrator',
+      'tenant',
+      'other',
+    ];
+    String classificationLabel(String value) =>
+        {
+          'particular': 'Particular',
+          'community': 'Comunidad de propietarios',
+          'company': 'Empresa',
+          'chalet': 'Chalet',
+          'apartment': 'Apartamento',
+          'building': 'Edificio / Urbanización',
+          'hotel': 'Hotel',
+          'commercial_premises': 'Local comercial',
+          'owner': 'Propietario',
+          'administrator': 'Administrador',
+          'tenant': 'Inquilino',
+          'other': 'Otro',
+        }[value] ??
+        value;
+    final customerOptions = ensureCurrent(
+      canonicalCustomerTypes,
+      c.customerType.text,
+    );
+    final propertyOptions = ensureCurrent(
+      canonicalPropertyTypes,
+      c.propertyType.text,
+    );
+    final relationshipOptions = ensureCurrent(
+      canonicalRelationships,
+      c.propertyRelationship.text,
+    );
 
     return Column(
       children: [
@@ -78,6 +124,22 @@ class ClientContactForm extends StatelessWidget {
                         : null;
                   },
                 ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: c.pdfAlias,
+                style: text.bodyLarge,
+                inputFormatters: [LengthLimitingTextInputFormatter(120)],
+                decoration: buildInputDecoration(
+                  context,
+                  label: 'Alias para PDF (opcional)',
+                  helperText:
+                      'Aparece bajo el nombre legal en facturas, presupuestos y recibos.',
+                  prefixIcon: const Icon(Icons.picture_as_pdf_outlined),
+                  isFilled: c.pdfAlias.text.trim().isNotEmpty,
+                ),
+                textInputAction: TextInputAction.next,
+                onChanged: (_) => onFieldChanged(),
               ),
               const SizedBox(height: 12),
               ClientFormFields(
@@ -157,9 +219,9 @@ class ClientContactForm extends StatelessWidget {
               ClientFormFields(
                   first: DropdownButtonFormField<String>(
                     isExpanded: true,
-                    initialValue: c.entityType.text.trim().isEmpty
+                    initialValue: c.customerType.text.trim().isEmpty
                         ? null
-                        : c.entityType.text.trim(),
+                        : c.customerType.text.trim(),
                     hint: Text(
                       '${l.select}...',
                       style: text.bodyLarge!.copyWith(
@@ -168,30 +230,30 @@ class ClientContactForm extends StatelessWidget {
                     ),
                     style: text.bodyLarge?.copyWith(color: cs.onSurface),
                     items: [
-                      ...entityOptions.map(
+                      ...customerOptions.map(
                         (e) => DropdownMenuItem(
                             value: e,
-                            child: Text(e,
+                            child: Text(classificationLabel(e),
                                 maxLines: 1, overflow: TextOverflow.ellipsis)),
                       ),
                     ],
                     onChanged: (v) {
-                      c.entityType.text = (v ?? '').trim();
+                      c.customerType.text = (v ?? '').trim();
                       onClassificationChanged();
                       onFieldChanged();
                     },
                     decoration: buildInputDecoration(
                       context,
-                      label: l.clientEntityTypeLabel,
+                      label: 'Tipo de cliente',
                       prefixIcon: const Icon(Icons.badge_outlined),
-                      isFilled: c.entityType.text.trim().isNotEmpty,
+                      isFilled: c.customerType.text.trim().isNotEmpty,
                     ),
                   ),
                   second: DropdownButtonFormField<String>(
                     isExpanded: true,
-                    initialValue: c.propertyKind.text.trim().isEmpty
+                    initialValue: c.propertyType.text.trim().isEmpty
                         ? null
-                        : c.propertyKind.text.trim(),
+                        : c.propertyType.text.trim(),
                     hint: Text(
                       '${l.select}...',
                       style: text.bodyLarge!.copyWith(
@@ -203,22 +265,58 @@ class ClientContactForm extends StatelessWidget {
                       ...propertyOptions.map(
                         (e) => DropdownMenuItem(
                             value: e,
-                            child: Text(e,
+                            child: Text(classificationLabel(e),
                                 maxLines: 1, overflow: TextOverflow.ellipsis)),
                       ),
                     ],
                     onChanged: (v) {
-                      c.propertyKind.text = (v ?? '').trim();
+                      c.propertyType.text = (v ?? '').trim();
                       onClassificationChanged();
                       onFieldChanged();
                     },
                     decoration: buildInputDecoration(
                       context,
-                      label: l.clientPropertyKindLabel,
+                      label: 'Tipo de inmueble (opcional)',
                       prefixIcon: const Icon(Icons.home_work_outlined),
-                      isFilled: c.propertyKind.text.trim().isNotEmpty,
+                      isFilled: c.propertyType.text.trim().isNotEmpty,
                     ),
                   )),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: c.propertyRelationship.text.trim().isEmpty
+                    ? null
+                    : c.propertyRelationship.text.trim(),
+                hint: Text(
+                  '${l.select}...',
+                  style: text.bodyLarge!.copyWith(
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.65),
+                  ),
+                ),
+                style: text.bodyLarge?.copyWith(color: cs.onSurface),
+                items: relationshipOptions
+                    .map(
+                      (e) => DropdownMenuItem(
+                        value: e,
+                        child: Text(
+                          classificationLabel(e),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) {
+                  c.propertyRelationship.text = (v ?? '').trim();
+                  onFieldChanged();
+                },
+                decoration: buildInputDecoration(
+                  context,
+                  label: 'Relación con el inmueble (opcional)',
+                  prefixIcon: const Icon(Icons.handshake_outlined),
+                  isFilled: c.propertyRelationship.text.trim().isNotEmpty,
+                ),
+              ),
             ]),
       ],
     );

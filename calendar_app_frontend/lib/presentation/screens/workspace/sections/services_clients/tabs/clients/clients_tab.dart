@@ -23,9 +23,12 @@ class ClientsTab extends StatefulWidget {
   final ValueChanged<bool>? onToggleInactive;
   final bool missingCurrentMonthInvoiceOnly;
   final ValueChanged<bool>? onToggleMissingCurrentMonthInvoiceOnly;
-  final String? propertyKindFilter;
-  final List<String> propertyKindOptions;
-  final ValueChanged<String?>? onPropertyKindChanged;
+  final String? propertyTypeFilter;
+  final List<String> propertyTypeOptions;
+  final ValueChanged<String?>? onPropertyTypeChanged;
+  final String? customerTypeFilter;
+  final List<String> customerTypeOptions;
+  final ValueChanged<String?>? onCustomerTypeChanged;
   final void Function(GroupClient client)? onDelete;
 
   const ClientsTab({
@@ -42,9 +45,12 @@ class ClientsTab extends StatefulWidget {
     this.onToggleInactive,
     this.missingCurrentMonthInvoiceOnly = false,
     this.onToggleMissingCurrentMonthInvoiceOnly,
-    this.propertyKindFilter,
-    this.propertyKindOptions = const [],
-    this.onPropertyKindChanged,
+    this.propertyTypeFilter,
+    this.propertyTypeOptions = const [],
+    this.onPropertyTypeChanged,
+    this.customerTypeFilter,
+    this.customerTypeOptions = const [],
+    this.onCustomerTypeChanged,
     this.onDelete,
   });
 
@@ -54,7 +60,6 @@ class ClientsTab extends StatefulWidget {
 
 class _ClientsTabState extends State<ClientsTab> {
   String _status = 'all';
-  String? _entityTypeFilter;
   bool _ascending = true;
   int _page = 0;
   int? _pageSize;
@@ -85,21 +90,16 @@ class _ClientsTabState extends State<ClientsTab> {
     final cs = Theme.of(context).colorScheme;
     final typo = AppTypography.of(context);
 
-    final entityTypeOptions = widget.items
-        .map((c) => (c.entityType ?? '').trim())
-        .where((value) => value.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
     final filtered = widget.items.where((client) {
-      final matchesEntity = _entityTypeFilter == null ||
-          _entityTypeFilter!.isEmpty ||
-          (client.entityType ?? '').trim() == _entityTypeFilter;
-      final matchesProperty = widget.propertyKindFilter == null ||
-          widget.propertyKindFilter!.isEmpty ||
-          (client.propertyKind ?? '').trim() ==
-              widget.propertyKindFilter!.trim();
-      return matchesEntity && matchesProperty;
+      final matchesCustomer = widget.customerTypeFilter == null ||
+          widget.customerTypeFilter!.isEmpty ||
+          (client.effectiveCustomerType ?? '').trim() ==
+              widget.customerTypeFilter!.trim();
+      final matchesProperty = widget.propertyTypeFilter == null ||
+          widget.propertyTypeFilter!.isEmpty ||
+          (client.effectivePropertyType ?? '').trim() ==
+              widget.propertyTypeFilter!.trim();
+      return matchesCustomer && matchesProperty;
     }).toList(growable: false);
     final searched = filtered.where(_matchesSearch).toList(growable: false);
     final flagged = widget.missingCurrentMonthInvoiceOnly
@@ -136,8 +136,9 @@ class _ClientsTabState extends State<ClientsTab> {
     final query = _searchCtrl.text.trim();
     final hasSearch = query.isNotEmpty;
     final hasPropertyFilter =
-        (widget.propertyKindFilter ?? '').trim().isNotEmpty;
-    final hasEntityFilter = (_entityTypeFilter ?? '').trim().isNotEmpty;
+        (widget.propertyTypeFilter ?? '').trim().isNotEmpty;
+    final hasCustomerFilter =
+        (widget.customerTypeFilter ?? '').trim().isNotEmpty;
     final hasSourceData = widget.items.isNotEmpty;
 
     late final Widget content;
@@ -161,7 +162,7 @@ class _ClientsTabState extends State<ClientsTab> {
               : 'The backend did not return current-month invoice flags for these clients yet.',
         );
       } else if (hasSourceData &&
-          (hasSearch || hasEntityFilter || hasPropertyFilter)) {
+          (hasSearch || hasCustomerFilter || hasPropertyFilter)) {
         content = EmptyView(
           icon: Icons.search_off_rounded,
           title: hasSearch ? l.noMatchesForX(query) : l.noMatchesInvite,
@@ -256,23 +257,25 @@ class _ClientsTabState extends State<ClientsTab> {
             ],
           ),
           extraActiveFilterCount: widget.missingCurrentMonthInvoiceOnly ? 1 : 0,
-          propertyLabel: l.clientPropertyKindLabel,
-          propertyOptions: widget.propertyKindOptions,
-          propertyFilter: widget.propertyKindFilter,
-          onToggleProperty: widget.onPropertyKindChanged == null
+          propertyLabel: 'Tipo de inmueble',
+          propertyOptions: widget.propertyTypeOptions,
+          propertyFilter: widget.propertyTypeFilter,
+          onToggleProperty: widget.onPropertyTypeChanged == null
               ? null
-              : (v) => widget.onPropertyKindChanged!(v),
-          onClearProperty: widget.onPropertyKindChanged == null
+              : (v) => widget.onPropertyTypeChanged!(v),
+          onClearProperty: widget.onPropertyTypeChanged == null
               ? null
-              : () => widget.onPropertyKindChanged!(null),
+              : () => widget.onPropertyTypeChanged!(null),
           onClearFilters: () {
             setState(() {
               _status = 'all';
-              _entityTypeFilter = null;
               _page = 0;
             });
-            if (widget.onPropertyKindChanged != null) {
-              widget.onPropertyKindChanged!(null);
+            if (widget.onPropertyTypeChanged != null) {
+              widget.onPropertyTypeChanged!(null);
+            }
+            if (widget.onCustomerTypeChanged != null) {
+              widget.onCustomerTypeChanged!(null);
             }
             if (widget.onToggleInactive != null && widget.showInactive) {
               widget.onToggleInactive!(false);
@@ -282,17 +285,13 @@ class _ClientsTabState extends State<ClientsTab> {
               widget.onToggleMissingCurrentMonthInvoiceOnly!(false);
             }
           },
-          entityLabel: l.clientEntityTypeLabel,
-          entityOptions: entityTypeOptions,
-          entityFilter: _entityTypeFilter,
-          onToggleEntity: (value) => setState(() {
-            _entityTypeFilter = value;
-            _page = 0;
-          }),
-          onClearEntity: () => setState(() {
-            _entityTypeFilter = null;
-            _page = 0;
-          }),
+          entityLabel: 'Tipo de cliente',
+          entityOptions: widget.customerTypeOptions,
+          entityFilter: widget.customerTypeFilter,
+          onToggleEntity: widget.onCustomerTypeChanged,
+          onClearEntity: widget.onCustomerTypeChanged == null
+              ? null
+              : () => widget.onCustomerTypeChanged!(null),
         ),
         Expanded(child: content),
         if (!widget.loading && widget.error == null && pages > 1)
