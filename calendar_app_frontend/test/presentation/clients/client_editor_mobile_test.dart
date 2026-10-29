@@ -118,6 +118,20 @@ void main() {
     expect(find.text('Guardar cambios'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('new inline client editor omits the redundant create heading',
+      (tester) async {
+    await tester.pumpWidget(_app(AddClientSheet(
+      groupId: 'group-1',
+      api: ClientsApi(),
+      closeOnSave: false,
+    )));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Crear cliente'), findsNothing);
+    expect(find.text('—'), findsNothing);
+    expect(find.text('Crear cliente').hitTestable(), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
   for (final width in [360.0, 1280.0]) {
     for (final scale in [1.0, 1.5]) {
       testWidgets('editor at width $width keeps save visible at scale $scale',

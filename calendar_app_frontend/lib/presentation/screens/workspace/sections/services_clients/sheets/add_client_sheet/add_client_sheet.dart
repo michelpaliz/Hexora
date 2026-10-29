@@ -13,7 +13,6 @@ import 'package:hexora/presentation/screens/workspace/sections/services_clients/
 import 'add_client_controller.dart';
 import 'widgets/billing_section/billing_section.dart';
 import 'widgets/client_contact_form.dart';
-import 'widgets/client_header.dart';
 import 'widgets/client_editor_theme.dart';
 import 'widgets/save_button.dart';
 import 'widgets/service_location_section.dart';
@@ -66,6 +65,7 @@ class AddClientSheet extends StatefulWidget {
   final bool closeOnSave;
   final bool fullScreen;
   final bool showInlineHeader;
+  final Widget? identityTrailing;
   final VoidCallback? onCancel;
 
   const AddClientSheet({
@@ -79,6 +79,7 @@ class AddClientSheet extends StatefulWidget {
     this.closeOnSave = true,
     this.fullScreen = false,
     this.showInlineHeader = true,
+    this.identityTrailing,
     this.onCancel,
   });
 
@@ -361,6 +362,7 @@ class _AddClientSheetState extends State<AddClientSheet> {
       removed: _removeImage,
       disabled: c.saving,
       uploading: _uploadingImage,
+      trailing: widget.identityTrailing,
       onChanged: (bytes, name) => setState(() {
         _imageBytes = bytes;
         _imageName = name;
@@ -394,15 +396,9 @@ class _AddClientSheetState extends State<AddClientSheet> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (!widget.fullScreen && !inline) ...[
-                ClientHeader(isEdit: c.isEdit),
-                const SizedBox(height: 8),
-                const BillingDivider(),
-                const SizedBox(height: 8),
-              ],
               if (!inline) ...[
                 _identityHeader(),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
               ],
               ClientContactForm(
                 c: c,
@@ -451,12 +447,8 @@ class _AddClientSheetState extends State<AddClientSheet> {
       final l = AppLocalizations.of(context)!;
       final cs = Theme.of(context).colorScheme;
       return Column(children: [
-        if (widget.showInlineHeader && !c.isEdit)
-          Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: ClientHeader(isEdit: c.isEdit)),
         Padding(
-            padding: EdgeInsets.fromLTRB(16, c.isEdit ? 8 : 12, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: _identityHeader()),
         Expanded(child: form),
         Container(
@@ -525,15 +517,5 @@ class _AddClientSheetState extends State<AddClientSheet> {
         ),
       ),
     );
-  }
-}
-
-class BillingDivider extends StatelessWidget {
-  const BillingDivider({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.4));
   }
 }

@@ -64,40 +64,26 @@ class _GroupInvoicesContent extends StatelessWidget {
           state._inlineClientEditing = null;
         }),
         detailOverride: state._inlineClientEditorOpen
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
-                    child: Row(children: [
-                      Expanded(
-                        child: ClientHeader(
-                            isEdit: state._inlineClientEditing != null),
-                      ),
-                      IconButton(
-                        tooltip: MaterialLocalizations.of(context)
-                            .closeButtonTooltip,
-                        icon: const Icon(Icons.close_rounded, size: 18),
-                        onPressed: state._closeInlineClientEditor,
-                      ),
-                    ]),
-                  ),
-                  Expanded(
-                    child: AddClientSheet(
-                      key: ValueKey(
-                          'inline-client-${state._inlineClientEditing?.id ?? 'new'}'),
-                      groupId: state.widget.group.id,
-                      api: state._clientsApi,
-                      client: state._inlineClientEditing,
-                      existingClients: state._clients,
-                      closeOnSave: false,
-                      showInlineHeader: false,
-                      onCancel: state._closeInlineClientEditor,
-                      onSaved: state._handleInlineClientSaved,
-                      onOpenExisting: state._openInlineClientEditor,
-                    ),
-                  ),
-                ],
+            ? AddClientSheet(
+                key: ValueKey(
+                    'inline-client-${state._inlineClientEditing?.id ?? 'new'}'),
+                groupId: state.widget.group.id,
+                api: state._clientsApi,
+                client: state._inlineClientEditing,
+                existingClients: state._clients,
+                closeOnSave: false,
+                showInlineHeader: false,
+                identityTrailing: IconButton(
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  visualDensity: VisualDensity.compact,
+                  constraints:
+                      const BoxConstraints.tightFor(width: 32, height: 32),
+                  onPressed: state._closeInlineClientEditor,
+                ),
+                onCancel: state._closeInlineClientEditor,
+                onSaved: state._handleInlineClientSaved,
+                onOpenExisting: state._openInlineClientEditor,
               )
             : null,
         onCreateInvoice: state._openCreateInvoice,

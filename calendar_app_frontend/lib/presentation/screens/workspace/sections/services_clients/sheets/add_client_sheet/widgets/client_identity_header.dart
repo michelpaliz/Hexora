@@ -16,6 +16,7 @@ class ClientIdentityHeader extends StatefulWidget {
     this.removed = false,
     this.disabled = false,
     this.uploading = false,
+    this.trailing,
     required this.onChanged,
     required this.onRemove,
   });
@@ -27,6 +28,7 @@ class ClientIdentityHeader extends StatefulWidget {
   final bool removed;
   final bool disabled;
   final bool uploading;
+  final Widget? trailing;
   final void Function(Uint8List bytes, String name) onChanged;
   final VoidCallback onRemove;
 
@@ -35,7 +37,7 @@ class ClientIdentityHeader extends StatefulWidget {
 }
 
 class _ClientIdentityHeaderState extends State<ClientIdentityHeader> {
-  static const double _avatarSize = 52;
+  static const double _avatarSize = 44;
 
   bool _picking = false;
 
@@ -155,12 +157,14 @@ class _ClientIdentityHeaderState extends State<ClientIdentityHeader> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                name.isEmpty ? '—' : name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
+              if (name.isNotEmpty)
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style:
+                      text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
               if (email.isNotEmpty) ...[
                 const SizedBox(height: 2),
                 Text(
@@ -173,6 +177,10 @@ class _ClientIdentityHeaderState extends State<ClientIdentityHeader> {
             ],
           ),
         ),
+        if (widget.trailing != null) ...[
+          const SizedBox(width: 8),
+          widget.trailing!,
+        ],
       ],
     );
   }
