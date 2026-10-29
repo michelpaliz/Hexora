@@ -72,6 +72,27 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Facturación'));
     await tester.pumpAndSettle();
+
+    expect(find.text('Nombre de facturación'), findsOneWidget);
+    expect(find.text('Prefijo en PDF (opcional)'), findsOneWidget);
+    expect(find.text('Alias para PDF (opcional)'), findsOneWidget);
+    expect(find.text('Vista previa en PDF'), findsOneWidget);
+
+    final prefixField = find.ancestor(
+      of: find.text('Prefijo en PDF (opcional)'),
+      matching: find.byType(TextFormField),
+    );
+    final aliasField = find.ancestor(
+      of: find.text('Alias para PDF (opcional)'),
+      matching: find.byType(TextFormField),
+    );
+    await tester.enterText(prefixField, 'Com. de Prop.');
+    await tester.enterText(aliasField, 'Residencial Norte');
+    await tester.pump();
+
+    expect(find.text('Com. de Prop. Cliente inicial'), findsOneWidget);
+    expect(find.text('Residencial Norte'), findsNWidgets(2));
+
     await tester.tap(find.text('Información general'));
     await tester.pumpAndSettle();
 

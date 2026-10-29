@@ -145,6 +145,8 @@ class ClientsApi {
       'name': client.name.trim(),
       if ((client.pdfAlias ?? '').trim().isNotEmpty)
         'pdfAlias': client.pdfAlias!.trim(),
+      if ((client.pdfPrefix ?? '').trim().isNotEmpty)
+        'pdfPrefix': client.pdfPrefix!.trim(),
       if ((client.entityType ?? '').trim().isNotEmpty)
         'entityType': client.entityType!.trim(),
       if ((client.propertyKind ?? '').trim().isNotEmpty)
@@ -208,6 +210,9 @@ class ClientsApi {
       if (client.pdfAlias != null)
         'pdfAlias':
             client.pdfAlias!.trim().isEmpty ? null : client.pdfAlias!.trim(),
+      if (client.pdfPrefix != null)
+        'pdfPrefix':
+            client.pdfPrefix!.trim().isEmpty ? null : client.pdfPrefix!.trim(),
       'entityType': (client.entityType ?? '').trim().isEmpty
           ? null
           : client.entityType!.trim(),

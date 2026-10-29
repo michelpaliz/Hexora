@@ -1,6 +1,5 @@
 import 'client_form_fields.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/input_border.dart';
 import 'package:hexora/presentation/utils/validation/email_validator.dart';
@@ -127,22 +126,6 @@ class ClientContactForm extends StatelessWidget {
                         : null;
                   },
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: c.pdfAlias,
-                style: text.bodyLarge,
-                inputFormatters: [LengthLimitingTextInputFormatter(120)],
-                decoration: buildInputDecoration(
-                  context,
-                  label: 'Alias para PDF (opcional)',
-                  helperText:
-                      'Aparece bajo el nombre legal en facturas, presupuestos y recibos.',
-                  prefixIcon: const Icon(Icons.picture_as_pdf_outlined),
-                  isFilled: c.pdfAlias.text.trim().isNotEmpty,
-                ),
-                textInputAction: TextInputAction.next,
-                onChanged: (_) => onFieldChanged(),
               ),
               const SizedBox(height: 12),
               ClientFormFields(

@@ -6,6 +6,7 @@ class GroupClient {
   String id;
   String name;
   String? pdfAlias;
+  String? pdfPrefix;
   String? groupId;
 
   /// Optional client classification (free text, lowercase suggested)
@@ -39,6 +40,7 @@ class GroupClient {
     required this.id,
     required this.name,
     this.pdfAlias,
+    this.pdfPrefix,
     this.groupId,
     this.entityType,
     this.propertyKind,
@@ -64,6 +66,7 @@ class GroupClient {
     String? id,
     String? name,
     String? pdfAlias,
+    String? pdfPrefix,
     String? groupId,
     String? entityType,
     String? propertyKind,
@@ -88,6 +91,7 @@ class GroupClient {
       id: id ?? this.id,
       name: name ?? this.name,
       pdfAlias: pdfAlias ?? this.pdfAlias,
+      pdfPrefix: pdfPrefix ?? this.pdfPrefix,
       groupId: groupId ?? this.groupId,
       entityType: entityType ?? this.entityType,
       propertyKind: propertyKind ?? this.propertyKind,
@@ -118,6 +122,7 @@ class GroupClient {
         'id': id,
         'name': name,
         if (pdfAlias != null) 'pdfAlias': pdfAlias,
+        if (pdfPrefix != null) 'pdfPrefix': pdfPrefix,
         'groupId': groupId,
         if (entityType != null) 'entityType': entityType,
         if (propertyKind != null) 'propertyKind': propertyKind,
@@ -161,6 +166,7 @@ class GroupClient {
       id: rawId,
       name: (json['name'] ?? '').toString(),
       pdfAlias: json['pdfAlias']?.toString(),
+      pdfPrefix: json['pdfPrefix']?.toString(),
       groupId: json['groupId']?.toString(),
       entityType: json['entityType']?.toString(),
       propertyKind: json['propertyKind']?.toString(),
@@ -265,6 +271,7 @@ class GroupClient {
       other.id == id &&
       other.name == name &&
       other.pdfAlias == pdfAlias &&
+      other.pdfPrefix == pdfPrefix &&
       other.groupId == groupId &&
       other.entityType == entityType &&
       other.propertyKind == propertyKind &&
@@ -277,6 +284,7 @@ class GroupClient {
       id.hashCode ^
       name.hashCode ^
       (pdfAlias?.hashCode ?? 0) ^
+      (pdfPrefix?.hashCode ?? 0) ^
       (groupId?.hashCode ?? 0) ^
       (entityType?.hashCode ?? 0) ^
       (propertyKind?.hashCode ?? 0) ^
