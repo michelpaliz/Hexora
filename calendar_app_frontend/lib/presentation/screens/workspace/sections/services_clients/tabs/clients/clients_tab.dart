@@ -1,4 +1,5 @@
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/client_filter_controls.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/search_filters_header.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/clients_search_filters.dart';
@@ -223,28 +224,34 @@ class _ClientsTabState extends State<ClientsTab> {
           searchHint: l.clientSearchHint,
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 2),
           clientsForCounts: filtered,
-          statusContent: ClientStatusSegments(
-              value: _status,
-              active: activeItems.length,
-              inactive: inactiveItems.length,
-              onChanged: (value) => setState(() {
-                    _status = value;
-                    _page = 0;
-                  })),
-          activeCountLabel: l.activeClientsSection,
-          inactiveCountLabel: l.statusInactive,
-          additionalFilters: Wrap(
-            spacing: 4,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              _SortChip(
-                ascending: _ascending,
-                onChanged: (v) => setState(() {
-                  _ascending = v;
-                  _page = 0;
-                }),
+          trailingActions: [
+            IconButton(
+              tooltip: l.refresh,
+              onPressed: widget.loading ? null : widget.onRefresh,
+              visualDensity: VisualDensity.compact,
+              style: IconButton.styleFrom(
+                minimumSize: Size(
+                    clientFilterControlHeight(context, desktop: 36),
+                    clientFilterControlHeight(context, desktop: 36)),
               ),
+              icon: Icon(Icons.refresh_rounded,
+                  size: 18, color: cs.onSurfaceVariant),
+            ),
+          ],
+          statusContent: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: ClientStatusSegments(
+                    value: _status,
+                    active: activeItems.length,
+                    inactive: inactiveItems.length,
+                    onChanged: (value) => setState(() {
+                          _status = value;
+                          _page = 0;
+                        })),
+              ),
+              const SizedBox(width: 8),
               ClientMissingInvoiceFilter(
                 selected: widget.missingCurrentMonthInvoiceOnly,
                 count: hasInvoiceFlagData ? missingInvoiceCount : null,
@@ -255,6 +262,15 @@ class _ClientsTabState extends State<ClientsTab> {
                         ),
               ),
             ],
+          ),
+          activeCountLabel: l.activeClientsSection,
+          inactiveCountLabel: l.statusInactive,
+          additionalFilters: _SortChip(
+            ascending: _ascending,
+            onChanged: (v) => setState(() {
+              _ascending = v;
+              _page = 0;
+            }),
           ),
           extraActiveFilterCount: widget.missingCurrentMonthInvoiceOnly ? 1 : 0,
           propertyLabel: 'Tipo de inmueble',
@@ -366,13 +382,12 @@ class _SortChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: cs.surfaceContainerLow,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: .6)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.swap_vert_rounded, size: 14, color: cs.onSurfaceVariant),
           const SizedBox(width: 5),
           Text(
-            ascending ? 'Nombre (A–Z)' : 'Nombre (Z–A)',
+            ascending ? 'A–Z' : 'Z–A',
             style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
           ),
         ]),
