@@ -63,6 +63,8 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
   final Future<void> Function(List<Invoice>)? onDownloadExcelFiltered;
   final bool canEditIssued;
   final bool showHeaderTabs;
+  final Widget? toolbarLeading;
+  final List<Widget> toolbarActions;
 
   const GroupInvoicesInvoicesView({
     super.key,
@@ -92,6 +94,8 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
     this.onDownloadExcelFiltered,
     this.canEditIssued = false,
     this.showHeaderTabs = true,
+    this.toolbarLeading,
+    this.toolbarActions = const [],
   });
 
   @override
@@ -188,6 +192,8 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                           onOpenRecurringSeries: widget.onOpenRecurringSeries,
                           onDateFilterChanged: null,
                           allowClientNameSort: true,
+                          toolbarLeading: widget.toolbarLeading,
+                          toolbarActions: widget.toolbarActions,
                         ),
                         _InvoicesTabList(
                           emptyTitle: l.noInvoicesYet,
@@ -214,6 +220,8 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                           onOpenRecurringSeries: widget.onOpenRecurringSeries,
                           onDateFilterChanged: widget.onIssuedDateFilterChanged,
                           allowClientNameSort: false,
+                          toolbarLeading: widget.toolbarLeading,
+                          toolbarActions: widget.toolbarActions,
                         ),
                       ],
                     ),

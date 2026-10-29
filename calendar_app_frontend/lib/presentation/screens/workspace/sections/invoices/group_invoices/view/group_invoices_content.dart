@@ -7,6 +7,8 @@ class _GroupInvoicesContent extends StatelessWidget {
     required this.showInlineEditor,
     required this.visibleInvoices,
     required this.draftInvoices,
+    this.invoiceToolbarLeading,
+    this.invoiceToolbarActions = const [],
   });
 
   final _GroupInvoicesScreenState state;
@@ -14,6 +16,8 @@ class _GroupInvoicesContent extends StatelessWidget {
   final bool showInlineEditor;
   final List<Invoice> visibleInvoices;
   final List<Invoice> draftInvoices;
+  final Widget? invoiceToolbarLeading;
+  final List<Widget> invoiceToolbarActions;
 
   @override
   Widget build(BuildContext context) {
@@ -385,6 +389,8 @@ class _GroupInvoicesContent extends StatelessWidget {
             state._updateView(() => state._selectedMenu = 'emails'),
         canEditIssued: state.canEditIssuedInvoices(context),
         showHeaderTabs: false,
+        toolbarLeading: invoiceToolbarLeading,
+        toolbarActions: invoiceToolbarActions,
       );
     }
 
@@ -429,6 +435,8 @@ class _GroupInvoicesContent extends StatelessWidget {
             state._updateView(() => state._selectedMenu = 'emails'),
         canEditIssued: state.canEditIssuedInvoices(context),
         showHeaderTabs: false,
+        toolbarLeading: invoiceToolbarLeading,
+        toolbarActions: invoiceToolbarActions,
       );
     }
 
@@ -463,6 +471,8 @@ class _GroupInvoicesContent extends StatelessWidget {
           state._updateView(() => state._selectedMenu = 'emails'),
       canEditIssued: state.canEditIssuedInvoices(context),
       showHeaderTabs: false,
+      toolbarLeading: invoiceToolbarLeading,
+      toolbarActions: invoiceToolbarActions,
     );
   }
 }

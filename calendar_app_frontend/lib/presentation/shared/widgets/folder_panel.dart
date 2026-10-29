@@ -22,6 +22,7 @@ class FolderPanel extends StatelessWidget {
   /// Unused: actions now live inside the toolbar. Kept for compatibility.
   final bool decorateActions;
   final double actionsSpacing;
+  final bool showToolbarDivider;
 
   const FolderPanel({
     super.key,
@@ -34,6 +35,7 @@ class FolderPanel extends StatelessWidget {
     this.actions,
     this.decorateActions = true,
     this.actionsSpacing = 6,
+    this.showToolbarDivider = true,
   });
 
   static const double _contentGap = 8;
@@ -85,6 +87,7 @@ class FolderPanel extends StatelessWidget {
                     actions: hasActions ? actions! : const [],
                     actionsSpacing: actionsSpacing,
                     borderColor: border,
+                    showDivider: showToolbarDivider,
                   ),
                 Expanded(child: content),
               ],
@@ -103,6 +106,7 @@ class _ContextToolbar extends StatelessWidget {
     required this.actions,
     required this.actionsSpacing,
     required this.borderColor,
+    required this.showDivider,
   });
 
   final VoidCallback? onBack;
@@ -110,6 +114,7 @@ class _ContextToolbar extends StatelessWidget {
   final List<Widget> actions;
   final double actionsSpacing;
   final Color borderColor;
+  final bool showDivider;
 
   @override
   Widget build(BuildContext context) {
@@ -121,9 +126,11 @@ class _ContextToolbar extends StatelessWidget {
         minHeight: NavigationTokens.contextBarHeight,
       ),
       padding: const EdgeInsets.fromLTRB(8, 2, 6, 2),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: borderColor)),
-      ),
+      decoration: showDivider
+          ? BoxDecoration(
+              border: Border(bottom: BorderSide(color: borderColor)),
+            )
+          : null,
       child: Row(
         children: [
           if (onBack != null) ...[

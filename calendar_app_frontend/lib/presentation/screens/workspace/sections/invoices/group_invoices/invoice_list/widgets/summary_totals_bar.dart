@@ -14,6 +14,8 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
     required this.searchQuery,
     required this.onSearchChanged,
     required this.onHeaderAction,
+    this.leading,
+    this.externalActions = const [],
     this.onMismatchTap,
     this.onDownloadFiltered,
     this.onDownloadExcelFiltered,
@@ -32,6 +34,8 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
   final String searchQuery;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<_InvoiceHeaderAction> onHeaderAction;
+  final Widget? leading;
+  final List<Widget> externalActions;
   final VoidCallback? onMismatchTap;
   final VoidCallback? onDownloadFiltered;
   final VoidCallback? onDownloadExcelFiltered;
@@ -52,7 +56,7 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
     );
     final mismatches = _num(summary?['mismatchCount']).toInt();
     final search = SizedBox(
-      height: 38,
+      height: 34,
       child: TextFormField(
         key: ValueKey(searchQuery),
         initialValue: searchQuery,
@@ -70,6 +74,8 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
       ),
     );
     final totals = HexoraCompactFinancialSummary(
+      dense: true,
+      inline: true,
       loading: loading,
       loadingLabel: isEs ? 'Calculando totales…' : 'Calculating totals…',
       metrics: [
@@ -102,126 +108,192 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
     const layoutSelector = DocumentLayoutSelector(
       key: ValueKey('invoice-layout-selector'),
     );
-    final actions = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        HexoraColumnVisibilityMenu(
-          moduleKey: 'facturas',
-          availableColumns: _InvoicesTabListState._availableFinancialColumns,
-          visibleColumns: visibleColumns,
-          onChanged: onColumnsChanged,
+    final columnsAction = HexoraColumnVisibilityMenu(
+      moduleKey: 'facturas',
+      availableColumns: _InvoicesTabListState._availableFinancialColumns,
+      visibleColumns: visibleColumns,
+      onChanged: onColumnsChanged,
+    );
+    final downloadAction = _InvoiceDownloadMenu(
+      count: count,
+      loading: downloadingFiltered,
+      onPdf: onDownloadFiltered,
+      onExcel: onDownloadExcelFiltered,
+    );
+    final overflowAction = PopupMenuButton<_InvoiceHeaderAction>(
+      tooltip: isEs ? 'Más acciones' : 'More actions',
+      position: PopupMenuPosition.under,
+      onSelected: onHeaderAction,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      itemBuilder: (_) => [
+        CheckedPopupMenuItem(
+          value: _InvoiceHeaderAction.toggleUnlinked,
+          checked: unlinkedOnly,
+          child: Text(isEs ? 'Facturas no vinculadas' : 'Unlinked invoices'),
         ),
-        const SizedBox(width: 8),
-        _InvoiceDownloadMenu(
-          count: count,
-          loading: downloadingFiltered,
-          onPdf: onDownloadFiltered,
-          onExcel: onDownloadExcelFiltered,
-        ),
-        const SizedBox(width: 8),
-        PopupMenuButton<_InvoiceHeaderAction>(
-          tooltip: isEs ? 'Más acciones' : 'More actions',
-          position: PopupMenuPosition.under,
-          onSelected: onHeaderAction,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          itemBuilder: (_) => [
-            CheckedPopupMenuItem(
-              value: _InvoiceHeaderAction.toggleUnlinked,
-              checked: unlinkedOnly,
-              child:
-                  Text(isEs ? 'Facturas no vinculadas' : 'Unlinked invoices'),
-            ),
-            NavigationPopupMenuItem(
-              value: _InvoiceHeaderAction.resolveLinks,
-              enabled: !paymentSuggestionsLoading,
-              child: ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.auto_fix_high_rounded, size: 18),
-                title: Text(isEs ? 'Resolver vínculos…' : 'Resolve links…'),
-              ),
-            ),
-          ],
-          style: IconButton.styleFrom(
-            visualDensity: VisualDensity.standard,
-            fixedSize: const Size(32, 32),
-            minimumSize: const Size(32, 32),
-            padding: EdgeInsets.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            backgroundColor:
-                unlinkedOnly ? cs.primaryContainer : Colors.transparent,
-            foregroundColor:
-                unlinkedOnly ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-            side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+        NavigationPopupMenuItem(
+          value: _InvoiceHeaderAction.resolveLinks,
+          enabled: !paymentSuggestionsLoading,
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.auto_fix_high_rounded, size: 18),
+            title: Text(isEs ? 'Resolver vínculos…' : 'Resolve links…'),
           ),
-          icon: paymentSuggestionsLoading
-              ? const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.more_horiz_rounded, size: 18),
         ),
       ],
+      style: IconButton.styleFrom(
+        visualDensity: VisualDensity.standard,
+        fixedSize: const Size(32, 32),
+        minimumSize: const Size(32, 32),
+        padding: EdgeInsets.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        backgroundColor:
+            unlinkedOnly ? cs.primaryContainer : Colors.transparent,
+        foregroundColor:
+            unlinkedOnly ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+      ),
+      icon: paymentSuggestionsLoading
+          ? const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.more_horiz_rounded, size: 18),
+    );
+    final orderedActionChildren = <Widget>[
+      if (externalActions.isNotEmpty) externalActions.first,
+      columnsAction,
+      downloadAction,
+      if (externalActions.length > 1) ...externalActions.skip(1),
+      overflowAction,
+    ];
+    final actions = SizedBox(
+      height: 34,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var index = 0;
+              index < orderedActionChildren.length;
+              index++) ...[
+            orderedActionChildren[index],
+            if (index != orderedActionChildren.length - 1)
+              const SizedBox(width: 6),
+          ],
+        ],
+      ),
+    );
+    final wrappedActions = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 34),
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 6,
+        runSpacing: 4,
+        children: orderedActionChildren,
+      ),
     );
 
     final toolbar = LayoutBuilder(builder: (context, constraints) {
-      final compact = constraints.maxWidth < 760 ||
-          MediaQuery.textScalerOf(context).scale(14) > 20;
-      if (compact) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (constraints.maxWidth < 560) ...[
-              Row(
-                children: [
-                  layoutSelector,
-                  const SizedBox(width: 8),
-                  Expanded(child: search),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Align(alignment: Alignment.centerRight, child: actions),
-            ] else
-              Row(
-                children: [
-                  layoutSelector,
-                  const SizedBox(width: 8),
-                  Expanded(child: search),
-                  const SizedBox(width: 8),
-                  actions,
-                ],
-              ),
-          ],
+      final scaledText = MediaQuery.textScalerOf(context).scale(14);
+      final wide = constraints.maxWidth >= 1640 && scaledText <= 18;
+      if (wide) {
+        const searchWidth = 280.0;
+        return SizedBox(
+          height: 44,
+          child: Row(
+            children: [
+              if (leading != null) ...[
+                leading!,
+                const SizedBox(width: 10),
+              ],
+              layoutSelector,
+              const SizedBox(width: 8),
+              SizedBox(width: searchWidth, child: search),
+              const SizedBox(width: 8),
+              Expanded(child: totals),
+              const SizedBox(width: 8),
+              actions,
+            ],
+          ),
         );
       }
-      return Row(children: [
-        layoutSelector,
-        const SizedBox(width: 10),
-        Expanded(child: search),
-        const SizedBox(width: 10),
-        actions,
-      ]);
+
+      final compact = constraints.maxWidth < 820 || scaledText > 20;
+      final totalsShareLeadingRow = leading != null && !compact;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (leading != null) ...[
+            SizedBox(
+              height: 36,
+              child: totalsShareLeadingRow
+                  ? Row(
+                      children: [
+                        Flexible(
+                          fit: FlexFit.loose,
+                          child: ClipRect(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: leading,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(child: totals),
+                      ],
+                    )
+                  : ClipRect(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: leading,
+                        ),
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 4),
+          ],
+          if (compact) ...[
+            Row(
+              children: [
+                layoutSelector,
+                const SizedBox(width: 8),
+                Expanded(child: search),
+              ],
+            ),
+            const SizedBox(height: 6),
+            SizedBox(width: double.infinity, child: wrappedActions),
+          ] else
+            Row(
+              children: [
+                layoutSelector,
+                const SizedBox(width: 8),
+                Expanded(child: search),
+                const SizedBox(width: 8),
+                actions,
+              ],
+            ),
+          if (!totalsShareLeadingRow) ...[
+            const SizedBox(height: 4),
+            totals,
+          ],
+        ],
+      );
     });
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: cs.surface,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.45),
-            ),
-          ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
           child: toolbar,
         ),
-        const SizedBox(height: 8),
-        totals,
         if (!loading && (error ?? '').trim().isNotEmpty) ...[
           const SizedBox(height: 6),
           Tooltip(

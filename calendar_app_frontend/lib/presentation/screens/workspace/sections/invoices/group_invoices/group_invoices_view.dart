@@ -272,7 +272,7 @@ class _GroupInvoicesView extends StatelessWidget {
           clientsActions ??
           recurringReceiptsActions ??
           recurringActions ??
-          invoiceActions;
+          (showInvoiceActions ? null : invoiceActions);
       final invoiceToolbarTabs = showInvoiceActions
           ? _InvoiceToolbarTabs(
               draftsCount: state._drafts.length,
@@ -307,6 +307,16 @@ class _GroupInvoicesView extends StatelessWidget {
             )
           : null;
       final documentToolbarTabs = invoiceToolbarTabs ?? receiptToolbarTabs;
+      final invoiceToolbarLeading = !showInvoiceActions
+          ? null
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                HexoraBreadcrumb(title: folderTitle),
+                const SizedBox(width: 12),
+                invoiceToolbarTabs!,
+              ],
+            );
 
       final content = _GroupInvoicesContent(
         state: state,
@@ -314,6 +324,10 @@ class _GroupInvoicesView extends StatelessWidget {
         showInlineEditor: showInlineEditor,
         visibleInvoices: visibleInvoices,
         draftInvoices: draftInvoices,
+        invoiceToolbarLeading: invoiceToolbarLeading,
+        invoiceToolbarActions: showInvoiceActions
+            ? (invoiceActions ?? const <Widget>[])
+            : const <Widget>[],
       );
       body = LayoutBuilder(
         builder: (context, constraints) {
@@ -413,18 +427,20 @@ class _GroupInvoicesView extends StatelessWidget {
                       ? FolderPanel(
                           title: folderTitle,
                           showTab: activeMenu != 'clients',
-                          tabContent: documentToolbarTabs == null
-                              ? null
-                              : Row(
-                                  children: [
-                                    HexoraBreadcrumb(title: folderTitle),
-                                    const SizedBox(width: 16),
-                                    Expanded(child: documentToolbarTabs),
-                                  ],
-                                ),
+                          tabContent:
+                              showInvoiceActions || documentToolbarTabs == null
+                                  ? null
+                                  : Row(
+                                      children: [
+                                        HexoraBreadcrumb(title: folderTitle),
+                                        const SizedBox(width: 16),
+                                        Expanded(child: documentToolbarTabs),
+                                      ],
+                                    ),
                           actions: folderActions,
                           actionsSpacing: 6,
-                          showToolbarDivider: activeMenu != 'recurring' &&
+                          showToolbarDivider: !showInvoiceActions &&
+                              activeMenu != 'recurring' &&
                               activeMenu != 'recurring_receipts',
                           contentTopPadding: activeMenu == 'clients'
                               ? 0

@@ -384,6 +384,8 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                         _openPaymentSuggestionsDialog();
                     }
                   },
+                  leading: widget.toolbarLeading,
+                  externalActions: widget.toolbarActions,
                   onMismatchTap: firstMismatch == null
                       ? null
                       : () => widget.onTap(firstMismatch!),
@@ -398,33 +400,121 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                 );
               }
 
-              return Row(
-                children: [
-                  const DocumentLayoutSelector(
-                    key: ValueKey('invoice-layout-selector'),
+              final draftSearch = SizedBox(
+                height: 34,
+                child: TextFormField(
+                  key: ValueKey('draft-invoice-search-$_searchText'),
+                  initialValue: _searchText,
+                  onChanged: _setGlobalSearchDebounced,
+                  textInputAction: TextInputAction.search,
+                  style: t.bodySmall.copyWith(fontSize: 12.5),
+                  decoration: InputDecoration(
+                    hintText: isSpanish
+                        ? 'Buscar facturas, clientes o importes...'
+                        : 'Search invoices, clients or amounts...',
+                    prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
                   ),
-                  const SizedBox(width: 8),
-                  HexoraColumnVisibilityMenu(
-                    moduleKey: 'facturas',
-                    availableColumns:
-                        _InvoicesTabListState._availableFinancialColumns,
-                    visibleColumns: _visibleFinancialColumns,
-                    onChanged: _setVisibleFinancialColumns,
-                  ),
-                  const Spacer(),
-                  if (issueAllButton != null) Flexible(child: issueAllButton),
-                  const SizedBox(width: 8),
-                  _InvoiceDownloadMenu(
-                    count: visible.length,
-                    loading: _downloadingFiltered,
-                    onPdf: widget.onDownloadFiltered == null
-                        ? null
-                        : () => downloadFiltered(excel: false),
-                    onExcel: widget.onDownloadExcelFiltered == null
-                        ? null
-                        : () => downloadFiltered(excel: true),
-                  ),
-                ],
+                ),
+              );
+              final columns = HexoraColumnVisibilityMenu(
+                moduleKey: 'facturas',
+                availableColumns:
+                    _InvoicesTabListState._availableFinancialColumns,
+                visibleColumns: _visibleFinancialColumns,
+                onChanged: _setVisibleFinancialColumns,
+              );
+              final download = _InvoiceDownloadMenu(
+                count: visible.length,
+                loading: _downloadingFiltered,
+                onPdf: widget.onDownloadFiltered == null
+                    ? null
+                    : () => downloadFiltered(excel: false),
+                onExcel: widget.onDownloadExcelFiltered == null
+                    ? null
+                    : () => downloadFiltered(excel: true),
+              );
+              final orderedActions = <Widget>[
+                if (widget.toolbarActions.isNotEmpty)
+                  widget.toolbarActions.first,
+                columns,
+                if (issueAllButton != null) issueAllButton,
+                download,
+                if (widget.toolbarActions.length > 1)
+                  ...widget.toolbarActions.skip(1),
+              ];
+              final actions = Wrap(
+                alignment: WrapAlignment.end,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 6,
+                runSpacing: 4,
+                children: orderedActions,
+              );
+
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final fullyUnified = constraints.maxWidth >= 1420 &&
+                      MediaQuery.textScalerOf(context).scale(14) <= 18;
+                  if (fullyUnified) {
+                    return SizedBox(
+                      height: 44,
+                      child: Row(
+                        children: [
+                          if (widget.toolbarLeading != null) ...[
+                            widget.toolbarLeading!,
+                            const SizedBox(width: 10),
+                          ],
+                          const DocumentLayoutSelector(
+                            key: ValueKey('invoice-layout-selector'),
+                          ),
+                          const SizedBox(width: 8),
+                          SizedBox(width: 280, child: draftSearch),
+                          const Spacer(),
+                          actions,
+                        ],
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (widget.toolbarLeading != null) ...[
+                        SizedBox(
+                          height: 36,
+                          child: ClipRect(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: widget.toolbarLeading,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                      Row(
+                        children: [
+                          const DocumentLayoutSelector(
+                            key: ValueKey('invoice-layout-selector'),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(child: draftSearch),
+                          if (constraints.maxWidth >= 900) ...[
+                            const SizedBox(width: 8),
+                            actions,
+                          ],
+                        ],
+                      ),
+                      if (constraints.maxWidth < 900) ...[
+                        const SizedBox(height: 4),
+                        Align(alignment: Alignment.centerRight, child: actions),
+                      ],
+                    ],
+                  );
+                },
               );
             },
           ),

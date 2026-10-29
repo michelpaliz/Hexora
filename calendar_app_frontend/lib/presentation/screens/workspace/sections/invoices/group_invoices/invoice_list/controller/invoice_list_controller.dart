@@ -23,6 +23,8 @@ class _InvoicesTabList extends StatefulWidget {
   final Future<void> Function(List<Invoice>)? onDownloadFiltered;
   final Future<void> Function(List<Invoice>)? onDownloadExcelFiltered;
   final bool allowClientNameSort;
+  final Widget? toolbarLeading;
+  final List<Widget> toolbarActions;
 
   const _InvoicesTabList({
     required this.emptyTitle,
@@ -47,6 +49,8 @@ class _InvoicesTabList extends StatefulWidget {
     this.onDownloadFiltered,
     this.onDownloadExcelFiltered,
     this.allowClientNameSort = false,
+    this.toolbarLeading,
+    this.toolbarActions = const [],
   });
 
   @override

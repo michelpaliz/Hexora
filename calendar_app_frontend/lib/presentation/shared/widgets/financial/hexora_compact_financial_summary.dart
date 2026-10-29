@@ -35,12 +35,16 @@ class HexoraCompactFinancialSummary extends StatefulWidget {
     this.alert,
     this.loading = false,
     this.loadingLabel = 'Calculando totales…',
+    this.dense = false,
+    this.inline = false,
   });
 
   final List<HexoraFinancialMetric> metrics;
   final HexoraFinancialAlert? alert;
   final bool loading;
   final String loadingLabel;
+  final bool dense;
+  final bool inline;
 
   @override
   State<HexoraCompactFinancialSummary> createState() =>
@@ -77,10 +81,33 @@ class _HexoraCompactFinancialSummaryState
     final t = AppTypography.of(context);
 
     if (widget.loading) {
+      if (widget.inline) {
+        return SizedBox(
+          height: 34,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 15,
+                height: 15,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: 7),
+              Text(
+                widget.loadingLabel,
+                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ],
+          ),
+        );
+      }
       return Container(
-        constraints: const BoxConstraints(minHeight: 60),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: _decoration(cs),
+        constraints: BoxConstraints(minHeight: widget.dense ? 40 : 60),
+        padding: EdgeInsets.symmetric(
+          horizontal: widget.dense ? 8 : 12,
+          vertical: widget.dense ? 2 : 8,
+        ),
+        decoration: _decoration(cs, dense: widget.dense),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -108,10 +135,45 @@ class _HexoraCompactFinancialSummaryState
         final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
         final wide = constraints.maxWidth >= 700 && textScale <= 1.4;
 
+        if (widget.inline) {
+          return SizedBox(
+            height: 34,
+            child: ClipRect(
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(
+                  dragDevices: const {
+                    PointerDeviceKind.touch,
+                    PointerDeviceKind.mouse,
+                    PointerDeviceKind.stylus,
+                    PointerDeviceKind.trackpad,
+                  },
+                ),
+                child: SingleChildScrollView(
+                  controller: _horizontalController,
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var index = 0; index < children.length; index++) ...[
+                        children[index],
+                        if (index != children.length - 1)
+                          const SizedBox(width: 6),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
         return Container(
-          constraints: const BoxConstraints(minHeight: 60),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: _decoration(cs),
+          constraints: BoxConstraints(minHeight: widget.dense ? 40 : 60),
+          padding: EdgeInsets.symmetric(
+            horizontal: widget.dense ? 6 : 10,
+            vertical: widget.dense ? 1 : 8,
+          ),
+          decoration: _decoration(cs, dense: widget.dense),
           child: wide
               ? IntrinsicHeight(
                   child: Row(
@@ -176,10 +238,14 @@ class _HexoraCompactFinancialSummaryState
     );
   }
 
-  BoxDecoration _decoration(ColorScheme cs) => BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: .45)),
+  BoxDecoration _decoration(ColorScheme cs, {required bool dense}) =>
+      BoxDecoration(
+        color:
+            dense ? cs.surfaceContainerLow.withValues(alpha: .55) : cs.surface,
+        borderRadius: BorderRadius.circular(dense ? 6 : 10),
+        border: dense
+            ? null
+            : Border.all(color: cs.outlineVariant.withValues(alpha: .45)),
       );
 
   Widget _metric(BuildContext context, HexoraFinancialMetric metric) {
@@ -188,10 +254,13 @@ class _HexoraCompactFinancialSummaryState
     return Semantics(
       label: '${metric.label}: ${metric.value}',
       child: Container(
-        constraints: const BoxConstraints(minHeight: 44),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        constraints: BoxConstraints(minHeight: widget.inline ? 32 : 38),
+        padding: EdgeInsets.symmetric(
+          horizontal: widget.inline ? 6 : 10,
+          vertical: widget.inline ? 1 : 3,
+        ),
         decoration: BoxDecoration(
-          color: metric.emphasized
+          color: metric.emphasized && !widget.inline
               ? cs.primaryContainer.withValues(alpha: .32)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(7),
@@ -204,12 +273,12 @@ class _HexoraCompactFinancialSummaryState
               metric.label.toUpperCase(),
               style: t.caption.copyWith(
                 color: cs.onSurfaceVariant,
-                fontSize: 11,
+                fontSize: widget.inline ? 9.5 : 11,
                 height: 1,
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 5),
+            SizedBox(height: widget.inline ? 2 : 3),
             Align(
               alignment: Alignment.centerLeft,
               child: FittedBox(
@@ -220,7 +289,9 @@ class _HexoraCompactFinancialSummaryState
                   style: t.bodySmall.copyWith(
                     color: metric.valueColor ??
                         (metric.emphasized ? cs.primary : cs.onSurface),
-                    fontSize: metric.emphasized ? 17 : 16,
+                    fontSize: widget.inline
+                        ? (metric.emphasized ? 14.5 : 13.5)
+                        : (metric.emphasized ? 17 : 16),
                     height: 1,
                     fontWeight: FontWeight.w700,
                     fontFeatures: const [FontFeature.tabularFigures()],
@@ -249,8 +320,11 @@ class _HexoraCompactFinancialSummaryState
           onTap: alert.onPressed,
           borderRadius: BorderRadius.circular(7),
           child: Container(
-            constraints: const BoxConstraints(minHeight: 44),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            constraints: BoxConstraints(minHeight: widget.inline ? 32 : 38),
+            padding: EdgeInsets.symmetric(
+              horizontal: widget.inline ? 7 : 10,
+              vertical: widget.inline ? 2 : 4,
+            ),
             decoration: BoxDecoration(
               color: warning.withValues(alpha: .08),
               borderRadius: BorderRadius.circular(7),
