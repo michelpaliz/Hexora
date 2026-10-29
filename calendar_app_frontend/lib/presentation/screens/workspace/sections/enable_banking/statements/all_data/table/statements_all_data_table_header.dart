@@ -54,10 +54,7 @@ class StatementsAllDataTableHeader extends StatelessWidget {
     final balanceMaxWidth =
         isWide ? 200.0 : StatementsAllDataTableLayout.balanceMaxWidth;
     final isDesktop = !isCompact && !isTablet;
-    // The intermediate expanded layout has room for notes without competing
-    // with the full-width desktop columns. Keep the full layout focused on
-    // the primary transaction fields.
-    final showNotes = !isCompact && isTablet;
+    final showNotes = !isCompact;
     final actionsWidth = isDesktop
         ? StatementsAllDataTableLayout.actionsWidth
         : StatementsAllDataTableLayout.compactActionsWidth;
@@ -77,8 +74,10 @@ class StatementsAllDataTableHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color: tableTheme.headerBg,
         borderRadius: BorderRadius.circular(0),
-        border: Border.all(
-          color: tableTheme.border.withValues(alpha: 0.55),
+        border: Border(
+          bottom: BorderSide(
+            color: tableTheme.border.withValues(alpha: 0.55),
+          ),
         ),
       ),
       child: Row(
@@ -88,6 +87,8 @@ class StatementsAllDataTableHeader extends StatelessWidget {
             width: StatementsAllDataTableLayout.checkWidth,
             child: Checkbox(
               value: allVisibleSelected,
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               onChanged: (checked) => onToggleAll(checked == true),
             ),
           ),

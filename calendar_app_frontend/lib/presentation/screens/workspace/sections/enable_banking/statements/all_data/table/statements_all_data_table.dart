@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import '../../statements_controller.dart';
@@ -66,9 +65,7 @@ class StatementsAllDataTable extends StatelessWidget {
   final int invoiceSortMode;
 
   double _rowExtent(BuildContext context) =>
-      HexoraTableTokens.rowMinHeight +
-      HexoraTableTokens.gap +
-      math.max(0, MediaQuery.textScalerOf(context).scale(13) - 13) * 3;
+      48 + math.max(0, MediaQuery.textScalerOf(context).scale(13) - 13) * 3;
 
   double _preferredHeight(BuildContext context) {
     const headerAndGapHeight = 52.0;
@@ -143,11 +140,7 @@ class StatementsAllDataTable extends StatelessWidget {
 
         final table = Container(
           height: tableHeight,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: tableTheme.border),
-          ),
+          color: tableTheme.rowBg,
           child: Column(
             children: [
               StatementsAllDataTableHeader(

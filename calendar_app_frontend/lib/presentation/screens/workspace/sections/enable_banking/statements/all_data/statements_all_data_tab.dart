@@ -1760,14 +1760,8 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: tableTheme.border),
-                  ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
                   child: LayoutBuilder(builder: (context, constraints) {
                     final es = l.localeName.startsWith('es');
                     final dateLabel = [
@@ -1846,7 +1840,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                       ],
                       child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 9),
+                              horizontal: 10, vertical: 7),
                           decoration: BoxDecoration(
                               border: Border.all(color: tableTheme.border),
                               borderRadius: BorderRadius.circular(10)),
@@ -2014,7 +2008,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                           );
                         },
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 8),
                       Row(
                         children: [
                           Expanded(
