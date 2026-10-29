@@ -1,9 +1,9 @@
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/client_filter_controls.dart';
-import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/search_filters_header.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/clients_search_filters.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -225,17 +225,12 @@ class _ClientsTabState extends State<ClientsTab> {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 2),
           clientsForCounts: filtered,
           trailingActions: [
-            IconButton(
+            HexoraButton.iconOnly(
               tooltip: l.refresh,
               onPressed: widget.loading ? null : widget.onRefresh,
-              visualDensity: VisualDensity.compact,
-              style: IconButton.styleFrom(
-                minimumSize: Size(
-                    clientFilterControlHeight(context, desktop: 36),
-                    clientFilterControlHeight(context, desktop: 36)),
-              ),
-              icon: Icon(Icons.refresh_rounded,
-                  size: 18, color: cs.onSurfaceVariant),
+              icon: Icons.refresh_rounded,
+              variant: HexoraButtonVariant.secondary,
+              size: HexoraButtonSize.standard,
             ),
           ],
           statusContent: Row(

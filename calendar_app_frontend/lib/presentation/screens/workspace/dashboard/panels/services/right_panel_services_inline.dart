@@ -9,6 +9,7 @@ import 'package:hexora/presentation/screens/workspace/sections/services_clients/
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/tabs/clients/clients_tab.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/tabs/services/services_tab.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/components/themed_buttons.dart';
@@ -454,19 +455,19 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
                                       style: t.bodySmall),
                                 ])),
                             const SizedBox(width: 8),
-                            FilledButton.icon(
-                                style: ThemedButtons.button(context),
-                                onPressed: _tab.index == 0
-                                    ? (useSidePanel
-                                        ? _startAddClient
-                                        : _openAddClientSheet)
-                                    : (useSidePanel
-                                        ? _startAddService
-                                        : _openAddServiceSheet),
-                                icon: const Icon(Icons.add, size: 16),
-                                label: Text(_tab.index == 0
-                                    ? l.addClient
-                                    : l.addService)),
+                            HexoraButton(
+                              onPressed: _tab.index == 0
+                                  ? (useSidePanel
+                                      ? _startAddClient
+                                      : _openAddClientSheet)
+                                  : (useSidePanel
+                                      ? _startAddService
+                                      : _openAddServiceSheet),
+                              icon: Icons.add_rounded,
+                              label:
+                                  _tab.index == 0 ? l.addClient : l.addService,
+                              size: HexoraButtonSize.standard,
+                            ),
                           ]))),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
@@ -510,16 +511,15 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
                 if (useSidePanel) ...[
                   const SizedBox(width: 12),
                   AnimatedBuilder(
-                      animation: _tab,
-                      builder: (context, _) => FilledButton.icon(
-                            style: ThemedButtons.button(context),
-                            onPressed: _tab.index == 0
-                                ? _startAddClient
-                                : _startAddService,
-                            icon: const Icon(Icons.add, size: 16),
-                            label: Text(
-                                _tab.index == 0 ? l.addClient : l.addService),
-                          )),
+                    animation: _tab,
+                    builder: (context, _) => HexoraButton(
+                      onPressed:
+                          _tab.index == 0 ? _startAddClient : _startAddService,
+                      icon: Icons.add_rounded,
+                      label: _tab.index == 0 ? l.addClient : l.addService,
+                      size: HexoraButtonSize.standard,
+                    ),
+                  ),
                 ],
               ]),
             ),
