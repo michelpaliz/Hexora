@@ -35,53 +35,57 @@ class _LinkedInvoiceCard extends StatelessWidget {
     final typo = AppTypography.of(context);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+      padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.22),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.28)),
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.22)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 30,
+            height: 30,
             decoration: BoxDecoration(
               color: _isIssued
                   ? cs.primaryContainer.withValues(alpha: 0.28)
                   : cs.secondaryContainer.withValues(alpha: 0.34),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               record.isFinal
                   ? Icons.request_quote_outlined
                   : Icons.description_outlined,
-              size: 18,
+              size: 15,
               color: _isIssued ? cs.primary : cs.secondary,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
+                Text(
+                  record.displayNumber,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: typo.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: cs.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 3),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 6,
+                  runSpacing: 4,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text(
-                      record.displayNumber,
-                      style: typo.bodyLarge.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: cs.onSurface,
-                      ),
-                    ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                        horizontal: 6,
+                        vertical: 2,
                       ),
                       decoration: BoxDecoration(
                         color: cs.tertiaryContainer.withValues(alpha: 0.26),
@@ -90,28 +94,12 @@ class _LinkedInvoiceCard extends StatelessWidget {
                       child: Text(
                         _typeLabel(isSpanish),
                         style: typo.bodySmall.copyWith(
+                          fontSize: 10,
                           color: cs.tertiary,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '${isSpanish ? 'ID' : 'ID'}: ${record.id}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: typo.bodyMedium.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 5,

@@ -993,7 +993,7 @@ class _PresupuestoInvoiceConversionViewState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              flex: constraints.maxWidth >= 1180 ? 4 : 5,
+              flex: 4,
               child: configurationPanel,
             ),
             VerticalDivider(
@@ -1002,7 +1002,7 @@ class _PresupuestoInvoiceConversionViewState
               color: cs.outlineVariant.withValues(alpha: 0.35),
             ),
             Expanded(
-              flex: constraints.maxWidth >= 1180 ? 6 : 5,
+              flex: 6,
               child: previewPanel,
             ),
           ],
@@ -1124,7 +1124,7 @@ class _PresupuestoInvoiceConversionViewState
             height: 1,
             color: cs.outlineVariant.withValues(alpha: 0.35),
           ),
-          Expanded(child: body),
+          Expanded(child: ClipRect(child: body)),
         ],
       ),
     );
@@ -1234,7 +1234,7 @@ class _PresupuestoInvoiceConversionViewState
                 );
 
       final formContent = SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1243,8 +1243,8 @@ class _PresupuestoInvoiceConversionViewState
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
-                  width: 34,
-                  height: 34,
+                  width: 30,
+                  height: 30,
                   decoration: BoxDecoration(
                     color: cs.primaryContainer.withValues(alpha: 0.55),
                     shape: BoxShape.circle,
@@ -1260,7 +1260,7 @@ class _PresupuestoInvoiceConversionViewState
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1269,7 +1269,7 @@ class _PresupuestoInvoiceConversionViewState
                         clientName,
                         style: typo.bodyLarge.copyWith(
                           fontWeight: FontWeight.w900,
-                          fontSize: 15,
+                          fontSize: 14,
                           color: cs.onSurface,
                         ),
                         maxLines: 1,
@@ -1517,7 +1517,7 @@ class _PresupuestoInvoiceConversionViewState
           Expanded(child: formContent),
           if (canDoAnything)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: cs.surface,
                 border: Border(
@@ -1535,6 +1535,7 @@ class _PresupuestoInvoiceConversionViewState
                     loading: _submitting,
                     icon: Icons.add_task_outlined,
                     label: _selectedSubmitLabel,
+                    size: HexoraButtonSize.compact,
                   );
                   if (constraints.maxWidth < 520) {
                     return Align(
@@ -1606,7 +1607,8 @@ class _PresupuestoInvoiceConversionViewState
     switch (_conversionType) {
       case _PresupuestoConversionType.advance:
         if (_advanceAmountMode == _AdvanceAmountMode.fixedGross) {
-          gross = _parseDouble(_advanceFixedAmountController.text);
+          final fixed = _parseDouble(_advanceFixedAmountController.text);
+          gross = fixed != null && fixed > 0 ? fixed : null;
         } else {
           final percent = _parseDouble(_advancePercentController.text);
           if (percent != null && percent > 0 && percent <= 100) {
@@ -1628,29 +1630,8 @@ class _PresupuestoInvoiceConversionViewState
         break;
     }
 
-    if (gross == null && proposalGross == null) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.hourglass_top_rounded,
-                size: 15, color: cs.onSurfaceVariant),
-            const SizedBox(width: 7),
-            Expanded(
-              child: Text(
-                _isSpanish
-                    ? 'Vista previa no disponible. El importe se confirmará al crear la factura.'
-                    : 'Preview unavailable. The amount will be confirmed when the invoice is created.',
-                style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
-              ),
-            ),
-          ],
-        ),
-      );
+    if (gross == null) {
+      return const SizedBox.shrink();
     }
 
     Widget metric(String label, double value, {bool emphasized = false}) => Row(
@@ -1674,30 +1655,7 @@ class _PresupuestoInvoiceConversionViewState
           ],
         );
 
-    Widget detail(String label, String value) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '$label ',
-              style: typo.bodySmall.copyWith(
-                color: cs.onSurfaceVariant,
-                fontSize: 11,
-              ),
-            ),
-            Text(
-              value,
-              style: typo.bodySmall.copyWith(
-                color: cs.onSurface,
-                fontWeight: FontWeight.w800,
-                fontSize: 11.5,
-              ),
-            ),
-          ],
-        );
-
     final isAdvance = _conversionType == _PresupuestoConversionType.advance;
-    final isFinal = _conversionType == _PresupuestoConversionType.finalInvoice;
-    final percent = _parseDouble(_advancePercentController.text);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
@@ -1719,28 +1677,6 @@ class _PresupuestoInvoiceConversionViewState
               fontWeight: FontWeight.w700,
             ),
           ),
-          if (proposalGross != null)
-            metric(
-              _isSpanish ? 'Total del presupuesto' : 'Proposal total',
-              proposalGross,
-            ),
-          if (isAdvance && _advanceAmountMode == _AdvanceAmountMode.percent)
-            detail(
-              _isSpanish ? 'Porcentaje' : 'Percentage',
-              percent == null
-                  ? '—'
-                  : '${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}%',
-            ),
-          if (isAdvance &&
-              _advanceAmountMode == _AdvanceAmountMode.fixedGross &&
-              gross != null)
-            metric(_isSpanish ? 'Importe fijo' : 'Fixed amount', gross),
-          if (isAdvance && gross != null)
-            metric(
-              _isSpanish ? 'Anticipo estimado' : 'Estimated advance',
-              gross,
-              emphasized: true,
-            ),
           if (base != null)
             metric(
               isAdvance && _isSpanish ? 'Base estimada' : 'Base',
@@ -1751,11 +1687,11 @@ class _PresupuestoInvoiceConversionViewState
               isAdvance && _isSpanish ? 'IVA estimado' : 'VAT',
               vat,
             ),
-          if (isFinal)
-            detail(
-              _isSpanish ? 'Importe final' : 'Final amount',
-              _isSpanish ? 'Pendiente de cálculo' : 'Calculation pending',
-            ),
+          metric(
+            isAdvance && _isSpanish ? 'Total estimado' : 'Total',
+            gross,
+            emphasized: true,
+          ),
         ],
       ),
     );
@@ -1764,20 +1700,123 @@ class _PresupuestoInvoiceConversionViewState
   Widget _buildVatNotice(ColorScheme cs, AppTypography typo) {
     return Row(
       children: [
-        Icon(Icons.calculate_outlined, size: 15, color: cs.primary),
-        const SizedBox(width: 7),
+        Icon(Icons.info_outline_rounded, size: 14, color: cs.onSurfaceVariant),
+        const SizedBox(width: 6),
         Expanded(
           child: Text(
             _isSpanish
-                ? 'El importe y el IVA definitivos se calcularán al crear la factura.'
-                : 'The final amount and VAT will be calculated when the invoice is created.',
+                ? 'El importe y el IVA se confirmarán al crear la factura.'
+                : 'The amount and VAT will be confirmed when the invoice is created.',
             style: typo.bodySmall.copyWith(
               color: cs.onSurfaceVariant,
-              fontSize: 11.5,
+              fontSize: 11,
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildAdvanceModeSelector(Map<String, dynamic>? presupuesto) {
+    return SegmentedButton<_AdvanceAmountMode>(
+      style: const ButtonStyle(
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        minimumSize: WidgetStatePropertyAll(Size(0, 36)),
+        padding: WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 10),
+        ),
+      ),
+      segments: [
+        ButtonSegment(
+          value: _AdvanceAmountMode.percent,
+          icon: const Icon(Icons.percent_outlined, size: 16),
+          label: Text(_isSpanish ? 'Porcentaje' : 'Percent'),
+        ),
+        ButtonSegment(
+          value: _AdvanceAmountMode.fixedGross,
+          icon: const Icon(Icons.euro_rounded, size: 16),
+          label: Text(_isSpanish ? 'Importe fijo' : 'Fixed amount'),
+        ),
+      ],
+      selected: {_advanceAmountMode},
+      onSelectionChanged: _submitting
+          ? null
+          : (selection) {
+              final mode = selection.first;
+              setState(() {
+                _advanceAmountMode = mode;
+                _configurationDirty = true;
+                if (_advanceDescriptionEdited) return;
+                if (mode == _AdvanceAmountMode.percent) {
+                  final percent =
+                      _parseDouble(_advancePercentController.text) ?? 70;
+                  _advanceDescriptionController.text = _isSpanish
+                      ? 'Anticipo ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% del presupuesto'
+                      : 'Advance ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% from quote';
+                } else {
+                  final number = presupuesto == null
+                      ? ''
+                      : _presupuestoNumber(presupuesto);
+                  _advanceDescriptionController.text = _isSpanish
+                      ? 'Anticipo correspondiente al presupuesto $number'
+                      : 'Advance corresponding to presupuesto $number';
+                }
+              });
+            },
+    );
+  }
+
+  Widget _buildAdvanceValueField() {
+    if (_advanceAmountMode == _AdvanceAmountMode.percent) {
+      return TextFormField(
+        controller: _advancePercentController,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: <TextInputFormatter>[
+          FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+        ],
+        onChanged: (value) {
+          final percent = _parseDouble(value);
+          setState(() {
+            _configurationDirty = true;
+            if (percent == null || _advanceDescriptionEdited) return;
+            _advanceDescriptionController.text = _isSpanish
+                ? 'Anticipo ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% del presupuesto'
+                : 'Advance ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% from quote';
+          });
+        },
+        decoration: const InputDecoration(
+          hintText: '0',
+          suffixText: '%',
+          isDense: true,
+        ),
+      );
+    }
+    return TextFormField(
+      controller: _advanceFixedAmountController,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: <TextInputFormatter>[
+        FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+      ],
+      onChanged: (value) {
+        final amount = _parseDouble(value);
+        setState(() {
+          _configurationDirty = true;
+          if (amount == null || _advanceDescriptionEdited) return;
+          final presupuesto = _selectedPresupuesto;
+          final number =
+              presupuesto == null ? '' : _presupuestoNumber(presupuesto).trim();
+          final formatted = _currencyFormatter.format(amount);
+          _advanceDescriptionController.text = _isSpanish
+              ? 'Anticipo de $formatted${number.isEmpty ? '' : ' del presupuesto $number'}'
+              : '$formatted advance${number.isEmpty ? '' : ' from proposal $number'}';
+        });
+      },
+      decoration: const InputDecoration(
+        hintText: '0,00',
+        suffixText: '€',
+        isDense: true,
+      ),
     );
   }
 
@@ -1799,126 +1838,50 @@ class _PresupuestoInvoiceConversionViewState
           ),
         ),
         const SizedBox(height: 5),
+        LayoutBuilder(builder: (context, constraints) {
+          final mode = _buildAdvanceModeSelector(presupuesto);
+          final amount = SizedBox(
+            width: 150,
+            child: _buildAdvanceValueField(),
+          );
+          if (constraints.maxWidth >= 430) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Flexible(child: mode),
+                const SizedBox(width: 8),
+                amount,
+              ],
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              mode,
+              const SizedBox(height: 6),
+              amount,
+            ],
+          );
+        }),
+        const SizedBox(height: 6),
         Align(
           alignment: AlignmentDirectional.topStart,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
-            child: SegmentedButton<_AdvanceAmountMode>(
-              style: const ButtonStyle(
-                visualDensity: VisualDensity.compact,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                minimumSize: WidgetStatePropertyAll(Size(0, 36)),
-                padding: WidgetStatePropertyAll(
-                  EdgeInsets.symmetric(horizontal: 10),
-                ),
+            child: TextFormField(
+              controller: _advanceDescriptionController,
+              onChanged: (_) {
+                _advanceDescriptionEdited = true;
+                _configurationDirty = true;
+              },
+              decoration: InputDecoration(
+                labelText: _isSpanish ? 'Descripción' : 'Description',
+                isDense: true,
               ),
-              segments: [
-                ButtonSegment(
-                  value: _AdvanceAmountMode.percent,
-                  icon: const Icon(Icons.percent_outlined, size: 16),
-                  label: Text(_isSpanish ? 'Porcentaje' : 'Percent'),
-                ),
-                ButtonSegment(
-                  value: _AdvanceAmountMode.fixedGross,
-                  icon: const Icon(Icons.euro_rounded, size: 16),
-                  label: Text(_isSpanish ? 'Importe fijo' : 'Fixed amount'),
-                ),
-              ],
-              selected: {_advanceAmountMode},
-              onSelectionChanged: _submitting
-                  ? null
-                  : (selection) {
-                      final mode = selection.first;
-                      setState(() {
-                        _advanceAmountMode = mode;
-                        _configurationDirty = true;
-                        if (_advanceDescriptionEdited) return;
-                        if (mode == _AdvanceAmountMode.percent) {
-                          final percent =
-                              _parseDouble(_advancePercentController.text) ??
-                                  70;
-                          _advanceDescriptionController.text = _isSpanish
-                              ? 'Anticipo ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% del presupuesto'
-                              : 'Advance ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% from quote';
-                        } else {
-                          final number = presupuesto == null
-                              ? ''
-                              : _presupuestoNumber(presupuesto);
-                          _advanceDescriptionController.text = _isSpanish
-                              ? 'Anticipo correspondiente al presupuesto $number'
-                              : 'Advance corresponding to presupuesto $number';
-                        }
-                      });
-                    },
             ),
           ),
         ),
-        const SizedBox(height: 6),
-        Align(
-          alignment: AlignmentDirectional.topStart,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: _advanceAmountMode == _AdvanceAmountMode.percent
-                ? TextFormField(
-                    controller: _advancePercentController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                    ],
-                    onChanged: (value) {
-                      final percent = _parseDouble(value);
-                      setState(() {
-                        _configurationDirty = true;
-                        if (percent == null || _advanceDescriptionEdited) {
-                          return;
-                        }
-                        _advanceDescriptionController.text = _isSpanish
-                            ? 'Anticipo ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% del presupuesto'
-                            : 'Advance ${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}% from quote';
-                      });
-                    },
-                    decoration: InputDecoration(
-                      labelText: _isSpanish ? 'Porcentaje' : 'Percent',
-                      suffixText: '%',
-                      isDense: true,
-                    ),
-                  )
-                : TextFormField(
-                    controller: _advanceFixedAmountController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                    ],
-                    onChanged: (_) => setState(() {
-                      _configurationDirty = true;
-                    }),
-                    decoration: InputDecoration(
-                      labelText: _isSpanish
-                          ? 'Importe anticipo con IVA'
-                          : 'Advance total incl. VAT',
-                      suffixText: '€',
-                      isDense: true,
-                    ),
-                  ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        TextFormField(
-          controller: _advanceDescriptionController,
-          onChanged: (_) {
-            _advanceDescriptionEdited = true;
-            _configurationDirty = true;
-          },
-          decoration: InputDecoration(
-            labelText: _isSpanish ? 'Descripción' : 'Description',
-            isDense: true,
-          ),
-        ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         _buildAmountPreview(context, cs, typo),
         const SizedBox(height: 6),
         _buildVatNotice(cs, typo),
@@ -1991,12 +1954,18 @@ class _PresupuestoInvoiceConversionViewState
         const SizedBox(height: 8),
         _buildAmountPreview(context, cs, typo),
         const SizedBox(height: 8),
-        TextFormField(
-          controller: _finalNotesController,
-          onChanged: (_) => _configurationDirty = true,
-          decoration: InputDecoration(
-            labelText: _isSpanish ? 'Descripción' : 'Description',
-            isDense: true,
+        Align(
+          alignment: AlignmentDirectional.topStart,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: TextFormField(
+              controller: _finalNotesController,
+              onChanged: (_) => _configurationDirty = true,
+              decoration: InputDecoration(
+                labelText: _isSpanish ? 'Descripción' : 'Description',
+                isDense: true,
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 8),
