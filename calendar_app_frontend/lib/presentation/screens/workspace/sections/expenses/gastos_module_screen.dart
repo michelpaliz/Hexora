@@ -228,24 +228,32 @@ class _GastosModuleScreenState extends State<GastosModuleScreen> {
 
     return Row(
       children: [
-        SizedBox(
+        AnimatedContainer(
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : NavigationTokens.motion,
+          curve: Curves.easeOutCubic,
           width: _sideRailCollapsed
               ? NavigationTokens.railWidth
               : NavigationTokens.sidebarWidth,
-          child: _GastosUnifiedRail(
-            isEs: _isEs,
-            activeModule: _activeModule,
-            onModuleSelected: _switchModule,
-            gastosSection: _gastosSection,
-            onGastosSectionSelected: (v) => setState(() => _gastosSection = v),
-            modelosSection: _modelosSection,
-            onModelosSectionSelected: (v) =>
-                setState(() => _modelosSection = v),
-            onTaxSectionSelected: (v) => setState(() => _taxSection = v),
-            taxSection: _taxSection,
-            collapsed: _sideRailCollapsed,
-            onToggleCollapsed: () =>
-                setState(() => _sideRailCollapsed = !_sideRailCollapsed),
+          child: HexoraMenuContentTransition(
+            transitionKey: _sideRailCollapsed,
+            child: _GastosUnifiedRail(
+              isEs: _isEs,
+              activeModule: _activeModule,
+              onModuleSelected: _switchModule,
+              gastosSection: _gastosSection,
+              onGastosSectionSelected: (v) =>
+                  setState(() => _gastosSection = v),
+              modelosSection: _modelosSection,
+              onModelosSectionSelected: (v) =>
+                  setState(() => _modelosSection = v),
+              onTaxSectionSelected: (v) => setState(() => _taxSection = v),
+              taxSection: _taxSection,
+              collapsed: _sideRailCollapsed,
+              onToggleCollapsed: () =>
+                  setState(() => _sideRailCollapsed = !_sideRailCollapsed),
+            ),
           ),
         ),
         const SizedBox(width: 10),
