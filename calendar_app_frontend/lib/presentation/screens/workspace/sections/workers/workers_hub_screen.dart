@@ -19,6 +19,7 @@ import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/w
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker_account_setup_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/worker_time_tracking_screen.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/l10n/build_context_locale.dart';
@@ -71,16 +72,19 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
       _RegisterHoursImportPanel(group: widget.group),
       WorkerAccountSetupScreen(group: widget.group),
     ];
-    return IndexedStack(
-      index: _section.index,
-      children: [
-        for (var i = 0; i < sections.length; i++)
-          if (!isMobile ||
-              _visitedMobileSections.contains(_WorkersSection.values[i]))
-            sections[i]
-          else
-            const SizedBox.shrink(),
-      ],
+    return HexoraMenuContentTransition(
+      transitionKey: _section,
+      child: IndexedStack(
+        index: _section.index,
+        children: [
+          for (var i = 0; i < sections.length; i++)
+            if (!isMobile ||
+                _visitedMobileSections.contains(_WorkersSection.values[i]))
+              sections[i]
+            else
+              const SizedBox.shrink(),
+        ],
+      ),
     );
   }
 

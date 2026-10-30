@@ -26,6 +26,7 @@ import 'package:provider/provider.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/nav_section.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 
 import 'widgets/status_filter_chips.dart';
 import 'widgets/worker_directory_view.dart';
@@ -990,35 +991,38 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                       showTab: _section != _InlineSection.workers,
                       contentTopPadding:
                           _section == _InlineSection.workers ? 12 : 30,
-                      child: IndexedStack(
-                        index: _section.index,
-                        children: [
-                          IndexedStack(
-                            index: _overviewWorker == null ? 0 : 1,
-                            children: [
-                              _buildWorkersSection(context),
-                              if (_overviewWorker != null)
-                                WorkerMonthlyOverviewInline(
-                                  group: widget.group,
-                                  worker: _overviewWorker!,
-                                  repo: _repo,
-                                  getToken: _token,
-                                  onBack: () =>
-                                      setState(() => _overviewWorker = null),
-                                  onDataChanged: _reloadActiveTotals,
-                                ),
-                            ],
-                          ),
-                          WorkerTimeHistoryGraphView(
-                            key: ValueKey(
-                                'inline-worker-graphs-${widget.group.id}'),
-                            group: widget.group,
-                          ),
-                          _buildHistorialSection(context),
-                          TelegramWorkerHoursImportView(group: widget.group),
-                          _buildRegisterHoursImportSection(context),
-                          WorkerAccountSetupScreen(group: widget.group),
-                        ],
+                      child: HexoraMenuContentTransition(
+                        transitionKey: _section,
+                        child: IndexedStack(
+                          index: _section.index,
+                          children: [
+                            IndexedStack(
+                              index: _overviewWorker == null ? 0 : 1,
+                              children: [
+                                _buildWorkersSection(context),
+                                if (_overviewWorker != null)
+                                  WorkerMonthlyOverviewInline(
+                                    group: widget.group,
+                                    worker: _overviewWorker!,
+                                    repo: _repo,
+                                    getToken: _token,
+                                    onBack: () =>
+                                        setState(() => _overviewWorker = null),
+                                    onDataChanged: _reloadActiveTotals,
+                                  ),
+                              ],
+                            ),
+                            WorkerTimeHistoryGraphView(
+                              key: ValueKey(
+                                  'inline-worker-graphs-${widget.group.id}'),
+                              group: widget.group,
+                            ),
+                            _buildHistorialSection(context),
+                            TelegramWorkerHoursImportView(group: widget.group),
+                            _buildRegisterHoursImportSection(context),
+                            WorkerAccountSetupScreen(group: widget.group),
+                          ],
+                        ),
                       ),
                     ),
                   ),
