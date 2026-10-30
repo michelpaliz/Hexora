@@ -285,31 +285,8 @@ class _GroupInvoicesView extends StatelessWidget {
             )
           : null;
       final documentToolbarTabs = invoiceToolbarTabs ?? receiptToolbarTabs;
-      final invoiceToolbarLeading = !showInvoiceActions
-          ? null
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Builder(builder: (context) {
-                  final moduleLabel =
-                      HexoraNavContext.maybeOf(context)?.moduleLabel ??
-                          (Localizations.localeOf(context).languageCode == 'es'
-                              ? 'Ingresos'
-                              : 'Income');
-                  return Text(
-                    moduleLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: t.bodySmall.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  );
-                }),
-                const SizedBox(width: 10),
-                invoiceToolbarTabs!,
-              ],
-            );
+      final invoiceToolbarLeading =
+          showInvoiceActions ? invoiceToolbarTabs : null;
 
       final content = HexoraMenuContentTransition(
         transitionKey: activeMenu,

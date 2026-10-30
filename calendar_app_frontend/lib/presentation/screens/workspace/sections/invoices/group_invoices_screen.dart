@@ -74,7 +74,7 @@ import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transitio
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_workspace_chrome.dart';
 import 'package:hexora/navigation/shell/hexora_app_shell.dart'
-    show HexoraBreadcrumb, HexoraNavContext;
+    show HexoraBreadcrumb;
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
