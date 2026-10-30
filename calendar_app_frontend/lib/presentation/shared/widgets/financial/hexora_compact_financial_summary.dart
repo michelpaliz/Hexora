@@ -8,12 +8,14 @@ class HexoraFinancialMetric {
     required this.value,
     this.emphasized = false,
     this.valueColor,
+    this.inlineWidth,
   });
 
   final String label;
   final String value;
   final bool emphasized;
   final Color? valueColor;
+  final double? inlineWidth;
 }
 
 class HexoraFinancialAlert {
@@ -251,57 +253,63 @@ class _HexoraCompactFinancialSummaryState
   Widget _metric(BuildContext context, HexoraFinancialMetric metric) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    return Semantics(
-      label: '${metric.label}: ${metric.value}',
-      child: Container(
-        constraints: BoxConstraints(minHeight: widget.inline ? 32 : 38),
-        padding: EdgeInsets.symmetric(
-          horizontal: widget.inline ? 6 : 10,
-          vertical: widget.inline ? 1 : 3,
-        ),
-        decoration: BoxDecoration(
-          color: metric.emphasized && !widget.inline
-              ? cs.primaryContainer.withValues(alpha: .32)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(7),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              metric.label.toUpperCase(),
-              style: t.caption.copyWith(
-                color: cs.onSurfaceVariant,
-                fontSize: widget.inline ? 9.5 : 11,
-                height: 1,
-                fontWeight: FontWeight.w700,
-              ),
+    final content = Container(
+      constraints: BoxConstraints(minHeight: widget.inline ? 32 : 38),
+      padding: EdgeInsets.symmetric(
+        horizontal: widget.inline ? 5 : 10,
+        vertical: widget.inline ? 1 : 3,
+      ),
+      decoration: BoxDecoration(
+        color: metric.emphasized && !widget.inline
+            ? cs.primaryContainer.withValues(alpha: .32)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment:
+            widget.inline ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          Text(
+            metric.label.toUpperCase(),
+            textAlign: widget.inline ? TextAlign.right : TextAlign.left,
+            style: t.caption.copyWith(
+              color: cs.onSurfaceVariant,
+              fontSize: widget.inline ? 9.5 : 11,
+              height: 1,
+              fontWeight: FontWeight.w700,
             ),
-            SizedBox(height: widget.inline ? 2 : 3),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  metric.value,
-                  softWrap: false,
-                  style: t.bodySmall.copyWith(
-                    color: metric.valueColor ??
-                        (metric.emphasized ? cs.primary : cs.onSurface),
-                    fontSize: widget.inline
-                        ? (metric.emphasized ? 14.5 : 13.5)
-                        : (metric.emphasized ? 17 : 16),
-                    height: 1,
-                    fontWeight: FontWeight.w700,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
+          ),
+          SizedBox(height: widget.inline ? 2 : 3),
+          Align(
+            alignment:
+                widget.inline ? Alignment.centerRight : Alignment.centerLeft,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                metric.value,
+                softWrap: false,
+                style: t.bodySmall.copyWith(
+                  color: metric.valueColor ??
+                      (metric.emphasized ? cs.primary : cs.onSurface),
+                  fontSize: widget.inline
+                      ? (metric.emphasized ? 14.5 : 13.5)
+                      : (metric.emphasized ? 17 : 16),
+                  height: 1,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+    return Semantics(
+      label: '${metric.label}: ${metric.value}',
+      child: widget.inline && metric.inlineWidth != null
+          ? SizedBox(width: metric.inlineWidth, child: content)
+          : content,
     );
   }
 
@@ -322,19 +330,22 @@ class _HexoraCompactFinancialSummaryState
           child: Container(
             constraints: BoxConstraints(minHeight: widget.inline ? 32 : 38),
             padding: EdgeInsets.symmetric(
-              horizontal: widget.inline ? 7 : 10,
+              horizontal: widget.inline ? 4 : 10,
               vertical: widget.inline ? 2 : 4,
             ),
             decoration: BoxDecoration(
-              color: warning.withValues(alpha: .08),
+              color: widget.inline
+                  ? Colors.transparent
+                  : warning.withValues(alpha: .08),
               borderRadius: BorderRadius.circular(7),
             ),
             child: Row(
               mainAxisSize: widget.inline ? MainAxisSize.min : MainAxisSize.max,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.warning_amber_rounded, size: 18, color: warning),
-                const SizedBox(width: 7),
+                Icon(Icons.warning_amber_rounded,
+                    size: widget.inline ? 16 : 18, color: warning),
+                SizedBox(width: widget.inline ? 4 : 7),
                 Flexible(
                   child: Text(
                     alert.label,
@@ -346,7 +357,7 @@ class _HexoraCompactFinancialSummaryState
                     ),
                   ),
                 ),
-                if (alert.onPressed != null) ...[
+                if (alert.onPressed != null && !widget.inline) ...[
                   const SizedBox(width: 3),
                   Icon(Icons.chevron_right_rounded, size: 16, color: warning),
                 ],

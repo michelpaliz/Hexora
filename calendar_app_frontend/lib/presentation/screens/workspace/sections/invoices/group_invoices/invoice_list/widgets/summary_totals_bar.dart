@@ -82,15 +82,18 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
         HexoraFinancialMetric(
           label: isEs ? 'Base imponible' : 'Taxable base',
           value: money.format(_num(summary?['subtotal'])),
+          inlineWidth: 110,
         ),
         HexoraFinancialMetric(
           label: isEs ? 'IVA' : 'VAT',
           value: money.format(_num(summary?['taxTotal'])),
+          inlineWidth: 88,
         ),
         HexoraFinancialMetric(
           label: isEs ? 'Total facturado' : 'Total invoiced',
           value: money.format(_num(summary?['total'])),
           emphasized: true,
+          inlineWidth: 118,
         ),
       ],
       alert: mismatches <= 0
@@ -108,26 +111,29 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
     const layoutSelector = DocumentLayoutSelector(
       key: ValueKey('invoice-layout-selector'),
     );
-    final optionsAction = InvoiceToolbarOptionsMenu(
-      count: count,
-      downloading: downloadingFiltered,
-      availableColumns: _InvoicesTabListState._availableFinancialColumns,
-      visibleColumns: visibleColumns,
-      onColumnsChanged: onColumnsChanged,
-      unlinkedOnly: unlinkedOnly,
-      paymentSuggestionsLoading: paymentSuggestionsLoading,
-      toolbarOptions: toolbarOptions,
-      onPdf: onDownloadFiltered,
-      onExcel: onDownloadExcelFiltered,
-      onToggleUnlinked: () =>
-          onHeaderAction(_InvoiceHeaderAction.toggleUnlinked),
-      onResolveLinks: () => onHeaderAction(_InvoiceHeaderAction.resolveLinks),
-    );
+    Widget optionsAction({bool compact = false}) => InvoiceToolbarOptionsMenu(
+          count: count,
+          downloading: downloadingFiltered,
+          availableColumns: _InvoicesTabListState._availableFinancialColumns,
+          visibleColumns: visibleColumns,
+          onColumnsChanged: onColumnsChanged,
+          unlinkedOnly: unlinkedOnly,
+          paymentSuggestionsLoading: paymentSuggestionsLoading,
+          toolbarOptions: toolbarOptions,
+          onPdf: onDownloadFiltered,
+          onExcel: onDownloadExcelFiltered,
+          onToggleUnlinked: () =>
+              onHeaderAction(_InvoiceHeaderAction.toggleUnlinked),
+          onResolveLinks: () =>
+              onHeaderAction(_InvoiceHeaderAction.resolveLinks),
+          compact: compact,
+        );
 
     final toolbar = LayoutBuilder(builder: (context, constraints) {
       final scaledText = MediaQuery.textScalerOf(context).scale(14);
-      final wide = constraints.maxWidth >= 1200 && scaledText <= 18;
+      final wide = constraints.maxWidth >= 1360 && scaledText <= 18;
       if (wide) {
+        final searchWidth = (constraints.maxWidth * .2).clamp(260.0, 340.0);
         return SizedBox(
           height: 44,
           child: Row(
@@ -138,11 +144,11 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
               ],
               layoutSelector,
               const SizedBox(width: 8),
-              Expanded(flex: 3, child: search),
+              SizedBox(width: searchWidth, child: search),
               const SizedBox(width: 8),
-              Expanded(flex: 4, child: totals),
+              Expanded(child: totals),
               const SizedBox(width: 8),
-              optionsAction,
+              optionsAction(),
             ],
           ),
         );
@@ -187,15 +193,29 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
             ),
             const SizedBox(height: 4),
           ],
-          Row(
-            children: [
-              layoutSelector,
-              const SizedBox(width: 8),
-              Expanded(child: search),
-              const SizedBox(width: 8),
-              optionsAction,
-            ],
-          ),
+          if (constraints.maxWidth >= 700)
+            Row(
+              children: [
+                layoutSelector,
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: (constraints.maxWidth * .38).clamp(260.0, 340.0),
+                  child: search,
+                ),
+                const Spacer(),
+                optionsAction(compact: true),
+              ],
+            )
+          else
+            Row(
+              children: [
+                layoutSelector,
+                const SizedBox(width: 8),
+                Expanded(child: search),
+                const SizedBox(width: 8),
+                optionsAction(compact: true),
+              ],
+            ),
           if (!totalsShareLeadingRow) ...[
             const SizedBox(height: 4),
             totals,

@@ -15,6 +15,7 @@ class InvoiceToolbarOptionsMenu extends StatelessWidget {
     this.onExcel,
     this.onToggleUnlinked,
     this.onResolveLinks,
+    this.compact = false,
   });
 
   final int count;
@@ -29,6 +30,7 @@ class InvoiceToolbarOptionsMenu extends StatelessWidget {
   final VoidCallback? onExcel;
   final VoidCallback? onToggleUnlinked;
   final VoidCallback? onResolveLinks;
+  final bool compact;
 
   String _columnLabel(HexoraFinancialColumn column, bool isEs) =>
       switch (column) {
@@ -166,32 +168,57 @@ class InvoiceToolbarOptionsMenu extends StatelessWidget {
       menuChildren: menuChildren,
       builder: (context, controller, child) => Tooltip(
         message: isEs ? 'Opciones de facturas' : 'Invoice options',
-        child: OutlinedButton.icon(
-          onPressed: () =>
-              controller.isOpen ? controller.close() : controller.open(),
-          icon: const Icon(Icons.tune_rounded, size: 17),
-          label: Text(isEs ? 'Opciones' : 'Options'),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(0, 34),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: VisualDensity.compact,
-            foregroundColor:
-                controller.isOpen ? cs.primary : cs.onSurfaceVariant,
-            backgroundColor: controller.isOpen
-                ? cs.primaryContainer.withValues(alpha: 0.45)
-                : cs.surface,
-            side: BorderSide(
-              color: controller.isOpen
-                  ? cs.primary.withValues(alpha: 0.45)
-                  : cs.outlineVariant.withValues(alpha: 0.55),
-            ),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            textStyle:
-                const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-          ),
-        ),
+        child: compact
+            ? IconButton(
+                onPressed: () =>
+                    controller.isOpen ? controller.close() : controller.open(),
+                icon: const Icon(Icons.more_horiz_rounded, size: 18),
+                style: IconButton.styleFrom(
+                  fixedSize: const Size(34, 34),
+                  minimumSize: const Size(34, 34),
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  foregroundColor:
+                      controller.isOpen ? cs.primary : cs.onSurfaceVariant,
+                  backgroundColor: controller.isOpen
+                      ? cs.primaryContainer.withValues(alpha: 0.45)
+                      : cs.surface,
+                  side: BorderSide(
+                    color: controller.isOpen
+                        ? cs.primary.withValues(alpha: 0.45)
+                        : cs.outlineVariant.withValues(alpha: 0.55),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              )
+            : OutlinedButton.icon(
+                onPressed: () =>
+                    controller.isOpen ? controller.close() : controller.open(),
+                icon: const Icon(Icons.tune_rounded, size: 17),
+                label: Text(isEs ? 'Opciones' : 'Options'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 34),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                  foregroundColor:
+                      controller.isOpen ? cs.primary : cs.onSurfaceVariant,
+                  backgroundColor: controller.isOpen
+                      ? cs.primaryContainer.withValues(alpha: 0.45)
+                      : cs.surface,
+                  side: BorderSide(
+                    color: controller.isOpen
+                        ? cs.primary.withValues(alpha: 0.45)
+                        : cs.outlineVariant.withValues(alpha: 0.55),
+                  ),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  textStyle: const TextStyle(
+                      fontSize: 12.5, fontWeight: FontWeight.w600),
+                ),
+              ),
       ),
     );
   }

@@ -290,8 +290,23 @@ class _GroupInvoicesView extends StatelessWidget {
           : Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                HexoraBreadcrumb(title: folderTitle),
-                const SizedBox(width: 12),
+                Builder(builder: (context) {
+                  final moduleLabel =
+                      HexoraNavContext.maybeOf(context)?.moduleLabel ??
+                          (Localizations.localeOf(context).languageCode == 'es'
+                              ? 'Ingresos'
+                              : 'Income');
+                  return Text(
+                    moduleLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  );
+                }),
+                const SizedBox(width: 10),
                 invoiceToolbarTabs!,
               ],
             );

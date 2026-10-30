@@ -32,7 +32,7 @@ class HexoraDocumentStatusTabs extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (var index = 0; index < tabs.length; index++) ...[
-              if (index > 0) const SizedBox(width: 8),
+              if (index > 0) const SizedBox(width: 6),
               _DocumentStatusTabButton(
                 tab: tabs[index],
                 selected: index == selectedIndex,
@@ -68,7 +68,7 @@ class _DocumentStatusTabButton extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
             color: selected
                 ? cs.primary.withValues(alpha: 0.08)
@@ -97,7 +97,7 @@ class _DocumentStatusTabButton extends StatelessWidget {
                   color: selected ? cs.primary : cs.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(width: 7),
+              const SizedBox(width: 6),
               Container(
                 constraints: const BoxConstraints(minWidth: 18),
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
