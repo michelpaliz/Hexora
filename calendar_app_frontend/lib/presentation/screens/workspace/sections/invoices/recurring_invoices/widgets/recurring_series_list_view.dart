@@ -297,7 +297,7 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
           : ListView.separated(
               key: const PageStorageKey<String>('recurring-series-list'),
               itemCount: visibleSeries.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 6),
+              separatorBuilder: (_, __) => const SizedBox(height: 2),
               itemBuilder: (_, i) {
                 final item = visibleSeries[i];
                 return RecurringSeriesCard(
@@ -314,6 +314,7 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
                   onResume: widget.onResumeSeries,
                   onCancel: widget.onCancelSeries,
                   canManage: widget.canManage,
+                  showActiveStatus: widget.statusFilter != 'active',
                 );
               },
             );
@@ -361,13 +362,13 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             filters,
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Expanded(child: buildList()),
           ],
         );
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -393,7 +394,14 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
                 return Row(
                   children: [
                     Expanded(flex: 5, child: buildListPane()),
-                    const SizedBox(width: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: VerticalDivider(
+                        width: 1,
+                        thickness: 1,
+                        color: cs.outlineVariant.withValues(alpha: 0.45),
+                      ),
+                    ),
                     Expanded(
                       flex: 4,
                       child: RecurringSeriesGeneratedPanel(

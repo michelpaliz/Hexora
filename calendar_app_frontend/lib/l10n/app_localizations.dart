@@ -5665,7 +5665,7 @@ abstract class AppLocalizations {
   /// No description provided for @invoiceNumberLabel.
   ///
   /// In en, this message translates to:
-  /// **'Invoice number (NNN-YY)'**
+  /// **'Invoice number'**
   String get invoiceNumberLabel;
 
   /// No description provided for @invoiceNumberHelper.

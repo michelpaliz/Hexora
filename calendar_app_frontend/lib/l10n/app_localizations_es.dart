@@ -3209,7 +3209,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get openInvoicesWorkspace => 'Abrir espacio de facturas';
 
   @override
-  String get invoiceNumberLabel => 'Número de factura (NNN-AA)';
+  String get invoiceNumberLabel => 'Número de factura';
 
   @override
   String invoiceNumberHelper(String year) {

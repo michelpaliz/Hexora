@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:hexora/theme/typography/hexora_design_tokens.dart';
-import 'package:hexora/theme/components/themed_buttons.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_workspace_chrome.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
@@ -805,14 +805,7 @@ class _PresupuestoDocumentActionsViewState
     final currentPage = pageCount == 0 ? 0 : _page.clamp(0, pageCount - 1);
     final start = currentPage * _pageSize;
     final visible = documents.skip(start).take(_pageSize).toList();
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: .4)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(children: [
+    return Column(children: [
         if (documents.isEmpty)
           _DocumentEmptyState(
               mode: widget.mode, searchQuery: _search.text.trim())
@@ -905,22 +898,23 @@ class _PresupuestoDocumentActionsViewState
                     child: Text(
                         'Mostrando ${documents.isEmpty ? 0 : start + 1}–${start + visible.length} de ${documents.length} propuestas',
                         style: Theme.of(context).textTheme.bodySmall)),
-                IconButton(
+                HexoraButton.iconOnly(
+                    icon: Icons.chevron_left,
                     tooltip: 'Página anterior',
+                    size: HexoraButtonSize.compact,
                     onPressed: currentPage > 0
                         ? () => setState(() => _page = currentPage - 1)
-                        : null,
-                    icon: const Icon(Icons.chevron_left, size: 18)),
+                        : null),
                 Text('${currentPage + 1} / $pageCount'),
-                IconButton(
+                HexoraButton.iconOnly(
+                    icon: Icons.chevron_right,
                     tooltip: 'Página siguiente',
+                    size: HexoraButtonSize.compact,
                     onPressed: currentPage + 1 < pageCount
                         ? () => setState(() => _page = currentPage + 1)
-                        : null,
-                    icon: const Icon(Icons.chevron_right, size: 18)),
+                        : null),
               ])),
-      ]),
-    );
+      ]);
   }
 
   Widget _tableHeaderLabel(
@@ -1055,17 +1049,10 @@ class _PresupuestoDocumentActionsViewState
     );
   }
 
-  Widget _createButton(BuildContext context) => FilledButton.icon(
+  Widget _createButton(BuildContext context) => HexoraButton(
         onPressed: widget.onCreate,
-        icon: const Icon(Icons.add_rounded, size: 17),
-        label: const Text('Nueva propuesta'),
-        style: FilledButton.styleFrom(
-          minimumSize: const Size(0, HexoraDimensions.button),
-          padding: const EdgeInsets.symmetric(horizontal: 13),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(HexoraDimensions.radius),
-          ),
-        ),
+        icon: Icons.add_rounded,
+        label: 'Nueva propuesta',
       );
 
   Widget _searchField(BuildContext context) {
@@ -1151,23 +1138,12 @@ class _PresupuestoDocumentActionsViewState
   }
 
   Widget _refreshButton(BuildContext context) {
-    final theme = Theme.of(context);
-    return Tooltip(
-      message: 'Actualizar propuestas',
-      child: IconButton(
-        style: IconButton.styleFrom(
-          minimumSize: const Size.square(HexoraDimensions.button + 4),
-          foregroundColor: theme.colorScheme.onSurfaceVariant,
-          backgroundColor: theme.colorScheme.surfaceContainerLowest,
-          side: BorderSide(
-              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4)),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(HexoraDimensions.radius),
-          ),
-        ),
-        onPressed: _load,
-        icon: const Icon(Icons.refresh_rounded),
-      ),
+    return HexoraButton.iconOnly(
+      icon: Icons.refresh_rounded,
+      tooltip: 'Actualizar propuestas',
+      variant: HexoraButtonVariant.ghost,
+      size: HexoraButtonSize.compact,
+      onPressed: _load,
     );
   }
 
@@ -1292,27 +1268,38 @@ class _DocumentRow extends StatelessWidget {
                 ),
                 Expanded(
                     flex: 5,
-                    child: Row(children: [
-                      Expanded(
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                          Tooltip(
+                              message: title,
+                              child: line(title)),
+                          const SizedBox(height: 2),
+                          Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                            line(title),
-                            const SizedBox(height: 5),
-                            Wrap(spacing: 6, runSpacing: 4, children: [
-                              if (_documentNumber(document).isNotEmpty)
-                                _DocumentPill(
-                                    label: _documentNumber(document),
-                                    color: cs.primary),
-                              if (_isDraft)
-                                Text(
-                                    '${presupuestoDocumentImageCount(document)} imágenes',
-                                    style: theme.textTheme.bodySmall),
-                              if (_isIssued) _deliveryIndicator(context),
-                            ]),
-                          ])),
-                      const SizedBox(width: 12),
-                    ])),
+                            if (_documentNumber(document).isNotEmpty)
+                              Text(_documentNumber(document),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                      fontSize: 11,
+                                      color: cs.onSurfaceVariant)),
+                            if (_documentNumber(document).isNotEmpty &&
+                                (_isDraft || _isIssued))
+                              Text(' · ',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: cs.onSurfaceVariant)),
+                            if (_isDraft)
+                              Text(
+                                  '${presupuestoDocumentImageCount(document)} img',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                      fontSize: 11,
+                                      color: cs.onSurfaceVariant)),
+                            if (_isIssued) _deliveryIndicator(context),
+                          ]),
+                        ]))),
                 Expanded(
                     flex: 3,
                     child: Padding(
@@ -1453,35 +1440,24 @@ class _DocumentRow extends StatelessWidget {
         ? 'Enviado por $channel'
         : 'Enviado por $channel el ${DateFormat('d MMM y, HH:mm', 'es').format(sentAt)}';
 
+    if (_isSent) {
+      return Tooltip(
+        message: details,
+        child: _DocumentPill(
+          label: 'Enviado',
+          color: Colors.green.shade700,
+        ),
+      );
+    }
     return Tooltip(
-      message: _isSent
-          ? details
-          : 'No consta un envío por Hexora Email o Telegram.',
-      child: _DocumentPill(
-        label: _isSent ? 'Enviado' : 'Envío no registrado',
-        color: _isSent ? Colors.green.shade700 : cs.outline,
-      ),
+      message: 'No consta un envío por Hexora Email o Telegram.',
+      child: Icon(Icons.mail_outline, size: 15, color: cs.outline),
     );
   }
 
   Widget _actions(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          tooltip: 'Descargar',
-          onPressed: fileActionsDisabled ? null : onDownload,
-          style: ThemedButtons.iconAction(context),
-          icon: fileBusy
-              ? const SizedBox.square(
-                  dimension: HexoraTableTokens.icon,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.download_outlined,
-                  size: HexoraTableTokens.icon),
-        ),
-        const SizedBox(width: HexoraTableTokens.gap),
-        PopupMenuButton<String>(
+    return PopupMenuButton<String>(
           tooltip: 'Más acciones',
           offset: const Offset(0, 46),
           elevation: 8,
@@ -1570,9 +1546,7 @@ class _DocumentRow extends StatelessWidget {
             child: Icon(Icons.more_vert_rounded,
                 size: HexoraTableTokens.icon, color: cs.onSurfaceVariant),
           ),
-        ),
-      ],
-    );
+        );
   }
 
   Widget _actionMenuItem(
@@ -1648,13 +1622,8 @@ class _DocumentEmptyState extends StatelessWidget {
     final all = mode == PresupuestoDocumentActionMode.all;
     final searching = searchQuery.isNotEmpty;
     final cs = Theme.of(context).colorScheme;
-    return Container(
+    return Padding(
       padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 28),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-      ),
       child: Column(
         children: [
           Container(

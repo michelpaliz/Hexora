@@ -85,11 +85,10 @@ void main() {
             find.byKey(const ValueKey('client-advanced-filters-toggle'));
         await tester.tap(toggle);
         await tester.pumpAndSettle();
-        expect(find.byType(DropdownButton<String>), findsNWidgets(2));
-        await tester
-            .tap(find.byKey(const ValueKey('client-filter-Tipo de entidad')));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Comunidad de propietarios').last);
+        expect(find.byType(DropdownButton<String>), findsNothing);
+        await tester.tap(find.byKey(const ValueKey(
+          'client-filter-Tipo de entidad-Comunidad de propietarios',
+        )));
         await tester.pumpAndSettle();
         expect(entity, 'Comunidad de propietarios');
         await tester.tap(toggle);

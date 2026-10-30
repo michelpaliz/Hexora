@@ -1094,7 +1094,7 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
         ),
         child: Column(

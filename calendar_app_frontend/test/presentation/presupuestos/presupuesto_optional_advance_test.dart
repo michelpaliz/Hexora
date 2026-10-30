@@ -151,6 +151,34 @@ void main() {
     });
   }
 
+  for (final width in [390.0, 700.0, 1600.0]) {
+    testWidgets('final review keeps compact fixed chrome at width $width',
+        (tester) async {
+      await http.runWithClient(() async {
+        await _pumpEditor(
+          tester,
+          _Api(0),
+          size: Size(width, 760),
+        );
+        tester
+            .widget<InkWell>(
+              find.byKey(const ValueKey('budget-editor-step-3')),
+            )
+            .onTap!();
+        await tester.pumpAndSettle();
+
+        expect(find.text('Revisión final'), findsOneWidget);
+        expect(find.text('Resumen del contenido'), findsOneWidget);
+        expect(find.text('Abrir previsualización'), findsNothing);
+        expect(
+          find.byKey(const ValueKey('budget_wizard_actions')),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      }, () => MockClient((_) async => http.Response('{}', 200)));
+    });
+  }
+
   testWidgets('new quotations default to today and show an amount placeholder',
       (tester) async {
     await _pumpEditor(tester, _Api(null), createNew: true);

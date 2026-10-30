@@ -1649,7 +1649,7 @@
     }
   },
   "openInvoicesWorkspace": "Abrir espacio de facturas",
-  "invoiceNumberLabel": "Número de factura (NNN-AA)",
+  "invoiceNumberLabel": "Número de factura",
   "invoiceNumberHelper": "El sufijo de año está fijado a {year}. Introduce los 3 dígitos.",
   "@invoiceNumberHelper": {
     "placeholders": {

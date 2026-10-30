@@ -24,6 +24,7 @@ class _EmailChipsInput extends StatefulWidget {
 
 class _EmailChipsInputState extends State<_EmailChipsInput> {
   late final FocusNode _focusNode;
+  String? _errorText;
 
   @override
   void initState() {
@@ -51,17 +52,33 @@ class _EmailChipsInputState extends State<_EmailChipsInput> {
     final parts = widget.controller.text.split(RegExp(r'[;,\s]'));
     final next = [...widget.values];
     var changed = false;
+    final invalid = <String>[];
     for (final raw in parts) {
       final value = raw.trim();
       if (value.isEmpty) continue;
       if (_isValidEmail(value) && !next.contains(value)) {
         next.add(value);
         changed = true;
+      } else if (!_isValidEmail(value)) {
+        invalid.add(value);
       }
     }
     if (changed) {
       widget.onChanged(next);
+    }
+    if (invalid.isEmpty) {
       widget.controller.clear();
+      if (_errorText != null && mounted) setState(() => _errorText = null);
+    } else if (mounted) {
+      widget.controller.text = invalid.join(' ');
+      widget.controller.selection = TextSelection.collapsed(
+        offset: widget.controller.text.length,
+      );
+      setState(() {
+        _errorText = Localizations.localeOf(context).languageCode == 'es'
+            ? 'Correo no válido'
+            : 'Invalid email address';
+      });
     }
   }
 
@@ -75,80 +92,103 @@ class _EmailChipsInputState extends State<_EmailChipsInput> {
     final cs = Theme.of(context).colorScheme;
     final compact = MediaQuery.sizeOf(context).width < 600;
     final inputStyle = t.bodySmall.copyWith(color: cs.onSurface);
-    return Container(
-      key: const ValueKey('mail-compose-email-chips-input'),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-      decoration: BoxDecoration(
-        color: widget.decoration.fillColor ?? cs.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: cs.outlineVariant),
-      ),
-      child: Wrap(
-        spacing: 4,
-        runSpacing: 4,
-        children: [
-          ...widget.values.map(
-            (email) => InputChip(
-              label: Text(
-                email,
-                style: inputStyle.copyWith(
-                  color: cs.onPrimaryContainer,
-                  fontSize: compact ? 14 : 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              backgroundColor: cs.primaryContainer,
-              disabledColor: cs.primaryContainer.withValues(alpha: 0.55),
-              deleteIconColor: cs.onPrimaryContainer,
-              side: BorderSide(
-                color: cs.primary.withValues(alpha: 0.42),
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 2),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              onDeleted: widget.enabled
-                  ? () {
-                      final next = [...widget.values]..remove(email);
-                      widget.onChanged(next);
-                    }
-                  : null,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          key: const ValueKey('mail-compose-email-chips-input'),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+          decoration: BoxDecoration(
+            color: widget.decoration.fillColor ?? cs.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _errorText == null ? cs.outlineVariant : cs.error,
             ),
           ),
-          ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 120, maxWidth: 280),
-            child: IntrinsicWidth(
-              child: TextField(
-                controller: widget.controller,
-                focusNode: _focusNode,
-                enabled: widget.enabled,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.done,
-                autocorrect: false,
-                enableSuggestions: false,
-                onChanged: (_) => _tryCommit(),
-                onEditingComplete: _commitAll,
-                decoration: InputDecoration(
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 6),
-                  hintText: widget.values.isEmpty ? widget.hint : null,
-                  hintStyle: t.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontSize: compact ? 16 : 12,
+          child: Wrap(
+            spacing: 4,
+            runSpacing: 3,
+            children: [
+              ...widget.values.map(
+                (email) => InputChip(
+                  label: Text(
+                    email,
+                    style: inputStyle.copyWith(
+                      color: cs.onPrimaryContainer,
+                      fontSize: compact ? 14 : 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  filled: false,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  border: InputBorder.none,
+                  backgroundColor: cs.primaryContainer,
+                  disabledColor: cs.primaryContainer.withValues(alpha: 0.55),
+                  deleteIconColor: cs.onPrimaryContainer,
+                  side: BorderSide(
+                    color: cs.primary.withValues(alpha: 0.42),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  onDeleted: widget.enabled
+                      ? () {
+                          final next = [...widget.values]..remove(email);
+                          widget.onChanged(next);
+                        }
+                      : null,
                 ),
-                style: inputStyle.copyWith(fontSize: compact ? 16 : 12),
               ),
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 120, maxWidth: 280),
+                child: IntrinsicWidth(
+                  child: TextField(
+                    controller: widget.controller,
+                    focusNode: _focusNode,
+                    enabled: widget.enabled,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.done,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    onChanged: (value) {
+                      if (_errorText != null &&
+                          (value.trim().isEmpty ||
+                              _isValidEmail(value.trim()))) {
+                        setState(() => _errorText = null);
+                      }
+                      _tryCommit();
+                    },
+                    onEditingComplete: _commitAll,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                      hintText: widget.values.isEmpty ? widget.hint : null,
+                      hintStyle: t.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontSize: compact ? 16 : 12,
+                      ),
+                      filled: false,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      border: InputBorder.none,
+                    ),
+                    style: inputStyle.copyWith(fontSize: compact ? 16 : 12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_errorText != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 6, top: 2),
+            child: Text(
+              _errorText!,
+              style: t.bodySmall.copyWith(color: cs.error, fontSize: 10),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }

@@ -135,7 +135,7 @@ void main() {
 
       expect(border(0).start.color.a, 0);
       expect(border(1).start.color.a, 1);
-      expect(border(0).bottom.width, 1);
+      expect(border(0).bottom.width, 0);
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pumpAndSettle();
       expect(border(0).top.color.a, greaterThan(0));

@@ -4,11 +4,12 @@ import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum HexoraFinancialColumn { date, taxableBase, vat, total, payment }
+enum HexoraFinancialColumn { date, concept, taxableBase, vat, total, payment }
 
 extension HexoraFinancialColumnX on HexoraFinancialColumn {
   String get storageName => switch (this) {
         HexoraFinancialColumn.date => 'date',
+        HexoraFinancialColumn.concept => 'concept',
         HexoraFinancialColumn.taxableBase => 'taxableBase',
         HexoraFinancialColumn.vat => 'vat',
         HexoraFinancialColumn.total => 'total',
@@ -533,6 +534,7 @@ class HexoraColumnVisibilityMenu extends StatelessWidget {
 
   String _label(HexoraFinancialColumn column) => switch (column) {
         HexoraFinancialColumn.date => 'Fecha',
+        HexoraFinancialColumn.concept => 'Concepto',
         HexoraFinancialColumn.taxableBase => 'Base imponible',
         HexoraFinancialColumn.vat => 'IVA',
         HexoraFinancialColumn.total => 'Total',

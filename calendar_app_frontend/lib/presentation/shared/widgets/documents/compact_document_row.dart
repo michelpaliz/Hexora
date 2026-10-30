@@ -10,6 +10,7 @@ Set<HexoraFinancialColumn> _columnsForWidth(
   Set<HexoraFinancialColumn> requested,
 ) {
   final columns = Set<HexoraFinancialColumn>.of(requested);
+  columns.remove(HexoraFinancialColumn.concept);
   if (width < 860) {
     columns
       ..remove(HexoraFinancialColumn.taxableBase)
@@ -53,6 +54,7 @@ class _DocumentColumnLayout {
     required this.delivery,
     required this.payment,
     required this.date,
+    required this.concept,
     required this.base,
     required this.vat,
     required this.total,
@@ -69,6 +71,7 @@ class _DocumentColumnLayout {
   final double delivery;
   final double payment;
   final double date;
+  final double concept;
   final double base;
   final double vat;
   final double total;
@@ -84,6 +87,7 @@ double _compactInlineFixedWidth(_DocumentColumnLayout layout) =>
     layout.delivery +
     layout.payment +
     layout.date +
+    layout.concept +
     layout.base +
     layout.vat +
     layout.total +
@@ -116,6 +120,7 @@ _DocumentColumnLayout _documentColumnLayout(
       delivery: includeDelivery ? 96 : 0,
       payment: columns.contains(HexoraFinancialColumn.payment) ? 108 : 0,
       date: columns.contains(HexoraFinancialColumn.date) ? 104 : 0,
+      concept: 0,
       base: columns.contains(HexoraFinancialColumn.taxableBase) ? 112 : 0,
       vat: columns.contains(HexoraFinancialColumn.vat) ? 96 : 0,
       total: columns.contains(HexoraFinancialColumn.total) ? 120 : 0,
@@ -131,6 +136,8 @@ _DocumentColumnLayout _documentColumnLayout(
   final payment =
       columns.contains(HexoraFinancialColumn.payment) ? width * .10 : 0.0;
   final date = columns.contains(HexoraFinancialColumn.date) ? width * .10 : 0.0;
+  final concept =
+      columns.contains(HexoraFinancialColumn.concept) ? width * .14 : 0.0;
   final base =
       columns.contains(HexoraFinancialColumn.taxableBase) ? width * .11 : 0.0;
   final vat = columns.contains(HexoraFinancialColumn.vat) ? width * .08 : 0.0;
@@ -146,6 +153,7 @@ _DocumentColumnLayout _documentColumnLayout(
       totalActionGap -
       payment -
       date -
+      concept -
       base -
       vat -
       total -
@@ -167,6 +175,7 @@ _DocumentColumnLayout _documentColumnLayout(
     delivery: delivery,
     payment: payment,
     date: date,
+    concept: concept,
     base: base,
     vat: vat,
     total: total,
@@ -213,7 +222,9 @@ class CompactDocumentTableHeader extends StatelessWidget {
     this.actionsLabel = 'Acciones',
     this.actionsWidth = _compactActionSlot * 4,
     this.previewActionInFullView = true,
+    this.hideActionsInSplitView = false,
     this.showDeliveryColumn = false,
+    this.invoiceColumnOrder = false,
     this.headerBuilder,
   });
 
@@ -225,7 +236,9 @@ class CompactDocumentTableHeader extends StatelessWidget {
   final String actionsLabel;
   final double actionsWidth;
   final bool previewActionInFullView;
+  final bool hideActionsInSplitView;
   final bool showDeliveryColumn;
+  final bool invoiceColumnOrder;
   final Widget Function(
     BuildContext context,
     CompactDocumentColumn column,
@@ -249,9 +262,12 @@ class CompactDocumentTableHeader extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final split =
         DocumentWorkspaceScope.maybeOf(context)?.mode == DocumentViewMode.split;
-    final effectiveActionsWidth = split && previewActionInFullView
-        ? actionsWidth - _compactActionSlot - _actionGap
-        : actionsWidth;
+    final hideActions = split && hideActionsInSplitView;
+    final effectiveActionsWidth = hideActions
+        ? 0.0
+        : split && previewActionInFullView
+            ? actionsWidth - _compactActionSlot - _actionGap
+            : actionsWidth;
     return LayoutBuilder(builder: (context, constraints) {
       if (constraints.maxWidth < 560) return const SizedBox.shrink();
       final contentWidth = constraints.maxWidth - 24;
@@ -260,9 +276,96 @@ class CompactDocumentTableHeader extends StatelessWidget {
       // The header and its rows must cross the responsive breakpoint
       // together. Otherwise labels remain visible while row values move into
       // the stacked summary, making Estado/Envio/Fecha look empty.
-      if (_usesStackedDocumentLayout(
-          layout, contentWidth, MediaQuery.textScalerOf(context))) {
-        return const SizedBox.shrink();
+      final stacked = _usesStackedDocumentLayout(
+          layout, contentWidth, MediaQuery.textScalerOf(context));
+      if (stacked) {
+        if (!invoiceColumnOrder || constraints.maxWidth < 720) {
+          return const SizedBox.shrink();
+        }
+        return Container(
+          key: const ValueKey('compact-document-table-header'),
+          height: HexoraTableTokens.headingHeight,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          color: cs.surfaceContainerLow.withValues(alpha: .55),
+          child: Row(
+            children: [
+              const SizedBox(width: 24),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, identityConstraints) {
+                    final invoiceWidth = identityConstraints.maxWidth * .42;
+                    final clientWidth =
+                        identityConstraints.maxWidth - invoiceWidth;
+                    return Row(
+                      children: [
+                        _cell(
+                          context,
+                          CompactDocumentColumn.identity,
+                          identityLabel,
+                          invoiceWidth,
+                        ),
+                        _cell(
+                          context,
+                          CompactDocumentColumn.client,
+                          clientLabel,
+                          clientWidth,
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              if (layout.columns.contains(HexoraFinancialColumn.date))
+                _cell(
+                  context,
+                  CompactDocumentColumn.date,
+                  'Fecha',
+                  layout.date,
+                ),
+              _cell(
+                context,
+                CompactDocumentColumn.status,
+                statusLabel,
+                layout.status,
+              ),
+              if (layout.columns.contains(HexoraFinancialColumn.payment))
+                _cell(
+                  context,
+                  CompactDocumentColumn.payment,
+                  paymentLabel,
+                  layout.payment,
+                ),
+              if (layout.columns.contains(HexoraFinancialColumn.total))
+                _cell(
+                  context,
+                  CompactDocumentColumn.total,
+                  'Total',
+                  layout.total,
+                  numeric: true,
+                ),
+              if (!hideActions && layout.totalActionGap > 0)
+                SizedBox(width: layout.totalActionGap),
+              if (!hideActions)
+                SizedBox(
+                  key: const ValueKey('document-actions-header'),
+                  width: layout.actions,
+                  child: Center(
+                    child: Text(
+                      actionsLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            fontFamily: HexoraTypography.fontFamily,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: cs.onSurfaceVariant,
+                          ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
       }
       return Container(
         height: HexoraTableTokens.headingHeight,
@@ -274,6 +377,9 @@ class CompactDocumentTableHeader extends StatelessWidget {
                 key: const ValueKey('document-identity-header'),
                 child: _cell(context, CompactDocumentColumn.identity,
                     identityLabel, layout.invoice)),
+            if (invoiceColumnOrder &&
+                layout.columns.contains(HexoraFinancialColumn.date))
+              _cell(context, CompactDocumentColumn.date, 'Fecha', layout.date),
             KeyedSubtree(
                 key: const ValueKey('document-client-header'),
                 child: _cell(context, CompactDocumentColumn.client, clientLabel,
@@ -284,6 +390,9 @@ class CompactDocumentTableHeader extends StatelessWidget {
                 child: HexoraFinancialHeaderCell(
                     label: '$identityLabel / $clientLabel',
                     width: double.infinity)),
+            if (invoiceColumnOrder &&
+                layout.columns.contains(HexoraFinancialColumn.date))
+              _cell(context, CompactDocumentColumn.date, 'Fecha', layout.date),
           ],
           SizedBox(
             width: layout.spacer,
@@ -299,8 +408,11 @@ class CompactDocumentTableHeader extends StatelessWidget {
           if (layout.columns.contains(HexoraFinancialColumn.payment))
             _cell(context, CompactDocumentColumn.payment, paymentLabel,
                 layout.payment),
-          if (layout.columns.contains(HexoraFinancialColumn.date))
+          if (!invoiceColumnOrder &&
+              layout.columns.contains(HexoraFinancialColumn.date))
             _cell(context, CompactDocumentColumn.date, 'Fecha', layout.date),
+          if (layout.columns.contains(HexoraFinancialColumn.concept))
+            HexoraFinancialHeaderCell(label: 'Concepto', width: layout.concept),
           if (layout.columns.contains(HexoraFinancialColumn.taxableBase))
             _cell(context, CompactDocumentColumn.taxableBase, 'Base imponible',
                 layout.base,
@@ -311,19 +423,21 @@ class CompactDocumentTableHeader extends StatelessWidget {
           if (layout.columns.contains(HexoraFinancialColumn.total))
             _cell(context, CompactDocumentColumn.total, 'Total', layout.total,
                 numeric: true),
-          if (layout.totalActionGap > 0) SizedBox(width: layout.totalActionGap),
-          SizedBox(
-            key: const ValueKey('document-actions-header'),
-            width: layout.actions,
-            child: Center(
-              child: Text(actionsLabel,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontFamily: HexoraTypography.fontFamily,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w500,
-                      color: cs.onSurfaceVariant)),
+          if (!hideActions && layout.totalActionGap > 0)
+            SizedBox(width: layout.totalActionGap),
+          if (!hideActions)
+            SizedBox(
+              key: const ValueKey('document-actions-header'),
+              width: layout.actions,
+              child: Center(
+                child: Text(actionsLabel,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontFamily: HexoraTypography.fontFamily,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                        color: cs.onSurfaceVariant)),
+              ),
             ),
-          ),
         ]),
       );
     });
@@ -354,9 +468,13 @@ class CompactDocumentRow extends StatelessWidget {
       this.dateWarningTooltip,
       this.payment,
       this.delivery,
+      this.concept,
       this.showDeliveryColumn = false,
+      this.invoiceColumnOrder = false,
       this.compactSplitLayout = false,
+      this.hideActionsInSplitView = false,
       this.compactTitle,
+      this.separatorWidth = 1,
       this.taxableBase,
       this.vat,
       this.visibleFinancialColumns = const {HexoraFinancialColumn.total}});
@@ -385,9 +503,13 @@ class CompactDocumentRow extends StatelessWidget {
   final String? dateWarningTooltip;
   final Widget? payment;
   final Widget? delivery;
+  final Widget? concept;
   final bool showDeliveryColumn;
+  final bool invoiceColumnOrder;
   final bool compactSplitLayout;
+  final bool hideActionsInSplitView;
   final String? compactTitle;
+  final double separatorWidth;
   final num? taxableBase;
   final num? vat;
   final Set<HexoraFinancialColumn> visibleFinancialColumns;
@@ -398,6 +520,7 @@ class CompactDocumentRow extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final workspace = DocumentWorkspaceScope.maybeOf(context);
     final hidePreviewAction = workspace?.mode == DocumentViewMode.split;
+    final hideActions = hidePreviewAction && hideActionsInSplitView;
     final useCompactSplitLayout = compactSplitLayout && hidePreviewAction;
     final visibleQuickActions = quickActions
         .where((action) => !(hidePreviewAction && action.opensPreviewDrawer))
@@ -432,17 +555,19 @@ class CompactDocumentRow extends StatelessWidget {
         ? 1
         : 0;
     final primaryActionGap = hasPrimaryAction && iconSlots > 0 ? 4.0 : 0.0;
-    final actionsColumnWidth = target * iconSlots +
-        _actionGap * (quickActionGaps + actionSeparators) +
-        primaryActionGap +
-        primaryActionWidth;
+    final actionsColumnWidth = hideActions
+        ? 0.0
+        : target * iconSlots +
+            _actionGap * (quickActionGaps + actionSeparators) +
+            primaryActionGap +
+            primaryActionWidth;
     return Column(mainAxisSize: MainAxisSize.min, children: [
       HexoraListRow(
           selected: selected,
           onTap: onTap,
           minHeight: useCompactSplitLayout ? 56 : 52,
           verticalPadding: 2,
-          separatorWidth: 1,
+          separatorWidth: separatorWidth,
           child: LayoutBuilder(builder: (context, constraints) {
             final layout = _documentColumnLayout(
                 constraints.maxWidth,
@@ -473,6 +598,30 @@ class CompactDocumentRow extends StatelessWidget {
                     color: Theme.of(context).brightness == Brightness.light
                         ? const Color(0xFF9A5B00)
                         : const Color(0xFFFFC247),
+                  ),
+                );
+            Widget dateColumn() => SizedBox(
+                  key: const ValueKey('document-date-column'),
+                  width: layout.date,
+                  height: _compactCellHeight,
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: HexoraDateCell(
+                            value: date,
+                            width: double.infinity,
+                          ),
+                        ),
+                        if (dateWarningTooltip != null) ...[
+                          const SizedBox(width: 3),
+                          dateWarningIcon(),
+                          const SizedBox(width: 3),
+                        ],
+                      ],
+                    ),
                   ),
                 );
             final titleLine = Row(children: [
@@ -663,9 +812,11 @@ class CompactDocumentRow extends StatelessWidget {
                 ]),
               ),
             );
-            if (useCompactSplitLayout) {
-              final compactDate = HexoraFinancialFormat.date(date);
+            final useSingleLineCompactLayout = compactSplitLayout &&
+                (hidePreviewAction || (constraints.maxWidth >= 650 && stacked));
+            if (useSingleLineCompactLayout) {
               final compactIdentity = (compactTitle ?? title).trim();
+              final showCompactColumns = constraints.maxWidth >= 720;
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -713,10 +864,11 @@ class CompactDocumentRow extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (compactDate.isNotEmpty) ...[
+                          if (!showCompactColumns &&
+                              HexoraFinancialFormat.date(date).isNotEmpty) ...[
                             const SizedBox(width: 6),
                             Text(
-                              compactDate,
+                              HexoraFinancialFormat.date(date),
                               maxLines: 1,
                               style: text.bodySmall?.copyWith(
                                 fontFamily: HexoraTypography.fontFamily,
@@ -734,34 +886,79 @@ class CompactDocumentRow extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (status != null) ...[
-                    const SizedBox(width: 8),
-                    ConstrainedBox(
-                      key: const ValueKey('document-status-column'),
-                      constraints: const BoxConstraints(maxWidth: 96),
-                      child: status!,
+                  if (showCompactColumns &&
+                      columns.contains(HexoraFinancialColumn.date))
+                    SizedBox(
+                      key: const ValueKey('document-date-column'),
+                      width: layout.date,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: HexoraDateCell(
+                              value: date,
+                              width: double.infinity,
+                            ),
+                          ),
+                          if (dateWarningTooltip != null) ...[
+                            const SizedBox(width: 3),
+                            dateWarningIcon(),
+                            const SizedBox(width: 3),
+                          ],
+                        ],
+                      ),
                     ),
+                  if (status != null) ...[
+                    if (showCompactColumns)
+                      SizedBox(
+                        key: const ValueKey('document-status-column'),
+                        width: layout.status,
+                        child: Center(child: status!),
+                      )
+                    else ...[
+                      const SizedBox(width: 8),
+                      ConstrainedBox(
+                        key: const ValueKey('document-status-column'),
+                        constraints: const BoxConstraints(maxWidth: 96),
+                        child: status!,
+                      ),
+                    ],
                   ],
-                  if (amountWidget != null) ...[
-                    const SizedBox(width: 8),
+                  if (showCompactColumns &&
+                      columns.contains(HexoraFinancialColumn.payment))
+                    SizedBox(
+                      key: const ValueKey('document-payment-column'),
+                      width: layout.payment,
+                      child: Center(
+                        child: payment ?? const SizedBox.shrink(),
+                      ),
+                    ),
+                  if (amountWidget != null &&
+                      columns.contains(HexoraFinancialColumn.total)) ...[
+                    if (!showCompactColumns) const SizedBox(width: 8),
                     SizedBox(
                       key: const ValueKey('document-amount-column'),
-                      width: 104,
+                      width: showCompactColumns ? layout.total : 104,
                       child: Align(
                         alignment: AlignmentDirectional.centerEnd,
                         child: amountWidget,
                       ),
                     ),
                   ],
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    key: const ValueKey('document-actions-column'),
-                    width: actionsColumnWidth,
-                    child: Align(
-                      alignment: AlignmentDirectional.center,
-                      child: actionsWidget,
+                  if (!hideActions &&
+                      showCompactColumns &&
+                      layout.totalActionGap > 0)
+                    SizedBox(width: layout.totalActionGap),
+                  if (!hideActions) ...[
+                    if (!showCompactColumns) const SizedBox(width: 8),
+                    SizedBox(
+                      key: const ValueKey('document-actions-column'),
+                      width: actionsColumnWidth,
+                      child: Align(
+                        alignment: AlignmentDirectional.center,
+                        child: actionsWidget,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               );
             }
@@ -792,6 +989,9 @@ class CompactDocumentRow extends StatelessWidget {
                                   ]),
                             ),
                           ),
+                          if (invoiceColumnOrder &&
+                              columns.contains(HexoraFinancialColumn.date))
+                            dateColumn(),
                           SizedBox(
                               key: const ValueKey('document-client-column'),
                               width: layout.client,
@@ -821,6 +1021,10 @@ class CompactDocumentRow extends StatelessWidget {
                         ],
                         if (!stacked) ...[
                           if (!layout.expanded) const SizedBox(width: 8),
+                          if (!layout.expanded &&
+                              invoiceColumnOrder &&
+                              columns.contains(HexoraFinancialColumn.date))
+                            dateColumn(),
                           if (showStatusColumn) ...[
                             if (layout.spacer > 0)
                               SizedBox(width: layout.spacer),
@@ -852,29 +1056,17 @@ class CompactDocumentRow extends StatelessWidget {
                                 child: payment ?? const SizedBox.shrink(),
                               ),
                             ),
-                          if (columns.contains(HexoraFinancialColumn.date))
+                          if (!invoiceColumnOrder &&
+                              columns.contains(HexoraFinancialColumn.date))
+                            dateColumn(),
+                          if (columns.contains(HexoraFinancialColumn.concept))
                             SizedBox(
-                              key: const ValueKey('document-date-column'),
-                              width: layout.date,
+                              key: const ValueKey('document-concept-column'),
+                              width: layout.concept,
                               height: _compactCellHeight,
                               child: Align(
                                 alignment: AlignmentDirectional.centerStart,
-                                child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      Expanded(
-                                        child: HexoraDateCell(
-                                          value: date,
-                                          width: double.infinity,
-                                        ),
-                                      ),
-                                      if (dateWarningTooltip != null) ...[
-                                        const SizedBox(width: 3),
-                                        dateWarningIcon(),
-                                        const SizedBox(width: 3),
-                                      ],
-                                    ]),
+                                child: concept ?? const SizedBox.shrink(),
                               ),
                             ),
                           if (columns
@@ -904,16 +1096,17 @@ class CompactDocumentRow extends StatelessWidget {
                                 child: Align(
                                     alignment: AlignmentDirectional.centerEnd,
                                     child: amountWidget)),
-                          if (layout.totalActionGap > 0)
+                          if (!hideActions && layout.totalActionGap > 0)
                             SizedBox(width: layout.totalActionGap),
-                          SizedBox(
-                              key: const ValueKey('document-actions-column'),
-                              width: layout.actions,
-                              height: _compactCellHeight,
-                              child: Center(child: actionsWidget)),
+                          if (!hideActions)
+                            SizedBox(
+                                key: const ValueKey('document-actions-column'),
+                                width: layout.actions,
+                                height: _compactCellHeight,
+                                child: Center(child: actionsWidget)),
                         ],
                       ])),
-              if (stacked)
+              if (stacked && !hideActions)
                 Row(children: [
                   Expanded(
                       child: columns.contains(HexoraFinancialColumn.total)
@@ -930,8 +1123,13 @@ class CompactDocumentRow extends StatelessWidget {
 }
 
 class HexoraMonthSeparator extends StatelessWidget {
-  const HexoraMonthSeparator({super.key, required this.label});
+  const HexoraMonthSeparator({
+    super.key,
+    required this.label,
+    this.flat = false,
+  });
   final String label;
+  final bool flat;
 
   @override
   Widget build(BuildContext context) {
@@ -957,6 +1155,19 @@ class HexoraMonthSeparator extends StatelessWidget {
         color: cs.onSurfaceVariant.withValues(alpha: 0.78),
       ),
     );
+    if (flat) {
+      return SizedBox(
+        key: ValueKey('document-month-group-separator-$label'),
+        height: 24,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(start: 12, end: 8),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: text,
+          ),
+        ),
+      );
+    }
     final labelWidget = Container(
       constraints: const BoxConstraints(maxWidth: 220),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

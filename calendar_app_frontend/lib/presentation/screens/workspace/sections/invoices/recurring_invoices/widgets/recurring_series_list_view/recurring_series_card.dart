@@ -18,6 +18,7 @@ class RecurringSeriesCard extends StatefulWidget {
   final ValueChanged<Map<String, dynamic>>? onSelect;
   final bool canManage;
   final bool selected;
+  final bool showActiveStatus;
 
   const RecurringSeriesCard({
     super.key,
@@ -32,6 +33,7 @@ class RecurringSeriesCard extends StatefulWidget {
     this.onSelect,
     required this.canManage,
     this.selected = false,
+    this.showActiveStatus = true,
   });
 
   @override
@@ -244,6 +246,10 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
         .toString());
     final freqLabel = recurringFrequencyLabel(l, freq);
     final concepts = _conceptsFromSeries(series);
+    final compactDescription = concepts.isEmpty ? nextRunLabel : concepts.first;
+    final compactDescriptionIcon = concepts.isEmpty
+        ? Icons.event_available_outlined
+        : Icons.subject_outlined;
 
     final canPause =
         widget.canManage && widget.onPause != null && status == 'active';
@@ -285,7 +291,7 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
               // ── Main content ──────────────────────────────────────────
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                  padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -295,15 +301,15 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
                         children: [
                           // Frequency icon box
                           Container(
-                            width: 38,
-                            height: 38,
+                            width: 34,
+                            height: 34,
                             decoration: BoxDecoration(
                               color: stripe.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(9),
                             ),
                             child: Icon(
                               _freqIcon(freq),
-                              size: 18,
+                              size: 17,
                               color: stripe,
                             ),
                           ),
@@ -358,14 +364,14 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
                                       ],
                                       if (nextRunDisplay != null) ...[
                                         Icon(
-                                          Icons.event_available_outlined,
+                                          compactDescriptionIcon,
                                           size: 12,
                                           color: stripe,
                                         ),
                                         const SizedBox(width: 4),
                                         Flexible(
                                           child: Text(
-                                            nextRunLabel,
+                                            compactDescription,
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                             style: t.bodySmall.copyWith(
@@ -414,11 +420,14 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
                           const SizedBox(width: 6),
 
                           // Status pill
-                          _StatusPill(
-                            label: statusLabel,
-                            icon: _statusIcon(status, isExpired),
-                            color: stripe,
-                          ),
+                          if (status != 'active' ||
+                              isExpired ||
+                              widget.showActiveStatus)
+                            _StatusPill(
+                              label: statusLabel,
+                              icon: _statusIcon(status, isExpired),
+                              color: stripe,
+                            ),
 
                           // Edit button
                           if (widget.canManage) ...[
@@ -460,7 +469,7 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
                       ),
 
                       // ── Expanded details ──────────────────────────────
-                      if (concepts.isNotEmpty) ...[
+                      if (_expanded && concepts.isNotEmpty) ...[
                         const SizedBox(height: 7),
                         Wrap(
                           spacing: 6,

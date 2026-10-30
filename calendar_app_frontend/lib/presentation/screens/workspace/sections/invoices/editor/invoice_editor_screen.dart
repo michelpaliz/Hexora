@@ -169,6 +169,19 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
     }
   }
 
+  void _goToStep(int index) {
+    final next = index.clamp(0, 3);
+    _c.setCurrentStepIndex(next);
+    final reducedMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    _tabController.animateTo(
+      next,
+      duration:
+          reducedMotion ? Duration.zero : const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return _InvoiceEditorView(state: this);

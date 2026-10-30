@@ -525,22 +525,117 @@ class _InvoiceToolbarTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final isEs = Localizations.localeOf(context).languageCode == 'es';
-    return HexoraDocumentStatusTabs(
-      tabs: [
-        HexoraDocumentStatusTab(
-          icon: Icons.drafts_outlined,
-          label: isEs ? 'Borradores' : 'Drafts',
-          count: draftsCount,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Both labelled segments need about 330px. Below that threshold the
+        // icon/count variant avoids a RenderFlex overflow in split layouts.
+        final showLabels = constraints.maxWidth >= 330;
+        return Container(
+          height: 34,
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _tabSegment(
+                context,
+                icon: Icons.drafts_outlined,
+                label: showLabels ? (isEs ? 'Borradores' : 'Drafts') : null,
+                count: draftsCount,
+                selected: draftsSelected,
+                onTap: onDrafts,
+              ),
+              const SizedBox(width: 1),
+              _tabSegment(
+                context,
+                icon: Icons.receipt_long_outlined,
+                label: showLabels ? (isEs ? 'Facturas' : 'Invoices') : null,
+                count: invoicesCount,
+                selected: !draftsSelected,
+                onTap: onInvoices,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _tabSegment(
+    BuildContext context, {
+    required IconData icon,
+    String? label,
+    required int count,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: selected ? cs.surface : Colors.transparent,
+          borderRadius: BorderRadius.circular(7),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: cs.shadow.withValues(alpha: 0.06),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
         ),
-        HexoraDocumentStatusTab(
-          icon: Icons.receipt_long_outlined,
-          label: isEs ? 'Facturas' : 'Invoices',
-          count: invoicesCount,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: selected ? cs.primary : cs.onSurfaceVariant,
+            ),
+            if (label != null) ...[
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  color: selected ? cs.primary : cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+            const SizedBox(width: 5),
+            Container(
+              constraints: const BoxConstraints(minWidth: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: selected
+                    ? cs.primary.withValues(alpha: 0.1)
+                    : cs.surfaceContainerHighest.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '$count',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? cs.primary : cs.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
-      selectedIndex: draftsSelected ? 0 : 1,
-      onSelected: (index) => index == 0 ? onDrafts() : onInvoices(),
+      ),
     );
   }
 }

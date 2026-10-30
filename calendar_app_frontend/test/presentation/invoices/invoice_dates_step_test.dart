@@ -54,12 +54,12 @@ Widget _testApp({
   );
 }
 
-FilledButton _continueButton(WidgetTester tester, String label) {
+TextButton _continueButton(WidgetTester tester, String label) {
   final finder = find.ancestor(
     of: find.text(label),
-    matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+    matching: find.byWidgetPredicate((widget) => widget is TextButton),
   );
-  return tester.widget<FilledButton>(finder);
+  return tester.widget<TextButton>(finder);
 }
 
 void main() {

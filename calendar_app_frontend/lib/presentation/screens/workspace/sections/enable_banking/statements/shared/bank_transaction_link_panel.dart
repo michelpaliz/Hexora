@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/models/invoice/invoice.dart';
 
 import '../statements_controller.dart';
 import 'invoice_link/invoice_link_dialog.dart';
@@ -34,6 +35,8 @@ class BankTransactionLinkPanel extends StatefulWidget {
     this.onMarkNotApplicable,
     this.notApplicableReason,
     this.showHeader = true,
+    this.initialInvoice,
+    this.onManual,
   });
 
   final StatementsController controller;
@@ -51,6 +54,11 @@ class BankTransactionLinkPanel extends StatefulWidget {
   /// shared header with the transaction's amount, date and status, so this
   /// panel only contributes its scrollable body and footer.
   final bool showHeader;
+  final Invoice? initialInvoice;
+
+  /// Overrides the default transaction-first manual invoice wizard. Invoice
+  /// surfaces use this to keep the invoice fixed and pick a bank transaction.
+  final Future<void> Function()? onManual;
 
   @override
   State<BankTransactionLinkPanel> createState() =>
@@ -78,7 +86,8 @@ class _BankTransactionLinkPanelState extends State<BankTransactionLinkPanel>
           s: widget.controller,
           entry: widget.entry,
           onClose: widget.onClose,
-          onManual: () async => _showMode(BankTransactionLinkMode.manual),
+          onManual: widget.onManual ??
+              () async => _showMode(BankTransactionLinkMode.manual),
           onMarkNotApplicable: widget.onMarkNotApplicable,
           notApplicableReason: widget.notApplicableReason,
           showHeader: widget.showHeader,
@@ -98,6 +107,7 @@ class _BankTransactionLinkPanelState extends State<BankTransactionLinkPanel>
           notApplicableReason: widget.notApplicableReason,
           embedded: true,
           showHeader: widget.showHeader,
+          initialInvoice: widget.initialInvoice,
         );
     }
   }

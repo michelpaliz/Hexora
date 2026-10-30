@@ -228,6 +228,7 @@ class InvoiceLinkDialog {
     bool embedded = false,
     bool handleBack = true,
     bool showHeader = true,
+    Invoice? initialInvoice,
   }) {
     final surface = _InvoiceLinkInlineSurface(
       controller: s,
@@ -238,6 +239,7 @@ class InvoiceLinkDialog {
       notApplicableReason: notApplicableReason,
       embedded: embedded,
       showHeader: showHeader,
+      initialInvoice: initialInvoice,
     );
     if (!handleBack) return surface;
     return PopScope(
@@ -797,6 +799,7 @@ class _InvoiceLinkInlineSurface extends StatefulWidget {
     this.onBack,
     this.notApplicableReason,
     this.showHeader = true,
+    this.initialInvoice,
   });
 
   final StatementsController controller;
@@ -805,6 +808,7 @@ class _InvoiceLinkInlineSurface extends StatefulWidget {
   final bool showHeader;
   final VoidCallback onClose;
   final bool embedded;
+  final Invoice? initialInvoice;
 
   /// Returns to the previous panel (suggested matches) from the first step.
   final VoidCallback? onBack;
@@ -846,11 +850,12 @@ class _InvoiceLinkInlineSurfaceState extends State<_InvoiceLinkInlineSurface> {
           (entry['invoiceId'] ?? entry['invoice_id'] ?? entry['invoice'])
               ?.toString()
               .trim();
-      return (single != null && single.isNotEmpty)
-          ? <String>[single]
-          : const <String>[];
+      if (single != null && single.isNotEmpty) return <String>[single];
+      final initialId = widget.initialInvoice?.id.trim() ?? '';
+      return initialId.isEmpty ? const <String>[] : <String>[initialId];
     }();
-    _currentClientId = entry['clientId']?.toString();
+    _currentClientId =
+        entry['clientId']?.toString() ?? widget.initialInvoice?.clientId.trim();
     _currentProviderId =
         (entry['providerId'] ?? entry['provider_id'] ?? entry['provider'])
             ?.toString();
@@ -866,6 +871,11 @@ class _InvoiceLinkInlineSurfaceState extends State<_InvoiceLinkInlineSurface> {
       currentProviderId: _currentProviderId,
       expenseOnly: widget.expenseOnly,
     );
+    final initialInvoice = widget.initialInvoice;
+    final initialClientId = initialInvoice?.clientId.trim() ?? '';
+    if (initialInvoice != null && initialClientId.isNotEmpty) {
+      _state.invoiceCacheByClient[initialClientId] = [initialInvoice];
+    }
   }
 
   @override

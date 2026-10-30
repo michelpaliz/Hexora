@@ -26,19 +26,12 @@ class _InvoiceEditorHeaderSection extends StatelessWidget {
         return _InvoiceFlowTopBar(
           steps: steps,
           currentStep: state._tabController.index,
-          controller: state._c,
           selectedClientName: selectedClientName,
           showBack: state.widget.embedded,
           backLabel: l.budgetBackCta,
           onBack: () => state._requestClose(),
-          onStepTapped: (index) {
-            state._c.setCurrentStepIndex(index);
-            state._tabController.animateTo(index);
-          },
-          onClientTapped: () {
-            state._c.setCurrentStepIndex(0);
-            state._tabController.animateTo(0);
-          },
+          onStepTapped: state._goToStep,
+          onClientTapped: () => state._goToStep(0),
         );
       },
     );

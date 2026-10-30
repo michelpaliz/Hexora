@@ -30,7 +30,7 @@ void main() {
         _app(const DeliveryStatusBadge(status: null)),
       );
       expect(find.text('No enviado'), findsOneWidget);
-      expect(find.byIcon(Icons.mark_email_unread_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.mail_outline_rounded), findsOneWidget);
     });
 
     testWidgets('sent badge tooltip includes channel and local timestamp',
@@ -45,6 +45,7 @@ void main() {
         ),
       );
       expect(find.text('Enviado'), findsOneWidget);
+      expect(find.byIcon(Icons.done_all_rounded), findsOneWidget);
       final tooltip = tester.widget<Tooltip>(find.byType(Tooltip));
       expect(tooltip.message, contains('Email'));
       expect(tooltip.message, contains('2026'));

@@ -10,7 +10,7 @@ Widget _composeSubjectCard(
     Container(
       key: const ValueKey('mail-compose-subject-input-surface'),
       decoration: BoxDecoration(
-        color: cs.surface,
+        color: inputFill,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: .5)),
       ),
@@ -71,7 +71,7 @@ Widget _composeSubjectCard(
               ),
             )
           else if (state._selectedComposeTemplateName == null || compact)
-            IconButton(
+            HexoraButton.iconOnly(
               onPressed: state._sending ? null : state._showTemplatePicker,
               tooltip: state._selectedComposeTemplateName != null
                   ? (state._isSpanishLocale
@@ -80,18 +80,14 @@ Widget _composeSubjectCard(
                   : (state._isSpanishLocale
                       ? 'Usar plantilla'
                       : 'Use template'),
-              visualDensity: VisualDensity.compact,
-              constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-              padding: EdgeInsets.zero,
-              icon: Icon(
-                state._selectedComposeTemplateName != null
-                    ? Icons.description_rounded
-                    : Icons.description_outlined,
-                size: 17,
-                color: state._selectedComposeTemplateName != null
-                    ? cs.primary
-                    : cs.onSurfaceVariant,
-              ),
+              icon: state._selectedComposeTemplateName != null
+                  ? Icons.description_rounded
+                  : Icons.description_outlined,
+              variant: HexoraButtonVariant.ghost,
+              size: HexoraButtonSize.compact,
+              accentColor: state._selectedComposeTemplateName != null
+                  ? cs.primary
+                  : null,
             )
           else
             ConstrainedBox(
@@ -125,7 +121,7 @@ Widget _composeSubjectCard(
                         ),
                       ),
                     ),
-                    IconButton(
+                    HexoraButton.iconOnly(
                       tooltip: state._isSpanishLocale
                           ? 'Quitar plantilla'
                           : 'Remove template',
@@ -135,11 +131,9 @@ Widget _composeSubjectCard(
                                 state._selectedComposeTemplateId = null;
                                 state._selectedComposeTemplateName = null;
                               }),
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints:
-                          const BoxConstraints.tightFor(width: 30, height: 30),
-                      icon: const Icon(Icons.close_rounded, size: 15),
+                      icon: Icons.close_rounded,
+                      variant: HexoraButtonVariant.ghost,
+                      size: HexoraButtonSize.compact,
                     ),
                   ],
                 ),

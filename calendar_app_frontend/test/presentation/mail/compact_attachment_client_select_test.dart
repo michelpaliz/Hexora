@@ -58,7 +58,7 @@ void main() {
           tester
               .getSize(find.byKey(const ValueKey('client-select-row-active')))
               .height,
-          44,
+          56,
         );
         final nameTop = tester
             .getTopLeft(find.text(
@@ -166,7 +166,13 @@ void main() {
       tester
           .getSize(find.byKey(const ValueKey('client-select-row-none')))
           .height,
-      44,
+      56,
+    );
+    expect(
+      find.byTooltip(
+        'Documentos sin enviar disponibles según los datos actuales del negocio',
+      ),
+      findsNWidgets(2),
     );
 
     await tester.tap(

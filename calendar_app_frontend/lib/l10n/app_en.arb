@@ -1680,7 +1680,7 @@
     }
   },
   "openInvoicesWorkspace": "Open invoices workspace",
-  "invoiceNumberLabel": "Invoice number (NNN-YY)",
+  "invoiceNumberLabel": "Invoice number",
   "invoiceNumberHelper": "Year suffix locked to {year}. Enter the 3 digits.",
   "@invoiceNumberHelper": {
     "placeholders": {

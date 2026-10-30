@@ -51,10 +51,14 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
     final isEs = Localizations.localeOf(context).languageCode == 'es';
     final money = NumberFormat.currency(
       locale: isEs ? 'es_ES' : 'en_US',
-      symbol: '€',
+      symbol: '\u20AC',
       decimalDigits: 2,
     );
     final mismatches = _num(summary?['mismatchCount']).toInt();
+    final baseAmount = money.format(_num(summary?['subtotal']));
+    final taxAmount = money.format(_num(summary?['taxTotal']));
+    final totalAmount = money.format(_num(summary?['total']));
+
     final search = SizedBox(
       height: 34,
       child: TextFormField(
@@ -65,53 +69,72 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
         style: t.bodySmall.copyWith(fontSize: 12.5),
         decoration: InputDecoration(
           hintText: isEs
-              ? 'Buscar facturas, clientes o importes…'
-              : 'Search invoices, clients or amounts…',
+              ? 'Buscar facturas, clientes o importes\u2026'
+              : 'Search invoices, clients or amounts\u2026',
           prefixIcon: const Icon(Icons.search_rounded, size: 18),
+          prefixIconConstraints: const BoxConstraints(minWidth: 34),
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+          filled: false,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 9),
         ),
       ),
     );
-    final totals = HexoraCompactFinancialSummary(
-      dense: true,
-      inline: true,
-      loading: loading,
-      loadingLabel: isEs ? 'Calculando totales…' : 'Calculating totals…',
-      metrics: [
-        HexoraFinancialMetric(
-          label: isEs ? 'Base imponible' : 'Taxable base',
-          value: money.format(_num(summary?['subtotal'])),
-          inlineWidth: 110,
-        ),
-        HexoraFinancialMetric(
-          label: isEs ? 'IVA' : 'VAT',
-          value: money.format(_num(summary?['taxTotal'])),
-          inlineWidth: 88,
-        ),
-        HexoraFinancialMetric(
-          label: isEs ? 'Total facturado' : 'Total invoiced',
-          value: money.format(_num(summary?['total'])),
-          emphasized: true,
-          inlineWidth: 118,
-        ),
-      ],
-      alert: mismatches <= 0
-          ? null
-          : HexoraFinancialAlert(
-              label: isEs
-                  ? '$mismatches ${mismatches == 1 ? 'desajuste' : 'desajustes'}'
-                  : '$mismatches ${mismatches == 1 ? 'mismatch' : 'mismatches'}',
-              tooltip: isEs
-                  ? 'Abrir una factura cuyos importes no cuadran'
-                  : 'Open an invoice whose amounts do not add up',
-              onPressed: onMismatchTap,
+
+    Widget totals({required bool showSecondary, required bool compactAlert}) =>
+        HexoraCompactFinancialSummary(
+          dense: true,
+          inline: true,
+          loading: loading,
+          loadingLabel:
+              isEs ? 'Calculando totales\u2026' : 'Calculating totals\u2026',
+          metrics: [
+            if (showSecondary) ...[
+              HexoraFinancialMetric(
+                label: isEs ? 'Base imponible' : 'Taxable base',
+                value: baseAmount,
+                inlineWidth: 108,
+              ),
+              HexoraFinancialMetric(
+                label: isEs ? 'IVA' : 'VAT',
+                value: taxAmount,
+                inlineWidth: 84,
+              ),
+            ],
+            HexoraFinancialMetric(
+              label: isEs ? 'Total facturado' : 'Total invoiced',
+              value: totalAmount,
+              emphasized: true,
+              inlineWidth: 118,
             ),
-    );
+          ],
+          alert: mismatches <= 0
+              ? null
+              : HexoraFinancialAlert(
+                  label: compactAlert
+                      ? '$mismatches'
+                      : isEs
+                          ? '$mismatches ${mismatches == 1 ? 'desajuste' : 'desajustes'}'
+                          : '$mismatches ${mismatches == 1 ? 'mismatch' : 'mismatches'}',
+                  tooltip: isEs
+                      ? 'Abrir una factura cuyos importes no cuadran'
+                      : 'Open an invoice whose amounts do not add up',
+                  onPressed: onMismatchTap,
+                ),
+        );
+
     const layoutSelector = DocumentLayoutSelector(
       key: ValueKey('invoice-layout-selector'),
+      embedded: true,
     );
-    Widget optionsAction({bool compact = false}) => InvoiceToolbarOptionsMenu(
+
+    Widget optionsAction({
+      required bool compact,
+      required bool showCollapsedMetrics,
+    }) =>
+        InvoiceToolbarOptionsMenu(
           count: count,
           downloading: downloadingFiltered,
           availableColumns: _InvoicesTabListState._availableFinancialColumns,
@@ -127,121 +150,83 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
           onResolveLinks: () =>
               onHeaderAction(_InvoiceHeaderAction.resolveLinks),
           compact: compact,
+          embedded: true,
+          collapsedBaseAmount: showCollapsedMetrics ? baseAmount : null,
+          collapsedTaxAmount: showCollapsedMetrics ? taxAmount : null,
         );
 
-    final toolbar = LayoutBuilder(builder: (context, constraints) {
-      final scaledText = MediaQuery.textScalerOf(context).scale(14);
-      final wide = constraints.maxWidth >= 1360 && scaledText <= 18;
-      if (wide) {
-        final searchWidth = (constraints.maxWidth * .2).clamp(260.0, 340.0);
-        return SizedBox(
-          height: 44,
-          child: Row(
-            children: [
-              if (leading != null) ...[
-                leading!,
-                const SizedBox(width: 10),
-              ],
-              layoutSelector,
-              const SizedBox(width: 8),
-              SizedBox(width: searchWidth, child: search),
-              const SizedBox(width: 8),
-              Expanded(child: totals),
-              const SizedBox(width: 8),
-              optionsAction(),
-            ],
-          ),
-        );
-      }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final scaledText = MediaQuery.textScalerOf(context).scale(14);
+          final compact = constraints.maxWidth < 1180 || scaledText > 18;
+          final veryCompact = constraints.maxWidth < 820 || scaledText > 20;
+          final showSecondaryMetrics = !compact;
+          final financialWidth = showSecondaryMetrics
+              ? (mismatches > 0 ? 438.0 : 322.0)
+              : (mismatches > 0 ? (veryCompact ? 160.0 : 220.0) : 118.0);
+          final dividerColor = cs.outlineVariant.withValues(alpha: 0.42);
 
-      final compact = constraints.maxWidth < 820 || scaledText > 20;
-      final totalsShareLeadingRow = leading != null && !compact;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (leading != null) ...[
-            SizedBox(
-              height: 36,
-              child: totalsShareLeadingRow
-                  ? Row(
-                      children: [
-                        Flexible(
-                          fit: FlexFit.loose,
-                          child: ClipRect(
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: leading,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(child: totals),
-                      ],
-                    )
-                  : ClipRect(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: leading,
-                        ),
-                      ),
+          Widget separator() => Container(
+                width: 1,
+                height: 26,
+                margin: const EdgeInsets.symmetric(horizontal: 6),
+                color: dividerColor,
+              );
+
+          return Container(
+            height: 50,
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerLow.withValues(alpha: 0.62),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: dividerColor),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (leading != null) ...[
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: veryCompact
+                          ? 200
+                          : compact
+                              ? 300
+                              : 340,
                     ),
-            ),
-            const SizedBox(height: 4),
-          ],
-          if (constraints.maxWidth >= 700)
-            Row(
-              children: [
+                    child: leading!,
+                  ),
+                  separator(),
+                ],
                 layoutSelector,
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: (constraints.maxWidth * .38).clamp(260.0, 340.0),
-                  child: search,
-                ),
-                const Spacer(),
-                optionsAction(compact: true),
-              ],
-            )
-          else
-            Row(
-              children: [
-                layoutSelector,
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(child: search),
-                const SizedBox(width: 8),
-                optionsAction(compact: true),
+                separator(),
+                SizedBox(
+                  width: financialWidth,
+                  child: totals(
+                    showSecondary: showSecondaryMetrics,
+                    compactAlert: veryCompact,
+                  ),
+                ),
+                if (!loading && (error ?? '').trim().isNotEmpty) ...[
+                  const SizedBox(width: 3),
+                  Tooltip(
+                    message: error!,
+                    child: Icon(Icons.error_outline, size: 16, color: cs.error),
+                  ),
+                ],
+                const SizedBox(width: 4),
+                optionsAction(
+                  compact: compact,
+                  showCollapsedMetrics: !showSecondaryMetrics,
+                ),
               ],
             ),
-          if (!totalsShareLeadingRow) ...[
-            const SizedBox(height: 4),
-            totals,
-          ],
-        ],
-      );
-    });
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-          child: toolbar,
-        ),
-        if (!loading && (error ?? '').trim().isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Tooltip(
-            message: error!,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Icon(Icons.error_outline, size: 16, color: cs.error),
-            ),
-          ),
-        ],
-      ],
+          );
+        },
+      ),
     );
   }
 }

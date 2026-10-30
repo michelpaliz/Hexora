@@ -110,41 +110,72 @@ class _MailComposeView extends StatelessWidget {
 
     final content = LayoutBuilder(
       builder: (context, viewport) {
-        final editorMinHeight = isWideEmbedded && viewport.hasBoundedHeight
-            ? (viewport.maxHeight - 250).clamp(300.0, 720.0).toDouble()
-            : (compact ? 180.0 : 260.0);
+        final editorMinHeight = compact ? 160.0 : 220.0;
+        final fields = <Widget>[
+          // ── Recipients card ──────────────────────────────────────────────
+          _composeRecipientsCard(
+              state: state,
+              context: context,
+              t: t,
+              cs: cs,
+              l: l,
+              compact: compact,
+              recipientClients: recipientClients,
+              inputDecoration: inputDecoration,
+              recipientInput: recipientInput,
+              recipientMode: recipientMode),
+          const SizedBox(height: 4),
+          // ── Subject card ────────────────────────────────────────────────
+          _composeSubjectCard(
+              state: state,
+              t: t,
+              cs: cs,
+              l: l,
+              compact: compact,
+              inputFill: inputFill),
+          const SizedBox(height: 4),
+          _composeAttachmentsCard(
+              state: state, t: t, cs: cs, l: l, compact: compact),
+          const SizedBox(height: 4),
+        ];
+
+        if (isWideEmbedded && viewport.hasBoundedHeight) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ...fields,
+                _composeMessageToolbar(
+                    state: state,
+                    t: t,
+                    cs: cs,
+                    l: l,
+                    compact: compact,
+                    inputFill: inputFill),
+                Expanded(
+                  child: _composeMessageEditor(
+                      state: state,
+                      t: t,
+                      cs: cs,
+                      l: l,
+                      compact: compact,
+                      expands: true,
+                      minHeight: 0,
+                      inputDecoration: inputDecoration),
+                ),
+              ],
+            ),
+          );
+        }
+
         return SingleChildScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+          padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Recipients card ──────────────────────────────────────────────
-              _composeRecipientsCard(
-                  state: state,
-                  context: context,
-                  t: t,
-                  cs: cs,
-                  l: l,
-                  compact: compact,
-                  recipientClients: recipientClients,
-                  inputDecoration: inputDecoration,
-                  recipientInput: recipientInput,
-                  recipientMode: recipientMode),
-              const SizedBox(height: 8),
-              // ── Subject card ────────────────────────────────────────────────
-              _composeSubjectCard(
-                  state: state,
-                  t: t,
-                  cs: cs,
-                  l: l,
-                  compact: compact,
-                  inputFill: inputFill),
-              const SizedBox(height: 6),
-              _composeAttachmentsCard(
-                  state: state, t: t, cs: cs, l: l, compact: compact),
-              _ComposeDocumentSummary(state: state),
-              const SizedBox(height: 6),
+              ...fields,
               _composeMessageToolbar(
                   state: state,
                   t: t,
@@ -158,7 +189,7 @@ class _MailComposeView extends StatelessWidget {
                   cs: cs,
                   l: l,
                   compact: compact,
-                  isWideEmbedded: isWideEmbedded,
+                  expands: false,
                   minHeight: editorMinHeight,
                   inputDecoration: inputDecoration),
               if (!isWideEmbedded) ...[
@@ -256,7 +287,8 @@ class _MailComposeView extends StatelessWidget {
                               children: [
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 10),
+                                    horizontal: 10,
+                                  ),
                                   child: composeHeader(optionsContext),
                                 ),
                                 Divider(
@@ -356,63 +388,6 @@ class _MailComposeView extends StatelessWidget {
         onSend: state._send,
         label: state._sending ? l.mailComposeSending : sendLabel,
         disabledHint: disabledSendHint,
-      ),
-    );
-  }
-}
-
-class _ComposeDocumentSummary extends StatelessWidget {
-  const _ComposeDocumentSummary({required this.state});
-
-  final _MailComposeScreenState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final count = state._totalAttachedDocumentCount;
-    final names = state._attachedDocumentDisplayNames;
-    final visibleName = names.isEmpty ? '' : names.first;
-    final remaining = count - (visibleName.isEmpty ? 0 : 1);
-    final isSpanish = state._isSpanishLocale;
-    final countLabel = isSpanish
-        ? '$count documento${count == 1 ? '' : 's'} adjunto${count == 1 ? '' : 's'}'
-        : '$count attached document${count == 1 ? '' : 's'}';
-
-    if (count == 0) {
-      return const SizedBox.shrink(
-        key: ValueKey('mail-compose-attached-document-summary'),
-      );
-    }
-
-    return Padding(
-      key: const ValueKey('mail-compose-attached-document-summary'),
-      padding: const EdgeInsets.only(top: 6),
-      child: Container(
-        height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: .45)),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.attach_file_rounded, size: 16, color: cs.primary),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                '$countLabel${visibleName.isEmpty ? '' : ' · $visibleName'}${remaining > 0 ? ' +$remaining' : ''}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

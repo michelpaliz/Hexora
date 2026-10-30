@@ -96,10 +96,6 @@ class _InvoiceEditorView extends StatelessWidget {
               final currency = state._c.currency.text.trim().isEmpty
                   ? 'EUR'
                   : state._c.currency.text.trim();
-              final euroFmt = NumberFormat.currency(
-                locale: l.localeName,
-                symbol: 'EUR ',
-              );
               final rawSubtotal = state._c.rawSubtotal;
               final discountAmount = state._c.effectiveDiscountAmount;
               final baseAfterDiscount = state._c.subtotalAfterDiscount;
@@ -386,28 +382,40 @@ class _InvoiceEditorView extends StatelessWidget {
                   locale: l.localeName,
                   symbol: 'EUR ',
                 );
-                Widget totalsBreakdownRow(String label, String value) {
+                const tabularFigures = [FontFeature.tabularFigures()];
+
+                Widget totalsBreakdownRow(
+                  String label,
+                  String value, {
+                  bool strong = false,
+                }) {
                   return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.symmetric(vertical: 3),
                     child: Row(
                       children: [
                         Expanded(
                           child: Text(
                             label,
-                            style: t.bodySmall.copyWith(
-                              color: cs.onSurfaceVariant,
-                              fontWeight: FontWeight.w600,
+                            style: (strong ? t.bodyMedium : t.bodySmall)
+                                .copyWith(
+                              color: strong
+                                  ? cs.onSurface
+                                  : cs.onSurfaceVariant,
+                              fontWeight:
+                                  strong ? FontWeight.w800 : FontWeight.w600,
                             ),
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Flexible(
-                          child: Text(
-                            value,
-                            textAlign: TextAlign.right,
-                            style: t.bodySmall.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                        Text(
+                          value,
+                          textAlign: TextAlign.right,
+                          style: (strong ? t.bodyMedium : t.bodySmall)
+                              .copyWith(
+                            fontWeight:
+                                strong ? FontWeight.w900 : FontWeight.w700,
+                            fontFeatures: tabularFigures,
+                            color: strong ? cs.primary : null,
                           ),
                         ),
                       ],
@@ -415,195 +423,239 @@ class _InvoiceEditorView extends StatelessWidget {
                   );
                 }
 
-                return Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: cs.outlineVariant.withValues(alpha: 0.35),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
+                return LayoutBuilder(
+                  builder: (context, linesConstraints) {
+                    final narrow = linesConstraints.maxWidth < 480;
+
+                    final headerStyle = t.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    );
+                    final numericStyle = t.bodySmall.copyWith(
+                      fontFeatures: tabularFigures,
+                    );
+
+                    Widget linesSection;
+                    if (narrow) {
+                      linesSection = Column(
                         children: [
-                          Expanded(
-                            flex: 5,
-                            child: Text(
-                              l.descriptionLabel,
-                              style: t.bodySmall.copyWith(
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w700,
+                          for (final row in summaryRows)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          (row['desc'] ?? '').toString(),
+                                          style: t.bodySmall.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${row['qty']} × ${currencyFmt.format(row['price'] ?? 0).trim()}  ·  ${row['tax']}% IVA',
+                                          style: t.bodySmall.copyWith(
+                                            color: cs.onSurfaceVariant,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    currencyFmt
+                                        .format(row['total'] ?? 0)
+                                        .trim(),
+                                    style: t.bodySmall.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      fontFeatures: tabularFigures,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              l.lineQuantity,
-                              textAlign: TextAlign.right,
-                              style: t.bodySmall.copyWith(
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              l.lineUnitPrice,
-                              textAlign: TextAlign.right,
-                              style: t.bodySmall.copyWith(
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              l.lineTaxRate,
-                              textAlign: TextAlign.right,
-                              style: t.bodySmall.copyWith(
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              l.invoiceTotalLabel,
-                              textAlign: TextAlign.right,
-                              style: t.bodySmall.copyWith(
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
                         ],
-                      ),
-                      const SizedBox(height: 8),
-                      Divider(height: 1, color: cs.outlineVariant),
-                      const SizedBox(height: 8),
-                      ...summaryRows.map((row) {
-                        final rawDesc = (row['desc'] ?? '').toString();
-                        final descParts = rawDesc
-                            .split('\n')
-                            .map((e) => e.trim())
-                            .where((e) => e.isNotEmpty)
-                            .toList();
-                        final descTitle =
-                            descParts.isEmpty ? rawDesc : descParts.first;
-                        final descList = descParts.length > 1
-                            ? descParts.sublist(1)
-                            : const <String>[];
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      );
+                    } else {
+                      linesSection = Column(
+                        children: [
+                          Row(
                             children: [
                               Expanded(
                                 flex: 5,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      descTitle,
-                                      style: t.bodySmall.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    if (descList.isNotEmpty) ...[
-                                      const SizedBox(height: 4),
-                                      ...descList.map(
-                                        (line) => Padding(
-                                          padding:
-                                              const EdgeInsets.only(bottom: 2),
-                                          child: Text(
-                                            line,
-                                            style: t.bodySmall.copyWith(
-                                              color: cs.onSurfaceVariant
-                                                  .withValues(
-                                                alpha: 0.85,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
+                                child:
+                                    Text(l.descriptionLabel, style: headerStyle),
                               ),
                               Expanded(
                                 flex: 2,
-                                child: Text(
-                                  (row['qty'] ?? 0).toString(),
-                                  textAlign: TextAlign.right,
-                                  style: t.bodySmall,
-                                ),
+                                child: Text(l.lineQuantity,
+                                    textAlign: TextAlign.right,
+                                    style: headerStyle),
                               ),
                               Expanded(
                                 flex: 2,
-                                child: Text(
-                                  currencyFmt.format(row['price'] ?? 0).trim(),
-                                  textAlign: TextAlign.right,
-                                  style: t.bodySmall,
-                                ),
+                                child: Text(l.lineUnitPrice,
+                                    textAlign: TextAlign.right,
+                                    style: headerStyle),
                               ),
                               Expanded(
                                 flex: 2,
-                                child: Text(
-                                  (row['tax'] ?? 0).toString(),
-                                  textAlign: TextAlign.right,
-                                  style: t.bodySmall,
-                                ),
+                                child: Text(l.lineTaxRate,
+                                    textAlign: TextAlign.right,
+                                    style: headerStyle),
                               ),
                               Expanded(
                                 flex: 2,
-                                child: Text(
-                                  currencyFmt.format(row['total'] ?? 0).trim(),
-                                  textAlign: TextAlign.right,
-                                  style: t.bodySmall.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
+                                child: Text(l.invoiceTotalLabel,
+                                    textAlign: TextAlign.right,
+                                    style: headerStyle),
                               ),
                             ],
                           ),
-                        );
-                      }),
-                      const SizedBox(height: 10),
-                      Divider(height: 1, color: cs.outlineVariant),
-                      const SizedBox(height: 10),
-                      totalsBreakdownRow(
-                        'Total parcial',
-                        currencyFmt.format(rawSubtotal).trim(),
-                      ),
-                      if (showDiscountRows)
+                          const SizedBox(height: 6),
+                          Divider(
+                              height: 1,
+                              color:
+                                  cs.outlineVariant.withValues(alpha: 0.5)),
+                          const SizedBox(height: 6),
+                          ...summaryRows.map((row) {
+                            final rawDesc = (row['desc'] ?? '').toString();
+                            final descParts = rawDesc
+                                .split('\n')
+                                .map((e) => e.trim())
+                                .where((e) => e.isNotEmpty)
+                                .toList();
+                            final descTitle =
+                                descParts.isEmpty ? rawDesc : descParts.first;
+                            final descList = descParts.length > 1
+                                ? descParts.sublist(1)
+                                : const <String>[];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    flex: 5,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          descTitle,
+                                          style: t.bodySmall.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (descList.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          for (final line in descList)
+                                            Text(
+                                              line,
+                                              style: t.bodySmall.copyWith(
+                                                color: cs.onSurfaceVariant
+                                                    .withValues(alpha: 0.85),
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(
+                                      (row['qty'] ?? 0).toString(),
+                                      textAlign: TextAlign.right,
+                                      style: numericStyle,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(
+                                      currencyFmt
+                                          .format(row['price'] ?? 0)
+                                          .trim(),
+                                      textAlign: TextAlign.right,
+                                      style: numericStyle,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(
+                                      '${row['tax'] ?? 0}%',
+                                      textAlign: TextAlign.right,
+                                      style: numericStyle,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(
+                                      currencyFmt
+                                          .format(row['total'] ?? 0)
+                                          .trim(),
+                                      textAlign: TextAlign.right,
+                                      style: numericStyle.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        linesSection,
+                        const SizedBox(height: 8),
+                        Divider(
+                            height: 1,
+                            color: cs.outlineVariant.withValues(alpha: 0.5)),
+                        const SizedBox(height: 8),
                         totalsBreakdownRow(
-                          'Descuento',
-                          '-${currencyFmt.format(discountAmount).trim()}',
+                          showDiscountRows
+                              ? 'Total parcial'
+                              : l.invoiceSubtotalLabel,
+                          currencyFmt.format(rawSubtotal).trim(),
                         ),
-                      if (showDiscountRows)
+                        if (showDiscountRows)
+                          totalsBreakdownRow(
+                            'Descuento',
+                            '-${currencyFmt.format(discountAmount).trim()}',
+                          ),
+                        if (showDiscountRows)
+                          totalsBreakdownRow(
+                            'Base imponible',
+                            currencyFmt.format(baseAfterDiscount).trim(),
+                          ),
                         totalsBreakdownRow(
-                          'Base imponible',
-                          currencyFmt.format(baseAfterDiscount).trim(),
+                          'IVA',
+                          currencyFmt.format(taxAfterDiscount).trim(),
                         ),
-                      totalsBreakdownRow(
-                        'IVA',
-                        currencyFmt.format(taxAfterDiscount).trim(),
-                      ),
-                      totalsBreakdownRow(
-                        l.invoiceTotalLabel,
-                        currencyFmt.format(state._c.total).trim(),
-                      ),
-                    ],
-                  ),
+                        const SizedBox(height: 4),
+                        totalsBreakdownRow(
+                          l.invoiceTotalLabel,
+                          currencyFmt.format(state._c.total).trim(),
+                          strong: true,
+                        ),
+                      ],
+                    );
+                  },
                 );
               }
 
@@ -625,93 +677,128 @@ class _InvoiceEditorView extends StatelessWidget {
                 ],
               );
 
-              Widget summaryRow(String label, String value) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
+              Widget previewSurface() => Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      previewToolbar,
+                      Expanded(
+                        child: previewBytes != null &&
+                                (!kIsWeb || isPreviewStepActive)
+                            ? LayoutBuilder(
+                                builder: (ctx, constraints) => PdfInlinePreview(
+                                  bytes: previewBytes,
+                                  height: constraints.maxHeight,
+                                ),
+                              )
+                            : !canPreview && previewReason != null
+                                ? Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(24),
+                                      child: Text(
+                                        previewReason,
+                                        textAlign: TextAlign.center,
+                                        style: t.bodySmall.copyWith(
+                                          color: cs.onSurfaceVariant,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                      ),
+                    ],
+                  );
+
+              final isEs = l.localeName.toLowerCase().startsWith('es');
+              final isDraft = !state._c.editingIssued;
+              final invoiceNumberDisplay = isDraft
+                  ? (isEs ? 'Pendiente de numeración' : 'Pending numbering')
+                  : state._c.previewInvoiceNumber;
+              final statusLabel = isDraft
+                  ? (isEs ? 'Borrador' : 'Draft')
+                  : (isEs ? 'Emitida' : 'Issued');
+
+              final issuePanel = Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ── Compact summary header ─────────────────
+                  Row(
                     children: [
                       Expanded(
                         child: Text(
-                          label,
-                          style: t.bodySmall.copyWith(
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          selectedClientName,
+                          style: t.bodyLarge
+                              .copyWith(fontWeight: FontWeight.w900),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Flexible(
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isDraft
+                              ? cs.surfaceContainerHighest
+                              : cs.secondaryContainer,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
                         child: Text(
-                          value,
-                          textAlign: TextAlign.right,
+                          statusLabel,
                           style: t.bodySmall.copyWith(
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11,
+                            color: isDraft
+                                ? cs.onSurfaceVariant
+                                : cs.onSecondaryContainer,
                           ),
                         ),
                       ),
                     ],
                   ),
-                );
-              }
-
-              final issuePanel = Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    l.invoiceSummaryTitle,
-                    style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
-                  ),
                   const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: cs.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: cs.outlineVariant.withValues(alpha: 0.35),
+                  // ── Metadata chips row ─────────────────────
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
+                    children: [
+                      _SummaryMetaChip(
+                        label: l.invoiceNumberLabel,
+                        value: invoiceNumberDisplay,
+                        t: t,
+                        cs: cs,
                       ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        summaryRow(
-                          l.invoiceCustomerTitle,
-                          selectedClientName,
+                      if (invoiceDate != null)
+                        _SummaryMetaChip(
+                          label: l.invoiceDateLabel,
+                          value: DateFormat.yMMMd(l.localeName)
+                              .format(invoiceDate),
+                          t: t,
+                          cs: cs,
                         ),
-                        summaryRow(
-                          l.invoiceNumberLabel,
-                          state._c.previewInvoiceNumber,
+                      if (dueDate != null)
+                        _SummaryMetaChip(
+                          label: l.invoiceDueDateLabel,
+                          value: DateFormat.yMMMd(l.localeName).format(dueDate),
+                          t: t,
+                          cs: cs,
                         ),
-                        summaryRow(
-                          l.invoiceDateLabel,
-                          invoiceDate == null
-                              ? '-'
-                              : DateFormat.yMMMd(l.localeName)
-                                  .format(invoiceDate),
-                        ),
-                        summaryRow(
-                          l.invoiceDueDateLabel,
-                          dueDate == null
-                              ? '-'
-                              : DateFormat.yMMMd(l.localeName).format(dueDate),
-                        ),
-                        summaryRow(
-                          l.currencyLabel,
-                          currency,
-                        ),
-                        summaryRow(
-                          l.invoiceTotalLabel,
-                          euroFmt.format(state._c.total).trim(),
-                        ),
-                        if (showDiscountRows)
-                          summaryRow(
-                            'Descuento',
-                            '-${euroFmt.format(discountAmount).trim()}',
-                          ),
-                      ],
-                    ),
+                      _SummaryMetaChip(
+                        label: l.currencyLabel,
+                        value: currency,
+                        t: t,
+                        cs: cs,
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
+                  Divider(
+                      height: 1,
+                      color: cs.outlineVariant.withValues(alpha: 0.4)),
+                  const SizedBox(height: 12),
+                  // ── Lines + totals ─────────────────────────
                   totalsSummary(),
                   if (!canCompleteDraft && draftCompletionReason != null) ...[
                     const SizedBox(height: 8),
@@ -742,8 +829,7 @@ class _InvoiceEditorView extends StatelessWidget {
                   if (!context.mounted || state._c.savedInvoice == null) return;
                 }
                 final next = currentEditorStep + 1;
-                state._c.setCurrentStepIndex(next);
-                state._tabController.animateTo(next);
+                state._goToStep(next);
               }
 
               final canContinue = switch (currentEditorStep) {
@@ -768,7 +854,7 @@ class _InvoiceEditorView extends StatelessWidget {
                             _buildInvoiceClientStep(context, state, l, t, cs),
                             SingleChildScrollView(
                               padding:
-                                  const EdgeInsets.fromLTRB(20, 18, 20, 32),
+                                  const EdgeInsets.fromLTRB(16, 16, 16, 24),
                               child: Center(
                                 child: ConstrainedBox(
                                   constraints:
@@ -791,14 +877,6 @@ class _InvoiceEditorView extends StatelessWidget {
                                     onCurrencyChanged: (_) =>
                                         state._c.notifyUi(),
                                     onNotesChanged: (_) => state._c.notifyUi(),
-                                    onBack: () {
-                                      state._c.setCurrentStepIndex(0);
-                                      state._tabController.animateTo(0);
-                                    },
-                                    onContinue: () {
-                                      state._c.setCurrentStepIndex(2);
-                                      state._tabController.animateTo(2);
-                                    },
                                   ),
                                 ),
                               ),
@@ -806,90 +884,61 @@ class _InvoiceEditorView extends StatelessWidget {
                             gatedLinesSection,
                             Padding(
                               padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // ── Left: summary + actions ──────────────
-                                  Expanded(
-                                    flex: 4,
-                                    child: SingleChildScrollView(
-                                      child: issuePanel,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  // ── Right: PDF preview ───────────────────
-                                  Expanded(
-                                    flex: 6,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        previewToolbar,
-                                        Expanded(
-                                          child: previewBytes != null &&
-                                                  (!kIsWeb ||
-                                                      isPreviewStepActive)
-                                              ? LayoutBuilder(
-                                                  builder: (ctx, constraints) =>
-                                                      PdfInlinePreview(
-                                                    bytes: previewBytes,
-                                                    height:
-                                                        constraints.maxHeight,
-                                                  ),
-                                                )
-                                              : !canPreview &&
-                                                      previewReason != null
-                                                  ? Center(
-                                                      child: Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .all(24),
-                                                        child: Text(
-                                                          previewReason,
-                                                          textAlign:
-                                                              TextAlign.center,
-                                                          style: t.bodySmall
-                                                              .copyWith(
-                                                            color: cs
-                                                                .onSurfaceVariant,
-                                                            fontWeight:
-                                                                FontWeight.w600,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    )
-                                                  : const Center(
-                                                      child:
-                                                          CircularProgressIndicator(),
-                                                    ),
+                              child: LayoutBuilder(
+                                builder: (context, previewConstraints) {
+                                  if (previewConstraints.maxWidth < 860) {
+                                    final previewHeight =
+                                        (MediaQuery.sizeOf(context).height *
+                                                .55)
+                                            .clamp(360.0, 620.0)
+                                            .toDouble();
+                                    return SingleChildScrollView(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          issuePanel,
+                                          const SizedBox(height: 16),
+                                          SizedBox(
+                                            height: previewHeight,
+                                            child: previewSurface(),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }
+                                  return Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // ── Left: summary + actions ──────────────
+                                      Expanded(
+                                        flex: 4,
+                                        child: SingleChildScrollView(
+                                          child: issuePanel,
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                                      ),
+                                      const SizedBox(width: 16),
+                                      // ── Right: PDF preview ───────────────────
+                                      Expanded(
+                                        flex: 6,
+                                        child: previewSurface(),
+                                      ),
+                                    ],
+                                  );
+                                },
                               ),
                             ),
                           ],
                         ),
                       ),
                       HexoraDocumentFooter(
+                        compact: true,
                         status: _InvoiceDraftStatusChip(
                           controller: state._c,
                           t: t,
                           cs: cs,
                         ),
-                        back: currentEditorStep == 0
-                            ? null
-                            : HexoraButton(
-                                onPressed: () {
-                                  final previous = currentEditorStep - 1;
-                                  state._c.setCurrentStepIndex(previous);
-                                  state._tabController.animateTo(previous);
-                                },
-                                icon: Icons.arrow_back_rounded,
-                                label: l.back,
-                                variant: HexoraButtonVariant.secondary,
-                              ),
                         primary: HexoraButton(
                           onPressed: canContinue ? continueEditor : null,
                           icon: currentEditorStep == 3
@@ -944,76 +993,70 @@ class _InvoiceEditorView extends StatelessWidget {
     Widget? selectedDetails;
     if (selectedClient != null) {
       selectedDetails = Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Column(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
                 children: [
                   Container(
-                    width: 52,
-                    height: 52,
+                    width: 36,
+                    height: 36,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: cs.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       selectedClient.name.trim().isEmpty
                           ? '?'
                           : selectedClient.name.trim()[0].toUpperCase(),
-                      style: t.titleLarge.copyWith(
+                      style: t.bodyMedium.copyWith(
                         color: cs.primary,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    selectedClient.name,
-                    style: t.bodyLarge.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: cs.onSurface,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          selectedClient.name,
+                          style: t.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: cs.onSurface,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if ((selectedClient.email ?? '').trim().isNotEmpty)
+                          Text(
+                            selectedClient.email!.trim(),
+                            style: t.bodySmall.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        if ((selectedClient.phone ?? '').trim().isNotEmpty)
+                          Text(
+                            selectedClient.phone!.trim(),
+                            style: t.bodySmall.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
                     ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              alignment: WrapAlignment.center,
-              children: [
-                if ((selectedClient.email ?? '').trim().isNotEmpty)
-                  _InvoiceClientChip(
-                    icon: Icons.email_outlined,
-                    label: selectedClient.email!.trim(),
-                  ),
-                if ((selectedClient.phone ?? '').trim().isNotEmpty)
-                  _InvoiceClientChip(
-                    icon: Icons.phone_outlined,
-                    label: selectedClient.phone!.trim(),
-                  ),
-                if ((selectedClient.entityType ?? '').trim().isNotEmpty)
-                  _InvoiceClientChip(
-                    icon: Icons.business_outlined,
-                    label: selectedClient.entityType!.trim(),
-                  ),
-                if ((selectedClient.propertyKind ?? '').trim().isNotEmpty)
-                  _InvoiceClientChip(
-                    icon: Icons.home_work_outlined,
-                    label: selectedClient.propertyKind!.trim(),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: _InvoiceClientStatsBox(
+              const SizedBox(height: 12),
+              _InvoiceClientStatsBox(
                 issuedCount: state._c.issuedThisMonthCount,
                 draftCount: state._c.clientDraftCount,
                 loading: state._c.loadingClientStats,
@@ -1029,17 +1072,18 @@ class _InvoiceEditorView extends StatelessWidget {
                   );
                 },
               ),
-            ),
-            if (state._c.editingIssued) ...[
-              const SizedBox(height: 10),
-              HexoraButton(
-                onPressed: () => _editIssuedBillingDetails(context, state),
-                icon: Icons.badge_outlined,
-                label: isEs ? 'Editar datos fiscales' : 'Edit billing details',
-                variant: HexoraButtonVariant.secondary,
-              ),
+              if (state._c.editingIssued) ...[
+                const SizedBox(height: 10),
+                HexoraButton(
+                  onPressed: () => _editIssuedBillingDetails(context, state),
+                  icon: Icons.badge_outlined,
+                  label:
+                      isEs ? 'Editar datos fiscales' : 'Edit billing details',
+                  variant: HexoraButtonVariant.secondary,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       );
     }
@@ -1058,6 +1102,7 @@ class _InvoiceEditorView extends StatelessWidget {
           ? 'Selecciona un cliente para continuar'
           : 'Select a client to continue',
       twoColumnBreakpoint: 900,
+      flat: true,
     );
   }
 
@@ -1194,47 +1239,6 @@ String _invoiceMonthLabel(DateTime dt, String locale) {
   return raw[0].toUpperCase() + raw.substring(1);
 }
 
-class _InvoiceClientChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _InvoiceClientChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: cs.onSurfaceVariant),
-          const SizedBox(width: 5),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 160),
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: t.bodySmall.copyWith(
-                fontSize: 11,
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _InvoiceClientStatsBox extends StatefulWidget {
   final int issuedCount;
   final int draftCount;
@@ -1278,80 +1282,74 @@ class _InvoiceClientStatsBoxState extends State<_InvoiceClientStatsBox>
     final cs = Theme.of(context).colorScheme;
     final isEs = l.localeName.toLowerCase().startsWith('es');
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
-            child: TabBar(
-              controller: _tab,
-              dividerColor: Colors.transparent,
-              splashFactory: NoSplash.splashFactory,
-              overlayColor: WidgetStatePropertyAll(
-                cs.primary.withValues(alpha: 0.06),
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicator: BoxDecoration(
-                color: cs.primaryContainer,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              indicatorPadding: const EdgeInsets.symmetric(vertical: 3),
-              labelColor: cs.onPrimaryContainer,
-              unselectedLabelColor: cs.onSurfaceVariant,
-              labelStyle: t.bodySmall
-                  .copyWith(fontWeight: FontWeight.w800, fontSize: 11),
-              unselectedLabelStyle: t.bodySmall
-                  .copyWith(fontWeight: FontWeight.w700, fontSize: 11),
-              tabs: [
-                Tab(text: isEs ? 'Este mes' : 'This month'),
-                Tab(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(isEs ? 'Historial' : 'History'),
-                      if (widget.pastInvoices.isNotEmpty) ...[
-                        const SizedBox(width: 5),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: cs.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            '${widget.pastInvoices.length}',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              color: cs.onSurfaceVariant,
-                            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+          child: TabBar(
+            controller: _tab,
+            dividerColor: Colors.transparent,
+            splashFactory: NoSplash.splashFactory,
+            overlayColor: WidgetStatePropertyAll(
+              cs.primary.withValues(alpha: 0.06),
+            ),
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicator: BoxDecoration(
+              color: cs.primaryContainer,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            indicatorPadding: const EdgeInsets.symmetric(vertical: 3),
+            labelColor: cs.onPrimaryContainer,
+            unselectedLabelColor: cs.onSurfaceVariant,
+            labelStyle:
+                t.bodySmall.copyWith(fontWeight: FontWeight.w800, fontSize: 11),
+            unselectedLabelStyle:
+                t.bodySmall.copyWith(fontWeight: FontWeight.w700, fontSize: 11),
+            tabs: [
+              Tab(text: isEs ? 'Este mes' : 'This month'),
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(isEs ? 'Historial' : 'History'),
+                    if (widget.pastInvoices.isNotEmpty) ...[
+                      const SizedBox(width: 5),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: cs.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '${widget.pastInvoices.length}',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: cs.onSurfaceVariant,
                           ),
                         ),
-                      ],
+                      ),
                     ],
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
-          Expanded(
-            child: TabBarView(
-              controller: _tab,
-              children: [
-                _buildThisMonthTab(context, isEs, t, cs),
-                _buildHistoryTab(context, isEs, t, cs),
-              ],
-            ),
+        ),
+        Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
+        SizedBox(
+          height: 156,
+          child: TabBarView(
+            controller: _tab,
+            children: [
+              _buildThisMonthTab(context, isEs, t, cs),
+              _buildHistoryTab(context, isEs, t, cs),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1527,13 +1525,8 @@ class _InvoiceStatCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       child: Row(
         children: [
           Icon(icon, size: 14, color: color.withValues(alpha: 0.7)),
@@ -1591,13 +1584,8 @@ class _InvoiceHistoryItem extends StatelessWidget {
         : (isEs ? 'Borrador' : 'Draft');
     final isIssued = (invoice.status ?? '').contains('issue');
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       child: Row(
         children: [
           Icon(
@@ -1654,6 +1642,44 @@ class _InvoiceHistoryItem extends StatelessWidget {
                   ),
         ],
       ),
+    );
+  }
+}
+
+class _SummaryMetaChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final AppTypography t;
+  final ColorScheme cs;
+
+  const _SummaryMetaChip({
+    required this.label,
+    required this.value,
+    required this.t,
+    required this.cs,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$label: ',
+          style: t.bodySmall.copyWith(
+            color: cs.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+            fontSize: 11,
+          ),
+        ),
+        Text(
+          value,
+          style: t.bodySmall.copyWith(
+            fontWeight: FontWeight.w700,
+            fontSize: 11,
+          ),
+        ),
+      ],
     );
   }
 }

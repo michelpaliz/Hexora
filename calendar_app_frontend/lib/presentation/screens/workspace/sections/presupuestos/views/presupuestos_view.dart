@@ -1006,14 +1006,8 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         child:
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: cs.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.65),
-              ),
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            color: cs.surface,
             child: HexoraDocumentStepper(
               steps: editorSteps,
               currentStep: _visibleStep,
@@ -1026,6 +1020,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
               },
               itemKeyBuilder: (index, _) =>
                   ValueKey('budget-editor-step-$index'),
+              compactConnectors: true,
             ),
           ),
           if (selectedClientName.isNotEmpty) ...[
@@ -1062,42 +1057,41 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                   ],
                 ),
               )
-            : ListView(
-                key: const ValueKey('budget_wizard_content'),
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-                children: [
-                  _buildStepContent(cs, l),
-                  if (_error != null) ...[
-                    const SizedBox(height: 8),
-                    _BudgetInlineErrorCard(
-                      message: _error!,
-                      visibleStep: _visibleStep,
-                      isSpanishLocale: _isSpanishLocale,
-                    ),
-                  ],
-                ],
-              ),
+            : _visibleStep == 3
+                ? Padding(
+                    key: const ValueKey('budget_wizard_content'),
+                    padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+                    child: _buildStepContent(cs, l),
+                  )
+                : ListView(
+                    key: const ValueKey('budget_wizard_content'),
+                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                    children: [
+                      _buildStepContent(cs, l),
+                      if (_error != null) ...[
+                        const SizedBox(height: 8),
+                        _BudgetInlineErrorCard(
+                          message: _error!,
+                          visibleStep: _visibleStep,
+                          isSpanishLocale: _isSpanishLocale,
+                        ),
+                      ],
+                    ],
+                  ),
       ),
       SafeArea(
           top: false,
           child: Container(
             key: const ValueKey('budget_wizard_actions'),
-            constraints: const BoxConstraints(minHeight: 58),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            constraints: const BoxConstraints(minHeight: 50),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
             decoration: BoxDecoration(
                 color: cs.surface,
-                boxShadow: [
-                  BoxShadow(
-                    color: cs.shadow.withValues(alpha: 0.10),
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
                 border: Border(
                     top: BorderSide(
                         color: cs.outlineVariant.withValues(alpha: 0.25)))),
             child: LayoutBuilder(
-                builder: (context, constraints) => constraints.maxWidth < 650
+                builder: (context, constraints) => constraints.maxWidth < 900
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         mainAxisSize: MainAxisSize.min,
@@ -2862,8 +2856,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                         key: ValueKey('budget-layout-selector'),
                       ),
                       const SizedBox(width: 8),
-                      Flexible(
-                        fit: FlexFit.loose,
+                      Expanded(
                         child: HexoraDocumentStatusTabs(
                           selectedIndex: _budgetsTabIndex,
                           onSelected: (index) =>
@@ -2885,7 +2878,6 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      const Spacer(),
                       if (_hasBudgetFilters)
                         TextButton.icon(
                           onPressed: _clearBudgetFilters,

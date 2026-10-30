@@ -21,6 +21,7 @@ import 'package:hexora/presentation/screens/workspace/sections/services_clients/
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 part '../invoice_list/sections/invoice_list_layout.dart';
 part '../invoice_list/sections/invoice_list_dialogs.dart';
@@ -188,6 +189,7 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                           onDelete: widget.onDeleteInvoice,
                           onEdit: widget.onEditDraft,
                           onIssue: widget.onIssueDraft,
+                          onLinkInvoice: null,
                           onIssueAll: widget.onIssueAllDrafts,
                           sortState: widget.sortState,
                           onSortBySelected: widget.onSortBySelected,
@@ -216,6 +218,7 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                           onEdit:
                               widget.canEditIssued ? widget.onEditDraft : null,
                           onIssue: null,
+                          onLinkInvoice: null,
                           onIssueAll: null,
                           sortState: widget.sortState,
                           onSortBySelected: widget.onSortBySelected,
@@ -284,6 +287,7 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                         : null,
                     onExpand: null,
                     isExpanded: false,
+                    actionsInHeader: true,
                   ),
           ),
         ),

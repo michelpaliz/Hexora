@@ -54,6 +54,7 @@ class DocumentClientStep extends StatelessWidget {
     this.emptySelectionLabel = 'Selecciona un cliente para continuar',
     this.twoColumnBreakpoint = 980,
     this.clientSearchController,
+    this.flat = false,
   });
 
   final List<GroupClient> clients;
@@ -71,6 +72,7 @@ class DocumentClientStep extends StatelessWidget {
   final String emptySelectionLabel;
   final double twoColumnBreakpoint;
   final TextEditingController? clientSearchController;
+  final bool flat;
 
   @override
   Widget build(BuildContext context) {
@@ -93,10 +95,12 @@ class DocumentClientStep extends StatelessWidget {
             enabled: enabled,
             maxListHeight: listHeight,
             searchController: clientSearchController,
+            flat: flat,
           );
           final details = _ClientDetailsPanel(
             hasSelection: selectedClientId != null,
             emptyLabel: emptySelectionLabel,
+            flat: flat,
             child: selectedDetails,
           );
 
@@ -322,6 +326,7 @@ class _ExistingClientPanel extends StatelessWidget {
     required this.enabled,
     required this.maxListHeight,
     this.searchController,
+    required this.flat,
   });
 
   final List<GroupClient> clients;
@@ -330,40 +335,44 @@ class _ExistingClientPanel extends StatelessWidget {
   final bool enabled;
   final double maxListHeight;
   final TextEditingController? searchController;
+  final bool flat;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: .38)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: IgnorePointer(
-              ignoring: !enabled,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                child: ClientSearchSelect(
-                  clients: clients,
-                  selectedClientId: selectedClientId,
-                  onClientChanged: onClientChanged,
-                  useDefaultPropertyKind: false,
-                  showAdvancedFilters: false,
-                  compact: false,
-                  searchDesktopHeight: 42,
-                  searchController: searchController,
-                  maxListHeight: maxListHeight,
-                ),
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: IgnorePointer(
+            ignoring: !enabled,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(flat ? 0 : 10, 0, flat ? 0 : 10, 10),
+              child: ClientSearchSelect(
+                clients: clients,
+                selectedClientId: selectedClientId,
+                onClientChanged: onClientChanged,
+                useDefaultPropertyKind: false,
+                showAdvancedFilters: false,
+                compact: false,
+                flatRows: flat,
+                searchDesktopHeight: 42,
+                searchController: searchController,
+                maxListHeight: maxListHeight,
               ),
             ),
           ),
-        ],
+        ),
+      ],
+    );
+    if (flat) return content;
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .38)),
       ),
+      child: content,
     );
   }
 }
@@ -373,50 +382,52 @@ class _ClientDetailsPanel extends StatelessWidget {
     required this.hasSelection,
     required this.emptyLabel,
     required this.child,
+    required this.flat,
   });
 
   final bool hasSelection;
   final String emptyLabel;
   final Widget? child;
+  final bool flat;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: hasSelection ? cs.primary.withValues(alpha: .035) : cs.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: hasSelection
-              ? cs.primary.withValues(alpha: .25)
-              : cs.outlineVariant.withValues(alpha: .38),
-        ),
-      ),
-      child: hasSelection && child != null
-          ? Align(alignment: Alignment.topCenter, child: child)
-          : Center(
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.person_search_outlined,
-                      size: 24,
-                      color: cs.onSurfaceVariant.withValues(alpha: .5),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      emptyLabel,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                ),
+    final content = hasSelection && child != null
+        ? Align(alignment: Alignment.topCenter, child: child)
+        : Center(
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.person_search_outlined,
+                    size: 24,
+                    color: cs.onSurfaceVariant.withValues(alpha: .5),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    emptyLabel,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                  ),
+                ],
               ),
             ),
+          );
+    if (flat) return content;
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: .45),
+        ),
+      ),
+      child: content,
     );
   }
 }

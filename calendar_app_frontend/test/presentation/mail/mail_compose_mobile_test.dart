@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:hexora/presentation/screens/workspace/sections/mail/mail_compose_screen.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 void main() {
-  testWidgets('desktop composer shows invoice panel and compact send bar',
+  testWidgets('desktop composer restores attachment panel and compact send bar',
       (tester) async {
     tester.view.physicalSize = const Size(1600, 900);
     tester.view.devicePixelRatio = 1;
@@ -26,62 +27,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('Adjuntar facturas'), findsOneWidget);
-    expect(
-      find.text('Selecciona el cliente y las facturas que quieres enviar.'),
-      findsNothing,
-    );
-    expect(
-      tester
-          .getSize(
-            find.byKey(const ValueKey('mail-attachment-compact-header')),
-          )
-          .height,
-      40,
-    );
-    expect(
-      tester
-          .getSize(
-            find.byKey(const ValueKey('mail-attachment-inline-stepper')),
-          )
-          .height,
-      32,
-    );
-    expect(find.text('Continuar'), findsOneWidget);
     final send = find
         .ancestor(
-            of: find.text('Enviar correo'),
-            matching: find.byWidgetPredicate((w) => w is FilledButton))
+            of: find.text('Enviar correo'), matching: find.byType(HexoraButton))
         .first;
-    expect(tester.widget<FilledButton>(send).onPressed, isNull);
+    expect(tester.widget<HexoraButton>(send).onPressed, isNull);
     expect(tester.getSize(send).width, lessThan(300));
-    expect(tester.getTopLeft(find.text('Adjuntar facturas')).dx,
-        lessThan(tester.getTopLeft(find.byType(quill.QuillEditor)).dx));
-    expect(
-      tester
-          .getTopLeft(
-            find.byKey(const ValueKey('mail-compose-editor-header')),
-          )
-          .dx,
-      lessThan(
-        tester.getTopLeft(find.text('Adjuntar facturas')).dx,
-      ),
-    );
-    final optionsSurface = find.byKey(
-      const ValueKey('mail-compose-options-surface'),
-    );
-    final optionsBackground = tester.widget<ColoredBox>(optionsSurface);
-    expect(
-      optionsBackground.color,
-      Theme.of(tester.element(optionsSurface)).colorScheme.surface,
-    );
     final desktopFrame = tester.widget<ColoredBox>(
       find.byKey(const ValueKey('mail-compose-desktop-frame')),
     );
     expect(
       desktopFrame.color,
-      Theme.of(tester.element(optionsSurface))
-          .colorScheme
-          .surfaceContainerLowest,
+      Theme.of(tester.element(find.byKey(
+        const ValueKey('mail-compose-desktop-frame'),
+      ))).colorScheme.surfaceContainerLowest,
     );
     final editorSurface = tester.widget<Container>(
       find.byKey(const ValueKey('mail-compose-editor-surface')),
@@ -95,65 +54,37 @@ void main() {
     final context = tester.element(
       find.byKey(const ValueKey('mail-compose-subject-input-surface')),
     );
-    final expectedFill = Theme.of(context).colorScheme.surface;
+    final expectedFill = Theme.of(context).inputDecorationTheme.fillColor ??
+        Theme.of(context).colorScheme.surfaceContainerLow;
     for (final key in const [
       'mail-compose-recipient-input-surface',
       'mail-compose-subject-input-surface',
-      'mail-compose-body-input-surface',
     ]) {
       final container = tester.widget<Container>(find.byKey(ValueKey(key)));
       expect((container.decoration! as BoxDecoration).color, expectedFill);
     }
-
+    final bodySurface = tester.widget<Container>(
+      find.byKey(const ValueKey('mail-compose-body-input-surface')),
+    );
     expect(
-      find.byKey(const ValueKey('mail-compose-preparation-mode-selector')),
-      findsOneWidget,
+      (bodySurface.decoration! as BoxDecoration).color,
+      Theme.of(context).colorScheme.surface,
     );
-    final selectionWorkspace = find.byKey(
-      const ValueKey('mail-compose-selection-workspace'),
-    );
-    final selectionContext = tester.element(selectionWorkspace);
-    final selectionContainer = tester.widget<Container>(selectionWorkspace);
-    expect(Theme.of(selectionContext).brightness, Brightness.light);
     expect(
-      (selectionContainer.decoration! as BoxDecoration).color,
-      Theme.of(selectionContext).colorScheme.surface,
+      tester
+          .getSize(find.byKey(const ValueKey('mail-compose-editor-surface')))
+          .width,
+      lessThan(1000),
     );
-    await tester.tap(
-      find.byKey(const ValueKey('mail-compose-mode-email')),
-    );
-    await tester.pump();
     expect(
-      find.byKey(const ValueKey('mail-attachment-compact-header')),
-      findsNothing,
-    );
-    final leftEmailInput = find
-        .descendant(
-          of: optionsSurface,
-          matching: find.byWidgetPredicate(
-            (widget) =>
-                widget is TextField &&
-                widget.keyboardType == TextInputType.emailAddress,
-          ),
-        )
-        .first;
-    await tester.enterText(leftEmailInput, 'mode@example.com ');
-    await tester.pump();
-    expect(find.text('mode@example.com'), findsWidgets);
-
-    await tester.tap(
-      find.byKey(const ValueKey('mail-compose-mode-clients')),
-    );
-    await tester.pump();
-    expect(
-      find.byKey(const ValueKey('mail-attachment-compact-header')),
+      find.byKey(const ValueKey('mail-compose-options-surface')),
       findsOneWidget,
     );
     await tester.tap(
-      find.byKey(const ValueKey('mail-compose-mode-email')),
+      find.byKey(const ValueKey('mail-compose-add-attachment')),
     );
-    await tester.pump();
-    expect(find.text('mode@example.com'), findsWidgets);
+    await tester.pumpAndSettle();
+    expect(find.text('Adjuntar documentos'), findsOneWidget);
   });
 
   testWidgets('composer inherits the dark theme input surface', (tester) async {
@@ -187,7 +118,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('selection workspace reacts to runtime theme changes',
+  testWidgets('composer surface reacts to runtime theme changes',
       (tester) async {
     tester.view.physicalSize = const Size(1600, 900);
     tester.view.devicePixelRatio = 1;
@@ -220,7 +151,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    const workspaceKey = ValueKey('mail-compose-selection-workspace');
+    const workspaceKey = ValueKey('mail-compose-editor-surface');
     Color workspaceColor() {
       final finder = find.byKey(workspaceKey);
       return (tester.widget<Container>(finder).decoration! as BoxDecoration)
@@ -293,9 +224,9 @@ void main() {
       final send = find
           .ancestor(
               of: find.text('Enviar correo'),
-              matching: find.byWidgetPredicate((w) => w is FilledButton))
+              matching: find.byType(HexoraButton))
           .first;
-      expect(tester.widget<FilledButton>(send).onPressed, isNotNull);
+      expect(tester.widget<HexoraButton>(send).onPressed, isNotNull);
       tester.view.viewInsets = const FakeViewPadding(bottom: 280);
       addTearDown(tester.view.resetViewInsets);
       await tester.pumpAndSettle();

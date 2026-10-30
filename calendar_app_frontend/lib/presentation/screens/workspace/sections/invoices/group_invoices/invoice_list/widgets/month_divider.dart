@@ -5,5 +5,6 @@ class _MonthDivider extends StatelessWidget {
   final String label;
   final bool first;
   @override
-  Widget build(BuildContext context) => HexoraMonthSeparator(label: label);
+  Widget build(BuildContext context) =>
+      HexoraMonthSeparator(label: label, flat: true);
 }

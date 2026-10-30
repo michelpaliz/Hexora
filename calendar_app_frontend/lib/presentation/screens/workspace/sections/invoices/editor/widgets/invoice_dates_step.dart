@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/form/form_widgets/dates_box.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_editor_components.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -55,11 +56,11 @@ class InvoiceDatesStep extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 42,
-                      height: 42,
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
                         color: colors.primaryContainer.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
                         Icons.event_note_rounded,
@@ -75,7 +76,7 @@ class InvoiceDatesStep extends StatelessWidget {
                             isSpanish
                                 ? 'Fechas y condiciones'
                                 : 'Dates & terms',
-                            style: typography.titleLarge.copyWith(
+                            style: typography.bodyLarge.copyWith(
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -93,8 +94,8 @@ class InvoiceDatesStep extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
-                _StepCard(
+                const SizedBox(height: 16),
+                HexoraDocumentContentPanel(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final wide = constraints.maxWidth >= 720;
@@ -158,8 +159,8 @@ class InvoiceDatesStep extends StatelessWidget {
                     isError: invalidDates,
                   ),
                 ],
-                const SizedBox(height: 14),
-                _StepCard(
+                const SizedBox(height: 12),
+                HexoraDocumentContentPanel(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -234,35 +235,6 @@ class InvoiceDatesStep extends StatelessWidget {
           },
         );
       },
-    );
-  }
-}
-
-class _StepCard extends StatelessWidget {
-  const _StepCard({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colors.outlineVariant.withValues(alpha: 0.55),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadow.withValues(alpha: 0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: child,
     );
   }
 }

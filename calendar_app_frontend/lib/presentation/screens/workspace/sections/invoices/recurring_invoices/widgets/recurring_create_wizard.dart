@@ -1063,7 +1063,6 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    final isWide = MediaQuery.of(context).size.width >= 900;
     final selectedClientName = _clientId == null
         ? null
         : widget.clients
@@ -1248,6 +1247,71 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
         isActive: _step >= 4,
       ),
     ];
+
+    void goBack() {
+      if (_saving) return;
+      if (_step == 0) {
+        _handleCancel();
+      } else {
+        _setDraftState(() => _step -= 1);
+      }
+    }
+
+    void continueFlow() {
+      if (_saving) return;
+      if (_step == 1 && _nameCtrl.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.recurringInvoicesNameRequired)),
+        );
+        return;
+      }
+      if (_step == 2 &&
+          !_templateBlocks.any((block) => block.hasBillableContent)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.invoiceLinesRequired)),
+        );
+        return;
+      }
+      if (_step < steps.length - 1) {
+        _setDraftState(() => _step += 1);
+      } else {
+        _submit();
+      }
+    }
+
+    final clientChip = InkWell(
+      onTap: () => _setDraftState(() => _step = 0),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.35),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.person_outline, color: cs.primary, size: 18),
+            const SizedBox(width: 7),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 190),
+              child: Text(
+                '${l.invoiceClientLabel}: $clientLabel',
+                style: t.bodySmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: cs.onSurfaceVariant,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
     return LayoutBuilder(
       builder: (context, constraints) {
         return SizedBox(
@@ -1260,177 +1324,44 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
               onBack: _handleCancel,
               showTab: true,
               contentTopPadding: 6,
+              tabContent: SizedBox(
+                height: 44,
+                child: WizardStepsHeader(
+                  steps: steps,
+                  currentStep: _step,
+                  isWide: true,
+                  maxWidth: 760,
+                  onStepContinue: continueFlow,
+                  onStepCancel: goBack,
+                ),
+              ),
+              actions: [
+                _draftStatusChip(t, cs),
+                clientChip,
+                TextButton(
+                  onPressed: _saving ? null : goBack,
+                  child: Text(l.recurringInvoicesBackCta),
+                ),
+                FilledButton(
+                  onPressed: _saving ? null : continueFlow,
+                  child: Text(
+                    _step == steps.length - 1
+                        ? (_saving
+                            ? l.recurringInvoicesSavingRule
+                            : l.recurringInvoicesCreateCta)
+                        : l.recurringInvoicesContinueCta,
+                  ),
+                ),
+              ],
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 14),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: SizedBox(
-                                  height: isWide ? 60 : null,
-                                  child: WizardStepsHeader(
-                                    steps: steps,
-                                    currentStep: _step,
-                                    isWide: isWide,
-                                    height: isWide ? 60 : null,
-                                    onStepContinue: () {
-                                      if (_step == 1 &&
-                                          _nameCtrl.text.trim().isEmpty) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              l.recurringInvoicesNameRequired,
-                                            ),
-                                          ),
-                                        );
-                                        return;
-                                      }
-                                      if (_step == 2 &&
-                                          !_templateBlocks.any(
-                                            (block) => block.hasBillableContent,
-                                          )) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              l.invoiceLinesRequired,
-                                            ),
-                                          ),
-                                        );
-                                        return;
-                                      }
-                                      if (_step < steps.length - 1) {
-                                        _setDraftState(() => _step += 1);
-                                      } else {
-                                        _submit();
-                                      }
-                                    },
-                                    onStepCancel: () {
-                                      if (_step == 0) {
-                                        _handleCancel();
-                                      } else {
-                                        _setDraftState(() => _step -= 1);
-                                      }
-                                    },
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              _draftStatusChip(t, cs),
-                              const SizedBox(width: 12),
-                              InkWell(
-                                onTap: () => _setDraftState(() => _step = 0),
-                                borderRadius: BorderRadius.circular(12),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: cs.surfaceContainerHighest,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: cs.outlineVariant
-                                          .withValues(alpha: 0.35),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.person_outline,
-                                        color: cs.primary,
-                                        size: 18,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      ConstrainedBox(
-                                        constraints:
-                                            const BoxConstraints(maxWidth: 220),
-                                        child: Text(
-                                          '${l.invoiceClientLabel}: $clientLabel',
-                                          style: t.bodySmall.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                            color: cs.onSurfaceVariant,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              TextButton(
-                                onPressed: _saving
-                                    ? null
-                                    : () {
-                                        if (_step == 0) {
-                                          _handleCancel();
-                                        } else {
-                                          _setDraftState(() => _step -= 1);
-                                        }
-                                      },
-                                child: Text(l.recurringInvoicesBackCta),
-                              ),
-                              const SizedBox(width: 8),
-                              FilledButton(
-                                onPressed: _saving
-                                    ? null
-                                    : () {
-                                        if (_step == 1 &&
-                                            _nameCtrl.text.trim().isEmpty) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                l.recurringInvoicesNameRequired,
-                                              ),
-                                            ),
-                                          );
-                                          return;
-                                        }
-                                        if (_step == 2 &&
-                                            !_templateBlocks.any(
-                                              (block) =>
-                                                  block.hasBillableContent,
-                                            )) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                l.invoiceLinesRequired,
-                                              ),
-                                            ),
-                                          );
-                                          return;
-                                        }
-                                        if (_step < steps.length - 1) {
-                                          _setDraftState(() => _step += 1);
-                                        } else {
-                                          _submit();
-                                        }
-                                      },
-                                child: Text(
-                                  _step == steps.length - 1
-                                      ? (_saving
-                                          ? l.recurringInvoicesSavingRule
-                                          : l.recurringInvoicesCreateCta)
-                                      : l.recurringInvoicesContinueCta,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          const Divider(height: 1),
-                          const SizedBox(height: 8),
                           Expanded(
                             child: _step == 2
                                 ? steps[_step].content

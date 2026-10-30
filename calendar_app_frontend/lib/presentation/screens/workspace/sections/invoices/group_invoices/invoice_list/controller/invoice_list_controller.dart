@@ -10,6 +10,7 @@ class _InvoicesTabList extends StatefulWidget {
   final ValueChanged<Invoice>? onDelete;
   final ValueChanged<Invoice>? onEdit;
   final ValueChanged<Invoice>? onIssue;
+  final ValueChanged<Invoice>? onLinkInvoice;
   final ValueChanged<List<Invoice>>? onIssueAll;
   final InvoiceSortState sortState;
   final ValueChanged<InvoiceSortBy> onSortBySelected;
@@ -36,6 +37,7 @@ class _InvoicesTabList extends StatefulWidget {
     required this.onDelete,
     required this.onEdit,
     required this.onIssue,
+    this.onLinkInvoice,
     required this.onIssueAll,
     required this.sortState,
     required this.onSortBySelected,
@@ -94,13 +96,24 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   int _summaryRequestGeneration = 0;
   static const _availableFinancialColumns = {
     HexoraFinancialColumn.date,
+    HexoraFinancialColumn.concept,
     HexoraFinancialColumn.taxableBase,
     HexoraFinancialColumn.vat,
     HexoraFinancialColumn.total,
     HexoraFinancialColumn.payment,
   };
+  static const _defaultFinancialColumns = {
+    HexoraFinancialColumn.date,
+    HexoraFinancialColumn.concept,
+    HexoraFinancialColumn.taxableBase,
+    HexoraFinancialColumn.vat,
+    HexoraFinancialColumn.total,
+    HexoraFinancialColumn.payment,
+  };
+  static const _conceptDefaultMigrationKey =
+      'hexora.invoiceColumns.conceptDefault.v1';
   Set<HexoraFinancialColumn> _visibleFinancialColumns =
-      Set.of(_availableFinancialColumns);
+      Set.of(_defaultFinancialColumns);
 
   @override
   void initState() {
@@ -112,8 +125,14 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   Future<void> _loadColumnVisibility() async {
     final value = await HexoraColumnVisibilityStore.load(
       'facturas',
-      _availableFinancialColumns,
+      _defaultFinancialColumns,
     );
+    final preferences = await SharedPreferences.getInstance();
+    if (preferences.getBool(_conceptDefaultMigrationKey) != true) {
+      value.add(HexoraFinancialColumn.concept);
+      await HexoraColumnVisibilityStore.save('facturas', value);
+      await preferences.setBool(_conceptDefaultMigrationKey, true);
+    }
     if (mounted) setState(() => _visibleFinancialColumns = value);
   }
 

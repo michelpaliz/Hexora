@@ -20,25 +20,13 @@ class _ComposeBottomBar extends StatelessWidget {
     final hint = !enabled && !sending ? disabledHint : null;
     final button = Tooltip(
         message: hint ?? '',
-        child: FilledButton.icon(
+        child: HexoraButton(
           onPressed: enabled && !sending ? onSend : null,
-          style: FilledButton.styleFrom(
-              minimumSize: const Size(0, HexoraDimensions.buttonStandard),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-              textStyle: t.bodySmall.copyWith(
-                  fontFamily: 'Inter',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600)),
-          icon: sending
-              ? const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.send_outlined,
-                  size: HexoraDimensions.buttonIconSize),
-          label: Text(label),
+          icon: Icons.send_outlined,
+          label: label,
+          variant: HexoraButtonVariant.primary,
+          size: HexoraButtonSize.standard,
+          loading: sending,
         ));
     final guidance = Row(children: [
       Icon(Icons.info_outline, size: 16, color: cs.primary),

@@ -96,16 +96,16 @@ class DateMini extends StatelessWidget {
       child: Material(
         color: hasError
             ? colors.errorContainer.withValues(alpha: 0.18)
-            : colors.surfaceContainerLow.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(12),
+            : colors.surface,
+        borderRadius: BorderRadius.circular(8),
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           onTap: onPick,
           child: Container(
-            constraints: const BoxConstraints(minHeight: 88),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            constraints: const BoxConstraints(minHeight: 46),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: hasError
                     ? colors.error.withValues(alpha: 0.55)
@@ -114,22 +114,14 @@ class DateMini extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    hasError
-                        ? Icons.event_busy_outlined
-                        : Icons.calendar_month_outlined,
-                    size: 20,
-                    color: accent,
-                  ),
+                Icon(
+                  hasError
+                      ? Icons.event_busy_outlined
+                      : Icons.calendar_month_outlined,
+                  size: 18,
+                  color: accent,
                 ),
-                const SizedBox(width: 11),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -168,13 +160,13 @@ class DateMini extends StatelessWidget {
                           ],
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 1),
                       Text(
                         formattedValue,
-                        style: typography.bodyMedium.copyWith(
+                        style: typography.bodySmall.copyWith(
                           color:
                               value == null ? colors.primary : colors.onSurface,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

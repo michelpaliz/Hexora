@@ -11,7 +11,6 @@ import 'package:hexora/services/invoicing/invoice_lines_api.dart';
 import 'package:hexora/services/shared/content_disposition.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/invoice_delivery_utils.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -24,6 +23,7 @@ class InvoiceListItem extends StatefulWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onEdit;
   final VoidCallback? onIssue;
+  final VoidCallback? onLinkInvoice;
   final VoidCallback? onInspectRecurrence;
   final bool warning;
   final String? warningLabel;
@@ -48,6 +48,7 @@ class InvoiceListItem extends StatefulWidget {
     this.onDelete,
     this.onEdit,
     this.onIssue,
+    this.onLinkInvoice,
     this.onInspectRecurrence,
     this.warning = false,
     this.warningLabel,
@@ -107,6 +108,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   num? _total;
   num? _discountAmount;
   num? _discountPercent;
+  List<String> _conceptDescriptions = const [];
 
   @override
   void initState() {
@@ -136,6 +138,9 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     _subtotal = inv.subtotal;
     _taxTotal = inv.taxTotal;
     _total = inv.total;
+    _conceptDescriptions = inv.lines
+        .map((line) => line.description.trim())
+        .toList(growable: false);
   }
 
   Future<void> _maybeFetchMeta() async {
@@ -151,6 +156,9 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       final inv = widget.invoice;
       setState(() {
         _lineCount = lines.length;
+        _conceptDescriptions = lines
+            .map((line) => line.description.trim())
+            .toList(growable: false);
         _subtotal = inv.subtotal;
         _taxTotal = inv.taxTotal;
         _total = inv.total;
@@ -244,6 +252,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
               if (value == 'edit') widget.onEdit?.call();
               if (value == 'download') _downloadPdf();
               if (value == 'issue') widget.onIssue?.call();
+              if (value == 'link_invoice') widget.onLinkInvoice?.call();
               if (value == 'delete') widget.onDelete?.call();
             },
             itemBuilder: (_) => [
@@ -265,6 +274,12 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                   icon: Icons.fact_check_outlined,
                   label: l.invoiceIssueCta,
                   tone: HexoraPopupMenuTone.primary,
+                ),
+              if (widget.onLinkInvoice != null)
+                HexoraPopupMenuActionItem<String>(
+                  value: 'link_invoice',
+                  icon: Icons.link_rounded,
+                  label: isEs ? 'Vincular factura' : 'Link invoice',
                 ),
               if (widget.onDelete != null) const HexoraPopupMenuDivider(),
               if (widget.onDelete != null)
@@ -404,7 +419,8 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     final paymentLabel = switch (paymentStatus) {
       'paid' => isEs ? 'Pagada' : 'Paid',
       'partial' => isEs ? 'Parcial' : 'Partial',
-      'overdue' || 'unpaid' => isEs ? 'Pendiente' : 'Pending',
+      'overdue' => isEs ? 'Vencida' : 'Overdue',
+      'unpaid' => isEs ? 'No pagada' : 'Unpaid',
       _ => isEs ? 'Sin información' : 'No information',
     };
     final paymentColor = switch (paymentStatus) {
@@ -414,40 +430,47 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       'unpaid' => cs.onSurfaceVariant,
       _ => cs.onSurfaceVariant,
     };
-    final deliveryData = invoiceDeliveryViewData(widget.invoice.deliveryStatus);
-    final deliveryColor = invoiceDeliveryColor(cs, deliveryData.visual);
-    final delivery = Tooltip(
-      message: deliveryData.labelEs,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            deliveryData.status == 'delivered'
-                ? Icons.done_all_rounded
-                : deliveryData.status == 'sent'
-                    ? Icons.send_rounded
-                    : deliveryData.status == 'failed'
-                        ? Icons.error_outline_rounded
-                        : Icons.schedule_send_outlined,
-            size: 16,
-            color: deliveryColor,
-          ),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              deliveryData.labelEs,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: t.bodySmall.copyWith(
-                fontSize: 11.5,
-                color: deliveryColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
+    final delivery = DeliveryStatusBadge(
+      status: widget.invoice.deliveryStatus,
+      channel: widget.invoice.deliveryChannel,
+      sentAt: widget.invoice.sentAt,
+      deliveryError: widget.invoice.deliveryError,
+      feminine: true,
     );
+    final concept =
+        _conceptDescriptions.isEmpty || _conceptDescriptions.first.isEmpty
+            ? null
+            : Tooltip(
+                message: _conceptDescriptions
+                    .where((description) => description.isNotEmpty)
+                    .join('\n'),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        _conceptDescriptions.first,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.bodySmall.copyWith(
+                          fontSize: 11.5,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    if (_conceptDescriptions.length > 1) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        '+${_conceptDescriptions.length - 1}',
+                        style: t.caption.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
     final warningTooltip = [
       if (warning) warningText(widget.warningLabel),
       if (monthWarning)
@@ -480,6 +503,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       taxableBase: _subtotal,
       vat: _taxTotal,
       visibleFinancialColumns: widget.visibleFinancialColumns,
+      invoiceColumnOrder: true,
       selected: widget.selected,
       onTap: widget.onTap,
       previewLabel: isEs ? 'Vista previa' : 'Preview',
@@ -509,9 +533,14 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
         const SizedBox(width: 4),
       ]),
       delivery: delivery,
+      concept: concept,
       showDeliveryColumn: true,
-      compactSplitLayout: documentStatus == HexoraDocumentStatus.draft,
-      compactTitle: isEs ? 'Factura' : 'Invoice',
+      compactSplitLayout: true,
+      hideActionsInSplitView: true,
+      compactTitle: widget.invoice.invoiceNumber.trim().isEmpty
+          ? (isEs ? 'Factura' : 'Invoice')
+          : null,
+      separatorWidth: 0,
       actions: [
         if (widget.onEdit != null)
           CompactDocumentAction(
@@ -530,6 +559,12 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
             widget.onIssue,
             primary: true,
             icon: Icons.fact_check_outlined,
+          ),
+        if (widget.onLinkInvoice != null)
+          CompactDocumentAction(
+            isEs ? 'Vincular factura' : 'Link invoice',
+            widget.onLinkInvoice,
+            icon: Icons.link_rounded,
           ),
         if (widget.onInspectRecurrence != null)
           CompactDocumentAction(isEs ? 'Ver recurrencia' : 'Recurrence',

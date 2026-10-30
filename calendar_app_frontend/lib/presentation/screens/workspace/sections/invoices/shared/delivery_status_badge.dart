@@ -70,15 +70,17 @@ class DeliveryStatusBadge extends StatelessWidget {
       'delivered' => Theme.of(context).brightness == Brightness.light
           ? const Color(0xFF2E7D32)
           : const Color(0xFF81C784),
-      'sent' => cs.primary,
+      'sent' => Theme.of(context).brightness == Brightness.light
+          ? const Color(0xFF2E7D32)
+          : const Color(0xFF81C784),
       'failed' => cs.error,
       _ => cs.onSurfaceVariant,
     };
     final icon = switch (normalized) {
       'delivered' => Icons.done_all_rounded,
-      'sent' => Icons.mark_email_read_outlined,
+      'sent' => Icons.done_all_rounded,
       'failed' => Icons.error_outline_rounded,
-      _ => Icons.mark_email_unread_outlined,
+      _ => Icons.mail_outline_rounded,
     };
     final locale = Localizations.localeOf(context).toString();
     final sentAtLabel = sentAt == null

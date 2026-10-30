@@ -22,6 +22,7 @@ void main() {
               downloading: false,
               availableColumns: const {
                 HexoraFinancialColumn.date,
+                HexoraFinancialColumn.concept,
                 HexoraFinancialColumn.total,
               },
               visibleColumns: const {
@@ -70,6 +71,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Columns'));
     await tester.pumpAndSettle();
+    expect(find.text('Concept'), findsOneWidget);
     await tester.tap(find.text('Date'));
     await tester.pumpAndSettle();
 

@@ -94,7 +94,7 @@ class ClientMissingInvoiceFilter extends StatelessWidget {
                           ? Icons.check_circle_outline
                           : Icons.receipt_long_outlined,
                       size: 16,
-                      color: !selected && (count ?? 0) > 0 ? cs.error : null),
+                      color: selected ? cs.primary : cs.onSurfaceVariant),
                   label: Text(label,
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                           color: selected ? cs.primary : cs.onSurfaceVariant)),

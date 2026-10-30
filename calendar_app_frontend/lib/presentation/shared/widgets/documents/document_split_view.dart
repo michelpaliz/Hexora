@@ -420,7 +420,9 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
 }
 
 class DocumentLayoutSelector extends StatelessWidget {
-  const DocumentLayoutSelector({super.key});
+  const DocumentLayoutSelector({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
@@ -440,11 +442,15 @@ class DocumentLayoutSelector extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(1),
           decoration: BoxDecoration(
-            color: cs.surface,
+            color: embedded
+                ? cs.surfaceContainerHighest.withValues(alpha: 0.3)
+                : cs.surface,
             borderRadius: BorderRadius.circular(9),
-            border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.45),
-            ),
+            border: embedded
+                ? null
+                : Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.45),
+                  ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

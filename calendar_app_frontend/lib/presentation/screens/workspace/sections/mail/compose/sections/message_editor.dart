@@ -6,7 +6,7 @@ Widget _composeMessageEditor(
         required ColorScheme cs,
         required AppLocalizations l,
         required bool compact,
-        required bool isWideEmbedded,
+        required bool expands,
         required double minHeight,
         required InputDecoration inputDecoration}) =>
     AnimatedBuilder(
@@ -36,9 +36,7 @@ Widget _composeMessageEditor(
               ),
             ),
           ),
-          constraints: BoxConstraints(
-            minHeight: minHeight,
-          ),
+          constraints: expands ? null : BoxConstraints(minHeight: minHeight),
           child: DefaultTextStyle(
             style: t.bodySmall.copyWith(
               color: cs.onSurface,
@@ -56,7 +54,7 @@ Widget _composeMessageEditor(
                   config: quill.QuillEditorConfig(
                     padding: EdgeInsets.zero,
                     autoFocus: false,
-                    expands: false,
+                    expands: expands,
                     placeholder: l.mailComposeTextHint,
                     customStyles: quill.DefaultStyles(
                       placeHolder: quill.DefaultTextBlockStyle(

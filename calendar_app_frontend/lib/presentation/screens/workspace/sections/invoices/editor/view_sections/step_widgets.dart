@@ -48,12 +48,7 @@ class _InvoiceDraftStatusChip extends StatelessWidget {
       child: AnimatedContainer(
         key: const Key('invoice-draft-status'),
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: color.withValues(alpha: 0.32)),
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -67,8 +62,8 @@ class _InvoiceDraftStatusChip extends StatelessWidget {
                 ),
               )
             else
-              Icon(icon, size: 16, color: color),
-            const SizedBox(width: 6),
+              Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
             Text(
               text,
               style: t.bodySmall.copyWith(
@@ -88,7 +83,6 @@ class _InvoiceFlowTopBar extends StatelessWidget {
   const _InvoiceFlowTopBar({
     required this.steps,
     required this.currentStep,
-    required this.controller,
     required this.selectedClientName,
     required this.showBack,
     required this.backLabel,
@@ -99,7 +93,6 @@ class _InvoiceFlowTopBar extends StatelessWidget {
 
   final List<String> steps;
   final int currentStep;
-  final InvoiceEditorController controller;
   final String selectedClientName;
   final bool showBack;
   final String backLabel;
@@ -110,21 +103,18 @@ class _InvoiceFlowTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-
     final stepper = HexoraDocumentStepper(
       steps: [
         for (final label in steps) HexoraDocumentStep(label: label),
       ],
       currentStep: currentStep,
       onStepTapped: onStepTapped,
+      compactConnectors: true,
       itemKeyBuilder: (index, _) => Key('invoice-flow-step-$index'),
     );
     final contextChips = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _InvoiceDraftStatusChip(controller: controller, t: t, cs: cs),
-        const SizedBox(width: 8),
         _InvoiceClientContextChip(
           clientName: selectedClientName,
           onTap: onClientTapped,
@@ -149,22 +139,9 @@ class _InvoiceFlowTopBar extends StatelessWidget {
           width: double.infinity,
           padding: EdgeInsets.symmetric(
             horizontal: stackNavigation ? 12 : 14,
-            vertical: 10,
+            vertical: 8,
           ),
-          decoration: BoxDecoration(
-            color: cs.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.65),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: cs.shadow.withValues(alpha: 0.05),
-                blurRadius: 12,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
+          color: cs.surface,
           child: stackNavigation
               ? Column(
                   children: [

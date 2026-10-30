@@ -14,6 +14,7 @@ void main() {
     VoidCallback? onEdit,
     VoidCallback? onIssue,
     VoidCallback? onDelete,
+    VoidCallback? onLinkInvoice,
   }) async {
     tester.view
       ..devicePixelRatio = 1
@@ -48,6 +49,7 @@ void main() {
             onEdit: onEdit,
             onIssue: onIssue,
             onDelete: onDelete,
+            onLinkInvoice: onLinkInvoice,
           ),
         ),
       ),
@@ -90,5 +92,21 @@ void main() {
     expect(find.text('Descargar PDF'), findsOneWidget);
     expect(find.text('Emitir factura'), findsNothing);
     expect(find.text('Eliminar'), findsNothing);
+  });
+
+  testWidgets('invoice linking reuses the compact actions menu',
+      (tester) async {
+    var linked = false;
+    await pumpInvoice(tester, onLinkInvoice: () => linked = true);
+
+    await tester.tap(find.byType(PopupMenuButton<int>));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Vincular factura'), findsOneWidget);
+    expect(find.byIcon(Icons.link_rounded), findsOneWidget);
+
+    await tester.tap(find.text('Vincular factura'));
+    await tester.pumpAndSettle();
+    expect(linked, isTrue);
   });
 }

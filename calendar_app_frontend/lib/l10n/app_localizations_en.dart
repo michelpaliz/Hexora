@@ -3181,7 +3181,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openInvoicesWorkspace => 'Open invoices workspace';
 
   @override
-  String get invoiceNumberLabel => 'Invoice number (NNN-YY)';
+  String get invoiceNumberLabel => 'Invoice number';
 
   @override
   String invoiceNumberHelper(String year) {

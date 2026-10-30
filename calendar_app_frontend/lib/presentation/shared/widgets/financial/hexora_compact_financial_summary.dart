@@ -87,7 +87,6 @@ class _HexoraCompactFinancialSummaryState
         return SizedBox(
           height: 34,
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(
                 width: 15,
@@ -95,9 +94,13 @@ class _HexoraCompactFinancialSummaryState
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
               const SizedBox(width: 7),
-              Text(
-                widget.loadingLabel,
-                style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              Flexible(
+                child: Text(
+                  widget.loadingLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                ),
               ),
             ],
           ),

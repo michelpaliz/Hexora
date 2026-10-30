@@ -16,6 +16,9 @@ class InvoiceToolbarOptionsMenu extends StatelessWidget {
     this.onToggleUnlinked,
     this.onResolveLinks,
     this.compact = false,
+    this.embedded = false,
+    this.collapsedBaseAmount,
+    this.collapsedTaxAmount,
   });
 
   final int count;
@@ -31,10 +34,14 @@ class InvoiceToolbarOptionsMenu extends StatelessWidget {
   final VoidCallback? onToggleUnlinked;
   final VoidCallback? onResolveLinks;
   final bool compact;
+  final bool embedded;
+  final String? collapsedBaseAmount;
+  final String? collapsedTaxAmount;
 
   String _columnLabel(HexoraFinancialColumn column, bool isEs) =>
       switch (column) {
         HexoraFinancialColumn.date => isEs ? 'Fecha' : 'Date',
+        HexoraFinancialColumn.concept => isEs ? 'Concepto' : 'Concept',
         HexoraFinancialColumn.taxableBase =>
           isEs ? 'Base imponible' : 'Taxable base',
         HexoraFinancialColumn.vat => isEs ? 'IVA' : 'VAT',
@@ -57,6 +64,35 @@ class InvoiceToolbarOptionsMenu extends StatelessWidget {
         count > 0 && !downloading && (onPdf != null || onExcel != null);
     final recentCount = toolbarOptions?.recentExportsCount ?? 0;
     final menuChildren = <Widget>[
+      if (collapsedBaseAmount != null || collapsedTaxAmount != null) ...[
+        if (collapsedBaseAmount != null)
+          MenuItemButton(
+            onPressed: null,
+            leadingIcon: const Icon(Icons.receipt_long_outlined, size: 18),
+            trailingIcon: Text(
+              collapsedBaseAmount!,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+            child: Text(isEs ? 'Base imponible' : 'Taxable base'),
+          ),
+        if (collapsedTaxAmount != null)
+          MenuItemButton(
+            onPressed: null,
+            leadingIcon: const Icon(Icons.percent_rounded, size: 18),
+            trailingIcon: Text(
+              collapsedTaxAmount!,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+            child: Text(isEs ? 'IVA' : 'VAT'),
+          ),
+        const Divider(height: 1),
+      ],
       if (toolbarOptions != null) ...[
         MenuItemButton(
           onPressed: toolbarOptions!.onOpenRecentExports,
@@ -182,12 +218,16 @@ class InvoiceToolbarOptionsMenu extends StatelessWidget {
                       controller.isOpen ? cs.primary : cs.onSurfaceVariant,
                   backgroundColor: controller.isOpen
                       ? cs.primaryContainer.withValues(alpha: 0.45)
-                      : cs.surface,
-                  side: BorderSide(
-                    color: controller.isOpen
-                        ? cs.primary.withValues(alpha: 0.45)
-                        : cs.outlineVariant.withValues(alpha: 0.55),
-                  ),
+                      : embedded
+                          ? Colors.transparent
+                          : cs.surface,
+                  side: embedded
+                      ? BorderSide.none
+                      : BorderSide(
+                          color: controller.isOpen
+                              ? cs.primary.withValues(alpha: 0.45)
+                              : cs.outlineVariant.withValues(alpha: 0.55),
+                        ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -207,12 +247,16 @@ class InvoiceToolbarOptionsMenu extends StatelessWidget {
                       controller.isOpen ? cs.primary : cs.onSurfaceVariant,
                   backgroundColor: controller.isOpen
                       ? cs.primaryContainer.withValues(alpha: 0.45)
-                      : cs.surface,
-                  side: BorderSide(
-                    color: controller.isOpen
-                        ? cs.primary.withValues(alpha: 0.45)
-                        : cs.outlineVariant.withValues(alpha: 0.55),
-                  ),
+                      : embedded
+                          ? Colors.transparent
+                          : cs.surface,
+                  side: embedded
+                      ? BorderSide.none
+                      : BorderSide(
+                          color: controller.isOpen
+                              ? cs.primary.withValues(alpha: 0.45)
+                              : cs.outlineVariant.withValues(alpha: 0.55),
+                        ),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8)),
                   textStyle: const TextStyle(

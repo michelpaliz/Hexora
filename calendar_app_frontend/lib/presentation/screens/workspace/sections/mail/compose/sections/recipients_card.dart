@@ -15,14 +15,13 @@ Widget _composeRecipientsCard(
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: .45)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── To row ──────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 5, 8, 3),
+            padding: const EdgeInsets.fromLTRB(0, 2, 0, 2),
             child: compact
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -54,19 +53,21 @@ Widget _composeRecipientsCard(
                           ),
                         ),
                       ),
+                      Container(
+                        width: 1,
+                        height: 16,
+                        margin: const EdgeInsets.symmetric(horizontal: 8),
+                        color: cs.outlineVariant.withValues(alpha: .5),
+                      ),
                       // Input area
                       Expanded(
                           child: Container(
                               key: const ValueKey(
                                   'mail-compose-recipient-input-surface'),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                  color: cs.surface,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                      color: cs.outlineVariant
-                                          .withValues(alpha: .5))),
+                                color: inputDecoration.fillColor ??
+                                    cs.surfaceContainerLow,
+                              ),
                               child: recipientInput)),
                       const SizedBox(width: 6),
                       // Compact mode toggle
@@ -75,17 +76,6 @@ Widget _composeRecipientsCard(
                   ),
           ),
           // Sub-hints for email / client mode
-          if (!state._useClientMode && state._toList.isEmpty)
-            Padding(
-              padding: EdgeInsets.fromLTRB(compact ? 12 : 56, 0, 12, 5),
-              child: Text(
-                l.mailComposeToHelper,
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontSize: compact ? 13 : 11,
-                ),
-              ),
-            ),
           if (state._useClientMode) ...[
             if ((state._recipientClientError ?? '').isNotEmpty)
               Padding(
@@ -258,34 +248,26 @@ Widget _composeRecipientsCard(
               child: Wrap(
                 children: [
                   if (!state._showCc)
-                    TextButton(
+                    HexoraButton(
                       onPressed: state._sending
                           ? null
                           : () => state.update(() => state._showCc = true),
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        foregroundColor: cs.onSurfaceVariant,
-                        textStyle: t.bodySmall.copyWith(
-                            fontSize: 11, fontWeight: FontWeight.w500),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                      ),
-                      child: Text(l.mailComposeAddCc),
+                      label: state._ccList.isEmpty
+                          ? l.mailComposeAddCc
+                          : '${l.mailComposeCcLabel} (${state._ccList.length})',
+                      variant: HexoraButtonVariant.ghost,
+                      size: HexoraButtonSize.compact,
                     ),
                   if (!state._showBcc)
-                    TextButton(
+                    HexoraButton(
                       onPressed: state._sending
                           ? null
                           : () => state.update(() => state._showBcc = true),
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        foregroundColor: cs.onSurfaceVariant,
-                        textStyle: t.bodySmall.copyWith(
-                            fontSize: 11, fontWeight: FontWeight.w500),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                      ),
-                      child: Text(l.mailComposeAddBcc),
+                      label: state._bccList.isEmpty
+                          ? l.mailComposeAddBcc
+                          : '${l.mailComposeBccLabel} (${state._bccList.length})',
+                      variant: HexoraButtonVariant.ghost,
+                      size: HexoraButtonSize.compact,
                     ),
                 ],
               ),

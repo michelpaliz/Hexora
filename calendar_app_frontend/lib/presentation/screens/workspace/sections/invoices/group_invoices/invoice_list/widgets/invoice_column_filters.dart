@@ -360,7 +360,8 @@ extension _InvoiceColumnFilters on _InvoicesTabListState {
   String _paymentLabel(String status) => switch (status) {
         'paid' => 'Pagada',
         'partial' => 'Parcial',
-        'unpaid' => 'Pendiente',
+        'unpaid' => 'No pagada',
+        'overdue' => 'Vencida',
         _ => 'Sin información',
       };
 }

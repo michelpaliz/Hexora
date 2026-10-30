@@ -75,6 +75,7 @@ class _PresupuestoInvoiceConversionViewState
   _PresupuestoConversionType _conversionType =
       _PresupuestoConversionType.advance;
   _AdvanceAmountMode _advanceAmountMode = _AdvanceAmountMode.percent;
+  int _previewPanelTab = 0; // 0 = original proposal, 1 = invoice summary
 
   @override
   void initState() {
@@ -207,6 +208,7 @@ class _PresupuestoInvoiceConversionViewState
         _pdfBytes = null;
         _pdfError = null;
         _loadingPdf = true;
+        _previewPanelTab = 0;
       }
     });
 
@@ -1028,11 +1030,11 @@ class _PresupuestoInvoiceConversionViewState
       );
     }
 
-    Widget body;
+    Widget pdfBody;
     if (_loadingPdf) {
-      body = const Center(child: CircularProgressIndicator());
+      pdfBody = const Center(child: CircularProgressIndicator());
     } else if (_pdfError != null) {
-      body = Center(
+      pdfBody = Center(
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -1061,7 +1063,7 @@ class _PresupuestoInvoiceConversionViewState
         ),
       );
     } else if (_pdfBytes == null) {
-      body = _CenteredInfoState(
+      pdfBody = _CenteredInfoState(
         icon: Icons.picture_as_pdf_outlined,
         title: _isSpanish ? 'PDF no disponible' : 'PDF unavailable',
         subtitle: _isSpanish
@@ -1069,7 +1071,7 @@ class _PresupuestoInvoiceConversionViewState
             : 'Invoice configuration remains available.',
       );
     } else {
-      body = LayoutBuilder(
+      pdfBody = LayoutBuilder(
         builder: (context, constraints) => PdfInlinePreview(
           key: ValueKey(presupuestoId),
           bytes: _pdfBytes!,
@@ -1085,38 +1087,34 @@ class _PresupuestoInvoiceConversionViewState
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             child: Row(
               children: [
-                Icon(Icons.picture_as_pdf_outlined,
-                    size: 18, color: cs.primary),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Text(
-                    '${_isSpanish ? 'Presupuesto' : 'Proposal'} ${_presupuestoNumber(presupuesto)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: typo.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                _PreviewTabToggle(
+                  selectedIndex: _previewPanelTab,
+                  isSpanish: _isSpanish,
+                  onChanged: (i) => setState(() => _previewPanelTab = i),
+                ),
+                const Spacer(),
+                if (_previewPanelTab == 0) ...[
+                  IconButton(
+                    tooltip: _isSpanish ? 'Actualizar PDF' : 'Refresh PDF',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _loadingPdf
+                        ? null
+                        : () => _loadSelectedPdf(presupuestoId, presupuesto),
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
                   ),
-                ),
-                IconButton(
-                  tooltip: _isSpanish ? 'Actualizar PDF' : 'Refresh PDF',
-                  onPressed: _loadingPdf
-                      ? null
-                      : () => _loadSelectedPdf(presupuestoId, presupuesto),
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                ),
-                HexoraButton(
-                  onPressed:
-                      _previewingPdf ? null : _previewSelectedPresupuesto,
-                  variant: HexoraButtonVariant.secondary,
-                  size: HexoraButtonSize.compact,
-                  loading: _previewingPdf,
-                  icon: Icons.open_in_new_rounded,
-                  label: _isSpanish ? 'Abrir' : 'Open',
-                ),
+                  HexoraButton(
+                    onPressed:
+                        _previewingPdf ? null : _previewSelectedPresupuesto,
+                    variant: HexoraButtonVariant.secondary,
+                    size: HexoraButtonSize.compact,
+                    loading: _previewingPdf,
+                    icon: Icons.open_in_new_rounded,
+                    label: _isSpanish ? 'Abrir' : 'Open',
+                  ),
+                ],
               ],
             ),
           ),
@@ -1124,7 +1122,262 @@ class _PresupuestoInvoiceConversionViewState
             height: 1,
             color: cs.outlineVariant.withValues(alpha: 0.35),
           ),
-          Expanded(child: ClipRect(child: body)),
+          Expanded(
+            child: ClipRect(
+              child: _previewPanelTab == 0
+                  ? pdfBody
+                  : _buildInvoiceSummaryPreview(context, cs, typo),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInvoiceSummaryPreview(
+    BuildContext context,
+    ColorScheme cs,
+    AppTypography typo,
+  ) {
+    final presupuesto = _selectedPresupuesto;
+    if (presupuesto == null) return const SizedBox.shrink();
+
+    final clientName = _presupuestoClientName(presupuesto);
+    final presupuestoNumber = _presupuestoNumber(presupuesto);
+    final proposalGross = _presupuestoTotal(presupuesto);
+    final vatRates = _presupuestoVatRates(presupuesto);
+
+    double? valueFor(List<String> keys) {
+      for (final key in keys) {
+        final value = _toDouble(presupuesto[key]);
+        if (value != null) return value;
+      }
+      return null;
+    }
+
+    final proposalBase = valueFor(
+      const ['subtotal', 'taxableBase', 'baseAmount', 'netTotal'],
+    );
+    final proposalVat = valueFor(
+      const ['taxTotal', 'vatTotal', 'ivaTotal', 'totalTax'],
+    );
+
+    String typeLabel;
+    String description;
+    double? invoiceGross;
+    double? invoiceBase;
+    double? invoiceVat;
+
+    switch (_conversionType) {
+      case _PresupuestoConversionType.advance:
+        typeLabel = _isSpanish ? 'Factura de anticipo' : 'Advance invoice';
+        description = _advanceDescriptionController.text.trim();
+        if (_advanceAmountMode == _AdvanceAmountMode.fixedGross) {
+          invoiceGross =
+              _parseDouble(_advanceFixedAmountController.text);
+        } else {
+          final percent = _parseDouble(_advancePercentController.text);
+          if (percent != null && percent > 0 && percent <= 100) {
+            final factor = percent / 100;
+            invoiceGross =
+                proposalGross == null ? null : proposalGross * factor;
+            invoiceBase =
+                proposalBase == null ? null : proposalBase * factor;
+            invoiceVat =
+                proposalVat == null ? null : proposalVat * factor;
+          }
+        }
+        if (description.isEmpty) {
+          description = _isSpanish
+              ? 'Anticipo del presupuesto $presupuestoNumber'
+              : 'Advance from proposal $presupuestoNumber';
+        }
+      case _PresupuestoConversionType.finalInvoice:
+        typeLabel = _isSpanish ? 'Factura final' : 'Final invoice';
+        description = _finalNotesController.text.trim();
+        if (description.isEmpty) {
+          description = _isSpanish
+              ? 'Factura final del presupuesto $presupuestoNumber'
+              : 'Final invoice from proposal $presupuestoNumber';
+        }
+      case _PresupuestoConversionType.fullFinalInvoice:
+        typeLabel = _isSpanish ? 'Factura completa' : 'Complete invoice';
+        invoiceGross = proposalGross;
+        invoiceBase = proposalBase;
+        invoiceVat = proposalVat;
+        description = _isSpanish
+            ? 'Factura completa del presupuesto $presupuestoNumber'
+            : 'Complete invoice from proposal $presupuestoNumber';
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // — Invoice type header
+          Row(
+            children: [
+              Icon(Icons.receipt_long_outlined, size: 18, color: cs.primary),
+              const SizedBox(width: 8),
+              Text(
+                typeLabel,
+                style: typo.bodyLarge.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: cs.onSurface,
+                ),
+              ),
+              const SizedBox(width: 8),
+              _TinyPill(
+                label: _isSpanish ? 'Borrador' : 'Draft',
+                background: cs.secondaryContainer.withValues(alpha: 0.34),
+                foreground: cs.secondary,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // — Client
+          _SummaryField(
+            label: _isSpanish ? 'Cliente' : 'Client',
+            value: clientName,
+            typo: typo,
+            cs: cs,
+          ),
+          const SizedBox(height: 8),
+
+          // — Source proposal
+          _SummaryField(
+            label: _isSpanish ? 'Presupuesto origen' : 'Source proposal',
+            value: presupuestoNumber,
+            typo: typo,
+            cs: cs,
+          ),
+          const SizedBox(height: 8),
+
+          // — Description
+          _SummaryField(
+            label: _isSpanish ? 'Descripción' : 'Description',
+            value: description,
+            typo: typo,
+            cs: cs,
+          ),
+
+          // — VAT rates
+          if (vatRates.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _SummaryField(
+              label: _isSpanish ? 'IVA' : 'VAT',
+              value: vatRates.length == 1
+                  ? _formatVatRateLabel(vatRates.first)
+                  : vatRates.map(_formatVatRateLabel).join(', '),
+              typo: typo,
+              cs: cs,
+            ),
+          ],
+          const SizedBox(height: 14),
+
+          // — Financial summary
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isSpanish ? 'Resumen financiero' : 'Financial summary',
+                  style: typo.bodySmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: cs.onSurfaceVariant,
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Proposal total reference
+                if (proposalGross != null) ...[
+                  _SummaryAmountRow(
+                    label: _isSpanish
+                        ? 'Total presupuesto'
+                        : 'Proposal total',
+                    value: _currencyFormatter.format(proposalGross),
+                    typo: typo,
+                    cs: cs,
+                  ),
+                  const SizedBox(height: 4),
+                ],
+
+                if (invoiceBase != null) ...[
+                  _SummaryAmountRow(
+                    label: _isSpanish ? 'Base imponible' : 'Taxable base',
+                    value: _currencyFormatter.format(invoiceBase),
+                    typo: typo,
+                    cs: cs,
+                  ),
+                  const SizedBox(height: 4),
+                ],
+                if (invoiceVat != null) ...[
+                  _SummaryAmountRow(
+                    label: _isSpanish ? 'IVA' : 'VAT',
+                    value: _currencyFormatter.format(invoiceVat),
+                    typo: typo,
+                    cs: cs,
+                  ),
+                  const SizedBox(height: 4),
+                ],
+
+                if (invoiceGross != null) ...[
+                  Divider(
+                    height: 12,
+                    color: cs.outlineVariant.withValues(alpha: 0.3),
+                  ),
+                  _SummaryAmountRow(
+                    label: _isSpanish ? 'Total factura' : 'Invoice total',
+                    value: _currencyFormatter.format(invoiceGross),
+                    typo: typo,
+                    cs: cs,
+                    emphasized: true,
+                  ),
+                ] else
+                  Text(
+                    _isSpanish
+                        ? 'El importe se calculará al crear la factura.'
+                        : 'The amount will be calculated when the invoice is created.',
+                    style: typo.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontStyle: FontStyle.italic,
+                      fontSize: 11,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 14),
+          // — Notice
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.info_outline_rounded,
+                  size: 14, color: cs.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  _isSpanish
+                      ? 'Esta es una vista previa del contenido. El PDF definitivo se generará cuando se cree la factura.'
+                      : 'This is a content preview. The final PDF will be generated when the invoice is created.',
+                  style: typo.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -1361,7 +1614,7 @@ class _PresupuestoInvoiceConversionViewState
               const SizedBox(height: 4),
               Divider(
                   color: cs.outlineVariant.withValues(alpha: 0.3), height: 1),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
             ],
 
             // â”€â”€ Conversion section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

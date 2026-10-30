@@ -3,9 +3,15 @@ part of '../../mail_compose_screen.dart';
 enum _DateFilter { all, thisMonth, thisYear }
 
 class _InlineInvoiceFlowPanel extends StatelessWidget {
-  const _InlineInvoiceFlowPanel({required this.state});
+  const _InlineInvoiceFlowPanel({
+    required this.state,
+    this.onComplete,
+    this.onClose,
+  });
 
   final _MailComposeScreenState state;
+  final VoidCallback? onComplete;
+  final VoidCallback? onClose;
 
   @override
   Widget build(BuildContext context) {
@@ -41,47 +47,79 @@ class _InlineInvoiceFlowPanel extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-      child: _InlineInvoiceWizardPanel(state: state),
+      child: _InlineInvoiceWizardPanel(
+        state: state,
+        onComplete: onComplete,
+        onClose: onClose,
+      ),
     );
   }
 }
 
 class _InlineInvoiceWizardPanel extends StatefulWidget {
-  const _InlineInvoiceWizardPanel({required this.state});
+  const _InlineInvoiceWizardPanel({
+    required this.state,
+    this.onComplete,
+    this.onClose,
+  });
 
   final _MailComposeScreenState state;
+  final VoidCallback? onComplete;
+  final VoidCallback? onClose;
 
   @override
   State<_InlineInvoiceWizardPanel> createState() =>
       _InlineInvoiceWizardPanelState();
 }
 
-class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
+class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _invoiceSearchCtrl = TextEditingController();
+  late final TabController _documentTabsController;
   int _step = 0;
   String? _clientId;
   _DateFilter _dateFilter = _DateFilter.all;
+  int _documentTab = 0;
   // Tracks the last recipient-client we synced from the compose form so we can
   // detect a real change even though widget.state is the same mutable object.
   String? _lastSyncedRecipientClientId;
   bool _loadingInvoices = false;
   bool _loadingReceipts = false;
   bool _loadingPresupuestos = false;
+  bool _attachingDocuments = false;
+  String? _attachmentError;
+  bool _historyExpanded = false;
+  bool _historySentOnly = false;
+  int _historyVisibleCount = 4;
+  final Set<String> _comparingInvoiceIds = <String>{};
+  final Set<String> _previewingDocuments = <String>{};
   List<Invoice> _invoices = const [];
   List<Receipt> _receipts = const [];
   List<Map<String, dynamic>> _presupuestos = const [];
   Set<String> _selectedInvoiceIds = <String>{};
   Set<String> _selectedPresupuestoIds = <String>{};
   Set<String> _selectedReceiptIds = <String>{};
+  Set<String> _lastComposeInvoiceIds = <String>{};
+  Set<String> _lastComposePresupuestoIds = <String>{};
+  Set<String> _lastComposeReceiptIds = <String>{};
 
   @override
   void initState() {
     super.initState();
+    _documentTabsController = TabController(length: 3, vsync: this)
+      ..addListener(() {
+        if (!_documentTabsController.indexIsChanging && mounted) {
+          setState(() => _documentTab = _documentTabsController.index);
+        }
+      });
     final currentIds = widget.state._splitValues(
         widget.state._normalizeInvoiceIds(widget.state._invoiceIdsCtrl.text));
     _selectedInvoiceIds = currentIds.toSet();
     _selectedPresupuestoIds = {...widget.state._selectedPresupuestoIds};
     _selectedReceiptIds = {...widget.state._selectedReceiptIds};
+    _lastComposeInvoiceIds = {..._selectedInvoiceIds};
+    _lastComposePresupuestoIds = {..._selectedPresupuestoIds};
+    _lastComposeReceiptIds = {..._selectedReceiptIds};
     // If the compose form is already in "client mode", pre-select that client.
     final recipientId =
         widget.state._useClientMode ? widget.state._recipientClientId : null;
@@ -145,6 +183,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
 
   @override
   void dispose() {
+    _documentTabsController.dispose();
     _invoiceSearchCtrl.dispose();
     super.dispose();
   }
@@ -294,6 +333,21 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
       _selectedPresupuestoIds.isNotEmpty ||
       _selectedReceiptIds.isNotEmpty;
 
+  Set<String> get _composeInvoiceIds => widget.state._attachedInvoiceIds;
+
+  Set<String> get _composePresupuestoIds => widget.state._attachInvoicePdf
+      ? widget.state._selectedPresupuestoIds
+      : <String>{};
+
+  Set<String> get _composeReceiptIds => widget.state._attachInvoicePdf
+      ? widget.state._selectedReceiptIds
+      : <String>{};
+
+  int get _pendingAttachmentCount =>
+      _selectedInvoiceIds.difference(_composeInvoiceIds).length +
+      _selectedPresupuestoIds.difference(_composePresupuestoIds).length +
+      _selectedReceiptIds.difference(_composeReceiptIds).length;
+
   void _syncSelectedDocumentsFromCompose() {
     final currentInvoiceIds = widget.state
         ._splitValues(widget.state._normalizeInvoiceIds(
@@ -302,6 +356,18 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
         .toSet();
     final currentPresupuestoIds = {...widget.state._selectedPresupuestoIds};
     final currentReceiptIds = {...widget.state._selectedReceiptIds};
+    final composeSelectionChanged =
+        !_setEquals(_lastComposeInvoiceIds, currentInvoiceIds) ||
+            !_setEquals(
+              _lastComposePresupuestoIds,
+              currentPresupuestoIds,
+            ) ||
+            !_setEquals(_lastComposeReceiptIds, currentReceiptIds);
+    if (!composeSelectionChanged) return;
+
+    _lastComposeInvoiceIds = {...currentInvoiceIds};
+    _lastComposePresupuestoIds = {...currentPresupuestoIds};
+    _lastComposeReceiptIds = {...currentReceiptIds};
     if (_setEquals(_selectedInvoiceIds, currentInvoiceIds) &&
         _setEquals(_selectedPresupuestoIds, currentPresupuestoIds) &&
         _setEquals(_selectedReceiptIds, currentReceiptIds)) {
@@ -322,17 +388,58 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     return a.containsAll(b);
   }
 
-  void _applySelectionToCompose() {
+  Future<bool> _applySelectionToCompose() async {
     final id = _clientId;
-    if (id == null || id.isEmpty) return;
-    widget.state._applyInvoicePickerResult(
-      _InvoicePickerResult(
-        clientId: id,
-        invoiceIds: _selectedInvoiceIds.toList(),
-        presupuestoIds: _selectedPresupuestoIds.toList(),
-        receiptIds: _selectedReceiptIds.toList(),
-      ),
-    );
+    if (id == null || id.isEmpty) return false;
+    setState(() {
+      _attachingDocuments = true;
+      _attachmentError = null;
+    });
+    try {
+      await WidgetsBinding.instance.endOfFrame;
+      widget.state._applyInvoicePickerResult(
+        _InvoicePickerResult(
+          clientId: id,
+          invoiceIds: _selectedInvoiceIds.toList(),
+          presupuestoIds: _selectedPresupuestoIds.toList(),
+          receiptIds: _selectedReceiptIds.toList(),
+        ),
+      );
+      return true;
+    } catch (_) {
+      if (mounted) {
+        setState(() => _attachmentError = widget.state._isSpanishLocale
+            ? 'No se pudieron adjuntar los documentos.'
+            : 'The documents could not be attached.');
+      }
+      return false;
+    } finally {
+      if (mounted) setState(() => _attachingDocuments = false);
+    }
+  }
+
+  void _removeInvoice(String id) {
+    final wasAttached = _composeInvoiceIds.contains(id);
+    setState(() => _selectedInvoiceIds.remove(id));
+    if (!wasAttached) return;
+    widget.state.update(() {
+      final remaining = widget.state._composerInvoiceIds..remove(id);
+      widget.state._invoiceIdsCtrl.text = remaining.join(',');
+    });
+  }
+
+  void _removeReceipt(String id) {
+    final wasAttached = _composeReceiptIds.contains(id);
+    setState(() => _selectedReceiptIds.remove(id));
+    if (!wasAttached) return;
+    widget.state.update(() => widget.state._selectedReceiptIds.remove(id));
+  }
+
+  void _removePresupuesto(String id) {
+    final wasAttached = _composePresupuestoIds.contains(id);
+    setState(() => _selectedPresupuestoIds.remove(id));
+    if (!wasAttached) return;
+    widget.state.update(() => widget.state._selectedPresupuestoIds.remove(id));
   }
 
   String _selectionAppliedMessage(AppLocalizations l) {
@@ -412,6 +519,104 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     }
   }
 
+  Future<void> _runDocumentPreview(
+    String documentKey,
+    Future<void> Function() preview,
+  ) async {
+    if (_previewingDocuments.contains(documentKey)) return;
+    setState(() => _previewingDocuments.add(documentKey));
+    try {
+      await preview();
+    } finally {
+      if (mounted) {
+        setState(() => _previewingDocuments.remove(documentKey));
+      }
+    }
+  }
+
+  DateTime _invoiceHistoryDate(Invoice invoice) =>
+      invoice.issueDate ??
+      invoice.issuedAt ??
+      invoice.registeredAt ??
+      DateTime.fromMillisecondsSinceEpoch(0);
+
+  List<Invoice> _invoiceHistory({required bool applyLimit}) {
+    final history = _invoices.where((invoice) {
+      final status = (invoice.status ?? '').trim().toLowerCase();
+      if (!status.contains('issued')) return false;
+      if (_selectedInvoiceIds.contains(invoice.id)) return false;
+      if (_historySentOnly) {
+        final delivery = normalizedDeliveryStatus(invoice.deliveryStatus);
+        if (delivery != 'sent' && delivery != 'delivered') return false;
+      }
+      return true;
+    }).toList(growable: false)
+      ..sort(
+        (a, b) => _invoiceHistoryDate(b).compareTo(_invoiceHistoryDate(a)),
+      );
+    return applyLimit
+        ? history.take(_historyVisibleCount).toList(growable: false)
+        : history;
+  }
+
+  Future<void> _showInvoiceComparison(
+    Invoice historical,
+    List<Invoice> selectedInvoices,
+  ) async {
+    if (selectedInvoices.isEmpty ||
+        _comparingInvoiceIds.contains(historical.id)) {
+      return;
+    }
+    setState(() => _comparingInvoiceIds.add(historical.id));
+    try {
+      final ids = <String>{
+        historical.id,
+        ...selectedInvoices.map((invoice) => invoice.id),
+      };
+      final details = await Future.wait(
+        ids.map(widget.state._invoicesApi.getById),
+      );
+      if (!mounted) return;
+      final groupId = widget.state._currentGroupId();
+      final clientId = _clientId;
+      final valid = details.every(
+        (invoice) => invoice.groupId == groupId && invoice.clientId == clientId,
+      );
+      if (!valid) {
+        throw Exception(widget.state._isSpanishLocale
+            ? 'No se puede comparar una factura de otro cliente o grupo.'
+            : 'An invoice from another client or group cannot be compared.');
+      }
+      final byId = <String, Invoice>{
+        for (final invoice in details) invoice.id: invoice,
+      };
+      setState(() => _comparingInvoiceIds.remove(historical.id));
+      await showDialog<void>(
+        context: context,
+        builder: (_) => _InvoiceComparisonDialog(
+          currentInvoices: selectedInvoices
+              .map((invoice) => byId[invoice.id] ?? invoice)
+              .toList(growable: false),
+          historicalInvoice: byId[historical.id] ?? historical,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      final message = error.toString().replaceFirst('Exception: ', '').trim();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message.isEmpty
+              ? (widget.state._isSpanishLocale
+                  ? 'No se pudo cargar la comparación.'
+                  : 'The comparison could not be loaded.')
+              : message),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _comparingInvoiceIds.remove(historical.id));
+    }
+  }
+
   // ── UI helpers ─────────────────────────────────────────────────────────────
 
   Widget _statusPill(String label, ColorScheme cs) {
@@ -444,42 +649,61 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     required VoidCallback onTap,
     DateTime? date,
     bool? isSent,
-    VoidCallback? onPreview,
+    String? previewKey,
+    Future<void> Function()? onPreview,
   }) {
+    final previewing =
+        previewKey != null && _previewingDocuments.contains(previewKey);
+    final isDesktop = MediaQuery.sizeOf(context).width >= 900;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 5),
+      padding: const EdgeInsets.only(bottom: 4),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 140),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          constraints: BoxConstraints(minHeight: isDesktop ? 50 : 56),
+          padding: EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: isDesktop ? 4 : 6,
+          ),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
             color: selected
                 ? cs.primaryContainer.withValues(alpha: 0.45)
                 : cs.surfaceContainerLow,
             border: Border.all(
               color: selected
                   ? cs.primary.withValues(alpha: 0.8)
-                  : cs.outlineVariant.withValues(alpha: 0.4),
+                  : cs.outlineVariant.withValues(alpha: 0.28),
               width: selected ? 1.5 : 1.0,
             ),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 150),
-                child: selected
-                    ? Icon(Icons.check_circle_rounded,
-                        size: 18, color: cs.primary, key: const ValueKey(true))
-                    : Icon(Icons.radio_button_unchecked,
-                        size: 18,
-                        color: cs.outlineVariant,
-                        key: const ValueKey(false)),
+              SizedBox.square(
+                dimension: 30,
+                child: Center(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 150),
+                    child: selected
+                        ? Icon(
+                            Icons.check_circle_rounded,
+                            size: 18,
+                            color: cs.primary,
+                            key: const ValueKey(true),
+                          )
+                        : Icon(
+                            Icons.radio_button_unchecked,
+                            size: 18,
+                            color: cs.outlineVariant,
+                            key: const ValueKey(false),
+                          ),
+                  ),
+                ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -517,27 +741,39 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
               // Right-side icons: sent status + preview, vertically centred
               if (isSent != null) ...[
                 const SizedBox(width: 4),
-                Tooltip(
-                  message: isSent ? 'Enviado' : 'Sin envío previo',
-                  child: Icon(
-                    isSent
-                        ? Icons.mark_email_read_outlined
-                        : Icons.mail_outline_rounded,
-                    size: 14,
-                    color: isSent
-                        ? cs.tertiary
-                        : cs.onSurfaceVariant.withValues(alpha: 0.4),
+                SizedBox.square(
+                  dimension: 30,
+                  child: Tooltip(
+                    message: isSent ? 'Enviado' : 'Sin envío previo',
+                    child: Center(
+                      child: Icon(
+                        isSent
+                            ? Icons.mark_email_read_outlined
+                            : Icons.mail_outline_rounded,
+                        size: 14,
+                        color: isSent
+                            ? cs.tertiary
+                            : cs.onSurfaceVariant.withValues(alpha: 0.4),
+                      ),
+                    ),
                   ),
                 ),
               ],
               if (onPreview != null)
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints:
-                      const BoxConstraints(minWidth: 28, minHeight: 28),
-                  icon: Icon(Icons.visibility_outlined,
-                      size: 16, color: cs.onSurfaceVariant),
-                  onPressed: onPreview,
+                HexoraButton.iconOnly(
+                  key: previewKey == null
+                      ? null
+                      : ValueKey('mail-preview-$previewKey'),
+                  icon: Icons.visibility_outlined,
+                  tooltip: widget.state._isSpanishLocale
+                      ? 'Vista previa'
+                      : 'Preview',
+                  variant: HexoraButtonVariant.ghost,
+                  size: HexoraButtonSize.compact,
+                  loading: previewing,
+                  onPressed: previewing || previewKey == null
+                      ? null
+                      : () => _runDocumentPreview(previewKey, onPreview),
                 ),
             ],
           ),
@@ -554,125 +790,102 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     required List<Map<String, dynamic>> presupuestos,
     required ColorScheme cs,
   }) {
-    final invoiceColor = cs.primary;
-    final receiptColor = cs.tertiary;
-    final budgetColor = cs.secondary;
-    final pdfAttachments = widget.state._manualPdfAttachments;
-    final pdfCount = pdfAttachments.length;
-    final pdfSummary = widget.state._manualPdfAttachmentNamesSummary();
-    final chips = <Widget>[
-      if (invoices.isNotEmpty)
-        _summaryChip(
-          icon: Icons.receipt_long_outlined,
-          label: '${invoices.length} factura${invoices.length == 1 ? '' : 's'}',
-          color: invoiceColor,
-        ),
-      if (receipts.isNotEmpty)
-        _summaryChip(
-          icon: Icons.description_outlined,
-          label: '${receipts.length} recibo${receipts.length == 1 ? '' : 's'}',
-          color: receiptColor,
-        ),
-      if (presupuestos.isNotEmpty)
-        _summaryChip(
-          icon: Icons.calculate_outlined,
-          label:
-              '${presupuestos.length} presupuesto${presupuestos.length == 1 ? '' : 's'}',
-          color: budgetColor,
-        ),
-      if (pdfAttachments.isNotEmpty)
-        _summaryChip(
-          icon: Icons.picture_as_pdf_outlined,
-          label: '$pdfCount PDF${pdfCount == 1 ? '' : 's'} del correo',
-          color: cs.error,
-          tooltip: pdfSummary,
-        ),
-    ];
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: cs.primaryContainer.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.primary.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.attach_file_rounded, size: 14, color: cs.primary),
-              const SizedBox(width: 4),
-              Text(
-                'Documentos adjuntos al correo',
+    final isSpanish = widget.state._isSpanishLocale;
+    final attachedCount = _composeInvoiceIds.length +
+        _composeReceiptIds.length +
+        _composePresupuestoIds.length +
+        widget.state._manualPdfAttachmentCount;
+    final pendingCount = _pendingAttachmentCount;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.attach_file_rounded, size: 15, color: cs.primary),
+            const SizedBox(width: 5),
+            Expanded(
+              child: Text(
+                isSpanish ? 'Documentos adjuntos' : 'Attached documents',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
+                  color: cs.onSurface,
+                ),
+              ),
+            ),
+            Text(
+              '$attachedCount ${isSpanish ? 'adjunto${attachedCount == 1 ? '' : 's'}' : 'attached'}',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+            if (pendingCount > 0) ...[
+              const SizedBox(width: 8),
+              Text(
+                '$pendingCount ${isSpanish ? 'seleccionada${pendingCount == 1 ? '' : 's'}' : 'selected'}',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
                   color: cs.primary,
                 ),
               ),
             ],
-          ),
-          if (chips.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Wrap(spacing: 6, runSpacing: 6, children: chips),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _summaryChip({
-    required IconData icon,
-    required String label,
-    required Color color,
-    String? tooltip,
-  }) {
-    final chip = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          isSpanish
+              ? 'Adjuntar prepara los documentos en el editor; el correo no se envía hasta pulsar “Enviar correo”.'
+              : 'Attaching prepares the documents in the editor; the email is not sent until “Send email” is selected.',
+          style: TextStyle(
+            fontSize: 10,
+            color: cs.onSurfaceVariant,
           ),
-        ],
-      ),
+        ),
+      ],
     );
-    final message = tooltip?.trim();
-    return message == null || message.isEmpty
-        ? chip
-        : Tooltip(message: message, child: chip);
   }
 
   Widget _buildPreviewItemCard({
     required IconData typeIcon,
+    required String documentId,
+    required String documentType,
     required String number,
-    required String statusLabel,
+    required String filename,
+    required String clientName,
+    required bool attached,
     required ColorScheme cs,
     num? amount,
-    VoidCallback? onPreview,
-    bool? isSent,
+    String? previewKey,
+    Future<void> Function()? onPreview,
+    required VoidCallback onRemove,
   }) {
+    final previewing =
+        previewKey != null && _previewingDocuments.contains(previewKey);
+    final isSpanish = widget.state._isSpanishLocale;
+    final attaching = _attachingDocuments && !attached;
+    final hasError = _attachmentError != null && !attached;
+    final stateLabel = hasError
+        ? 'Error'
+        : attaching
+            ? (isSpanish ? 'Adjuntando' : 'Attaching')
+            : attached
+                ? (isSpanish ? 'Adjunto' : 'Attached')
+                : (isSpanish ? 'Seleccionada' : 'Selected');
+    final stateColor = hasError
+        ? cs.error
+        : attached
+            ? const Color(0xFF2E7D32)
+            : cs.primary;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        height: 54,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
           color: cs.surfaceContainerLowest,
           border: Border.all(
             color: cs.outlineVariant.withValues(alpha: 0.55),
@@ -684,66 +897,111 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
             const SizedBox(width: 8),
             Expanded(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          number,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: cs.onSurface,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _statusPill(statusLabel, cs),
-                      if (amount != null) ...[
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            _fmtAmount(amount),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: cs.primary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
+                  Text(
+                    filename,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurface,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    clientName,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            if (isSent != null) ...[
-              const SizedBox(width: 4),
-              Tooltip(
-                message: isSent ? 'Enviado por email' : 'Sin envío previo',
-                child: Icon(
-                  isSent
-                      ? Icons.mark_email_read_outlined
-                      : Icons.mail_outline_rounded,
-                  size: 16,
-                  color: isSent ? const Color(0xFF2E7D32) : cs.onSurfaceVariant,
+            if (amount != null) ...[
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 78,
+                child: Text(
+                  _fmtAmount(amount),
+                  maxLines: 1,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: cs.onSurface,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
             ],
-            if (onPreview != null)
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                icon: Icon(Icons.visibility_outlined,
-                    size: 16, color: cs.onSurfaceVariant),
-                onPressed: onPreview,
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: stateColor.withValues(alpha: .1),
+                borderRadius: BorderRadius.circular(12),
               ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (attaching)
+                    SizedBox.square(
+                      dimension: 11,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.7,
+                        color: stateColor,
+                      ),
+                    )
+                  else
+                    Icon(
+                      hasError
+                          ? Icons.error_outline_rounded
+                          : attached
+                              ? Icons.check_circle_outline_rounded
+                              : Icons.schedule_rounded,
+                      size: 12,
+                      color: stateColor,
+                    ),
+                  const SizedBox(width: 4),
+                  Text(
+                    stateLabel,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: stateColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (onPreview != null)
+              HexoraButton.iconOnly(
+                key: previewKey == null
+                    ? null
+                    : ValueKey('mail-review-preview-$previewKey'),
+                onPressed: previewing || previewKey == null
+                    ? null
+                    : () => _runDocumentPreview(previewKey, onPreview),
+                icon: Icons.visibility_outlined,
+                tooltip: isSpanish ? 'Vista previa' : 'Preview',
+                variant: HexoraButtonVariant.ghost,
+                size: HexoraButtonSize.compact,
+                loading: previewing,
+              ),
+            HexoraButton.iconOnly(
+              key: ValueKey('mail-review-remove-$documentType:$documentId'),
+              onPressed: _attachingDocuments ? null : onRemove,
+              icon: Icons.close_rounded,
+              tooltip: isSpanish ? 'Quitar adjunto' : 'Remove attachment',
+              variant: HexoraButtonVariant.ghost,
+              size: HexoraButtonSize.compact,
+            ),
           ],
         ),
       ),
@@ -809,6 +1067,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+    final compactLayout = MediaQuery.sizeOf(context).width < 650;
     final invoicesLabel = isSpanish ? 'Facturas' : 'Invoices';
     final q = _invoiceSearchCtrl.text.trim().toLowerCase();
     final filteredInvoices = _invoices.where((invoice) {
@@ -853,89 +1112,77 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
     Widget stepHeader() {
       final steps = [
         isSpanish ? 'Cliente' : 'Client',
-        invoicesLabel,
+        isSpanish ? 'Documentos' : 'Documents',
         isSpanish ? 'Revisar' : 'Review',
       ];
-      // Build interleaved list: step — connector — step — connector — step
-      final items = <Widget>[];
-      for (var i = 0; i < steps.length; i++) {
-        final active = _step == i;
-        final complete = i < _step;
-        final canTap = i <= _step || i == _step + 1;
-        items.add(
-          GestureDetector(
-            onTap: canTap ? () => _tryGoToStep(i, l) : null,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: (active || complete)
-                        ? cs.primary
-                        : cs.surfaceContainerHighest,
-                    border: Border.all(
-                      color: (active || complete)
-                          ? cs.primary
-                          : cs.outlineVariant.withValues(alpha: 0.5),
-                      width: active ? 2 : 1,
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(steps.length * 2 - 1, (position) {
+          if (position.isOdd) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 10,
+                color: cs.outline,
+              ),
+            );
+          }
+          final index = position ~/ 2;
+          final active = index == _step;
+          final complete = index < _step;
+          final canTap = index <= _step || index == _step + 1;
+          return InkWell(
+            onTap: canTap ? () => _tryGoToStep(index, l) : null,
+            borderRadius: BorderRadius.circular(6),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    steps[index],
+                    style: t.bodySmall.copyWith(
+                      fontSize: 10,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                      color: active ? cs.primary : cs.onSurfaceVariant,
                     ),
                   ),
-                  child: Center(
-                    child: complete
-                        ? Icon(Icons.check_rounded,
-                            size: 14, color: cs.onPrimary)
-                        : Text(
-                            '${i + 1}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color:
-                                  active ? cs.onPrimary : cs.onSurfaceVariant,
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  steps[i],
-                  style: t.bodySmall.copyWith(
-                    fontSize: 10,
-                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                    color: active
-                        ? cs.primary
-                        : complete
-                            ? cs.onSurface
-                            : cs.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-        if (i < steps.length - 1) {
-          final lineComplete = i < _step;
-          items.add(
-            Expanded(
-              child: Container(
-                height: 1.5,
-                margin: const EdgeInsets.only(bottom: 18),
-                color: lineComplete
-                    ? cs.primary.withValues(alpha: 0.6)
-                    : cs.outlineVariant.withValues(alpha: 0.35),
+                  if (complete) ...[
+                    const SizedBox(width: 2),
+                    Icon(Icons.check_rounded, size: 12, color: cs.primary),
+                  ] else if (active)
+                    Text(
+                      ' (${index + 1}/3)',
+                      style: t.bodySmall.copyWith(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: cs.primary,
+                      ),
+                    ),
+                ],
               ),
             ),
           );
-        }
-      }
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: items,
+        }),
       );
     }
+
+    Widget documentTabs() => HexoraSectionTabs(
+          controller: _documentTabsController,
+          compact: true,
+          tabs: [
+            Tab(text: '$invoicesLabel (${filteredInvoices.length})'),
+            Tab(
+              text:
+                  '${isSpanish ? 'Recibos' : 'Receipts'} (${filteredReceipts.length})',
+            ),
+            Tab(
+              text:
+                  '${isSpanish ? 'Presupuestos' : 'Budgets'} (${filteredPresupuestos.length})',
+            ),
+          ],
+        );
 
     Widget stepBody() {
       if (_step == 0) {
@@ -977,12 +1224,24 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
           onClientChanged: (value) {
             final id = value;
             if (id == null || id.isEmpty) return;
-            setState(() => _clientId = id);
+            setState(() {
+              _clientId = id;
+              _historyExpanded = false;
+              _historySentOnly = false;
+              _historyVisibleCount = 4;
+            });
             _loadInvoices(id);
             _loadReceipts(id);
             _loadPresupuestos(id);
           },
           useDefaultPropertyKind: false,
+          compact: true,
+          unsentDocumentCounts: widget.state._clientUnsentDocumentCounts,
+          unsentDocumentCountsLoading:
+              widget.state._clientUnsentDocumentCountsLoading,
+          unsentDocumentCountsError:
+              widget.state._clientUnsentDocumentCountsError,
+          searchDesktopHeight: 36,
           maxListHeight: 320,
         );
       }
@@ -993,98 +1252,17 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
         final selectedCount = _selectedInvoiceIds.length +
             _selectedPresupuestoIds.length +
             _selectedReceiptIds.length;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Search ───────────────────────────────────────────────────────
-            TextField(
-              controller: _invoiceSearchCtrl,
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                isDense: true,
-                prefixIcon: const Icon(Icons.search, size: 18),
-                hintText: isSpanish ? 'Buscar por número' : 'Search by number',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.5)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.5)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: cs.primary, width: 1.3),
-                ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                filled: true,
-                fillColor: cs.surfaceContainerLow,
-              ),
-            ),
-            const SizedBox(height: 8),
-            // ── Client + date filter chips on same row ────────────────────────
-            Row(
+        Widget selectionSummary() => Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                if (_selectedClient != null) ...[
-                  Icon(Icons.person_outline_rounded,
-                      size: 13, color: cs.primary),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      _selectedClient!.name,
-                      style: t.bodySmall.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: cs.primary,
-                        fontSize: 11,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Container(
-                    width: 1,
-                    height: 14,
-                    margin: const EdgeInsets.symmetric(horizontal: 8),
-                    color: cs.outlineVariant.withValues(alpha: 0.5),
-                  ),
-                ],
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        for (final f in _DateFilter.values)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child: ChoiceChip(
-                              label: Text(switch (f) {
-                                _DateFilter.all => 'Todos',
-                                _DateFilter.thisMonth => 'Este mes',
-                                _DateFilter.thisYear => 'Este año',
-                              }),
-                              selected: _dateFilter == f,
-                              onSelected: (_) =>
-                                  setState(() => _dateFilter = f),
-                              visualDensity: VisualDensity.compact,
-                              labelStyle: const TextStyle(fontSize: 11),
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 4),
-                              showCheckmark: false,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
+                Icon(
+                  selectedCount > 0
+                      ? Icons.check_circle_outline_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  size: 14,
+                  color: selectedCount > 0 ? cs.primary : cs.onSurfaceVariant,
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // ── Count badge ──────────────────────────────────────────────────
-            Row(
-              children: [
+                const SizedBox(width: 4),
                 Text(
                   '${isSpanish ? 'Seleccionadas' : 'Selected'}: $selectedCount',
                   style: t.bodySmall.copyWith(
@@ -1093,25 +1271,118 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                   ),
                 ),
                 if (selectedCount > 0) ...[
-                  const SizedBox(width: 8),
-                  InkWell(
-                    onTap: () => setState(() {
+                  const SizedBox(width: 2),
+                  HexoraButton(
+                    onPressed: () => setState(() {
                       _selectedInvoiceIds.clear();
                       _selectedReceiptIds.clear();
                       _selectedPresupuestoIds.clear();
                     }),
-                    child: Text(
-                      'Limpiar',
-                      style: t.bodySmall.copyWith(
-                        color: cs.error,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
+                    label: isSpanish ? 'Limpiar' : 'Clear',
+                    variant: HexoraButtonVariant.ghost,
+                    size: HexoraButtonSize.compact,
                   ),
                 ],
               ],
+            );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Search ───────────────────────────────────────────────────────
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _invoiceSearchCtrl,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      prefixIcon: const Icon(Icons.search, size: 18),
+                      suffixIcon: PopupMenuButton<_DateFilter>(
+                        tooltip:
+                            isSpanish ? 'Filtrar por fecha' : 'Filter by date',
+                        initialValue: _dateFilter,
+                        onSelected: (value) =>
+                            setState(() => _dateFilter = value),
+                        itemBuilder: (context) => [
+                          for (final filter in _DateFilter.values)
+                            PopupMenuItem<_DateFilter>(
+                              value: filter,
+                              child: Row(
+                                children: [
+                                  if (_dateFilter == filter)
+                                    Icon(Icons.check_rounded,
+                                        size: 16, color: cs.primary)
+                                  else
+                                    const SizedBox(width: 16),
+                                  const SizedBox(width: 8),
+                                  Text(switch (filter) {
+                                    _DateFilter.all =>
+                                      isSpanish ? 'Todos' : 'All dates',
+                                    _DateFilter.thisMonth =>
+                                      isSpanish ? 'Este mes' : 'This month',
+                                    _DateFilter.thisYear =>
+                                      isSpanish ? 'Este año' : 'This year',
+                                  }),
+                                ],
+                              ),
+                            ),
+                        ],
+                        icon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.calendar_today_outlined, size: 16),
+                            const SizedBox(width: 5),
+                            Text(
+                              switch (_dateFilter) {
+                                _DateFilter.all => isSpanish ? 'Todos' : 'All',
+                                _DateFilter.thisMonth =>
+                                  isSpanish ? 'Este mes' : 'This month',
+                                _DateFilter.thisYear =>
+                                  isSpanish ? 'Este año' : 'This year',
+                              },
+                              style: t.bodySmall.copyWith(fontSize: 11),
+                            ),
+                            const Icon(Icons.arrow_drop_down_rounded, size: 18),
+                          ],
+                        ),
+                      ),
+                      suffixIconConstraints:
+                          const BoxConstraints(minWidth: 118),
+                      hintText:
+                          isSpanish ? 'Buscar por número' : 'Search by number',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                            color: cs.outlineVariant.withValues(alpha: 0.5)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                            color: cs.outlineVariant.withValues(alpha: 0.5)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: cs.primary, width: 1.3),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      filled: true,
+                      fillColor: cs.surfaceContainerLow,
+                    ),
+                  ),
+                ),
+                if (!compactLayout) ...[
+                  const SizedBox(width: 8),
+                  selectionSummary(),
+                ],
+              ],
             ),
-            const SizedBox(height: 8),
+            if (compactLayout) ...[
+              const SizedBox(height: 4),
+              selectionSummary(),
+            ],
+            const SizedBox(height: 4),
             // ── Document columns ─────────────────────────────────────────────
             Expanded(
               child: isBusy
@@ -1130,172 +1401,176 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Left column: invoices + presupuestos
-                            Expanded(
-                              child: ListView(
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 6),
-                                    child: Text(
-                                      invoicesLabel,
-                                      style: t.bodySmall.copyWith(
-                                        color: cs.onSurface,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
+                            if (_documentTab != 1)
+                              Expanded(
+                                child: ListView(
+                                  padding: const EdgeInsets.only(
+                                    top: 2,
+                                    bottom: 12,
                                   ),
-                                  ...filteredInvoices.map((invoice) {
-                                    final selected = _selectedInvoiceIds
-                                        .contains(invoice.id);
-                                    return _buildItemCard(
-                                      number:
-                                          invoice.invoiceNumber.trim().isEmpty
-                                              ? invoice.id
-                                              : invoice.invoiceNumber,
-                                      statusLabel: _localizedStatusLabel(
-                                          l, invoice.status),
-                                      selected: selected,
-                                      cs: cs,
-                                      date: invoice.issueDate ??
-                                          invoice.registeredAt,
-                                      isSent: invoice.sentAt != null,
-                                      onTap: () => setState(() => selected
-                                          ? _selectedInvoiceIds
-                                              .remove(invoice.id)
-                                          : _selectedInvoiceIds
-                                              .add(invoice.id)),
-                                      onPreview: () =>
-                                          _openInvoicePdfPreview(invoice),
-                                    );
-                                  }),
-                                  if (filteredStructuredPresupuestos
-                                      .isNotEmpty) ...[
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                          top: 6, bottom: 6),
-                                      child: Text(
-                                        l.budgetsMenuSection,
-                                        style: t.bodySmall.copyWith(
-                                          color: cs.onSurface,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    ...filteredStructuredPresupuestos
-                                        .map((item) {
-                                      final id = _presupuestoId(item);
-                                      final number = _presupuestoNumber(item);
-                                      final selected =
-                                          _selectedPresupuestoIds.contains(id);
+                                  children: [
+                                    ...(_documentTab == 0
+                                            ? filteredInvoices
+                                            : const <Invoice>[])
+                                        .map((invoice) {
+                                      final selected = _selectedInvoiceIds
+                                          .contains(invoice.id);
                                       return _buildItemCard(
-                                        number: number.isEmpty ? id : number,
-                                        statusLabel: _presupuestoStatus(item),
-                                        selected: selected,
-                                        cs: cs,
-                                        date: _presupuestoDate(item),
-                                        isSent: _presupuestoIsSent(item),
-                                        onTap: () => setState(() => selected
-                                            ? _selectedPresupuestoIds.remove(id)
-                                            : _selectedPresupuestoIds.add(id)),
-                                        onPreview: id.isEmpty
-                                            ? null
-                                            : () => widget.state
-                                                ._openPresupuestoPdfPreviewById(
-                                                    id),
-                                      );
-                                    }),
-                                  ],
-                                  if (filteredWordPresupuestos.isNotEmpty) ...[
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                          top: 6, bottom: 6),
-                                      child: Text(
-                                        widget.state
-                                            ._wordPresupuestoSectionLabel(l),
-                                        style: t.bodySmall.copyWith(
-                                          color: cs.onSurface,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    ...filteredWordPresupuestos.map((item) {
-                                      final id = _presupuestoId(item);
-                                      final number = _presupuestoNumber(item);
-                                      final selected =
-                                          _selectedPresupuestoIds.contains(id);
-                                      return _buildItemCard(
-                                        number: number.isEmpty
-                                            ? presupuestoDocumentTitle(item)
-                                            : number,
+                                        number:
+                                            invoice.invoiceNumber.trim().isEmpty
+                                                ? invoice.id
+                                                : invoice.invoiceNumber,
                                         statusLabel: _localizedStatusLabel(
-                                          l,
-                                          _presupuestoStatus(item),
-                                        ),
+                                            l, invoice.status),
                                         selected: selected,
                                         cs: cs,
-                                        date: _presupuestoDate(item),
-                                        isSent: _presupuestoIsSent(item),
+                                        date: invoice.issueDate ??
+                                            invoice.registeredAt,
+                                        isSent: invoice.sentAt != null,
                                         onTap: () => setState(() => selected
-                                            ? _selectedPresupuestoIds.remove(id)
-                                            : _selectedPresupuestoIds.add(id)),
-                                        onPreview: id.isEmpty
-                                            ? null
-                                            : () => widget.state
-                                                ._openPresupuestoPdfPreviewById(
-                                                    id),
+                                            ? _selectedInvoiceIds
+                                                .remove(invoice.id)
+                                            : _selectedInvoiceIds
+                                                .add(invoice.id)),
+                                        previewKey: 'invoice:${invoice.id}',
+                                        onPreview: () =>
+                                            _openInvoicePdfPreview(invoice),
+                                      );
+                                    }),
+                                    if (_documentTab == 2 &&
+                                        filteredStructuredPresupuestos
+                                            .isNotEmpty) ...[
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                            top: 6, bottom: 6),
+                                        child: Text(
+                                          l.budgetsMenuSection,
+                                          style: t.bodySmall.copyWith(
+                                            color: cs.onSurface,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                      ...filteredStructuredPresupuestos
+                                          .map((item) {
+                                        final id = _presupuestoId(item);
+                                        final number = _presupuestoNumber(item);
+                                        final selected = _selectedPresupuestoIds
+                                            .contains(id);
+                                        return _buildItemCard(
+                                          number: number.isEmpty ? id : number,
+                                          statusLabel: _presupuestoStatus(item),
+                                          selected: selected,
+                                          cs: cs,
+                                          date: _presupuestoDate(item),
+                                          isSent: _presupuestoIsSent(item),
+                                          onTap: () => setState(() => selected
+                                              ? _selectedPresupuestoIds
+                                                  .remove(id)
+                                              : _selectedPresupuestoIds
+                                                  .add(id)),
+                                          previewKey: 'budget:$id',
+                                          onPreview: id.isEmpty
+                                              ? null
+                                              : () => widget.state
+                                                  ._openPresupuestoPdfPreviewById(
+                                                      id),
+                                        );
+                                      }),
+                                    ],
+                                    if (_documentTab == 2 &&
+                                        filteredWordPresupuestos
+                                            .isNotEmpty) ...[
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                            top: 6, bottom: 6),
+                                        child: Text(
+                                          widget.state
+                                              ._wordPresupuestoSectionLabel(l),
+                                          style: t.bodySmall.copyWith(
+                                            color: cs.onSurface,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                      ...filteredWordPresupuestos.map((item) {
+                                        final id = _presupuestoId(item);
+                                        final number = _presupuestoNumber(item);
+                                        final selected = _selectedPresupuestoIds
+                                            .contains(id);
+                                        return _buildItemCard(
+                                          number: number.isEmpty
+                                              ? presupuestoDocumentTitle(item)
+                                              : number,
+                                          statusLabel: _localizedStatusLabel(
+                                            l,
+                                            _presupuestoStatus(item),
+                                          ),
+                                          selected: selected,
+                                          cs: cs,
+                                          date: _presupuestoDate(item),
+                                          isSent: _presupuestoIsSent(item),
+                                          onTap: () => setState(() => selected
+                                              ? _selectedPresupuestoIds
+                                                  .remove(id)
+                                              : _selectedPresupuestoIds
+                                                  .add(id)),
+                                          previewKey: 'budget:$id',
+                                          onPreview: id.isEmpty
+                                              ? null
+                                              : () => widget.state
+                                                  ._openPresupuestoPdfPreviewById(
+                                                      id),
+                                        );
+                                      }),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            if (_documentTab == 1) const SizedBox(width: 8),
+                            // Right column: receipts
+                            if (_documentTab == 1)
+                              Expanded(
+                                child: ListView(
+                                  padding: const EdgeInsets.only(
+                                    top: 2,
+                                    bottom: 12,
+                                  ),
+                                  children: [
+                                    ...filteredReceipts.map((receipt) {
+                                      final selected = _selectedReceiptIds
+                                          .contains(receipt.id);
+                                      final number = (receipt.receiptNumber
+                                                  ?.trim()
+                                                  .isNotEmpty ==
+                                              true)
+                                          ? receipt.receiptNumber!.trim()
+                                          : receipt.id;
+                                      return _buildItemCard(
+                                        number: number,
+                                        statusLabel: _localizedStatusLabel(
+                                            l, receipt.status),
+                                        selected: selected,
+                                        cs: cs,
+                                        date: receipt.issueDate ??
+                                            receipt.registeredAt,
+                                        isSent: receipt.deliveryStatus
+                                                    .toLowerCase() ==
+                                                'sent' ||
+                                            receipt.sentAt != null,
+                                        onTap: () => setState(() => selected
+                                            ? _selectedReceiptIds
+                                                .remove(receipt.id)
+                                            : _selectedReceiptIds
+                                                .add(receipt.id)),
+                                        previewKey: 'receipt:${receipt.id}',
+                                        onPreview: () =>
+                                            _openReceiptPdfPreview(receipt),
                                       );
                                     }),
                                   ],
-                                ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            // Right column: receipts
-                            Expanded(
-                              child: ListView(
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 6),
-                                    child: Text(
-                                      l.receiptsTitle,
-                                      style: t.bodySmall.copyWith(
-                                        color: cs.onSurface,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                  ...filteredReceipts.map((receipt) {
-                                    final selected = _selectedReceiptIds
-                                        .contains(receipt.id);
-                                    final number = (receipt.receiptNumber
-                                                ?.trim()
-                                                .isNotEmpty ==
-                                            true)
-                                        ? receipt.receiptNumber!.trim()
-                                        : receipt.id;
-                                    return _buildItemCard(
-                                      number: number,
-                                      statusLabel: _localizedStatusLabel(
-                                          l, receipt.status),
-                                      selected: selected,
-                                      cs: cs,
-                                      date: receipt.issueDate ??
-                                          receipt.registeredAt,
-                                      isSent: receipt.deliveryStatus
-                                                  .toLowerCase() ==
-                                              'sent' ||
-                                          receipt.sentAt != null,
-                                      onTap: () => setState(() => selected
-                                          ? _selectedReceiptIds
-                                              .remove(receipt.id)
-                                          : _selectedReceiptIds
-                                              .add(receipt.id)),
-                                      onPreview: () =>
-                                          _openReceiptPdfPreview(receipt),
-                                    );
-                                  }),
-                                ],
-                              ),
-                            ),
                           ],
                         ),
             ),
@@ -1319,9 +1594,13 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
       final selectedReceipts = _receipts
           .where((r) => _selectedReceiptIds.contains(r.id))
           .toList(growable: false);
+      final manualAttachments = widget.state._manualPdfAttachments;
       final selectedCount = selectedInvoices.length +
           selectedPresupuestos.length +
-          selectedReceipts.length;
+          selectedReceipts.length +
+          manualAttachments.length;
+      final allHistoryInvoices = _invoiceHistory(applyLimit: false);
+      final visibleHistoryInvoices = _invoiceHistory(applyLimit: true);
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1360,21 +1639,27 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                     ),
                   )
                 : ListView(
+                    padding: const EdgeInsets.only(bottom: 12),
                     children: [
                       if (selectedInvoices.isNotEmpty) ...[
                         _previewSectionLabel(invoicesLabel, cs),
                         ...selectedInvoices.map(
                           (invoice) => _buildPreviewItemCard(
                             typeIcon: Icons.receipt_long_outlined,
+                            documentId: invoice.id,
+                            documentType: 'invoice',
                             number: invoice.invoiceNumber.trim().isEmpty
                                 ? invoice.id
                                 : invoice.invoiceNumber,
-                            statusLabel:
-                                _localizedStatusLabel(l, invoice.status),
+                            filename:
+                                '${isSpanish ? 'Factura' : 'Invoice'} ${invoice.invoiceNumber.trim().isEmpty ? invoice.id : invoice.invoiceNumber}.pdf',
+                            clientName: _selectedClient?.name ?? '-',
+                            attached: _composeInvoiceIds.contains(invoice.id),
                             cs: cs,
                             amount: invoice.total,
-                            isSent: invoice.sentAt != null,
+                            previewKey: 'invoice:${invoice.id}',
                             onPreview: () => _openInvoicePdfPreview(invoice),
+                            onRemove: () => _removeInvoice(invoice.id),
                           ),
                         ),
                       ],
@@ -1383,18 +1668,21 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                         ...selectedReceipts.map(
                           (receipt) => _buildPreviewItemCard(
                             typeIcon: Icons.description_outlined,
+                            documentId: receipt.id,
+                            documentType: 'receipt',
                             number: (receipt.receiptNumber?.trim().isNotEmpty ==
                                     true)
                                 ? receipt.receiptNumber!.trim()
                                 : receipt.id,
-                            statusLabel:
-                                _localizedStatusLabel(l, receipt.status),
+                            filename:
+                                '${isSpanish ? 'Recibo' : 'Receipt'} ${(receipt.receiptNumber?.trim().isNotEmpty == true) ? receipt.receiptNumber!.trim() : receipt.id}.pdf',
+                            clientName: _selectedClient?.name ?? '-',
+                            attached: _composeReceiptIds.contains(receipt.id),
                             cs: cs,
                             amount: receipt.total,
-                            isSent: receipt.deliveryStatus.toLowerCase() ==
-                                    'sent' ||
-                                receipt.sentAt != null,
+                            previewKey: 'receipt:${receipt.id}',
                             onPreview: () => _openReceiptPdfPreview(receipt),
+                            onRemove: () => _removeReceipt(receipt.id),
                           ),
                         ),
                       ],
@@ -1405,15 +1693,21 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                           final number = _presupuestoNumber(item);
                           return _buildPreviewItemCard(
                             typeIcon: Icons.calculate_outlined,
+                            documentId: id,
+                            documentType: 'budget',
                             number: number.isEmpty ? id : number,
-                            statusLabel: _presupuestoStatus(item),
+                            filename:
+                                '${isSpanish ? 'Presupuesto' : 'Estimate'} ${number.isEmpty ? id : number}.pdf',
+                            clientName: _selectedClient?.name ?? '-',
+                            attached: _composePresupuestoIds.contains(id),
                             cs: cs,
                             amount: _presupuestoTotal(item),
-                            isSent: _presupuestoIsSent(item),
+                            previewKey: 'budget:$id',
                             onPreview: id.isEmpty
                                 ? null
                                 : () => widget.state
                                     ._openPresupuestoPdfPreviewById(id),
+                            onRemove: () => _removePresupuesto(id),
                           );
                         }),
                       ],
@@ -1427,23 +1721,81 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                           final number = _presupuestoNumber(item);
                           return _buildPreviewItemCard(
                             typeIcon: Icons.article_outlined,
+                            documentId: id,
+                            documentType: 'budget',
                             number: number.isEmpty
                                 ? presupuestoDocumentTitle(item)
                                 : number,
-                            statusLabel: _localizedStatusLabel(
-                              l,
-                              _presupuestoStatus(item),
-                            ),
+                            filename:
+                                '${number.isEmpty ? presupuestoDocumentTitle(item) : number}.pdf',
+                            clientName: _selectedClient?.name ?? '-',
+                            attached: _composePresupuestoIds.contains(id),
                             cs: cs,
                             amount: _presupuestoTotal(item),
-                            isSent: _presupuestoIsSent(item),
+                            previewKey: 'budget:$id',
                             onPreview: id.isEmpty
                                 ? null
                                 : () => widget.state
                                     ._openPresupuestoPdfPreviewById(id),
+                            onRemove: () => _removePresupuesto(id),
                           );
                         }),
                       ],
+                      if (manualAttachments.isNotEmpty) ...[
+                        _previewSectionLabel(
+                          isSpanish ? 'Otros adjuntos' : 'Other attachments',
+                          cs,
+                        ),
+                        ...manualAttachments.map((attachment) {
+                          final name =
+                              widget.state._manualPdfAttachmentName(attachment);
+                          final key = attachment.storageKey ?? name;
+                          return _buildPreviewItemCard(
+                            typeIcon: Icons.picture_as_pdf_outlined,
+                            documentId: key,
+                            documentType: 'file',
+                            number: name,
+                            filename: name,
+                            clientName:
+                                isSpanish ? 'Archivo del correo' : 'Email file',
+                            attached: true,
+                            cs: cs,
+                            onRemove: () => widget.state.update(
+                              () =>
+                                  widget.state._attachments.remove(attachment),
+                            ),
+                          );
+                        }),
+                      ],
+                      const SizedBox(height: 4),
+                      _InvoiceHistorySection(
+                        invoices: visibleHistoryInvoices,
+                        expanded: _historyExpanded,
+                        sentOnly: _historySentOnly,
+                        hasMore: allHistoryInvoices.length >
+                            visibleHistoryInvoices.length,
+                        canCompare: selectedInvoices.isNotEmpty,
+                        comparingIds: _comparingInvoiceIds,
+                        previewingIds: _previewingDocuments,
+                        onToggle: () => setState(
+                          () => _historyExpanded = !_historyExpanded,
+                        ),
+                        onSentOnlyChanged: (value) => setState(() {
+                          _historySentOnly = value;
+                          _historyVisibleCount = 4;
+                        }),
+                        onShowMore: () => setState(
+                          () => _historyVisibleCount += 4,
+                        ),
+                        onPreview: (invoice) => _runDocumentPreview(
+                          'history:${invoice.id}',
+                          () => _openInvoicePdfPreview(invoice),
+                        ),
+                        onCompare: (invoice) => _showInvoiceComparison(
+                          invoice,
+                          selectedInvoices,
+                        ),
+                      ),
                     ],
                   ),
           ),
@@ -1457,7 +1809,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
       ),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1465,22 +1817,21 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 34,
-                height: 34,
+                width: 28,
+                height: 28,
                 decoration: BoxDecoration(
                   color: cs.primaryContainer.withValues(alpha: 0.65),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   Icons.attach_file_rounded,
-                  size: 18,
+                  size: 16,
                   color: cs.primary,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
                     Text(
                       isSpanish ? 'Adjuntar facturas' : 'Attach invoices',
@@ -1488,65 +1839,89 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      isSpanish
-                          ? 'Selecciona el cliente y las facturas que quieres enviar.'
-                          : 'Select the client and invoices you want to send.',
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontSize: 11,
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        _selectedClient != null
+                            ? _selectedClient!.name
+                            : (isSpanish
+                                ? 'Selecciona un cliente'
+                                : 'Select a client'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontSize: 11,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 6),
+                    stepHeader(),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          stepHeader(),
-          const SizedBox(height: 10),
+          if (_step == 1) ...[
+            const SizedBox(height: 4),
+            documentTabs(),
+          ],
+          const SizedBox(height: 4),
           Expanded(child: stepBody()),
-          const SizedBox(height: 8),
+          Divider(
+            height: 1,
+            color: cs.outlineVariant.withValues(alpha: 0.35),
+          ),
+          const SizedBox(height: 4),
           Row(
             children: [
-              OutlinedButton(
-                onPressed: _step == 0 ? null : () => setState(() => _step -= 1),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: cs.onSurface,
-                  side: BorderSide(
-                    color: _step == 0
-                        ? cs.outlineVariant.withValues(alpha: 0.4)
-                        : cs.outlineVariant,
-                  ),
-                ),
-                child:
-                    Text(MaterialLocalizations.of(context).backButtonTooltip),
+              HexoraButton(
+                onPressed: _step == 0
+                    ? widget.onClose
+                    : () => setState(() => _step -= 1),
+                label: _step == 0 && widget.onClose != null
+                    ? (isSpanish ? 'Cancelar' : 'Cancel')
+                    : MaterialLocalizations.of(context).backButtonTooltip,
+                variant: HexoraButtonVariant.secondary,
+                size: HexoraButtonSize.standard,
               ),
               const Spacer(),
-              FilledButton(
-                onPressed: () {
-                  if (_step < 2) {
-                    _tryGoToStep(_step + 1, l);
-                    return;
-                  }
-                  if (_selectedInvoiceIds.isEmpty &&
-                      _selectedPresupuestoIds.isEmpty &&
-                      _selectedReceiptIds.isEmpty) {
-                    return;
-                  }
-                  _applySelectionToCompose();
-                  showSuccessSnack(
-                    context,
-                    _selectionAppliedMessage(l),
-                    title: _selectionAppliedTitle(l),
-                  );
-                },
-                child: Text(
-                  _step < 2
-                      ? MaterialLocalizations.of(context).nextPageTooltip
-                      : MaterialLocalizations.of(context).okButtonLabel,
-                ),
+              HexoraButton(
+                onPressed: _attachingDocuments
+                    ? null
+                    : () async {
+                        if (_step < 2) {
+                          _tryGoToStep(_step + 1, l);
+                          return;
+                        }
+                        final pendingCount = _pendingAttachmentCount;
+                        if (pendingCount == 0) {
+                          if (widget.onComplete != null) {
+                            widget.onComplete!.call();
+                          } else {
+                            widget.state._bodyFocus.requestFocus();
+                          }
+                          return;
+                        }
+                        final applied = await _applySelectionToCompose();
+                        if (!context.mounted || !applied) return;
+                        showSuccessSnack(
+                          context,
+                          _selectionAppliedMessage(l),
+                          title: _selectionAppliedTitle(l),
+                        );
+                        widget.onComplete?.call();
+                      },
+                label: _step < 2
+                    ? (isSpanish ? 'Continuar' : 'Continue')
+                    : _pendingAttachmentCount == 0
+                        ? (isSpanish ? 'Volver al correo' : 'Back to email')
+                        : isSpanish
+                            ? 'Adjuntar $_pendingAttachmentCount ${_pendingAttachmentCount == 1 && _selectedInvoiceIds.difference(_composeInvoiceIds).length == 1 ? 'factura' : 'documentos'}'
+                            : 'Attach $_pendingAttachmentCount ${_pendingAttachmentCount == 1 ? 'document' : 'documents'}',
+                variant: HexoraButtonVariant.primary,
+                size: HexoraButtonSize.standard,
+                loading: _attachingDocuments,
               ),
             ],
           ),

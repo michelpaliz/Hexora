@@ -59,37 +59,38 @@ class _FilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final bg =
-        selected ? cs.primaryContainer.withValues(alpha: .5) : cs.surface;
-    final fg = selected ? cs.primary : cs.onSurfaceVariant;
+    final bg = selected
+        ? cs.primary
+        : cs.surfaceContainerHighest.withValues(alpha: .5);
+    final fg = selected ? cs.onPrimary : cs.onSurfaceVariant;
 
-    return InkWell(
+    return Material(
+      color: bg,
       borderRadius: BorderRadius.circular(999),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color:
-                selected ? cs.primary : cs.outlineVariant.withValues(alpha: .4),
-          ),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          if (dot != null) ...[
-            Icon(Icons.circle, size: 11, color: dot),
-            const SizedBox(width: 8)
-          ],
-          Text(
-            label,
-            style: t.bodySmall.copyWith(
-              fontSize: 13,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              color: fg,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            if (dot != null && !selected) ...[
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: t.bodySmall.copyWith(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: fg,
+              ),
             ),
-          ),
-        ]),
+          ]),
+        ),
       ),
     );
   }

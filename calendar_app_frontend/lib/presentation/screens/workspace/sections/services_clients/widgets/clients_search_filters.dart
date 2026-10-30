@@ -259,10 +259,7 @@ class ClientsSearchFilters extends StatelessWidget {
     final filterBody = filtersInMenu
         ? buildFilterBody(280)
         : LayoutBuilder(builder: (context, constraints) {
-            final width = constraints.maxWidth >= 520
-                ? (constraints.maxWidth - 12) / 2
-                : constraints.maxWidth;
-            return buildFilterBody(width);
+            return buildFilterBody(constraints.maxWidth);
           });
 
     return SearchFiltersHeader(
@@ -316,53 +313,69 @@ class _ClassificationDropdown extends StatelessWidget {
   final VoidCallback onClear;
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final values = <String>{
       ...options.where((value) => value.isNotEmpty),
       if (selected != null && selected!.isNotEmpty) selected!
     };
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: Theme.of(context).textTheme.labelMedium),
-      const SizedBox(height: 4),
-      Container(
-          alignment: Alignment.centerLeft,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          constraints:
-              BoxConstraints(minHeight: clientFilterControlHeight(context)),
-          decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                  color: selected == null
-                      ? cs.outlineVariant
-                      : cs.primary.withValues(alpha: .5))),
-          child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-            key: ValueKey('client-filter-$label'),
-            value: selected ?? '',
-            isExpanded: true,
-            isDense: true,
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: cs.onSurface),
-            icon: const Icon(Icons.expand_more, size: 16),
-            items: [
-              DropdownMenuItem(value: '', child: Text(l.all)),
-              for (final value in values)
-                DropdownMenuItem(
-                    value: value,
-                    child: Text(value,
-                        maxLines: 1, overflow: TextOverflow.ellipsis))
-            ],
-            onChanged: (value) {
-              if (value == null || value == '') {
-                onClear();
-              } else if (value != selected) {
-                onSelect(value);
-              }
-            },
-          ))),
-    ]);
+    final l = AppLocalizations.of(context)!;
+    final normalizedSelected = (selected ?? '').trim();
+
+    Widget option(String value, String text) {
+      final isSelected = normalizedSelected == value;
+      return ChoiceChip(
+        key: ValueKey(
+          'client-filter-$label-${value.isEmpty ? 'all' : value}',
+        ),
+        selected: isSelected,
+        showCheckmark: false,
+        avatar: isSelected
+            ? Icon(Icons.check_rounded, size: 14, color: cs.primary)
+            : null,
+        label: Text(text, maxLines: 1),
+        labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: isSelected ? cs.primary : cs.onSurfaceVariant,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            ),
+        selectedColor: cs.primary.withValues(alpha: .10),
+        backgroundColor: cs.surfaceContainerLow,
+        side: BorderSide(
+          color:
+              isSelected ? cs.primary.withValues(alpha: .5) : cs.outlineVariant,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        visualDensity: VisualDensity.compact,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        onSelected: (_) {
+          if (value.isEmpty || isSelected) {
+            onClear();
+          } else {
+            onSelect(value);
+          }
+        },
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          children: [
+            option('', l.all),
+            for (final value in values) option(value, value),
+          ],
+        ),
+      ],
+    );
   }
 }

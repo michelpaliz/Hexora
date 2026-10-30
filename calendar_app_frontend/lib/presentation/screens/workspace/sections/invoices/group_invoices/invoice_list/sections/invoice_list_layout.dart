@@ -529,6 +529,8 @@ extension _InvoiceListLayout on _InvoicesTabListState {
             identityLabel: 'Factura',
             visibleFinancialColumns: _visibleFinancialColumns,
             showDeliveryColumn: true,
+            invoiceColumnOrder: true,
+            hideActionsInSplitView: true,
             // Preview and overflow use two compact 32px slots with a 4px gap.
             // Keep the header reservation identical to each row.
             actionsWidth: 68,
@@ -645,6 +647,11 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                                 onIssue: widget.onIssue == null
                                     ? null
                                     : () => widget.onIssue!(inv),
+                                onLinkInvoice: widget.onLinkInvoice == null ||
+                                        inv.isDraft ||
+                                        inv.isLinkedResolved
+                                    ? null
+                                    : () => widget.onLinkInvoice!(inv),
                               ),
                             ],
                           ),

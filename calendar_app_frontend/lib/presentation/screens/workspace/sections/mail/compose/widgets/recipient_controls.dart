@@ -208,14 +208,13 @@ class _InlineRecipientRow extends StatelessWidget {
               onChanged: onChanged,
             ),
           ),
-          if (values.isEmpty)
-            IconButton(
-              icon: const Icon(Icons.close_rounded, size: 16),
-              onPressed: enabled ? onRemove : null,
-              visualDensity: VisualDensity.compact,
-              color: cs.onSurfaceVariant,
-              tooltip: 'Remove',
-            ),
+          HexoraButton.iconOnly(
+            onPressed: enabled ? onRemove : null,
+            icon: Icons.close_rounded,
+            tooltip: 'Remove',
+            variant: HexoraButtonVariant.ghost,
+            size: HexoraButtonSize.compact,
+          ),
         ],
       ),
     );

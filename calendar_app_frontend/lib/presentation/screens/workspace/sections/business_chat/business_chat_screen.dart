@@ -8,6 +8,9 @@ import 'package:hexora/services/shared/backend_api_exception.dart';
 import 'package:intl/intl.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/theme/themes/navigation_theme.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 
 class BusinessChatScreen extends StatefulWidget {
   const BusinessChatScreen(
@@ -498,62 +501,167 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
   }
 
   Future<void> _createTeam() async {
-    final title = await _textDialog(
-        _es ? 'Nuevo chat de equipo' : 'New team chat',
-        maxLength: 120);
-    if (title == null) return;
     try {
       final members = await _api.members(widget.groupId);
       if (!mounted) return;
+      final seen = <String>{};
+      final unique = members.where((m) {
+        final id = (m['id'] ?? '').toString();
+        if (id.isEmpty || id == widget.currentUserId || !seen.add(id))
+          return false;
+        return true;
+      }).toList();
+
+      final titleCtrl = TextEditingController();
+      final searchCtrl = TextEditingController();
       final selected = <String>{};
-      final chosen = await showDialog<List<String>>(
-        context: context,
-        builder: (context) => StatefulBuilder(
-            builder: (context, refreshDialog) => AlertDialog(
-                  title:
-                      Text(_es ? 'Añadir participantes' : 'Add participants'),
-                  content: SizedBox(
-                      width: 420,
-                      height: 360,
-                      child: Column(children: [
-                        Text(_es
-                            ? '${selected.length + 1}/50 participantes (incluyéndote)'
-                            : '${selected.length + 1}/50 participants (including you)'),
-                        const SizedBox(height: 8),
-                        Expanded(
-                            child: ListView(
-                                children: members.map((member) {
-                          final id = (member['id'] ?? '').toString();
-                          if (id.isEmpty || id == widget.currentUserId)
-                            return const SizedBox.shrink();
-                          return CheckboxListTile(
-                              value: selected.contains(id),
-                              title: Text(
-                                  (member['name'] ?? member['userName'] ?? '')
-                                      .toString()),
-                              onChanged: !selected.contains(id) &&
-                                      selected.length >= 49
-                                  ? null
-                                  : (value) => refreshDialog(() {
-                                        value == true
-                                            ? selected.add(id)
-                                            : selected.remove(id);
-                                      }));
-                        }).toList())),
-                      ])),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(_es ? 'Cancelar' : 'Cancel')),
-                    FilledButton(
-                        onPressed: () =>
-                            Navigator.pop(context, selected.toList()),
-                        child: Text(_es ? 'Crear' : 'Create'))
-                  ],
-                )),
-      );
-      if (chosen == null) return;
-      await _api.createTeam(widget.groupId, title.$1, chosen);
+      final formKey = GlobalKey<FormState>();
+
+      final result = await showDialog<(String, List<String>)>(
+          context: context,
+          builder: (dialogContext) {
+            final viewportH = MediaQuery.of(dialogContext).size.height;
+            return StatefulBuilder(
+                builder: (dialogContext, refreshDialog) {
+              final query = searchCtrl.text.toLowerCase();
+              final filtered = unique.where((m) {
+                final name =
+                    (m['name'] ?? m['userName'] ?? '').toString().toLowerCase();
+                return query.isEmpty || name.contains(query);
+              }).toList();
+              final canCreate = titleCtrl.text.trim().isNotEmpty &&
+                  selected.isNotEmpty;
+
+              return AlertDialog(
+                title: Text(_es ? 'Nuevo chat de equipo' : 'New team chat'),
+                content: ConstrainedBox(
+                    constraints: BoxConstraints(
+                        maxWidth: 480,
+                        maxHeight: viewportH * 0.7),
+                    child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Form(
+                              key: formKey,
+                              child: TextFormField(
+                                  controller: titleCtrl,
+                                  maxLength: 120,
+                                  onChanged: (_) => refreshDialog(() {}),
+                                  validator: (v) =>
+                                      (v ?? '').trim().isEmpty
+                                          ? (_es
+                                              ? 'Escribe un nombre'
+                                              : 'Enter a name')
+                                          : null,
+                                  decoration: InputDecoration(
+                                      labelText: _es
+                                          ? 'Nombre del chat'
+                                          : 'Chat name',
+                                      counterText: '',
+                                      border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8))))),
+                          const SizedBox(height: 12),
+                          TextField(
+                              controller: searchCtrl,
+                              onChanged: (_) => refreshDialog(() {}),
+                              decoration: InputDecoration(
+                                  prefixIcon:
+                                      const Icon(Icons.search, size: 20),
+                                  hintText: _es
+                                      ? 'Buscar participantes…'
+                                      : 'Search participants…',
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      vertical: 10),
+                                  border: OutlineInputBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(8)))),
+                          const SizedBox(height: 8),
+                          Text(
+                              _es
+                                  ? '${selected.length + 1}/50 participantes (incluyéndote)'
+                                  : '${selected.length + 1}/50 participants (including you)',
+                              style: Theme.of(dialogContext)
+                                  .textTheme
+                                  .bodySmall),
+                          const SizedBox(height: 8),
+                          Flexible(
+                              child: filtered.isEmpty
+                                  ? Center(
+                                      child: Padding(
+                                          padding: const EdgeInsets.all(20),
+                                          child: Text(
+                                              _es
+                                                  ? 'Sin resultados'
+                                                  : 'No results',
+                                              style: Theme.of(dialogContext)
+                                                  .textTheme
+                                                  .bodySmall)))
+                                  : ListView.builder(
+                                      shrinkWrap: true,
+                                      itemCount: filtered.length,
+                                      itemBuilder: (context, index) {
+                                        final member = filtered[index];
+                                        final id = (member['id'] ?? '')
+                                            .toString();
+                                        final name = (member['name'] ??
+                                                member['userName'] ??
+                                                id)
+                                            .toString();
+                                        final role = (member['role'] ?? '')
+                                            .toString();
+                                        return CheckboxListTile(
+                                            value: selected.contains(id),
+                                            title: Text(name,
+                                                maxLines: 1,
+                                                overflow:
+                                                    TextOverflow.ellipsis),
+                                            subtitle: role.isNotEmpty
+                                                ? Text(role,
+                                                    style: const TextStyle(
+                                                        fontSize: 12))
+                                                : null,
+                                            dense: true,
+                                            onChanged:
+                                                !selected.contains(id) &&
+                                                        selected.length >= 49
+                                                    ? null
+                                                    : (value) =>
+                                                        refreshDialog(() {
+                                                          value == true
+                                                              ? selected
+                                                                  .add(id)
+                                                              : selected
+                                                                  .remove(id);
+                                                        }));
+                                      })),
+                        ])),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: Text(_es ? 'Cancelar' : 'Cancel')),
+                  HexoraButton(
+                      label: _es ? 'Crear' : 'Create',
+                      size: HexoraButtonSize.compact,
+                      onPressed: !canCreate
+                          ? null
+                          : () {
+                              if (formKey.currentState?.validate() ?? false) {
+                                Navigator.pop(dialogContext,
+                                    (titleCtrl.text.trim(), selected.toList()));
+                              }
+                            }),
+                ],
+              );
+            });
+          });
+
+      titleCtrl.dispose();
+      searchCtrl.dispose();
+      if (result == null) return;
+      await _api.createTeam(widget.groupId, result.$1, result.$2);
       await _refresh();
     } catch (error) {
       _showError(error);
@@ -970,30 +1078,40 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                     size: 18,
                     color: _liveConnected ? colors.primary : colors.outline)),
             const SizedBox(width: 8),
-            IconButton(
+            HexoraButton.iconOnly(
+                icon: Icons.refresh,
                 onPressed: _loading ? null : _refresh,
                 tooltip: _es ? 'Actualizar' : 'Refresh',
-                icon: const Icon(Icons.refresh)),
+                size: HexoraButtonSize.compact),
             if (_canCreateIssues)
-              IconButton(
+              HexoraButton.iconOnly(
+                  icon: Icons.report_gmailerrorred_outlined,
                   onPressed: _createIssue,
                   tooltip: _es ? 'Nueva incidencia' : 'New incident',
-                  icon: const Icon(Icons.report_gmailerrorred_outlined)),
+                  size: HexoraButtonSize.compact),
             if (_canCreateTeam)
-              IconButton(
+              HexoraButton.iconOnly(
+                  icon: Icons.group_add_outlined,
                   onPressed: _createTeam,
                   tooltip: _es ? 'Nuevo chat de equipo' : 'New team chat',
-                  icon: const Icon(Icons.group_add_outlined)),
+                  size: HexoraButtonSize.compact),
           ])),
       const Divider(height: 1),
       Expanded(child: LayoutBuilder(builder: (context, constraints) {
         final narrow = constraints.maxWidth < 700;
+        const sidebarW = 280.0;
+        final chatWidth = narrow
+            ? constraints.maxWidth
+            : constraints.maxWidth - sidebarW - 1;
         return Row(children: [
           if (!narrow || !_showChatOnNarrow)
             SizedBox(
-                width: narrow ? constraints.maxWidth : 250,
-                child: _conversations.isEmpty
-                    ? Center(
+                width: narrow ? constraints.maxWidth : sidebarW,
+                child: NavigationSurface(
+                    builder: (sidebarCtx) {
+                  final sc = Theme.of(sidebarCtx).colorScheme;
+                  if (_conversations.isEmpty) {
+                    return Center(
                         child: _loading
                             ? const CircularProgressIndicator()
                             : Padding(
@@ -1003,57 +1121,93 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                         (_es
                                             ? 'No hay conversaciones'
                                             : 'No conversations'),
-                                    textAlign: TextAlign.center)))
-                    : ListView.builder(
-                        itemCount: _conversations.length,
-                        itemBuilder: (context, index) {
-                          final conversation = _conversations[index];
-                          final selected = _selected?.id == conversation.id;
-                          final status = conversation.issue?['status'];
-                          final lastMessage = conversation.lastMessage;
-                          final preview = lastMessage == null
-                              ? (status == null
-                                  ? _typeLabel(conversation.type)
-                                  : _statusLabel(status.toString()))
-                              : lastMessage.isDeleted
-                                  ? (_es
-                                      ? 'Mensaje eliminado'
-                                      : 'Message deleted')
-                                  : lastMessage.body.trim().isNotEmpty
-                                      ? lastMessage.body
-                                      : (lastMessage.attachment?['fileName'] ??
-                                              (_es
-                                                  ? 'Archivo adjunto'
-                                                  : 'Attachment'))
-                                          .toString();
-                          return ListTile(
-                              selected: selected,
-                              leading: Icon(conversation.type == 'issue'
-                                  ? Icons.report_outlined
-                                  : conversation.type == 'team'
-                                      ? Icons.groups_outlined
-                                      : Icons.campaign_outlined),
-                              title: Text(
-                                  conversation.issue?['title']?.toString() ??
-                                      conversation.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis),
-                              subtitle: Text(preview,
-                                  maxLines: 1, overflow: TextOverflow.ellipsis),
-                              trailing: conversation.unreadCount > 0
-                                  ? Badge(
-                                      label:
-                                          Text('${conversation.unreadCount}'))
-                                  : null,
-                              onTap: () {
-                                setState(() {
-                                  _selected = conversation;
-                                  _messages = const [];
-                                  _showChatOnNarrow = true;
-                                });
-                                _loadMessages(conversation, forceScroll: true);
+                                    textAlign: TextAlign.center)));
+                  }
+                  return ListView.builder(
+                      itemCount: _conversations.length,
+                      itemBuilder: (context, index) {
+                        final conversation = _conversations[index];
+                        final selected = _selected?.id == conversation.id;
+                        final status = conversation.issue?['status'];
+                        final lastMessage = conversation.lastMessage;
+                        final preview = lastMessage == null
+                            ? (status == null
+                                ? _typeLabel(conversation.type)
+                                : _statusLabel(status.toString()))
+                            : lastMessage.isDeleted
+                                ? (_es
+                                    ? 'Mensaje eliminado'
+                                    : 'Message deleted')
+                                : lastMessage.body.trim().isNotEmpty
+                                    ? lastMessage.body
+                                    : (lastMessage.attachment?['fileName'] ??
+                                            (_es
+                                                ? 'Archivo adjunto'
+                                                : 'Attachment'))
+                                        .toString();
+                        final timeStamp = lastMessage != null
+                            ? DateFormat('HH:mm')
+                                .format(lastMessage.createdAt.toLocal())
+                            : null;
+                        return ListTile(
+                            selected: selected,
+                            selectedTileColor: AppDarkColors.surfaceHover,
+                            dense: true,
+                            visualDensity: VisualDensity.compact,
+                            leading: Icon(
+                                conversation.type == 'issue'
+                                    ? Icons.report_outlined
+                                    : conversation.type == 'team'
+                                        ? Icons.groups_outlined
+                                        : Icons.campaign_outlined,
+                                size: 20,
+                                color: selected
+                                    ? sc.primary
+                                    : sc.onSurfaceVariant),
+                            title: Text(
+                                conversation.issue?['title']?.toString() ??
+                                    conversation.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    color: sc.onSurface,
+                                    fontWeight: selected
+                                        ? FontWeight.w600
+                                        : FontWeight.w500)),
+                            subtitle: Text(preview,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: sc.onSurfaceVariant)),
+                            trailing: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  if (timeStamp != null)
+                                    Text(timeStamp,
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: sc.onSurfaceVariant)),
+                                  if (conversation.unreadCount > 0)
+                                    Padding(
+                                        padding:
+                                            const EdgeInsets.only(top: 2),
+                                        child: Badge(
+                                            label: Text(
+                                                '${conversation.unreadCount}'))),
+                                ]),
+                            onTap: () {
+                              setState(() {
+                                _selected = conversation;
+                                _messages = const [];
+                                _showChatOnNarrow = true;
                               });
-                        })),
+                              _loadMessages(conversation, forceScroll: true);
+                            });
+                      });
+                })),
           if (!narrow) const VerticalDivider(width: 1),
           if (!narrow || _showChatOnNarrow)
             Expanded(
@@ -1065,11 +1219,12 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                     color: colors.surfaceContainerLow,
                     child: Row(children: [
                       if (narrow)
-                        IconButton(
+                        HexoraButton.iconOnly(
+                            icon: Icons.arrow_back,
                             tooltip: _es ? 'Conversaciones' : 'Conversations',
                             onPressed: () =>
                                 setState(() => _showChatOnNarrow = false),
-                            icon: const Icon(Icons.arrow_back)),
+                            size: HexoraButtonSize.compact),
                       Expanded(
                           child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1100,30 +1255,32 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                   ].whereType<String>().join(' · '),
                                   style: Theme.of(context).textTheme.bodySmall)
                           ])),
-                      if (!narrow) Text(_typeLabel(_selected!.type)),
                       if (_selected!.type == 'team' &&
                           (_canCreateTeam ||
                               (_canModerateMessages &&
                                   _selected!.participantIds
                                       .contains(widget.currentUserId))))
-                        IconButton(
+                        HexoraButton.iconOnly(
+                            icon: Icons.manage_accounts_outlined,
                             tooltip: _es
                                 ? 'Gestionar participantes'
                                 : 'Manage participants',
                             onPressed: () => _manageTeam(_selected!),
-                            icon: const Icon(Icons.manage_accounts_outlined)),
+                            size: HexoraButtonSize.compact),
                       if (_selected!.type == 'issue')
-                        IconButton(
+                        HexoraButton.iconOnly(
+                            icon: Icons.info_outline,
                             tooltip: _es ? 'Ver incidencia' : 'View incident',
                             onPressed: () => _showIssueDetails(_selected!),
-                            icon: const Icon(Icons.info_outline)),
+                            size: HexoraButtonSize.compact),
                       if (_selected!.issue?['status'] != null &&
                           _canAssignIssues)
-                        IconButton(
+                        HexoraButton.iconOnly(
+                            icon: Icons.assignment_ind_outlined,
                             tooltip:
                                 _es ? 'Cambiar responsable' : 'Change assignee',
                             onPressed: () => _assignIssue(_selected!),
-                            icon: const Icon(Icons.assignment_ind_outlined)),
+                            size: HexoraButtonSize.compact),
                       if (_selected!.issue?['status'] != null)
                         Padding(
                             padding: const EdgeInsets.only(left: 8),
@@ -1191,6 +1348,10 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                     final message = _messages[index];
                                     final mine = message.senderId ==
                                         widget.currentUserId;
+                                    final prev =
+                                        index > 0 ? _messages[index - 1] : null;
+                                    final showSender = prev == null ||
+                                        prev.senderId != message.senderId;
                                     final canEdit = mine &&
                                         !message.isDeleted &&
                                         DateTime.now()
@@ -1204,150 +1365,291 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                                 (_canCreateTeam ||
                                                     _selected?.type ==
                                                         'team')));
-                                    return Align(
-                                        alignment: mine
-                                            ? Alignment.centerRight
-                                            : Alignment.centerLeft,
-                                        child: ConstrainedBox(
-                                            constraints: const BoxConstraints(
-                                                maxWidth: 520),
-                                            child: Card(
-                                                color: mine
-                                                    ? colors.primaryContainer
-                                                    : colors
-                                                        .surfaceContainerHighest,
-                                                child: Padding(
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                            10),
-                                                    child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          Row(children: [
-                                                            Expanded(
-                                                                child: Text(
-                                                                    message
-                                                                        .senderName,
-                                                                    style: const TextStyle(
-                                                                        fontWeight:
-                                                                            FontWeight.w700))),
-                                                            if (canEdit ||
-                                                                canDelete)
-                                                              PopupMenuButton<
-                                                                      String>(
-                                                                  onSelected: (value) =>
-                                                                      _messageAction(
-                                                                          message,
-                                                                          value),
-                                                                  itemBuilder:
-                                                                      (_) => [
-                                                                            if (canEdit)
-                                                                              PopupMenuItem(value: 'edit', child: Text(_es ? 'Editar' : 'Edit')),
-                                                                            if (canDelete)
-                                                                              PopupMenuItem(value: 'delete', child: Text(_es ? 'Eliminar' : 'Delete'))
-                                                                          ])
-                                                          ]),
-                                                          if (message
-                                                                  .isDeleted ||
-                                                              message.body
-                                                                  .isNotEmpty)
-                                                            Text(message
-                                                                    .isDeleted
-                                                                ? (_es
-                                                                    ? 'Mensaje eliminado'
-                                                                    : 'Message deleted')
-                                                                : message.body),
-                                                          if (!message.isDeleted &&
-                                                              message.attachment !=
-                                                                  null)
-                                                            TextButton.icon(
-                                                                onPressed: () =>
-                                                                    _openAttachment(
-                                                                        message),
-                                                                icon: Icon((message.attachment!['mimeType'] ??
-                                                                            '')
-                                                                        .toString()
-                                                                        .startsWith(
-                                                                            'image/')
-                                                                    ? Icons
-                                                                        .image_outlined
-                                                                    : Icons
-                                                                        .attach_file),
-                                                                label: Text((message.attachment!['fileName'] ??
-                                                                        (_es
-                                                                            ? 'Adjunto'
-                                                                            : 'Attachment'))
-                                                                    .toString())),
-                                                          Align(
-                                                              alignment: Alignment
-                                                                  .centerRight,
-                                                              child: Text(
-                                                                  '${DateFormat('HH:mm').format(message.createdAt.toLocal())}${message.editedAt != null ? (_es ? ' · Editado' : ' · Edited') : ''}',
-                                                                  style: Theme.of(
-                                                                          context)
-                                                                      .textTheme
-                                                                      .labelSmall)),
-                                                        ])))));
+                                    return _MessageBubble(
+                                      message: message,
+                                      mine: mine,
+                                      showSender: showSender,
+                                      canEdit: canEdit,
+                                      canDelete: canDelete,
+                                      maxWidth: chatWidth *
+                                          (narrow ? 0.85 : 0.65),
+                                      narrow: narrow,
+                                      es: _es,
+                                      onAction: _messageAction,
+                                      onAttachment: _openAttachment,
+                                    );
                                   })),
               const Divider(height: 1),
               Padding(
                   padding: const EdgeInsets.all(10),
                   child: SafeArea(
                       top: false,
-                      child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        Row(children: [
-                          IconButton(
-                              onPressed: _sending || _selected == null
-                                  ? null
-                                  : _attach,
-                              tooltip: _es
-                                  ? 'Adjuntar foto o PDF'
-                                  : 'Attach photo or PDF',
-                              icon: const Icon(Icons.attach_file)),
-                          Expanded(
-                              child: TextField(
-                                  controller: _composer,
-                                  enabled: _selected != null && !_sending,
-                                  maxLength: 2000,
-                                  minLines: 1,
-                                  maxLines: 4,
-                                  decoration: InputDecoration(
-                                      hintText: _es
-                                          ? 'Escribe un mensaje…'
-                                          : 'Write a message…',
-                                      counterText: '',
-                                      border: const OutlineInputBorder()))),
-                          const SizedBox(width: 8),
-                          IconButton.filled(
-                              onPressed:
-                                  _sending || _selected == null ? null : _send,
-                              icon: _sending
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2))
-                                  : const Icon(Icons.send))
-                        ]),
-                        if (_selected != null)
-                          Align(
-                              alignment: Alignment.centerLeft,
-                              child: Padding(
-                                  padding:
-                                      const EdgeInsets.only(left: 48, top: 4),
-                                  child: Text(
-                                      _es
-                                          ? 'Adjuntos: JPG, PNG, WebP o PDF · máximo 10 MB'
-                                          : 'Attachments: JPG, PNG, WebP, or PDF · max 10 MB',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelSmall))),
+                      child: Row(children: [
+                        HexoraButton.iconOnly(
+                            icon: Icons.attach_file,
+                            onPressed: _sending || _selected == null
+                                ? null
+                                : _attach,
+                            tooltip: _es
+                                ? 'Adjuntar foto o PDF'
+                                : 'Attach photo or PDF',
+                            size: HexoraButtonSize.compact),
+                        const SizedBox(width: 8),
+                        Expanded(
+                            child: TextField(
+                                controller: _composer,
+                                enabled: _selected != null && !_sending,
+                                maxLength: 2000,
+                                minLines: 1,
+                                maxLines: 4,
+                                textInputAction: TextInputAction.newline,
+                                decoration: InputDecoration(
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 10),
+                                    hintText: _es
+                                        ? 'Escribe un mensaje…'
+                                        : 'Write a message…',
+                                    counterText: '',
+                                    border: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(8))))),
+                        const SizedBox(width: 8),
+                        HexoraButton.iconOnly(
+                            icon: Icons.send,
+                            onPressed:
+                                _sending || _selected == null ? null : _send,
+                            tooltip: _es ? 'Enviar' : 'Send',
+                            variant: HexoraButtonVariant.primary,
+                            size: HexoraButtonSize.compact,
+                            loading: _sending),
                       ]))),
             ])),
         ]);
       })),
     ]);
   }
+}
+
+class _MessageBubble extends StatefulWidget {
+  const _MessageBubble({
+    required this.message,
+    required this.mine,
+    required this.showSender,
+    required this.canEdit,
+    required this.canDelete,
+    required this.maxWidth,
+    required this.narrow,
+    required this.es,
+    required this.onAction,
+    required this.onAttachment,
+  });
+
+  final BusinessChatMessage message;
+  final bool mine;
+  final bool showSender;
+  final bool canEdit;
+  final bool canDelete;
+  final double maxWidth;
+  final bool narrow;
+  final bool es;
+  final void Function(BusinessChatMessage, String) onAction;
+  final void Function(BusinessChatMessage) onAttachment;
+
+  @override
+  State<_MessageBubble> createState() => _MessageBubbleState();
+}
+
+class _MessageBubbleState extends State<_MessageBubble> {
+  bool _hovered = false;
+
+  void _showMobileActions() {
+    showModalBottomSheet(
+        context: context,
+        builder: (ctx) => SafeArea(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+              if (widget.canEdit)
+                ListTile(
+                    leading: const Icon(Icons.edit_outlined),
+                    title: Text(widget.es ? 'Editar' : 'Edit'),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      widget.onAction(widget.message, 'edit');
+                    }),
+              if (widget.canDelete)
+                ListTile(
+                    leading: const Icon(Icons.delete_outline),
+                    title: Text(widget.es ? 'Eliminar' : 'Delete'),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      widget.onAction(widget.message, 'delete');
+                    }),
+            ])));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final hasActions = widget.canEdit || widget.canDelete;
+    final showMenuIcon = hasActions && !widget.narrow && _hovered;
+    final name = widget.message.senderName;
+    final initial = name.isEmpty ? '?' : name[0].toUpperCase();
+
+    return Padding(
+      padding: EdgeInsets.only(top: widget.showSender ? 10 : 2),
+      child: Row(
+        mainAxisAlignment:
+            widget.mine ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!widget.mine) ...[
+            if (widget.showSender)
+              CircleAvatar(
+                  radius: 14,
+                  backgroundColor:
+                      colors.onSurfaceVariant.withValues(alpha: .10),
+                  child: Text(initial,
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: colors.onSurfaceVariant)))
+            else
+              const SizedBox(width: 28),
+            const SizedBox(width: 6),
+          ],
+          Flexible(
+            child: MouseRegion(
+              onEnter: (_) => setState(() => _hovered = true),
+              onExit: (_) => setState(() => _hovered = false),
+              child: GestureDetector(
+                onLongPress:
+                    hasActions && widget.narrow ? _showMobileActions : null,
+                child: Card(
+                  elevation: 0,
+                  color: widget.mine
+                      ? colors.primaryContainer
+                      : colors.surfaceContainerHighest,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (!widget.mine && widget.showSender)
+                          Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Flexible(
+                                        child: Text(name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 12,
+                                                color: colors.primary))),
+                                    if (hasActions)
+                                      _buildMenuIcon(showMenuIcon),
+                                  ])),
+                        if (widget.message.isDeleted ||
+                            widget.message.body.isNotEmpty)
+                          Text(
+                            widget.message.isDeleted
+                                ? (widget.es
+                                    ? 'Mensaje eliminado'
+                                    : 'Message deleted')
+                                : widget.message.body,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontStyle: widget.message.isDeleted
+                                  ? FontStyle.italic
+                                  : FontStyle.normal,
+                              color: widget.message.isDeleted
+                                  ? colors.onSurfaceVariant
+                                  : null,
+                            ),
+                          ),
+                        if (!widget.message.isDeleted &&
+                            widget.message.attachment != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: TextButton.icon(
+                              onPressed: () =>
+                                  widget.onAttachment(widget.message),
+                              icon: Icon(
+                                  (widget.message.attachment!['mimeType'] ??
+                                              '')
+                                          .toString()
+                                          .startsWith('image/')
+                                      ? Icons.image_outlined
+                                      : Icons.attach_file,
+                                  size: 16),
+                              label: Text(
+                                (widget.message.attachment!['fileName'] ??
+                                        (widget.es
+                                            ? 'Adjunto'
+                                            : 'Attachment'))
+                                    .toString(),
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${DateFormat('HH:mm').format(widget.message.createdAt.toLocal())}${widget.message.editedAt != null ? (widget.es ? ' · Editado' : ' · Edited') : ''}',
+                                style:
+                                    Theme.of(context).textTheme.labelSmall,
+                              ),
+                              if (hasActions &&
+                                  (widget.mine || !widget.showSender)) ...[
+                                const SizedBox(width: 4),
+                                _buildMenuIcon(showMenuIcon),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuIcon(bool visible) => AnimatedOpacity(
+        opacity: visible ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 150),
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: PopupMenuButton<String>(
+            padding: EdgeInsets.zero,
+            iconSize: 14,
+            onSelected: (value) =>
+                widget.onAction(widget.message, value),
+            itemBuilder: (_) => [
+              if (widget.canEdit)
+                PopupMenuItem(
+                    value: 'edit',
+                    child: Text(widget.es ? 'Editar' : 'Edit')),
+              if (widget.canDelete)
+                PopupMenuItem(
+                    value: 'delete',
+                    child: Text(widget.es ? 'Eliminar' : 'Delete')),
+            ],
+          ),
+        ),
+      );
 }

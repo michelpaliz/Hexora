@@ -355,8 +355,6 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final fmt = NumberFormat.currency(locale: l.localeName, symbol: 'EUR ');
-
     final invoiceDate = _c.invoiceDate.value;
     final dueDate = _c.dueDate.value;
     final selectedClientName = _c.clientId == null
@@ -372,53 +370,69 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
             )
             .name;
 
+    final isEs = l.localeName.toLowerCase().startsWith('es');
+    final isDraft = !_c.editingIssued;
+    final invoiceNumberDisplay = isDraft
+        ? (isEs ? 'Pendiente de numeración' : 'Pending numbering')
+        : _c.previewInvoiceNumber;
+    final statusLabel = isDraft
+        ? (isEs ? 'Borrador' : 'Draft')
+        : (isEs ? 'Emitida' : 'Issued');
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            l.invoiceSummaryTitle,
-            style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: cs.surface,
-              borderRadius: BorderRadius.circular(12),
-              border:
-                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _SummaryRow(
-                  label: l.invoiceCustomerTitle,
-                  value: selectedClientName,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  selectedClientName,
+                  style: t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                _SummaryRow(
-                  label: l.invoiceNumberLabel,
-                  value: _c.previewInvoiceNumber,
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isDraft
+                      ? cs.surfaceContainerHighest
+                      : cs.secondaryContainer,
+                  borderRadius: BorderRadius.circular(999),
                 ),
-                if (invoiceDate != null)
-                  _SummaryRow(
-                    label: l.invoiceDateLabel,
-                    value: DateFormat.yMMMd(l.localeName).format(invoiceDate),
+                child: Text(
+                  statusLabel,
+                  style: t.bodySmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                    color: isDraft
+                        ? cs.onSurfaceVariant
+                        : cs.onSecondaryContainer,
                   ),
-                if (dueDate != null)
-                  _SummaryRow(
-                    label: l.invoiceDueDateLabel,
-                    value: DateFormat.yMMMd(l.localeName).format(dueDate),
-                  ),
-                _SummaryRow(
-                  label: l.invoiceTotalLabel,
-                  value: fmt.format(_c.total).trim(),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 8),
+          _SummaryRow(
+            label: l.invoiceNumberLabel,
+            value: invoiceNumberDisplay,
+          ),
+          if (invoiceDate != null)
+            _SummaryRow(
+              label: l.invoiceDateLabel,
+              value: DateFormat.yMMMd(l.localeName).format(invoiceDate),
+            ),
+          if (dueDate != null)
+            _SummaryRow(
+              label: l.invoiceDueDateLabel,
+              value: DateFormat.yMMMd(l.localeName).format(dueDate),
+            ),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(

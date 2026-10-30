@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/clients_search_filters.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/buttons.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -123,6 +124,14 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
               countInactiveAsFilter: false,
               clearInactiveOnClear: false,
               inactiveValueMeansHidden: true,
+              moveSummaryIntoFilters: true,
+              // Keep interactive filters in the panel tree. A MenuAnchor is
+              // removed while its hovered children rebuild on Flutter Web,
+              // which can re-enter MouseTracker and trip its scheduler assert.
+              filtersInMenu: false,
+              // Keep the monthly-invoice toggle beside the status segments;
+              // entity/property selectors use the compact row below.
+              additionalFiltersInFilterBody: false,
               additionalFilters: ClientMissingInvoiceFilter(
                   count: hasInvoiceFlagData ? missingInvoiceCount : null,
                   selected: widget.missingCurrentMonthInvoiceOnly,
@@ -146,34 +155,29 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
               onToggleProperty: widget.onTogglePropertyFilter,
               onClearProperty: widget.onClearPropertyFilter,
               trailingActions: [
-                if (widget.onRefresh != null)
-                  IconButton.outlined(
-                    onPressed: widget.refreshing ? null : widget.onRefresh,
-                    tooltip: l.refreshAction,
-                    icon: widget.refreshing
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.refresh_rounded, size: 17),
-                    style: IconButton.styleFrom(
-                      fixedSize: const Size.square(32),
-                      padding: EdgeInsets.zero,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                if (widget.onAddClient != null)
-                  IconButton.filled(
-                    onPressed: widget.onAddClient,
-                    tooltip: l.addClient,
-                    icon: const Icon(Icons.person_add_outlined, size: 17),
-                    style: IconButton.styleFrom(
-                      fixedSize: const Size.square(32),
-                      padding: EdgeInsets.zero,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (widget.onRefresh != null)
+                      HexoraButton.iconOnly(
+                        onPressed: widget.refreshing ? null : widget.onRefresh,
+                        tooltip: l.refreshAction,
+                        icon: Icons.refresh_rounded,
+                        loading: widget.refreshing,
+                        variant: HexoraButtonVariant.secondary,
+                        size: HexoraButtonSize.large,
+                      ),
+                    if (widget.onRefresh != null && widget.onAddClient != null)
+                      const SizedBox(width: 4),
+                    if (widget.onAddClient != null)
+                      HexoraButton.iconOnly(
+                        onPressed: widget.onAddClient,
+                        tooltip: l.addClient,
+                        icon: Icons.person_add_outlined,
+                        size: HexoraButtonSize.large,
+                      ),
+                  ],
+                ),
               ],
             ),
           ),

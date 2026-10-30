@@ -13,7 +13,6 @@ class WorkerTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
 
     final int? totalMinutes = _extractTotalMinutes(worker);
@@ -28,12 +27,10 @@ class WorkerTile extends StatelessWidget {
       color: bg,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-            color: cs.outlineVariant.withValues(alpha: 0.25), width: 1),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: ListTile(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         leading: HexoraUserAvatar(
           userId: worker.userId ?? worker.id,
           displayName: worker.displayName ?? l.unknownWorker,

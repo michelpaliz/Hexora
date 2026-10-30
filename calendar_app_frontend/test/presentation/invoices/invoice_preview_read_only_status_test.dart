@@ -27,6 +27,8 @@ void main() {
     Invoice invoice, {
     VoidCallback? onOpenDeliveryRecord,
     Brightness brightness = Brightness.light,
+    bool fullPage = true,
+    bool actionsInHeader = false,
   }) {
     return MaterialApp(
       theme: AppTheme.forPlatform(
@@ -38,7 +40,8 @@ void main() {
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: InvoiceDetailSheet(
-          fullPage: true,
+          fullPage: fullPage,
+          actionsInHeader: actionsInHeader,
           invoice: invoice,
           client: client,
           billingProfile: null,
@@ -115,6 +118,40 @@ void main() {
     expect(find.byTooltip('Editar pago'), findsNothing);
     expect(find.text('Ver pago'), findsNothing);
     expect(find.text('Ver envío'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('split preview consolidates actions in the right-side menu',
+      (tester) async {
+    tester.view.physicalSize = const Size(760, 820);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(app(
+      const Invoice(
+        id: 'invoice',
+        invoiceNumber: '400-26',
+        groupId: 'group',
+        clientId: 'client',
+        status: 'issued',
+        total: 242,
+      ),
+      fullPage: false,
+      actionsInHeader: true,
+    ));
+    await tester.pump();
+
+    expect(find.text('Ver detalles'), findsNothing);
+    expect(find.text('Enviar'), findsNothing);
+    expect(find.text('Vincular'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Más acciones'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Ver detalles'), findsOneWidget);
+    expect(find.text('Enviar'), findsOneWidget);
+    expect(find.text('Descargar PDF'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

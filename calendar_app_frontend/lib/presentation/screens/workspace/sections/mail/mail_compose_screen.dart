@@ -30,6 +30,7 @@ import 'package:hexora/presentation/screens/workspace/sections/presupuestos/docu
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/add_client_sheet.dart';
 import 'package:hexora/presentation/shared/widgets/client_search_select.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -693,17 +694,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   Set<String> get _attachedInvoiceIds =>
       _attachInvoicePdf ? _composerInvoiceIds : <String>{};
 
-  int get _generatedDocumentAttachmentCount {
-    if (!_attachInvoicePdf) return 0;
-    return _attachedInvoiceIds.length +
-        _selectedPresupuestoIds.length +
-        _selectedReceiptIds.length;
-  }
-
-  int get _totalAttachedDocumentCount =>
-      _generatedDocumentAttachmentCount + _manualPdfAttachmentCount;
-
-  List<String> get _attachedDocumentDisplayNames {
+  List<String> get _generatedDocumentDisplayNames {
     final names = <String>[];
     if (_attachInvoicePdf) {
       final invoicesById = <String, Invoice>{
@@ -733,7 +724,6 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
         names.add('${_isSpanishLocale ? 'Presupuesto' : 'Estimate'} $id.pdf');
       }
     }
-    names.addAll(_manualPdfAttachments.map(_manualPdfAttachmentName));
     return names;
   }
 
@@ -1675,6 +1665,94 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     }
   }
 
+  Future<void> _openDocumentSelectionWorkflow() async {
+    if (_openingInvoicePicker || _sending) return;
+    setState(() => _openingInvoicePicker = true);
+    try {
+      await _prepareInlineInvoiceFlow();
+      if (!mounted || (_inlineInvoiceError ?? '').trim().isNotEmpty) return;
+
+      final media = MediaQuery.of(context);
+      final compact = media.size.width < 700;
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogContext) {
+          final content = _InlineInvoiceFlowPanel(
+            state: this,
+            onComplete: () => Navigator.of(dialogContext).pop(),
+            onClose: () => Navigator.of(dialogContext).pop(),
+          );
+          if (compact) {
+            return Dialog.fullscreen(
+              child: SafeArea(child: content),
+            );
+          }
+          return Dialog(
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 28,
+              vertical: 24,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 900,
+                maxHeight: media.size.height * 0.88,
+              ),
+              child: content,
+            ),
+          );
+        },
+      );
+    } finally {
+      if (mounted) setState(() => _openingInvoicePicker = false);
+    }
+  }
+
+  void _removeAttachedDocumentAt(int index) {
+    final invoiceIds = _composerInvoiceIds.toList(growable: true);
+    if (index < invoiceIds.length) {
+      invoiceIds.removeAt(index);
+      setState(() {
+        _invoiceIdsCtrl.text = invoiceIds.join(',');
+        _attachInvoicePdf = invoiceIds.isNotEmpty ||
+            _selectedReceiptIds.isNotEmpty ||
+            _selectedPresupuestoIds.isNotEmpty;
+      });
+      return;
+    }
+
+    var remaining = index - invoiceIds.length;
+    final receiptIds = _selectedReceiptIds.toList(growable: false);
+    if (remaining < receiptIds.length) {
+      setState(() {
+        _selectedReceiptIds.remove(receiptIds[remaining]);
+        _attachInvoicePdf = invoiceIds.isNotEmpty ||
+            _selectedReceiptIds.isNotEmpty ||
+            _selectedPresupuestoIds.isNotEmpty;
+      });
+      return;
+    }
+
+    remaining -= receiptIds.length;
+    final presupuestoIds = _selectedPresupuestoIds.toList(growable: false);
+    if (remaining < presupuestoIds.length) {
+      setState(() {
+        _selectedPresupuestoIds.remove(presupuestoIds[remaining]);
+        _attachInvoicePdf = invoiceIds.isNotEmpty ||
+            _selectedReceiptIds.isNotEmpty ||
+            _selectedPresupuestoIds.isNotEmpty;
+      });
+      return;
+    }
+
+    remaining -= presupuestoIds.length;
+    final manual = _manualPdfAttachments;
+    if (remaining < manual.length) {
+      setState(() => _attachments.remove(manual[remaining]));
+    }
+  }
+
   Future<void> _promptLink() async {
     final l = AppLocalizations.of(context)!;
     final selection = _quillController.selection;
@@ -1754,6 +1832,13 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
                 onTap: () => Navigator.of(context).pop('upload'),
               ),
               ListTile(
+                leading: const Icon(Icons.receipt_long_outlined),
+                title: Text(_isSpanishLocale
+                    ? 'Adjuntar documentos'
+                    : 'Attach documents'),
+                onTap: () => Navigator.of(context).pop('documents'),
+              ),
+              ListTile(
                 leading: const Icon(Icons.link_outlined),
                 title: Text(l.mailComposeAddAttachment),
                 onTap: () => Navigator.of(context).pop('manual'),
@@ -1765,7 +1850,9 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     );
 
     if (!mounted || choice == null) return;
-    if (choice == 'upload') {
+    if (choice == 'documents') {
+      await _openDocumentSelectionWorkflow();
+    } else if (choice == 'upload') {
       await _pickAndUploadAttachment();
     } else {
       await _addAttachment();

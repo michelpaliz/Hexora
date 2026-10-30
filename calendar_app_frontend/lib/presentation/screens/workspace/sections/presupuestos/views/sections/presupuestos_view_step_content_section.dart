@@ -208,6 +208,7 @@ extension _GroupInvoicesBudgetsViewStepContentSection
         emptySelectionLabel: _isSpanishLocale
             ? 'Selecciona un cliente para continuar'
             : 'Select a client to continue',
+        flat: true,
       );
     }
 
@@ -616,365 +617,381 @@ extension _GroupInvoicesBudgetsViewStepContentSection
     final rows = _previewRows();
     final total = _previewTotal();
     final money = NumberFormat.currency(locale: l.localeName, symbol: '€');
+    final selectedClient = widget.clients.cast<GroupClient?>().firstWhere(
+          (client) => client?.id == _selectedClientId,
+          orElse: () => null,
+        );
+    final clientName = selectedClient?.name.trim().isNotEmpty == true
+        ? selectedClient!.name.trim()
+        : _clientNameCtrl.text.trim();
+
+    Future<void> openPreview() async {
+      if (_previewPdfBytes == null) {
+        await _createDraftAndPreparePreview();
+        return;
+      }
+      final fileName = previewId.isEmpty
+          ? 'presupuesto-preview.pdf'
+          : 'presupuesto-$previewId-preview.pdf';
+      await pdf_launcher.launchPdfPreview(
+        Uint8List.fromList(_previewPdfBytes!),
+        fileName: fileName,
+      );
+    }
 
     Widget metricCard({
       required IconData icon,
       required String label,
       required String value,
       Color? accent,
+      bool compact = false,
     }) {
       final color = accent ?? cs.primary;
-      return Expanded(
-        child: Container(
-          padding: const EdgeInsets.all(13),
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(14),
-            border:
-                Border.all(color: cs.outlineVariant.withValues(alpha: 0.24)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(10),
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.24)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 6),
+            if (compact)
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w900,
                 ),
-                child: Icon(icon, size: 17, color: color),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                      ),
+              )
+            else
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: cs.onSurface,
-                        fontWeight: FontWeight.w900,
-                      ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w900,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+          ],
         ),
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                cs.primary.withValues(alpha: 0.16),
-                cs.secondary.withValues(alpha: 0.08),
-                cs.surfaceContainerHighest.withValues(alpha: 0.08),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: cs.primary.withValues(alpha: 0.20)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: cs.primary.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(
-                  Icons.picture_as_pdf_outlined,
-                  color: cs.primary,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _isSpanishLocale ? 'Revisión final' : 'Final review',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            color: cs.onSurface,
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _isSpanishLocale
-                          ? 'Comprueba el PDF y guarda esta versión cuando todo esté correcto.'
-                          : 'Check the PDF and save this version when everything looks right.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: cs.onSurfaceVariant,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                decoration: BoxDecoration(
-                  color: cs.primary.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: cs.primary.withValues(alpha: 0.24)),
-                ),
-                child: Text(
-                  previewLabel,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    color: cs.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        LayoutBuilder(builder: (context, constraints) {
-          final narrow = constraints.maxWidth < 700;
-          return Flex(
-            direction: narrow ? Axis.vertical : Axis.horizontal,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Flexible(
-                fit: narrow ? FlexFit.loose : FlexFit.tight,
-                flex: narrow ? 0 : 4,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        metricCard(
-                          icon: Icons.format_list_bulleted_rounded,
-                          label: _isSpanishLocale ? 'Líneas' : 'Lines',
-                          value: '${rows.length}',
-                        ),
-                        const SizedBox(width: 10),
-                        metricCard(
-                          icon: Icons.payments_outlined,
-                          label: 'Total',
-                          value: money.format(total),
-                          accent: cs.secondary,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color:
-                            cs.surfaceContainerHighest.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: cs.outlineVariant.withValues(alpha: 0.25),
+    return LayoutBuilder(
+        builder: (context, viewport) => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  child: Row(
+                    children: [
+                      Tooltip(
+                        message: previewId.isEmpty ? previewLabel : previewId,
+                        child: Icon(
+                          Icons.picture_as_pdf_outlined,
+                          color: cs.primary,
+                          size: 20,
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.receipt_long_outlined,
-                                  size: 17, color: cs.primary),
-                              const SizedBox(width: 8),
-                              Text(
-                                _isSpanishLocale
-                                    ? 'Resumen del contenido'
-                                    : 'Content summary',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w900,
-                                  color: cs.onSurface,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          if (rows.isEmpty)
-                            Text(
-                              _isSpanishLocale
-                                  ? 'Sin líneas para previsualizar.'
-                                  : 'No lines to preview.',
-                              style: TextStyle(color: cs.onSurfaceVariant),
-                            )
-                          else
-                            ...rows.take(6).map((row) {
-                              final label = row['label']?.toString() ?? '-';
-                              final qty = row['qty'];
-                              final unitPrice = row['unitPrice'];
-                              final discountRate =
-                                  (row['discountRate'] as num?) ?? 0;
-                              final lineTotal = row['total'];
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            label,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w800,
-                                              color: cs.onSurface,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            '$qty x ${money.format(unitPrice)}'
-                                            '${discountRate > 0 ? ' · Dto. $discountRate%' : ''}',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: cs.onSurfaceVariant,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(
-                                      money.format(lineTotal),
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w900,
-                                        color: cs.onSurface,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
-                          if (rows.length > 6)
-                            Text(
-                              '+${rows.length - 6}',
-                              style: TextStyle(color: cs.onSurfaceVariant),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (_previewError != null && _previewError!.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: cs.errorContainer.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                              color: cs.error.withValues(alpha: 0.32)),
-                        ),
-                        child: Row(
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.error_outline_rounded,
-                                size: 18, color: cs.error),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _previewError!,
-                                style: TextStyle(color: cs.error),
-                              ),
+                            Text(
+                              _isSpanishLocale
+                                  ? 'Revisión final'
+                                  : 'Final review',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w900,
+                                    color: cs.onSurface,
+                                  ),
                             ),
-                            TextButton.icon(
-                              onPressed: () => _loadPreviewPdf(force: true),
-                              icon: const Icon(Icons.refresh, size: 16),
-                              label: Text(l.tryAgain),
+                            Text(
+                              clientName.isEmpty
+                                  ? previewLabel
+                                  : '$clientName · $previewLabel',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                color: cs.onSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
                       ),
-                    if (_previewError == null || _previewError!.isEmpty)
-                      FilledButton.icon(
-                        onPressed: _loadingPreview || _issuing
-                            ? null
-                            : _previewPdfBytes == null
-                                ? () => _createDraftAndPreparePreview()
-                                : () async {
-                                    final fileName = previewId.isEmpty
-                                        ? 'presupuesto-preview.pdf'
-                                        : 'presupuesto-$previewId-preview.pdf';
-                                    await pdf_launcher.launchPdfPreview(
-                                      Uint8List.fromList(_previewPdfBytes!),
-                                      fileName: fileName,
-                                    );
-                                  },
-                        icon: Icon(_previewPdfBytes == null
-                            ? Icons.visibility_outlined
-                            : Icons.open_in_new_outlined),
-                        label: Text(l.budgetPreviewOpenCta),
+                      metricCard(
+                        icon: Icons.format_list_bulleted_rounded,
+                        label: _isSpanishLocale ? 'Líneas' : 'Lines',
+                        value: '${rows.length}',
+                        compact: viewport.maxWidth < 760,
                       ),
-                  ],
-                ),
-              ),
-              SizedBox(width: narrow ? 0 : 16, height: narrow ? 16 : 0),
-              Flexible(
-                fit: narrow ? FlexFit.loose : FlexFit.tight,
-                flex: narrow ? 0 : 6,
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: cs.outlineVariant.withValues(alpha: 0.28),
-                    ),
+                      const SizedBox(width: 6),
+                      metricCard(
+                        icon: Icons.payments_outlined,
+                        label: 'Total',
+                        value: money.format(total),
+                        accent: cs.secondary,
+                        compact: viewport.maxWidth < 760,
+                      ),
+                      const SizedBox(width: 4),
+                      HexoraButton.iconOnly(
+                        onPressed:
+                            _loadingPreview || _issuing ? null : openPreview,
+                        icon: _previewPdfBytes == null
+                            ? Icons.refresh_rounded
+                            : Icons.open_in_new_rounded,
+                        tooltip: l.budgetPreviewOpenCta,
+                        size: HexoraButtonSize.compact,
+                      ),
+                    ],
                   ),
-                  child: _loadingPreview
-                      ? const SizedBox(
-                          height: 620,
-                          child: Center(
-                            child: SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(height: 4),
+                Expanded(child: LayoutBuilder(builder: (context, constraints) {
+                  final narrow = constraints.maxWidth < 900;
+                  return Flex(
+                    direction: narrow ? Axis.vertical : Axis.horizontal,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Flexible(
+                        fit: narrow ? FlexFit.loose : FlexFit.tight,
+                        flex: narrow ? 0 : 3,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: cs.surfaceContainerHighest
+                                      .withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: cs.outlineVariant
+                                        .withValues(alpha: 0.25),
+                                  ),
+                                ),
+                                child: Theme(
+                                  data: Theme.of(context).copyWith(
+                                    dividerColor: Colors.transparent,
+                                  ),
+                                  child: ExpansionTile(
+                                    initiallyExpanded: !narrow,
+                                    maintainState: true,
+                                    tilePadding: EdgeInsets.zero,
+                                    childrenPadding: const EdgeInsets.only(
+                                      top: 2,
+                                      bottom: 2,
+                                    ),
+                                    visualDensity: VisualDensity.compact,
+                                    leading: Icon(
+                                      Icons.receipt_long_outlined,
+                                      size: 17,
+                                      color: cs.primary,
+                                    ),
+                                    title: Text(
+                                      _isSpanishLocale
+                                          ? 'Resumen del contenido'
+                                          : 'Content summary',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w900,
+                                        color: cs.onSurface,
+                                      ),
+                                    ),
+                                    children: [
+                                      if (rows.isEmpty)
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            _isSpanishLocale
+                                                ? 'Sin líneas para previsualizar.'
+                                                : 'No lines to preview.',
+                                            style: TextStyle(
+                                                color: cs.onSurfaceVariant),
+                                          ),
+                                        )
+                                      else
+                                        ...rows.take(6).map((row) {
+                                          final label =
+                                              row['label']?.toString() ?? '-';
+                                          final qty = row['qty'];
+                                          final unitPrice = row['unitPrice'];
+                                          final discountRate =
+                                              (row['discountRate'] as num?) ??
+                                                  0;
+                                          final lineTotal = row['total'];
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                                bottom: 5),
+                                            child: Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        label,
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                          color: cs.onSurface,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 2),
+                                                      Text(
+                                                        '$qty x ${money.format(unitPrice)}'
+                                                        '${discountRate > 0 ? ' · Dto. $discountRate%' : ''}',
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          color: cs
+                                                              .onSurfaceVariant,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Text(
+                                                  money.format(lineTotal),
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w900,
+                                                    color: cs.onSurface,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        }),
+                                      if (rows.length > 6)
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            '+${rows.length - 6}',
+                                            style: TextStyle(
+                                                color: cs.onSurfaceVariant),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              if (_previewError != null &&
+                                  _previewError!.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: cs.errorContainer
+                                        .withValues(alpha: 0.18),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                        color:
+                                            cs.error.withValues(alpha: 0.32)),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(Icons.error_outline_rounded,
+                                          size: 18, color: cs.error),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          _previewError!,
+                                          style: TextStyle(color: cs.error),
+                                        ),
+                                      ),
+                                      TextButton.icon(
+                                        onPressed: () =>
+                                            _loadPreviewPdf(force: true),
+                                        icon:
+                                            const Icon(Icons.refresh, size: 16),
+                                        label: Text(l.tryAgain),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: narrow ? 0 : 8, height: narrow ? 8 : 0),
+                      Flexible(
+                        fit: FlexFit.tight,
+                        flex: narrow ? 1 : 7,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: cs.surfaceContainerHighest
+                                .withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: cs.outlineVariant.withValues(alpha: 0.28),
                             ),
                           ),
-                        )
-                      : _previewPdfBytes != null
-                          ? PdfInlinePreview(
-                              bytes: Uint8List.fromList(_previewPdfBytes!),
-                              height: 620,
-                            )
-                          : _budgetPreviewWidget(l),
-                ),
-              ),
-            ],
-          );
-        }),
-      ],
-    );
+                          child: LayoutBuilder(
+                            builder: (context, pdfConstraints) =>
+                                _loadingPreview
+                                    ? const Center(
+                                        child: SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2),
+                                        ),
+                                      )
+                                    : _previewPdfBytes != null
+                                        ? PdfInlinePreview(
+                                            bytes: Uint8List.fromList(
+                                                _previewPdfBytes!),
+                                            height: pdfConstraints.maxHeight,
+                                          )
+                                        : _budgetPreviewWidget(l),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                })),
+              ],
+            ));
   }
 
   Widget _buildBudgetClientDetails(
@@ -982,76 +999,71 @@ extension _GroupInvoicesBudgetsViewStepContentSection
     GroupClient selectedClient,
   ) {
     final t = AppTypography.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Center(
-            child: Column(
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: cs.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    selectedClient.name.trim().isEmpty
-                        ? '?'
-                        : selectedClient.name.trim()[0].toUpperCase(),
-                    style: t.titleLarge.copyWith(
-                      color: cs.primary,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  selectedClient.name,
-                  style: t.bodyLarge.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: cs.onSurface,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            alignment: WrapAlignment.center,
+          Row(
             children: [
-              if ((selectedClient.email ?? '').trim().isNotEmpty)
-                _BudgetClientChip(
-                  icon: Icons.email_outlined,
-                  label: selectedClient.email!.trim(),
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              if ((selectedClient.phone ?? '').trim().isNotEmpty)
-                _BudgetClientChip(
-                  icon: Icons.phone_outlined,
-                  label: selectedClient.phone!.trim(),
+                child: Text(
+                  selectedClient.name.trim().isEmpty
+                      ? '?'
+                      : selectedClient.name.trim()[0].toUpperCase(),
+                  style: t.bodyMedium.copyWith(
+                    color: cs.primary,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-              if ((selectedClient.entityType ?? '').trim().isNotEmpty)
-                _BudgetClientChip(
-                  icon: Icons.business_outlined,
-                  label: selectedClient.entityType!.trim(),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      selectedClient.name,
+                      style: t.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurface,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if ((selectedClient.email ?? '').trim().isNotEmpty)
+                      Text(
+                        selectedClient.email!.trim(),
+                        style: t.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    if ((selectedClient.propertyKind ?? '').trim().isNotEmpty)
+                      Text(
+                        selectedClient.propertyKind!.trim(),
+                        style: t.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
                 ),
-              if ((selectedClient.propertyKind ?? '').trim().isNotEmpty)
-                _BudgetClientChip(
-                  icon: Icons.home_work_outlined,
-                  label: selectedClient.propertyKind!.trim(),
-                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
-          Expanded(
+          SizedBox(
+            height: 164,
             child: _BudgetClientStatsBox(
               issuedCount: _clientBudgetIssuedCount,
               draftCount: _clientBudgetDraftCount,
@@ -1220,46 +1232,6 @@ String _budgetMonthLabel(DateTime dt, String locale) {
   return raw[0].toUpperCase() + raw.substring(1);
 }
 
-class _BudgetClientChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _BudgetClientChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: cs.onSurfaceVariant),
-          const SizedBox(width: 5),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 160),
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: t.bodySmall.copyWith(
-                fontSize: 11,
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _BudgetClientStatsBox extends StatefulWidget {
   final int issuedCount;
   final int draftCount;
@@ -1303,79 +1275,72 @@ class _BudgetClientStatsBoxState extends State<_BudgetClientStatsBox>
     final cs = Theme.of(context).colorScheme;
     final isEs = l.localeName.toLowerCase().startsWith('es');
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
-            child: TabBar(
-              controller: _tab,
-              dividerColor: Colors.transparent,
-              splashFactory: NoSplash.splashFactory,
-              overlayColor:
-                  WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.06)),
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicator: BoxDecoration(
-                color: cs.primaryContainer,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              indicatorPadding: const EdgeInsets.symmetric(vertical: 3),
-              labelColor: cs.onPrimaryContainer,
-              unselectedLabelColor: cs.onSurfaceVariant,
-              labelStyle: t.bodySmall
-                  .copyWith(fontWeight: FontWeight.w800, fontSize: 11),
-              unselectedLabelStyle: t.bodySmall
-                  .copyWith(fontWeight: FontWeight.w700, fontSize: 11),
-              tabs: [
-                Tab(text: isEs ? 'Este mes' : 'This month'),
-                Tab(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(isEs ? 'Historial' : 'History'),
-                      if (widget.pastBudgets.isNotEmpty) ...[
-                        const SizedBox(width: 5),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: cs.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            '${widget.pastBudgets.length}',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              color: cs.onSurfaceVariant,
-                            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+          child: TabBar(
+            controller: _tab,
+            dividerColor: Colors.transparent,
+            splashFactory: NoSplash.splashFactory,
+            overlayColor:
+                WidgetStatePropertyAll(cs.primary.withValues(alpha: 0.06)),
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicator: BoxDecoration(
+              color: cs.primaryContainer,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            indicatorPadding: const EdgeInsets.symmetric(vertical: 3),
+            labelColor: cs.onPrimaryContainer,
+            unselectedLabelColor: cs.onSurfaceVariant,
+            labelStyle:
+                t.bodySmall.copyWith(fontWeight: FontWeight.w800, fontSize: 11),
+            unselectedLabelStyle:
+                t.bodySmall.copyWith(fontWeight: FontWeight.w700, fontSize: 11),
+            tabs: [
+              Tab(text: isEs ? 'Este mes' : 'This month'),
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(isEs ? 'Historial' : 'History'),
+                    if (widget.pastBudgets.isNotEmpty) ...[
+                      const SizedBox(width: 5),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: cs.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '${widget.pastBudgets.length}',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: cs.onSurfaceVariant,
                           ),
                         ),
-                      ],
+                      ),
                     ],
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
-          Expanded(
-            child: TabBarView(
-              controller: _tab,
-              children: [
-                _buildThisMonthTab(isEs, t, cs),
-                _buildHistoryTab(context, isEs, t, cs),
-              ],
-            ),
+        ),
+        Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
+        Expanded(
+          child: TabBarView(
+            controller: _tab,
+            children: [
+              _buildThisMonthTab(isEs, t, cs),
+              _buildHistoryTab(context, isEs, t, cs),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1556,13 +1521,8 @@ class _BudgetStatCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       child: Row(
         children: [
           Icon(icon, size: 14, color: color.withValues(alpha: 0.7)),
@@ -1628,13 +1588,8 @@ class _BudgetHistoryItem extends StatelessWidget {
     final displayNumber =
         number.isNotEmpty ? number : (isEs ? 'Borrador' : 'Draft');
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       child: Row(
         children: [
           Icon(

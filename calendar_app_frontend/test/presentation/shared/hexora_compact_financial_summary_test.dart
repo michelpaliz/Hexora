@@ -73,6 +73,16 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('inline loading state stays within a narrow toolbar slot',
+      (tester) async {
+    await tester.pumpWidget(
+      subject(loading: true, inline: true, width: 118),
+    );
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('inline alert shrink-wraps inside its horizontal viewport',
       (tester) async {
     await tester.pumpWidget(subject(loading: false, inline: true, width: 610));

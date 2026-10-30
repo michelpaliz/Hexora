@@ -24,6 +24,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_party.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_public_link_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/invoice_delivery_utils.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/invoice_bank_link_panel.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
@@ -58,6 +59,7 @@ class InvoiceDetailSheet extends StatefulWidget {
   final bool fullPage;
   final VoidCallback? onExpand;
   final bool isExpanded;
+  final bool actionsInHeader;
 
   const InvoiceDetailSheet({
     super.key,
@@ -76,6 +78,7 @@ class InvoiceDetailSheet extends StatefulWidget {
     this.onNext,
     this.onExpand,
     this.isExpanded = false,
+    this.actionsInHeader = false,
   });
 
   @override
@@ -570,6 +573,17 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
             (invoice.status ?? '').trim().toLowerCase() != 'issued'
         ? ''
         : '${isEs ? 'Emitida el' : 'Issued'} ${DateFormat.yMMMd(l.localeName).format(issueDate.toLocal())}';
+    final currentUserId = context.watch<UserDomain?>()?.user?.id;
+    final role =
+        currentUserId == null ? null : widget.group.userRoles[currentUserId];
+    final canSend = role == 'owner' || role == 'co-admin';
+    final canIssue = invoice.isDraft &&
+        widget.onIssueInvoice != null &&
+        (currentUserId == widget.group.ownerId ||
+            role == 'owner' ||
+            role == 'admin' ||
+            role == 'co-admin');
+    final canEditDraft = invoice.isDraft && widget.onEditInvoice != null;
 
     final headerMenu = PopupMenuButton<String>(
       tooltip: isEs ? 'Más acciones' : 'More actions',
@@ -579,6 +593,16 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
       onSelected: (value) {
         setState(() => _previewMenuOpen = false);
         switch (value) {
+          case 'issue':
+            _issueSelectedInvoice();
+          case 'edit':
+            widget.onEditInvoice?.call();
+          case 'details':
+            _openDetailsDialog(context);
+          case 'send':
+            _openSendInvoice(canSend: canSend);
+          case 'download':
+            _downloadPdf();
           case 'preview':
             _previewPdf();
           case 'copy':
@@ -588,6 +612,58 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         }
       },
       itemBuilder: (_) => [
+        if (widget.actionsInHeader && canIssue)
+          NavigationPopupMenuItem(
+            value: 'issue',
+            enabled: !_issuingInvoice,
+            child: ListTile(
+              leading: const Icon(Icons.publish_outlined),
+              title: Text(isEs ? 'Emitir' : 'Issue'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        if (widget.actionsInHeader && canEditDraft)
+          NavigationPopupMenuItem(
+            value: 'edit',
+            child: ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: Text(isEs ? 'Editar' : 'Edit'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        if (widget.actionsInHeader)
+          NavigationPopupMenuItem(
+            value: 'details',
+            child: ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: Text(isEs ? 'Ver detalles' : 'Details'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        if (widget.actionsInHeader)
+          NavigationPopupMenuItem(
+            value: 'send',
+            enabled: canSend,
+            child: ListTile(
+              leading: const Icon(Icons.mail_outline_rounded),
+              title: Text(isEs ? 'Enviar' : 'Send'),
+              subtitle: canSend
+                  ? null
+                  : Text(isEs
+                      ? 'Solo propietarios y coadministradores'
+                      : 'Owners and co-admins only'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        NavigationPopupMenuItem(
+          value: 'download',
+          enabled: !_downloadingPdf,
+          child: ListTile(
+            leading: const Icon(Icons.download_outlined),
+            title: Text('${l.download} PDF'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
         NavigationPopupMenuItem(
           value: 'preview',
           enabled: !_previewing,
@@ -612,6 +688,27 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
             child: ListTile(
               leading: const Icon(Icons.repeat_rounded),
               title: Text(recurrenceLabel),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        if (widget.actionsInHeader && status == 'issued')
+          NavigationPopupMenuItem(
+            enabled: false,
+            child: ListTile(
+              leading: const Icon(Icons.qr_code_2_rounded),
+              title: Text(isEs ? 'Factura digital' : 'Digital invoice'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        if (widget.actionsInHeader)
+          NavigationPopupMenuItem<String>(
+            enabled: false,
+            child: ListTile(
+              leading:
+                  Icon(isLinked ? Icons.link_rounded : Icons.link_off_rounded),
+              title: Text(isLinked
+                  ? '${l.statementsInvoiceAlreadyLinkedBadge} ($linkedEntriesCount)'
+                  : l.statementsUnlinked),
               contentPadding: EdgeInsets.zero,
             ),
           ),
@@ -660,6 +757,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
                 _InvoiceDetailTabs(
                   selectedIndex: _inlineTabIndex,
                   isEs: isEs,
+                  showLinkTab: widget.actionsInHeader && !invoice.isDraft,
                   onSelected: (index) =>
                       setState(() => _inlineTabIndex = index),
                 ),
@@ -679,23 +777,24 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
                 ),
 
                 // ── Footer bar ───────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                  child: SafeArea(
-                    top: false,
-                    child: _buildFooterBar(
-                      context,
-                      cs,
-                      l,
-                      isEs: isEs,
-                      isLinked: isLinked,
-                      linkedEntriesCount: linkedEntriesCount,
-                      hasRecurrence: hasRecurrence,
-                      recurrenceLabel: recurrenceLabel,
-                      occurrenceLabel: occurrenceLabel,
+                if (!widget.actionsInHeader)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                    child: SafeArea(
+                      top: false,
+                      child: _buildFooterBar(
+                        context,
+                        cs,
+                        l,
+                        isEs: isEs,
+                        isLinked: isLinked,
+                        linkedEntriesCount: linkedEntriesCount,
+                        hasRecurrence: hasRecurrence,
+                        recurrenceLabel: recurrenceLabel,
+                        occurrenceLabel: occurrenceLabel,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           );
@@ -731,6 +830,20 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
             onRetry: _loadInvoiceHistory,
           ),
         ],
+      );
+    }
+    // Tab 3 = Vincular. Reuses the bank transaction linking workflow with
+    // this invoice already selected.
+    if (selectedIndex == 3) {
+      return InvoiceBankLinkPanel(
+        key: ValueKey('invoice-bank-link-tab-${_invoice.id}'),
+        groupId: widget.group.id,
+        invoice: _invoice,
+        embeddedTab: true,
+        onLinked: () async {
+          await _loadInvoiceDetail();
+          if (mounted) await _notifyInvoiceChanged();
+        },
       );
     }
 
@@ -1798,11 +1911,13 @@ class _InvoiceDetailTabs extends StatelessWidget {
   const _InvoiceDetailTabs({
     required this.selectedIndex,
     required this.isEs,
+    required this.showLinkTab,
     required this.onSelected,
   });
 
   final int selectedIndex;
   final bool isEs;
+  final bool showLinkTab;
   final ValueChanged<int> onSelected;
 
   @override
@@ -1810,8 +1925,18 @@ class _InvoiceDetailTabs extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     final labels = isEs
-        ? const ['Resumen', 'Vista previa', 'Historial']
-        : const ['Summary', 'Preview', 'History'];
+        ? [
+            'Resumen',
+            'Vista previa',
+            'Historial',
+            if (showLinkTab) 'Vincular',
+          ]
+        : [
+            'Summary',
+            'Preview',
+            'History',
+            if (showLinkTab) 'Link',
+          ];
 
     return SizedBox(
       height: 34,

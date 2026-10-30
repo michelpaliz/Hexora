@@ -21,22 +21,24 @@ Widget _composeMessageToolbar(
           bool active = false,
         }) {
           return SizedBox(
-            width: compact ? 48 : 26,
-            height: compact ? 48 : 26,
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              iconSize: compact ? 22 : 16,
-              onPressed: onPressed,
-              icon: Icon(icon),
-              color: active ? cs.primary : cs.onSurface,
-              tooltip: tooltip,
+            width: compact ? 44 : 30,
+            height: compact ? 44 : 30,
+            child: Center(
+              child: HexoraButton.iconOnly(
+                icon: icon,
+                tooltip: tooltip,
+                onPressed: onPressed,
+                variant: HexoraButtonVariant.ghost,
+                size:
+                    compact ? HexoraButtonSize.large : HexoraButtonSize.compact,
+                accentColor: active ? cs.primary : null,
+              ),
             ),
           );
         }
 
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
             color: cs.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
