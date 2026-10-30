@@ -370,6 +370,10 @@ class StatementsAllDataTableRow extends StatelessWidget {
     final amountColor =
         isNegative ? tableTheme.amountNegative : tableTheme.amountPositive;
 
+    final rowTransitionDuration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 150);
+
     return _StatementRowSurface(
       borderColor: isActive
           ? cs.primary
@@ -378,6 +382,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
               : tableTheme.border.withValues(alpha: 0.82),
       child: Material(
         color: rowColor,
+        animationDuration: rowTransitionDuration,
         borderRadius: BorderRadius.zero,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -1042,10 +1047,13 @@ class _StatementRowSurface extends StatefulWidget {
 class _StatementRowSurfaceState extends State<_StatementRowSurface> {
   @override
   Widget build(BuildContext context) {
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 150);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: duration,
         curve: Curves.easeOut,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.zero,

@@ -415,12 +415,14 @@ class HexoraSidePanelLayout extends StatelessWidget {
             : width;
         final open = panel != null;
         final media = MediaQuery.of(context);
+        final motionDuration =
+            media.disableAnimations ? Duration.zero : _duration;
 
         return Stack(
           fit: StackFit.expand,
           children: [
             AnimatedPadding(
-              duration: _duration,
+              duration: motionDuration,
               curve: Curves.easeOutCubic,
               padding: EdgeInsets.only(right: open && docked ? panelWidth : 0),
               child: child,
@@ -433,7 +435,7 @@ class HexoraSidePanelLayout extends StatelessWidget {
               child: IgnorePointer(
                 ignoring: !open,
                 child: AnimatedSwitcher(
-                  duration: _duration,
+                  duration: motionDuration,
                   switchInCurve: Curves.easeOutCubic,
                   switchOutCurve: Curves.easeInCubic,
                   transitionBuilder: (panelChild, animation) => SlideTransition(

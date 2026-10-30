@@ -1817,6 +1817,28 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
       });
     final summary = _computeSummary(context, amountFilteredEntries);
 
+    Widget animatedResultsState(String state, Widget child) {
+      final duration = MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 180);
+      return AnimatedSwitcher(
+        duration: duration,
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          final offset = Tween<Offset>(
+            begin: const Offset(0, 0.015),
+            end: Offset.zero,
+          ).animate(animation);
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(position: offset, child: child),
+          );
+        },
+        child: KeyedSubtree(key: ValueKey(state), child: child),
+      );
+    }
+
     if (s.allEntriesYear != null &&
         _yearController.text != s.allEntriesYear.toString()) {
       _yearController.text = s.allEntriesYear.toString();
@@ -2214,122 +2236,139 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                       )),
                 _activeFiltersChips(l, s),
                 if (s.loadingAllEntries && s.allEntries.isEmpty)
-                  const StatementsAllDataSkeleton()
+                  animatedResultsState(
+                    'loading',
+                    const StatementsAllDataSkeleton(),
+                  )
                 else if (s.allEntriesError != null)
-                  Text(s.allEntriesError!, style: TextStyle(color: cs.error))
+                  animatedResultsState(
+                    'error',
+                    Text(
+                      s.allEntriesError!,
+                      style: TextStyle(color: cs.error),
+                    ),
+                  )
                 else if (s.allEntries.isEmpty)
-                  Text(l.statementsAllDataEmpty)
+                  animatedResultsState(
+                    'empty',
+                    Text(l.statementsAllDataEmpty),
+                  )
                 else
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      StatementsAllDataTable(
-                        entries: sortedEntries,
-                        controller: s,
-                        selectedIds: _selectedIds,
-                        activeEntryId: _linkPanelEntryId,
-                        tableTheme: tableTheme,
-                        onMarkNoProcede: _showNoProcedeDialog,
-                        noProcedeReasonForEntry: (entry) {
-                          final id = (entry['_id'] ?? entry['id'])?.toString();
-                          if (id == null || id.isEmpty) return null;
-                          return _noProcedeReasonsByEntryId[id];
-                        },
-                        onDateFilterTap: () => _showDateFilterDialog(s),
-                        dateFilterActive: s.allEntriesYear != null ||
-                            (s.allEntriesDateFrom?.isNotEmpty ?? false) ||
-                            (s.allEntriesDateTo?.isNotEmpty ?? false),
-                        onDescriptionFilterTap: () =>
-                            _showDescriptionFilterDialog(s),
-                        descriptionFilterActive:
-                            (s.allEntriesDescriptionSearch?.isNotEmpty ??
-                                false),
-                        onNotesFilterTap: () => _showNotesFilterDialog(s),
-                        notesFilterActive:
-                            (s.allEntriesNotesSearch?.isNotEmpty ?? false),
-                        onAmountFilterTap: _showAmountFilterDialog,
-                        amountFilterActive: _amountMinFilter != null ||
-                            _amountMaxFilter != null ||
-                            _amountTypeFilter != 'all',
-                        onClientProviderFilterTap: () =>
-                            _showClientProviderFilterDialog(s),
-                        clientProviderFilterActive:
-                            _clientProviderController.text.trim().isNotEmpty,
-                        onInvoiceSortTap: () => setState(() {
-                          _invoiceSortMode = (_invoiceSortMode + 1) % 3;
-                        }),
-                        invoiceSortMode: _invoiceSortMode,
-                        onToggleAll: (checked) {
-                          setState(() {
-                            if (checked) {
-                              for (final entry in visibleEntries) {
-                                final id =
-                                    (entry['_id'] ?? entry['id'])?.toString();
-                                if (id != null && id.isNotEmpty) {
-                                  _selectedIds.add(id);
+                  animatedResultsState(
+                    'content',
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        StatementsAllDataTable(
+                          entries: sortedEntries,
+                          controller: s,
+                          selectedIds: _selectedIds,
+                          activeEntryId: _linkPanelEntryId,
+                          tableTheme: tableTheme,
+                          onMarkNoProcede: _showNoProcedeDialog,
+                          noProcedeReasonForEntry: (entry) {
+                            final id =
+                                (entry['_id'] ?? entry['id'])?.toString();
+                            if (id == null || id.isEmpty) return null;
+                            return _noProcedeReasonsByEntryId[id];
+                          },
+                          onDateFilterTap: () => _showDateFilterDialog(s),
+                          dateFilterActive: s.allEntriesYear != null ||
+                              (s.allEntriesDateFrom?.isNotEmpty ?? false) ||
+                              (s.allEntriesDateTo?.isNotEmpty ?? false),
+                          onDescriptionFilterTap: () =>
+                              _showDescriptionFilterDialog(s),
+                          descriptionFilterActive:
+                              (s.allEntriesDescriptionSearch?.isNotEmpty ??
+                                  false),
+                          onNotesFilterTap: () => _showNotesFilterDialog(s),
+                          notesFilterActive:
+                              (s.allEntriesNotesSearch?.isNotEmpty ?? false),
+                          onAmountFilterTap: _showAmountFilterDialog,
+                          amountFilterActive: _amountMinFilter != null ||
+                              _amountMaxFilter != null ||
+                              _amountTypeFilter != 'all',
+                          onClientProviderFilterTap: () =>
+                              _showClientProviderFilterDialog(s),
+                          clientProviderFilterActive:
+                              _clientProviderController.text.trim().isNotEmpty,
+                          onInvoiceSortTap: () => setState(() {
+                            _invoiceSortMode = (_invoiceSortMode + 1) % 3;
+                          }),
+                          invoiceSortMode: _invoiceSortMode,
+                          onToggleAll: (checked) {
+                            setState(() {
+                              if (checked) {
+                                for (final entry in visibleEntries) {
+                                  final id =
+                                      (entry['_id'] ?? entry['id'])?.toString();
+                                  if (id != null && id.isNotEmpty) {
+                                    _selectedIds.add(id);
+                                  }
+                                }
+                              } else {
+                                for (final entry in visibleEntries) {
+                                  final id =
+                                      (entry['_id'] ?? entry['id'])?.toString();
+                                  if (id != null) _selectedIds.remove(id);
                                 }
                               }
-                            } else {
-                              for (final entry in visibleEntries) {
-                                final id =
-                                    (entry['_id'] ?? entry['id'])?.toString();
-                                if (id != null) _selectedIds.remove(id);
-                              }
-                            }
-                          });
-                        },
-                        onToggleRow: (entryId) {
-                          setState(() {
-                            if (_selectedIds.contains(entryId)) {
-                              _selectedIds.remove(entryId);
-                            } else {
-                              _selectedIds.add(entryId);
-                            }
-                          });
-                        },
-                        onShowDetails: (entry) => _openTransactionPanel(
-                          s,
-                          entry,
-                          initialTab: StatementsTransactionPanelTab.details,
-                        ),
-                        onSuggest: (entry) => _openTransactionPanel(
-                          s,
-                          entry,
-                          initialTab: StatementsTransactionPanelTab.link,
-                          initialLinkMode: BankTransactionLinkMode.suggestions,
-                        ),
-                        onLinkInvoice: (entry) {
-                          final id =
-                              (entry['_id'] ?? entry['id'])?.toString() ?? '';
-                          if (id.isNotEmpty) {
-                            setState(() {
-                              _noProcedeReasonsByEntryId.remove(id);
                             });
-                          }
-                          _openTransactionPanel(
+                          },
+                          onToggleRow: (entryId) {
+                            setState(() {
+                              if (_selectedIds.contains(entryId)) {
+                                _selectedIds.remove(entryId);
+                              } else {
+                                _selectedIds.add(entryId);
+                              }
+                            });
+                          },
+                          onShowDetails: (entry) => _openTransactionPanel(
+                            s,
+                            entry,
+                            initialTab: StatementsTransactionPanelTab.details,
+                          ),
+                          onSuggest: (entry) => _openTransactionPanel(
                             s,
                             entry,
                             initialTab: StatementsTransactionPanelTab.link,
-                            initialLinkMode: BankTransactionLinkMode.manual,
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              resultRangeLabel,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(color: cs.onSurfaceVariant),
-                            ),
+                            initialLinkMode:
+                                BankTransactionLinkMode.suggestions,
                           ),
-                          pageNavigationActions,
-                        ],
-                      ),
-                    ],
+                          onLinkInvoice: (entry) {
+                            final id =
+                                (entry['_id'] ?? entry['id'])?.toString() ?? '';
+                            if (id.isNotEmpty) {
+                              setState(() {
+                                _noProcedeReasonsByEntryId.remove(id);
+                              });
+                            }
+                            _openTransactionPanel(
+                              s,
+                              entry,
+                              initialTab: StatementsTransactionPanelTab.link,
+                              initialLinkMode: BankTransactionLinkMode.manual,
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                resultRangeLabel,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: cs.onSurfaceVariant),
+                              ),
+                            ),
+                            pageNavigationActions,
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
               ],
             ),
