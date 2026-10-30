@@ -666,6 +666,33 @@ class InvoicesApi {
     );
   }
 
+  Future<http.Response> exportInvoiceRegisterExcel({
+    required String groupId,
+    String? status,
+  }) async {
+    final uri = Uri.parse('$_base/register/export.xlsx').replace(
+      queryParameters: {
+        'groupId': groupId,
+        if (status != null) 'status': status,
+      },
+    );
+    final headers = _headers();
+    headers['Accept'] =
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    final response = await AuthenticatedHttpClient.get(uri, headers: headers);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return response;
+    }
+    throw InvoicesApiException(
+      statusCode: response.statusCode,
+      message: 'No se pudo exportar el registro de facturas',
+      url: uri,
+      method: 'GET',
+      responseBody: response.body,
+      responseHeaders: response.headers,
+    );
+  }
+
   Future<Map<String, dynamic>> patchSuspicionReview(
     String invoiceId, {
     required String status,

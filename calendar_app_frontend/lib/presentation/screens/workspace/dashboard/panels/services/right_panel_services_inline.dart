@@ -395,8 +395,8 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
 
     final clientsTabLabel = '${l.tabClients} · ${_clients.length}';
     final servicesTabLabel = '${l.tabServices} · ${_services.length}';
-    final propertyKindOptions = _clients
-        .map((c) => (c.propertyKind ?? '').trim())
+    final propertyTypeOptions = _clients
+        .map((c) => (c.effectivePropertyType ?? '').trim())
         .where((v) => v.isNotEmpty)
         .toSet()
         .toList()
@@ -452,9 +452,9 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
                     showInactive: _showInactiveClients,
                     onToggleInactive: (v) =>
                         setState(() => _showInactiveClients = v),
-                    propertyKindFilter: _propertyKindFilter,
-                    propertyKindOptions: propertyKindOptions,
-                    onPropertyKindChanged: (v) =>
+                    propertyTypeFilter: _propertyKindFilter,
+                    propertyTypeOptions: propertyTypeOptions,
+                    onPropertyTypeChanged: (v) =>
                         setState(() => _propertyKindFilter = v),
                     onDelete: _confirmDeleteClient,
                     showInlineCTA: true,

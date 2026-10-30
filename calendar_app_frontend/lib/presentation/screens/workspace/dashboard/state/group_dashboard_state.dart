@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
@@ -14,6 +16,7 @@ import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../navigation/dashboard_sections.dart';
 
@@ -85,12 +88,45 @@ class GroupDashboardState extends ChangeNotifier {
 
   // UI
   String activeSection = Sections.calendar;
+  bool _sectionChosenSinceOpen = false;
+  static const _adminOnlySections = {
+    Sections.services,
+    Sections.invoices,
+    Sections.budgets,
+    Sections.expenses,
+    Sections.emails,
+    Sections.chat,
+    Sections.enableBanking,
+    Sections.telegram,
+    Sections.settings,
+  };
+  static const _restorableSections = {
+    Sections.calendar,
+    Sections.maps,
+    Sections.businessChat,
+    Sections.notifications,
+    Sections.workers,
+    ..._adminOnlySections,
+  };
+
+  String _sectionKey(String userId) =>
+      'hexora.dashboard_section.$userId.${group.id}';
+
+  Future<void> _rememberSection(String userId, String section) async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString(_sectionKey(userId), section);
+    } catch (_) {}
+  }
 
   void selectSection(String section) {
     if (section == Sections.chat && !canSeeAdmin) return;
     if (section == Sections.services && !canSeeAdmin) return;
+    _sectionChosenSinceOpen = true;
     if (activeSection == section) return;
     activeSection = section;
+    final userId = user?.id;
+    if (userId != null) unawaited(_rememberSection(userId, section));
     notifyListeners();
   }
   CalendarDashboardActions? calendarActions;
@@ -149,7 +185,16 @@ class GroupDashboardState extends ChangeNotifier {
 
     role = await RoleResolver.resolve(group: target, userDomain: _ud);
     user = await _getSafeUser();
-    if ((activeSection == Sections.chat || activeSection == Sections.services) && !canSeeAdmin) {
+    if (!_sectionChosenSinceOpen && user != null) {
+      try {
+        final preferences = await SharedPreferences.getInstance();
+        final savedSection = preferences.getString(_sectionKey(user!.id));
+        if (savedSection != null && _restorableSections.contains(savedSection)) {
+          activeSection = savedSection;
+        }
+      } catch (_) {}
+    }
+    if (_adminOnlySections.contains(activeSection) && !canSeeAdmin) {
       activeSection = Sections.calendar;
     }
 

@@ -509,7 +509,10 @@ class _InvoiceExportMenuButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final busy = state._downloadingAllPdfs || state._exportingInvoiceConcepts;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final busy = state._downloadingAllPdfs ||
+        state._exportingInvoiceConcepts ||
+        state._exportingInvoiceRegister;
     return MenuAnchor(
       style: MenuStyle(
         padding: const WidgetStatePropertyAll(EdgeInsets.all(8)),
@@ -525,6 +528,14 @@ class _InvoiceExportMenuButton extends StatelessWidget {
               color: Color(0xFFC62828)),
           child: Text(l.invoiceToolbarPdf),
         ),
+        MenuItemButton(
+          onPressed: state._exportingInvoiceRegister
+              ? null
+              : state._exportInvoiceRegisterExcel,
+          leadingIcon:
+              const Icon(Icons.table_chart_outlined, color: Color(0xFF21834A)),
+          child: Text(isEs ? 'Registro de facturas (Excel)' : 'Invoice register (Excel)'),
+        ),
         if (showExcel)
           MenuItemButton(
             onPressed: state._exportingInvoiceConcepts
@@ -532,7 +543,7 @@ class _InvoiceExportMenuButton extends StatelessWidget {
                 : state._exportInvoiceConceptsExcel,
             leadingIcon:
                 const Icon(Icons.table_view_outlined, color: Color(0xFF21834A)),
-            child: Text(l.invoiceToolbarExcel),
+            child: Text(isEs ? 'Facturas por concepto (Excel)' : 'Invoices by concept (Excel)'),
           ),
       ],
       builder: (context, controller, child) => OutlinedButton.icon(
