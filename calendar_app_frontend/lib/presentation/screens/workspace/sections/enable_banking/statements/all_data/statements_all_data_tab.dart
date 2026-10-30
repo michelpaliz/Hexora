@@ -1,5 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:hexora/presentation/shared/widgets/panels/hexora_side_panel.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
@@ -431,197 +432,438 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     final yearController = TextEditingController(text: _yearController.text);
     final fromController = TextEditingController(text: _fromController.text);
     final toController = TextEditingController(text: _toController.text);
+    final now = DateTime.now();
     var applied = false;
+    var customExpanded = false;
+    String? selectedPreset;
+
+    DateTime day(DateTime value) =>
+        DateTime(value.year, value.month, value.day);
+    bool sameDay(DateTime? left, DateTime? right) =>
+        left != null && right != null && day(left) == day(right);
+    DateTime threeMonthsAgo(DateTime value) =>
+        DateTime(value.year, value.month - 3, value.day);
+
+    void resolveInitialSelection() {
+      final from = _parseDate(fromController.text);
+      final to = _parseDate(toController.text);
+      if (sameDay(from, DateTime(now.year, now.month, 1)) && sameDay(to, now)) {
+        selectedPreset = 'month';
+      } else if (sameDay(from, now.subtract(const Duration(days: 29))) &&
+          sameDay(to, now)) {
+        selectedPreset = '30days';
+      } else if (sameDay(from, threeMonthsAgo(now)) && sameDay(to, now)) {
+        selectedPreset = '3months';
+      } else if (sameDay(from, DateTime(now.year, 1, 1)) && sameDay(to, now)) {
+        selectedPreset = 'year';
+      } else if (from != null || to != null) {
+        selectedPreset = 'custom';
+        customExpanded = true;
+      } else if (_parseYear(yearController.text) == now.year) {
+        selectedPreset = 'year';
+      }
+    }
+
+    resolveInitialSelection();
+
+    bool customRangeIsValid() {
+      final from = _parseDate(fromController.text);
+      final to = _parseDate(toController.text);
+      return from == null || to == null || !from.isAfter(to);
+    }
 
     Future<void> pickDate({
-      required BuildContext dialogContext,
+      required BuildContext modalContext,
       required TextEditingController target,
-      required StateSetter setDialogState,
+      required StateSetter setModalState,
     }) async {
-      final initial = _parseDate(target.text) ?? DateTime.now();
+      final initial = _parseDate(target.text) ?? now;
       final picked = await showDatePicker(
-        context: dialogContext,
+        context: modalContext,
+        locale: Localizations.localeOf(modalContext),
         initialDate: initial,
         firstDate: DateTime(2000),
-        lastDate: DateTime(DateTime.now().year + 1, 12, 31),
+        lastDate: DateTime(now.year + 1, 12, 31),
       );
       if (picked == null) return;
-      setDialogState(() => target.text = _dateOnly(picked));
+      setModalState(() {
+        target.text = _dateOnly(picked);
+        yearController.clear();
+        selectedPreset = 'custom';
+        customExpanded = true;
+      });
     }
 
-    Future<void> applyAndClose(BuildContext dialogContext) async {
-      _yearController.text = yearController.text.trim();
-      _fromController.text = fromController.text.trim();
-      _toController.text = toController.text.trim();
-      applied = true;
-      Navigator.of(dialogContext).pop();
+    void selectPreset(
+      StateSetter setModalState,
+      String preset,
+      DateTime from,
+      DateTime to,
+    ) {
+      setModalState(() {
+        selectedPreset = preset;
+        customExpanded = false;
+        yearController.clear();
+        fromController.text = _dateOnly(day(from));
+        toController.text = _dateOnly(day(to));
+      });
     }
 
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        final l = AppLocalizations.of(dialogContext)!;
-        final cs = Theme.of(dialogContext).colorScheme;
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            Widget dateTile({
-              required String label,
-              required TextEditingController controller,
-              required IconData icon,
-            }) {
-              final value = controller.text.trim();
-              final parsed = _parseDate(value);
-              final display = parsed == null
-                  ? 'dd/mm/aaaa'
-                  : DateFormat('dd/MM/yyyy').format(parsed);
-              return InkWell(
-                onTap: s.loadingAllEntries
-                    ? null
-                    : () => pickDate(
-                          dialogContext: dialogContext,
-                          target: controller,
-                          setDialogState: setDialogState,
-                        ),
-                borderRadius: BorderRadius.circular(10),
-                child: InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: label,
-                    border: const OutlineInputBorder(),
-                    isDense: true,
-                    prefixIcon: Icon(icon, size: 18),
-                    suffixIcon: value.isEmpty
-                        ? const Icon(Icons.calendar_today_outlined, size: 16)
-                        : IconButton(
-                            tooltip: l.statementsClearFilters,
-                            onPressed: () => setDialogState(controller.clear),
-                            icon: const Icon(Icons.close_rounded, size: 16),
-                          ),
+    void expandCustom(StateSetter setModalState) {
+      setModalState(() {
+        customExpanded = !customExpanded;
+        if (!customExpanded) return;
+        selectedPreset = 'custom';
+        final historicalYear = _parseYear(yearController.text);
+        if (fromController.text.trim().isEmpty &&
+            toController.text.trim().isEmpty &&
+            historicalYear != null) {
+          fromController.text = _dateOnly(DateTime(historicalYear, 1, 1));
+          toController.text = _dateOnly(DateTime(historicalYear, 12, 31));
+          yearController.clear();
+        }
+      });
+    }
+
+    Widget buildContent(
+      BuildContext modalContext,
+      StateSetter setModalState,
+    ) {
+      final l = AppLocalizations.of(modalContext)!;
+      final cs = Theme.of(modalContext).colorScheme;
+      final typo = AppTypography.of(modalContext);
+      final isSpanish =
+          Localizations.localeOf(modalContext).languageCode == 'es';
+      final valid = customRangeIsValid();
+
+      Widget presetTile({
+        required String id,
+        required String label,
+        required DateTime from,
+        required DateTime to,
+      }) {
+        return ChoiceChip(
+          selected: selectedPreset == id,
+          showCheckmark: true,
+          label: SizedBox(
+            width: double.infinity,
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          onSelected: s.loadingAllEntries
+              ? null
+              : (_) => selectPreset(setModalState, id, from, to),
+        );
+      }
+
+      Widget dateTile({
+        required String label,
+        required TextEditingController controller,
+      }) {
+        final parsed = _parseDate(controller.text);
+        final display = parsed == null
+            ? 'dd/mm/aaaa'
+            : DateFormat('dd/MM/yyyy', isSpanish ? 'es' : null).format(parsed);
+        return InkWell(
+          onTap: s.loadingAllEntries
+              ? null
+              : () => pickDate(
+                    modalContext: modalContext,
+                    target: controller,
+                    setModalState: setModalState,
                   ),
-                  child: Text(display),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 44),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.34),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today_outlined,
+                    size: 16, color: cs.onSurfaceVariant),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: typo.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontSize: 10.5,
+                        ),
+                      ),
+                      Text(
+                        display,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: typo.bodySmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              );
-            }
+                if (controller.text.trim().isNotEmpty)
+                  IconButton(
+                    tooltip: l.statementsClearFilters,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => setModalState(() {
+                      controller.clear();
+                      yearController.clear();
+                      selectedPreset = 'custom';
+                    }),
+                    icon: const Icon(Icons.close_rounded, size: 15),
+                  ),
+              ],
+            ),
+          ),
+        );
+      }
 
-            Widget preset(String label, DateTime from, DateTime to, int? year) {
-              return ActionChip(
-                label: Text(label),
-                onPressed: s.loadingAllEntries
-                    ? null
-                    : () => setDialogState(() {
-                          yearController.text = year?.toString() ?? '';
-                          fromController.text = _dateOnly(from);
-                          toController.text = _dateOnly(to);
-                        }),
-              );
-            }
-
-            final now = DateTime.now();
-            return AlertDialog(
-              backgroundColor: cs.surface,
-              surfaceTintColor: Colors.transparent,
-              title: Text(l.statementsHeaderDate),
-              content: SizedBox(
-                width: 420,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+      final appliedYear = _parseYear(yearController.text);
+      return SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            10,
+            16,
+            12 + MediaQuery.viewInsetsOf(modalContext).bottom,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    TextField(
-                      controller: yearController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: l.statementsFilterYear,
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                        prefixIcon:
-                            const Icon(Icons.calendar_month_outlined, size: 18),
+                    Icon(Icons.date_range_outlined,
+                        size: 18, color: cs.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l.statementsHeaderDate,
+                        style: typo.bodyLarge.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: dateTile(
-                            label: l.statementsFilterFrom,
-                            controller: fromController,
-                            icon: Icons.arrow_forward_rounded,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: dateTile(
-                            label: l.statementsFilterTo,
-                            controller: toController,
-                            icon: Icons.arrow_back_rounded,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          preset(
-                            l.statementsPresetThisMonth,
-                            DateTime(now.year, now.month, 1),
-                            DateTime(now.year, now.month + 1, 0),
-                            now.year,
-                          ),
-                          preset(
-                            l.statementsPresetLast30Days,
-                            now.subtract(const Duration(days: 30)),
-                            now,
-                            null,
-                          ),
-                          preset(
-                            l.localeName.toLowerCase().startsWith('es')
-                                ? 'Ultimos 3 meses'
-                                : 'Last 3 months',
-                            DateTime(now.year, now.month - 3, now.day),
-                            now,
-                            null,
-                          ),
-                          preset(
-                            l.statementsPresetThisYear,
-                            DateTime(now.year, 1, 1),
-                            DateTime(now.year, 12, 31),
-                            now.year,
-                          ),
-                        ],
-                      ),
+                    HexoraButton.iconOnly(
+                      onPressed: () => Navigator.of(modalContext).pop(),
+                      icon: Icons.close_rounded,
+                      tooltip: l.close,
+                      variant: HexoraButtonVariant.ghost,
+                      size: HexoraButtonSize.compact,
                     ),
                   ],
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: s.loadingAllEntries
-                      ? null
-                      : () => setDialogState(() {
-                            yearController.clear();
-                            fromController.clear();
-                            toController.clear();
-                          }),
-                  child: const Text('Limpiar'),
+                if (appliedYear != null &&
+                    fromController.text.trim().isEmpty &&
+                    toController.text.trim().isEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    isSpanish
+                        ? 'Filtro aplicado: año $appliedYear'
+                        : 'Applied filter: year $appliedYear',
+                    style: typo.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                GridView.count(
+                  crossAxisCount: 2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 6,
+                  crossAxisSpacing: 8,
+                  childAspectRatio: 3.7,
+                  children: [
+                    presetTile(
+                      id: 'month',
+                      label: l.statementsPresetThisMonth,
+                      from: DateTime(now.year, now.month, 1),
+                      to: now,
+                    ),
+                    presetTile(
+                      id: '30days',
+                      label: l.statementsPresetLast30Days,
+                      from: now.subtract(const Duration(days: 29)),
+                      to: now,
+                    ),
+                    presetTile(
+                      id: '3months',
+                      label: isSpanish ? 'Últimos 3 meses' : 'Last 3 months',
+                      from: threeMonthsAgo(now),
+                      to: now,
+                    ),
+                    presetTile(
+                      id: 'year',
+                      label: l.statementsPresetThisYear,
+                      from: DateTime(now.year, 1, 1),
+                      to: now,
+                    ),
+                  ],
                 ),
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: Text(l.close),
-                ),
-                FilledButton(
-                  onPressed: s.loadingAllEntries
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: s.loadingAllEntries
                       ? null
-                      : () => applyAndClose(dialogContext),
-                  child: Text(l.statementsApplyFilters),
+                      : () => expandCustom(setModalState),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.tune_rounded,
+                          size: 17,
+                          color:
+                              customExpanded ? cs.primary : cs.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            isSpanish ? 'Personalizar fechas' : 'Custom dates',
+                            style: typo.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: customExpanded ? cs.primary : cs.onSurface,
+                            ),
+                          ),
+                        ),
+                        Icon(
+                          customExpanded
+                              ? Icons.expand_less_rounded
+                              : Icons.expand_more_rounded,
+                          size: 20,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeInOut,
+                  child: customExpanded
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: dateTile(
+                                      label: l.statementsFilterFrom,
+                                      controller: fromController,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: dateTile(
+                                      label: l.statementsFilterTo,
+                                      controller: toController,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (!valid) ...[
+                                const SizedBox(height: 6),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    isSpanish
+                                        ? 'La fecha Desde no puede ser posterior a Hasta.'
+                                        : 'From cannot be later than To.',
+                                    style: typo.bodySmall.copyWith(
+                                      color: cs.error,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    HexoraButton(
+                      onPressed: s.loadingAllEntries
+                          ? null
+                          : () => setModalState(() {
+                                yearController.clear();
+                                fromController.clear();
+                                toController.clear();
+                                selectedPreset = null;
+                                customExpanded = false;
+                              }),
+                      label: isSpanish ? 'Limpiar' : 'Clear',
+                      variant: HexoraButtonVariant.ghost,
+                      size: HexoraButtonSize.standard,
+                    ),
+                    const Spacer(),
+                    HexoraButton(
+                      onPressed: s.loadingAllEntries || !valid
+                          ? null
+                          : () {
+                              _yearController.text = yearController.text.trim();
+                              _fromController.text = fromController.text.trim();
+                              _toController.text = toController.text.trim();
+                              applied = true;
+                              Navigator.of(modalContext).pop();
+                            },
+                      label: l.statementsApplyFilters,
+                      icon: Icons.check_rounded,
+                      size: HexoraButtonSize.standard,
+                    ),
+                  ],
                 ),
               ],
-            );
-          },
-        );
-      },
-    );
+            ),
+          ),
+        ),
+      );
+    }
+
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
+    if (isMobile) {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        showDragHandle: true,
+        builder: (sheetContext) => StatefulBuilder(
+          builder: buildContent,
+        ),
+      );
+    } else {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogContext) => Dialog(
+          clipBehavior: Clip.antiAlias,
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: StatefulBuilder(builder: buildContent),
+          ),
+        ),
+      );
+    }
+
     yearController.dispose();
     fromController.dispose();
     toController.dispose();
@@ -1707,10 +1949,14 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                     final dateButton = OutlinedButton.icon(
                       onPressed: () => _showDateFilterDialog(s),
                       icon: const Icon(Icons.calendar_month_outlined, size: 18),
-                      label: Text(dateLabel.isNotEmpty
-                          ? dateLabel
-                          : s.allEntriesYear?.toString() ??
-                              (es ? 'Todas las fechas' : 'All dates')),
+                      label: Text(
+                        dateLabel.isNotEmpty
+                            ? dateLabel
+                            : s.allEntriesYear?.toString() ??
+                                (es ? 'Todas las fechas' : 'All dates'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       style: OutlinedButton.styleFrom(
                           minimumSize: const Size(0, 40),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -1774,18 +2020,30 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                             value: 'notes',
                             child: Text(es ? 'Notas' : 'Notes')),
                       ],
-                      child: Container(
-                          height: 40,
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          decoration: BoxDecoration(
-                              border: Border.all(color: tableTheme.border),
-                              borderRadius: BorderRadius.circular(10)),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const Icon(Icons.filter_alt_outlined, size: 18),
-                            const SizedBox(width: 8),
-                            Text(es ? 'Filtros' : 'Filters'),
-                          ])),
+                      child: constraints.maxWidth < 1040
+                          ? _ToolbarIconSurface(
+                              tooltip: es ? 'Filtros' : 'Filters',
+                              icon: Icons.filter_alt_outlined,
+                            )
+                          : Container(
+                              height: 40,
+                              alignment: Alignment.center,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 10),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: tableTheme.border),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.filter_alt_outlined,
+                                      size: 18),
+                                  const SizedBox(width: 8),
+                                  Text(es ? 'Filtros' : 'Filters'),
+                                ],
+                              ),
+                            ),
                     );
                     final resultCount = Text(
                       es ? '$totalResults resultados' : '$totalResults results',
@@ -1894,42 +2152,52 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                       );
                     }
 
-                    if (constraints.maxWidth >= 820) {
-                      return Row(
-                        children: [
-                          Flexible(child: constrainedSearch),
-                          const SizedBox(width: 8),
-                          dateButton,
-                          const SizedBox(width: 8),
-                          filters,
-                          const SizedBox(width: 8),
-                          refresh,
-                          const SizedBox(width: 8),
-                          pageSize,
-                          const SizedBox(width: 4),
-                          secondaryActions,
-                        ],
-                      );
-                    }
+                    final compactSecondary = <Widget>[
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 230),
+                        child: dateButton,
+                      ),
+                      const SizedBox(width: 6),
+                      refresh,
+                      const SizedBox(width: 6),
+                      pageSize,
+                      const SizedBox(width: 8),
+                      resultCount,
+                      const SizedBox(width: 6),
+                      secondaryActions,
+                    ];
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        constrainedSearch,
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          crossAxisAlignment: WrapCrossAlignment.center,
+                        Row(
+                          key: const ValueKey(
+                              'statements-compact-toolbar-primary'),
                           children: [
-                            dateButton,
+                            Expanded(child: search),
+                            const SizedBox(width: 6),
                             filters,
-                            refresh,
-                            pageSize,
-                            secondaryActions,
-                            resultCount,
                           ],
                         ),
+                        const SizedBox(height: 6),
+                        if (constraints.maxWidth >= 560)
+                          Row(
+                            key: const ValueKey(
+                                'statements-compact-toolbar-secondary'),
+                            children: [
+                              compactSecondary.first,
+                              ...compactSecondary.skip(1).take(4),
+                              const Spacer(),
+                              ...compactSecondary.skip(5),
+                            ],
+                          )
+                        else
+                          SingleChildScrollView(
+                            key: const ValueKey(
+                                'statements-compact-toolbar-secondary'),
+                            scrollDirection: Axis.horizontal,
+                            child: Row(children: compactSecondary),
+                          ),
                       ],
                     );
                   }),
