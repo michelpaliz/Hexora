@@ -35,7 +35,14 @@ void main() {
       matching: find.byType(FadeTransition),
     );
     final fade = tester.widget<FadeTransition>(fadeFinder);
+    final slide = tester.widget<SlideTransition>(
+      find.descendant(
+        of: transition,
+        matching: find.byType(SlideTransition),
+      ),
+    );
     expect(fade.opacity.value, lessThan(1));
+    expect(slide.transformHitTests, isFalse);
     expect(find.text('1'), findsOneWidget);
 
     await tester.pumpAndSettle();

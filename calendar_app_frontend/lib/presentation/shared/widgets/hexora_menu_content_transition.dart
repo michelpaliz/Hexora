@@ -73,7 +73,11 @@ class _HexoraMenuContentTransitionState
     return ClipRect(
       child: FadeTransition(
         opacity: _opacity,
-        child: SlideTransition(position: _offset, child: widget.child),
+        child: SlideTransition(
+          position: _offset,
+          transformHitTests: false,
+          child: widget.child,
+        ),
       ),
     );
   }
