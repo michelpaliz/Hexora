@@ -14,6 +14,7 @@ import 'package:hexora/presentation/screens/workspace/sections/presupuestos/temp
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/section_label.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 
 class PresupuestosModuleScreen extends StatefulWidget {
   const PresupuestosModuleScreen({
@@ -84,6 +85,10 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 760;
     final title = _isEs ? 'Propuestas' : 'Proposals';
+    final menuContent = HexoraMenuContentTransition(
+      transitionKey: _menu,
+      child: _content(),
+    );
     final content = _loading
         ? const Center(child: CircularProgressIndicator())
         : _error != null
@@ -96,7 +101,7 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
                         selected: _menu,
                         onSelected: _selectMenu,
                       ),
-                      Expanded(child: _content()),
+                      Expanded(child: menuContent),
                     ],
                   )
                 : Row(
@@ -118,7 +123,7 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
                           title: title,
                           showTab: true,
                           contentTopPadding: 8,
-                          child: _content(),
+                          child: menuContent,
                         ),
                       ),
                     ],

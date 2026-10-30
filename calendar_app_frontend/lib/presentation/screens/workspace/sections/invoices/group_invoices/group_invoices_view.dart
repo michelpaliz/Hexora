@@ -318,16 +318,19 @@ class _GroupInvoicesView extends StatelessWidget {
               ],
             );
 
-      final content = _GroupInvoicesContent(
-        state: state,
-        menu: menu,
-        showInlineEditor: showInlineEditor,
-        visibleInvoices: visibleInvoices,
-        draftInvoices: draftInvoices,
-        invoiceToolbarLeading: invoiceToolbarLeading,
-        invoiceToolbarActions: showInvoiceActions
-            ? (invoiceActions ?? const <Widget>[])
-            : const <Widget>[],
+      final content = HexoraMenuContentTransition(
+        transitionKey: activeMenu,
+        child: _GroupInvoicesContent(
+          state: state,
+          menu: menu,
+          showInlineEditor: showInlineEditor,
+          visibleInvoices: visibleInvoices,
+          draftInvoices: draftInvoices,
+          invoiceToolbarLeading: invoiceToolbarLeading,
+          invoiceToolbarActions: showInvoiceActions
+              ? (invoiceActions ?? const <Widget>[])
+              : const <Widget>[],
+        ),
       );
       body = LayoutBuilder(
         builder: (context, constraints) {

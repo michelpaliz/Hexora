@@ -4,10 +4,10 @@ import 'package:hexora/presentation/shared/widgets/navigation_menu_header.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/vat/vat_summary_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/expense_upload_screen.dart';
-import 'package:hexora/presentation/screens/workspace/sections/expenses/import_history/expense_import_history_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/section_label.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/vat_summary_view.dart';
@@ -250,18 +250,22 @@ class _GastosModuleScreenState extends State<GastosModuleScreen> {
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: IndexedStack(
-            index: activeModuleIdx,
-            sizing: StackFit.expand,
-            children: [
-              for (var i = 0; i < contents.length; i++)
-                TickerMode(
-                  enabled: i == activeModuleIdx,
-                  child: _visitedModules.contains(_kModules[i])
-                      ? contents[i]
-                      : const SizedBox.shrink(),
-                ),
-            ],
+          child: HexoraMenuContentTransition(
+            transitionKey:
+                '$_activeModule:$_gastosSection:$_modelosSection:$_taxSection',
+            child: IndexedStack(
+              index: activeModuleIdx,
+              sizing: StackFit.expand,
+              children: [
+                for (var i = 0; i < contents.length; i++)
+                  TickerMode(
+                    enabled: i == activeModuleIdx,
+                    child: _visitedModules.contains(_kModules[i])
+                        ? contents[i]
+                        : const SizedBox.shrink(),
+                  ),
+              ],
+            ),
           ),
         ),
       ],

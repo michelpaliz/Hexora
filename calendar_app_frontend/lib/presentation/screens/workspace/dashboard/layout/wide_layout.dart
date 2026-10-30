@@ -24,6 +24,7 @@ import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_s
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
 import 'package:hexora/presentation/screens/calendar/screens/calendar/screen/main_calendar_view.dart';
 import 'package:hexora/presentation/shared/widgets/user_profile_popup.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/presentation/utils/roles/group_role_labels.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -52,7 +53,10 @@ class WideLayout extends StatelessWidget {
     return HexoraAppShell(
       globalNav: _DashboardTopNav(state: state, l: l, user: state.user),
       moduleLabel: moduleLabel,
-      body: _buildContent(state, context, l),
+      body: HexoraMenuContentTransition(
+        transitionKey: state.activeSection,
+        child: _buildContent(state, context, l),
+      ),
     );
   }
 

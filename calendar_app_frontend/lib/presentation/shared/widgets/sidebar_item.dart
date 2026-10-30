@@ -42,6 +42,9 @@ class SidebarItem extends StatelessWidget {
         fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
         letterSpacing: 0);
     final radius = BorderRadius.circular(NavigationTokens.radius);
+    final selectionDuration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : NavigationTokens.motion;
     return Semantics(
         selected: isSelected,
         button: true,
@@ -50,6 +53,7 @@ class SidebarItem extends StatelessWidget {
         child: Tooltip(
             message: label,
             child: Material(
+                animationDuration: selectionDuration,
                 color: isSelected
                     ? colors.selectedBackground
                     : primaryAction

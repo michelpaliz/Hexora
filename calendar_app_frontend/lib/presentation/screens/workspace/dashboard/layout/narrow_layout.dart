@@ -9,6 +9,7 @@ import 'package:hexora/presentation/screens/workspace/sections/presupuestos/pres
 import 'package:hexora/presentation/screens/workspace/sections/mail/mail_console_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 
 import '../navigation/dashboard_sections.dart';
 import '../state/group_dashboard_state.dart';
@@ -98,7 +99,10 @@ class NarrowLayout extends StatelessWidget {
 
     return GroupDashboardContent(
       panelBg: state.backdrop,
-      child: child,
+      child: HexoraMenuContentTransition(
+        transitionKey: state.activeSection,
+        child: child,
+      ),
     );
   }
 }

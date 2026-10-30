@@ -17,30 +17,36 @@ class NavigationGroup extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Padding(
-      padding: const EdgeInsets.only(bottom: NavigationTokens.itemGap),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Semantics(
-            expanded: expanded,
-            child: SidebarItem(
-                icon: icon,
-                label: title,
-                isSelected: false,
-                collapsed: false,
-                onTap: onToggle,
-                trailing: AnimatedRotation(
-                    turns: expanded ? .5 : 0,
-                    duration: NavigationTokens.motion,
-                    child: const Icon(Icons.keyboard_arrow_down_rounded,
-                        size: NavigationTokens.iconSize)))),
-        AnimatedSize(
-            duration: NavigationTokens.motion,
-            alignment: Alignment.topCenter,
-            child: expanded
-                ? Padding(
-                    padding:
-                        const EdgeInsets.only(top: NavigationTokens.itemGap),
-                    child: child)
-                : const SizedBox.shrink()),
-      ]));
+  Widget build(BuildContext context) {
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : NavigationTokens.motion;
+    return Padding(
+        padding: const EdgeInsets.only(bottom: NavigationTokens.itemGap),
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Semantics(
+              expanded: expanded,
+              child: SidebarItem(
+                  icon: icon,
+                  label: title,
+                  isSelected: false,
+                  collapsed: false,
+                  onTap: onToggle,
+                  trailing: AnimatedRotation(
+                      turns: expanded ? .5 : 0,
+                      duration: duration,
+                      child: const Icon(Icons.keyboard_arrow_down_rounded,
+                          size: NavigationTokens.iconSize)))),
+          AnimatedSize(
+              duration: duration,
+              alignment: Alignment.topCenter,
+              child: expanded
+                  ? Padding(
+                      padding:
+                          const EdgeInsets.only(top: NavigationTokens.itemGap),
+                      child: child)
+                  : const SizedBox.shrink()),
+        ]));
+  }
 }
