@@ -111,6 +111,8 @@ class _GroupInvoicesView extends StatelessWidget {
               onOpenRecentExports: state._showStoredInvoiceZipDownloads,
               recentExportsCount: state._invoiceZipDownloads.length,
               onRefresh: state._refreshInvoiceListsOnly,
+              onExportInvoiceRegister: state._exportInvoiceRegisterExcel,
+              exportingInvoiceRegister: state._exportingInvoiceRegister,
             )
           : null;
       final recurringActions =

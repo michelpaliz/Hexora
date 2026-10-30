@@ -666,6 +666,33 @@ class InvoicesApi {
     );
   }
 
+  Future<http.Response> exportInvoiceRegisterExcel({
+    required String groupId,
+    String? status,
+  }) async {
+    final uri = Uri.parse('$_base/register/export.xlsx').replace(
+      queryParameters: {
+        'groupId': groupId,
+        if (status != null) 'status': status,
+      },
+    );
+    final headers = _headers();
+    headers['Accept'] =
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    final response = await AuthenticatedHttpClient.get(uri, headers: headers);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return response;
+    }
+    throw InvoicesApiException(
+      statusCode: response.statusCode,
+      message: 'No se pudo exportar el registro de facturas',
+      url: uri,
+      method: 'GET',
+      responseBody: response.body,
+      responseHeaders: response.headers,
+    );
+  }
+
   Future<Map<String, dynamic>> patchSuspicionReview(
     String invoiceId, {
     required String status,
@@ -757,21 +784,25 @@ class InvoicesApi {
   }
 
   Future<Map<String, dynamic>> getPublicLink(String id) async {
-    final r = await AuthenticatedHttpClient.get(
-      _u('/$id/public-link'), headers: _headers());
-    return _decode<Map<String, dynamic>>(r, (j) => Map<String, dynamic>.from(j));
+    final r = await AuthenticatedHttpClient.get(_u('/$id/public-link'),
+        headers: _headers());
+    return _decode<Map<String, dynamic>>(
+        r, (j) => Map<String, dynamic>.from(j));
   }
 
   Future<Map<String, dynamic>> revokePublicLink(String id) async {
-    final r = await AuthenticatedHttpClient.post(
-      _u('/$id/public-link/revoke'), headers: _headers());
-    return _decode<Map<String, dynamic>>(r, (j) => Map<String, dynamic>.from(j));
+    final r = await AuthenticatedHttpClient.post(_u('/$id/public-link/revoke'),
+        headers: _headers());
+    return _decode<Map<String, dynamic>>(
+        r, (j) => Map<String, dynamic>.from(j));
   }
 
   Future<Map<String, dynamic>> regeneratePublicLink(String id) async {
     final r = await AuthenticatedHttpClient.post(
-      _u('/$id/public-link/regenerate'), headers: _headers());
-    return _decode<Map<String, dynamic>>(r, (j) => Map<String, dynamic>.from(j));
+        _u('/$id/public-link/regenerate'),
+        headers: _headers());
+    return _decode<Map<String, dynamic>>(
+        r, (j) => Map<String, dynamic>.from(j));
   }
 
   /// POST /invoices/:id/issue  -> locks invoice, assigns number/issueDate/status

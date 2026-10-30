@@ -6,6 +6,7 @@ import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
+import 'package:hexora/presentation/routes/group_route_recovery.dart';
 import 'package:hexora/presentation/routes/calendar/group_calendar_loader.dart';
 import 'package:hexora/presentation/screens/home/home_page/home_page.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/group_dashboard.dart';
@@ -73,13 +74,15 @@ final Map<String, WidgetBuilder> routes = {
   AppRoutes.statementsAnalytics: (context) => const StatementsAnalyticsScreen(),
   AppRoutes.groupDashboard: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
-    if (group == null) return const SizedBox.shrink();
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.groupDashboard);
     return GroupDashboard(group: group);
   },
 
   AppRoutes.groupInsights: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
-    if (group == null) return const SizedBox.shrink();
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.groupInsights);
     return GroupInsightsScreen(group: group);
   },
 
@@ -91,7 +94,7 @@ final Map<String, WidgetBuilder> routes = {
     final event = ModalRoute.of(context)?.settings.arguments as Event?;
     return event != null
         ? EditEventScreen(event: event)
-        : const SizedBox.shrink();
+        : const MissingRouteDataScreen();
   },
 
   AppRoutes.createGroupData: (context) => const CreateGroupData(),
@@ -99,13 +102,13 @@ final Map<String, WidgetBuilder> routes = {
     final user = ModalRoute.of(context)?.settings.arguments as User?;
     return user != null
         ? ShowNotifications(user: user)
-        : const SizedBox.shrink();
+        : const MissingRouteDataScreen();
   },
   AppRoutes.groupNotifications: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
     return group != null
         ? GroupNotificationsScreen(group: group)
-        : const SizedBox.shrink();
+        : const GroupRouteRecovery(routeName: AppRoutes.groupNotifications);
   },
   AppRoutes.expenseOcrReprocessResults: (context) {
     final args = ModalRoute.of(context)?.settings.arguments;
@@ -118,30 +121,34 @@ final Map<String, WidgetBuilder> routes = {
     if (args is Map) {
       final groupId = (args['groupId'] ?? '').toString();
       final jobId = (args['jobId'] ?? '').toString();
-      if (groupId.isEmpty || jobId.isEmpty) return const SizedBox.shrink();
+      if (groupId.isEmpty || jobId.isEmpty)
+        return const MissingRouteDataScreen();
       return ExpenseOcrReprocessResultsScreen(groupId: groupId, jobId: jobId);
     }
-    return const SizedBox.shrink();
+    return const MissingRouteDataScreen();
   },
   AppRoutes.groupCalendar: (context) {
     final args = ModalRoute.of(context)?.settings.arguments;
-    return GroupCalendarLoader(args: args);
+    return args == null
+        ? const GroupRouteRecovery(routeName: AppRoutes.groupCalendar)
+        : GroupCalendarLoader(args: args);
   },
 
   AppRoutes.addEvent: (context) {
     final group = ModalRoute.of(context)!.settings.arguments as Group?;
-    if (group == null) return const SizedBox.shrink();
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.addEvent);
     return AddEventScreen(group: group);
   },
   AppRoutes.eventDetail: (context) {
     final event = ModalRoute.of(context)?.settings.arguments as Event?;
     return event != null
         ? EventDetailScreen(event: event)
-        : const SizedBox.shrink();
+        : const MissingRouteDataScreen();
   },
   AppRoutes.editGroupData: (context) {
-    final args =
-        ModalRoute.of(context)?.settings.arguments as EditGroupArguments;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is! EditGroupArguments) return const MissingRouteDataScreen();
     return EditGroupData(group: args.group, users: args.users);
   },
   AppRoutes.homePage: (context) => const HomePage(),
@@ -149,11 +156,13 @@ final Map<String, WidgetBuilder> routes = {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
     return group != null
         ? GroupSettings(group: group)
-        : const SizedBox.shrink();
+        : const GroupRouteRecovery(routeName: AppRoutes.groupSettings);
   },
   AppRoutes.groupServicesClients: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
-    if (group == null) return const SizedBox.shrink();
+    if (group == null)
+      return const GroupRouteRecovery(
+          routeName: AppRoutes.groupServicesClients);
     return ServicesClientsScreen(group: group);
   },
   AppRoutes.groupIncome: (context) {
@@ -178,7 +187,8 @@ final Map<String, WidgetBuilder> routes = {
       initialReceiptId = args['initialReceiptId']?.toString();
       initialBudgetId = args['initialBudgetId']?.toString();
     }
-    if (group == null) return const SizedBox.shrink();
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.groupIncome);
     return GroupInvoicesScreen(
       group: group,
       initialMenu: initialMenu,
@@ -209,7 +219,8 @@ final Map<String, WidgetBuilder> routes = {
       initialReceiptId = args['initialReceiptId']?.toString();
       initialBudgetId = args['initialBudgetId']?.toString();
     }
-    if (group == null) return const SizedBox.shrink();
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.groupInvoices);
     return GroupInvoicesScreen(
       group: group,
       initialMenu: initialMenu,
@@ -220,12 +231,14 @@ final Map<String, WidgetBuilder> routes = {
   },
   AppRoutes.groupExpenses: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
-    if (group == null) return const SizedBox.shrink();
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.groupExpenses);
     return GastosModuleScreen(group: group);
   },
   AppRoutes.recurringInvoices: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
-    if (group == null) return const SizedBox.shrink();
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.recurringInvoices);
     return RecurringInvoicesScreen(group: group);
   },
   AppRoutes.agenda: (context) {
@@ -244,29 +257,32 @@ final Map<String, WidgetBuilder> routes = {
 
   AppRoutes.groupMembers: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
-    if (group == null) return const SizedBox.shrink();
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.groupMembers);
     return GroupMembersScreen(group: group);
   },
   AppRoutes.groupTimeTracking: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
-    if (group == null) return const SizedBox.shrink();
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.groupTimeTracking);
     return WorkersHubScreen(group: group);
   },
   AppRoutes.headerSection: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
     return group != null
         ? GroupHeaderScreen(group: group)
-        : const SizedBox.shrink();
+        : const GroupRouteRecovery(routeName: AppRoutes.headerSection);
   },
   AppRoutes.createWorker: (context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
-    if (group == null) return const SizedBox.shrink();
+    if (group == null)
+      return const GroupRouteRecovery(routeName: AppRoutes.createWorker);
     return CreateWorkerScreen(group: group);
   },
   AppRoutes.createTimeEntry: (context) {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    if (args == null) return const SizedBox.shrink();
+    if (args == null) return const MissingRouteDataScreen();
     final group = args['group'] as Group;
     final workers = args['workers'] as List<Worker>;
     return CreateTimeEntryScreen(group: group, workers: workers);
@@ -274,7 +290,7 @@ final Map<String, WidgetBuilder> routes = {
   AppRoutes.workerTimeTracking: (context) {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    if (args == null) return const SizedBox.shrink();
+    if (args == null) return const MissingRouteDataScreen();
     final group = args['group'] as Group;
     final worker = args['worker'] as Worker;
     return WorkerTimeTrackingScreen(group: group, worker: worker);

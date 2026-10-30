@@ -125,6 +125,24 @@ class InvoiceToolbarOptionsMenu extends StatelessWidget {
           leadingIcon: const Icon(Icons.refresh_rounded, size: 18),
           child: Text(isEs ? 'Actualizar' : 'Refresh'),
         ),
+        if (toolbarOptions!.onExportInvoiceRegister != null)
+          MenuItemButton(
+            onPressed: toolbarOptions!.exportingInvoiceRegister
+                ? null
+                : toolbarOptions!.onExportInvoiceRegister,
+            leadingIcon: toolbarOptions!.exportingInvoiceRegister
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.table_chart_outlined, size: 18),
+            child: Text(
+              isEs
+                  ? 'Registro de facturas (Excel)'
+                  : 'Invoice register (Excel)',
+            ),
+          ),
         const Divider(height: 1),
       ],
       SubmenuButton(

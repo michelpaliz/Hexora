@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -16,6 +18,7 @@ import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../navigation/dashboard_sections.dart';
 
@@ -92,13 +95,50 @@ class GroupDashboardState extends ChangeNotifier {
   String? invoicesInitialReceiptId;
   String? invoicesInitialBudgetId;
   int invoicesNavigationRevision = 0;
+  bool _sectionChosenSinceOpen = false;
+
+  static const _adminOnlySections = {
+    Sections.services,
+    Sections.invoices,
+    Sections.budgets,
+    Sections.expenses,
+    Sections.emails,
+    Sections.chat,
+    Sections.enableBanking,
+    Sections.telegram,
+    Sections.settings,
+    Sections.workers,
+  };
+
+  static const _restorableSections = {
+    Sections.calendar,
+    Sections.maps,
+    Sections.businessChat,
+    Sections.notifications,
+    ..._adminOnlySections,
+  };
+
+  String _sectionKey(String userId) =>
+      'hexora.dashboard_section.$userId.${group.id}';
+
+  Future<void> _rememberSection(String userId, String section) async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString(_sectionKey(userId), section);
+    } catch (_) {
+      // Browser storage can be unavailable without blocking navigation.
+    }
+  }
 
   void selectSection(String section) {
     if (section == Sections.chat && !canSeeAdmin) return;
     if (section == Sections.services && !canSeeAdmin) return;
     if (section == Sections.workers && !canSeeAdmin) return;
+    _sectionChosenSinceOpen = true;
     if (activeSection == section) return;
     activeSection = section;
+    final userId = user?.id;
+    if (userId != null) unawaited(_rememberSection(userId, section));
     notifyListeners();
   }
 
@@ -113,7 +153,12 @@ class GroupDashboardState extends ChangeNotifier {
     invoicesInitialReceiptId = initialReceiptId;
     invoicesInitialBudgetId = initialBudgetId;
     invoicesNavigationRevision += 1;
+    _sectionChosenSinceOpen = true;
     activeSection = Sections.invoices;
+    final userId = user?.id;
+    if (userId != null) {
+      unawaited(_rememberSection(userId, Sections.invoices));
+    }
     notifyListeners();
   }
 
@@ -173,10 +218,19 @@ class GroupDashboardState extends ChangeNotifier {
 
     role = await RoleResolver.resolve(group: target, userDomain: _ud);
     user = await _getSafeUser();
-    if ((activeSection == Sections.chat ||
-            activeSection == Sections.services ||
-            activeSection == Sections.workers) &&
-        !canSeeAdmin) {
+    if (!_sectionChosenSinceOpen && user != null) {
+      try {
+        final preferences = await SharedPreferences.getInstance();
+        final savedSection = preferences.getString(_sectionKey(user!.id));
+        if (savedSection != null &&
+            _restorableSections.contains(savedSection)) {
+          activeSection = savedSection;
+        }
+      } catch (_) {
+        // Fall back to the calendar when browser storage is unavailable.
+      }
+    }
+    if (_adminOnlySections.contains(activeSection) && !canSeeAdmin) {
       activeSection = Sections.calendar;
     }
 

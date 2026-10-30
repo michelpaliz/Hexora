@@ -223,6 +223,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   bool _downloadingAllPdfs = false;
   bool _loadingInvoiceZipDownloads = false;
   bool _exportingInvoiceConcepts = false;
+  bool _exportingInvoiceRegister = false;
   bool _confirmingIssueAllDrafts = false;
   bool? _issuingAllDrafts = false;
   bool? _refreshingClientsSection = false;
@@ -867,6 +868,45 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           AppLocalizations.of(context)!.invoiceExportConceptsExcelFailed);
     } finally {
       if (mounted) setState(() => _exportingInvoiceConcepts = false);
+    }
+  }
+
+  Future<void> _exportInvoiceRegisterExcel() async {
+    if (_exportingInvoiceRegister) return;
+    final groupId = widget.group.id.trim();
+    if (groupId.isEmpty) return;
+    final status = switch (_selectedMenu) {
+      'invoices_issued' => 'issued',
+      'invoices_drafts' => 'draft',
+      _ => 'all',
+    };
+    setState(() => _exportingInvoiceRegister = true);
+    try {
+      final response = await _invoicesApi.exportInvoiceRegisterExcel(
+        groupId: groupId,
+        status: status,
+      );
+      final fileName = downloadFileNameFromHeaders(
+        response.headers,
+        fallback: 'facturas_hexora.xlsx',
+      );
+      await launchFileDownload(
+        response.bodyBytes,
+        fileName: fileName,
+        mimeType:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+    } catch (_) {
+      if (!mounted) return;
+      final isEs = Localizations.localeOf(context).languageCode == 'es';
+      showErrorSnack(
+        context,
+        isEs
+            ? 'No se pudo descargar el registro de facturas.'
+            : 'Could not download the invoice register.',
+      );
+    } finally {
+      if (mounted) setState(() => _exportingInvoiceRegister = false);
     }
   }
 

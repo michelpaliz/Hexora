@@ -15,6 +15,7 @@ import 'package:hexora/services/groups/repository/i_group_repository.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/services/user/repository/i_user_repository.dart';
 import 'package:hexora/presentation/utils/roles/group_role.dart';
+import 'package:hexora/services/groups/domain/last_group_selection.dart';
 
 class GroupDomain extends ChangeNotifier {
   // Dependencies
@@ -105,6 +106,9 @@ class GroupDomain extends ChangeNotifier {
   set currentGroup(Group? group) {
     if (identical(_currentGroup, group)) return;
     _currentGroup = group;
+    if (group != null && _groupsInitialized) {
+      unawaited(_rememberSelectedGroup(currentUser.id, group.id));
+    }
 
     if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.idle) {
       notifyListeners();
@@ -120,6 +124,14 @@ class GroupDomain extends ChangeNotifier {
   void publishCurrentGroupUpdate(Group updated) {
     _lastUpdatedGroup = updated;
     currentGroup = updated;
+  }
+
+  Future<void> _rememberSelectedGroup(String userId, String groupId) async {
+    try {
+      await LastGroupSelection.save(userId, groupId);
+    } catch (_) {
+      // Browser storage may be unavailable; normal navigation still works.
+    }
   }
 
   // ── Repo-owned stream surface for UI ───────────────────────────────────────

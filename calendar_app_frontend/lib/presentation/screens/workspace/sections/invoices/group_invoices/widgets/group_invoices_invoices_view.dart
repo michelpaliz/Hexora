@@ -40,11 +40,15 @@ class InvoiceToolbarOptions {
     required this.onOpenRecentExports,
     required this.recentExportsCount,
     required this.onRefresh,
+    this.onExportInvoiceRegister,
+    this.exportingInvoiceRegister = false,
   });
 
   final VoidCallback onOpenRecentExports;
   final int recentExportsCount;
   final VoidCallback onRefresh;
+  final VoidCallback? onExportInvoiceRegister;
+  final bool exportingInvoiceRegister;
 }
 
 class GroupInvoicesInvoicesView extends StatefulWidget {
