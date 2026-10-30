@@ -9,6 +9,7 @@ void main() {
     VoidCallback? onAlert,
     double width = 900,
     double textScale = 1,
+    bool inline = false,
   }) {
     return MaterialApp(
       theme: AppTheme.forPlatform(
@@ -27,6 +28,7 @@ void main() {
             width: width,
             child: HexoraCompactFinancialSummary(
               loading: loading,
+              inline: inline,
               metrics: const [
                 HexoraFinancialMetric(
                     label: 'Base imponible', value: '226.895,44 €'),
@@ -68,6 +70,14 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.text('226.895,44 €'), findsNothing);
     expect(find.text('274.130,47 €'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('inline alert shrink-wraps inside its horizontal viewport',
+      (tester) async {
+    await tester.pumpWidget(subject(loading: false, inline: true, width: 610));
+
+    expect(find.text('1 desajuste'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

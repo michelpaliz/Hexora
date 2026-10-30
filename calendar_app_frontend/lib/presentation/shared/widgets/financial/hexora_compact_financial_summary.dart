@@ -330,6 +330,7 @@ class _HexoraCompactFinancialSummaryState
               borderRadius: BorderRadius.circular(7),
             ),
             child: Row(
+              mainAxisSize: widget.inline ? MainAxisSize.min : MainAxisSize.max,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.warning_amber_rounded, size: 18, color: warning),
