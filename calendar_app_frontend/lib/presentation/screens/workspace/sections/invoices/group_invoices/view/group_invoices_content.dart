@@ -8,7 +8,7 @@ class _GroupInvoicesContent extends StatelessWidget {
     required this.visibleInvoices,
     required this.draftInvoices,
     this.invoiceToolbarLeading,
-    this.invoiceToolbarActions = const [],
+    this.invoiceToolbarOptions,
   });
 
   final _GroupInvoicesScreenState state;
@@ -17,7 +17,7 @@ class _GroupInvoicesContent extends StatelessWidget {
   final List<Invoice> visibleInvoices;
   final List<Invoice> draftInvoices;
   final Widget? invoiceToolbarLeading;
-  final List<Widget> invoiceToolbarActions;
+  final InvoiceToolbarOptions? invoiceToolbarOptions;
 
   @override
   Widget build(BuildContext context) {
@@ -390,7 +390,7 @@ class _GroupInvoicesContent extends StatelessWidget {
         canEditIssued: state.canEditIssuedInvoices(context),
         showHeaderTabs: false,
         toolbarLeading: invoiceToolbarLeading,
-        toolbarActions: invoiceToolbarActions,
+        toolbarOptions: invoiceToolbarOptions,
       );
     }
 
@@ -436,7 +436,7 @@ class _GroupInvoicesContent extends StatelessWidget {
         canEditIssued: state.canEditIssuedInvoices(context),
         showHeaderTabs: false,
         toolbarLeading: invoiceToolbarLeading,
-        toolbarActions: invoiceToolbarActions,
+        toolbarOptions: invoiceToolbarOptions,
       );
     }
 
@@ -472,7 +472,7 @@ class _GroupInvoicesContent extends StatelessWidget {
       canEditIssued: state.canEditIssuedInvoices(context),
       showHeaderTabs: false,
       toolbarLeading: invoiceToolbarLeading,
-      toolbarActions: invoiceToolbarActions,
+      toolbarOptions: invoiceToolbarOptions,
     );
   }
 }

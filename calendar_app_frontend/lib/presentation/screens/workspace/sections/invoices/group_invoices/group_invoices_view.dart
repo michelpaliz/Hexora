@@ -106,33 +106,12 @@ class _GroupInvoicesView extends StatelessWidget {
       final showInvoiceActions = activeMenu == 'invoices' ||
           activeMenu == 'invoices_issued' ||
           activeMenu == 'invoices_drafts';
-      final invoiceActions = showInvoiceActions
-          ? <Widget>[
-              _InvoiceRecentExportsButton(state: state),
-              Tooltip(
-                message: l.refreshAction,
-                child: IconButton(
-                  onPressed: state._refreshInvoiceListsOnly,
-                  style: IconButton.styleFrom(
-                    visualDensity: VisualDensity.standard,
-                    fixedSize: const Size(30, 30),
-                    minimumSize: const Size(30, 30),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    padding: EdgeInsets.zero,
-                    foregroundColor: cs.onSurfaceVariant,
-                    backgroundColor:
-                        cs.surfaceContainerHighest.withValues(alpha: 0.16),
-                    side: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.5),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  icon: const Icon(Icons.refresh_rounded, size: 16),
-                ),
-              ),
-            ]
+      final invoiceToolbarOptions = showInvoiceActions
+          ? InvoiceToolbarOptions(
+              onOpenRecentExports: state._showStoredInvoiceZipDownloads,
+              recentExportsCount: state._invoiceZipDownloads.length,
+              onRefresh: state._refreshInvoiceListsOnly,
+            )
           : null;
       final recurringActions =
           activeMenu == 'recurring' && state._recurringActions != null
@@ -271,8 +250,7 @@ class _GroupInvoicesView extends StatelessWidget {
           receiptActions ??
           clientsActions ??
           recurringReceiptsActions ??
-          recurringActions ??
-          (showInvoiceActions ? null : invoiceActions);
+          recurringActions;
       final invoiceToolbarTabs = showInvoiceActions
           ? _InvoiceToolbarTabs(
               draftsCount: state._drafts.length,
@@ -327,9 +305,7 @@ class _GroupInvoicesView extends StatelessWidget {
           visibleInvoices: visibleInvoices,
           draftInvoices: draftInvoices,
           invoiceToolbarLeading: invoiceToolbarLeading,
-          invoiceToolbarActions: showInvoiceActions
-              ? (invoiceActions ?? const <Widget>[])
-              : const <Widget>[],
+          invoiceToolbarOptions: invoiceToolbarOptions,
         ),
       );
       body = LayoutBuilder(
@@ -573,65 +549,6 @@ class _InvoiceToolbarTabs extends StatelessWidget {
       ],
       selectedIndex: draftsSelected ? 0 : 1,
       onSelected: (index) => index == 0 ? onDrafts() : onInvoices(),
-    );
-  }
-}
-
-class _InvoiceRecentExportsButton extends StatelessWidget {
-  const _InvoiceRecentExportsButton({required this.state});
-
-  final _GroupInvoicesScreenState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
-    final count = state._invoiceZipDownloads.length;
-    return OutlinedButton(
-      onPressed: state._showStoredInvoiceZipDownloads,
-      style: OutlinedButton.styleFrom(
-        visualDensity: VisualDensity.standard,
-        minimumSize: const Size(0, 30),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        foregroundColor: cs.primary,
-        backgroundColor: cs.primary.withValues(alpha: 0.035),
-        textStyle: const TextStyle(
-          fontSize: 13,
-          height: 1.2,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0,
-        ),
-        side: BorderSide(color: cs.primary.withValues(alpha: 0.28)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.history_rounded, size: 16),
-          const SizedBox(width: 6),
-          Text(isSpanish ? 'Recientes' : 'Recent'),
-          if (count > 0) ...[
-            const SizedBox(width: 6),
-            Container(
-              constraints: const BoxConstraints(minWidth: 18, minHeight: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text('$count',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 11,
-                    height: 1.2,
-                    fontWeight: FontWeight.w600,
-                    color: cs.primary,
-                  )),
-            ),
-          ],
-        ],
-      ),
     );
   }
 }

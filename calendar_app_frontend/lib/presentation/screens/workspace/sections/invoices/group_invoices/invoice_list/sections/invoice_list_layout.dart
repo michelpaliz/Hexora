@@ -385,7 +385,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                     }
                   },
                   leading: widget.toolbarLeading,
-                  externalActions: widget.toolbarActions,
+                  toolbarOptions: widget.toolbarOptions,
                   onMismatchTap: firstMismatch == null
                       ? null
                       : () => widget.onTap(firstMismatch!),
@@ -418,16 +418,16 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                   ),
                 ),
               );
-              final columns = HexoraColumnVisibilityMenu(
-                moduleKey: 'facturas',
+              final options = InvoiceToolbarOptionsMenu(
+                count: visible.length,
+                downloading: _downloadingFiltered,
                 availableColumns:
                     _InvoicesTabListState._availableFinancialColumns,
                 visibleColumns: _visibleFinancialColumns,
-                onChanged: _setVisibleFinancialColumns,
-              );
-              final download = _InvoiceDownloadMenu(
-                count: visible.length,
-                loading: _downloadingFiltered,
+                onColumnsChanged: _setVisibleFinancialColumns,
+                unlinkedOnly: false,
+                paymentSuggestionsLoading: false,
+                toolbarOptions: widget.toolbarOptions,
                 onPdf: widget.onDownloadFiltered == null
                     ? null
                     : () => downloadFiltered(excel: false),
@@ -436,13 +436,8 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                     : () => downloadFiltered(excel: true),
               );
               final orderedActions = <Widget>[
-                if (widget.toolbarActions.isNotEmpty)
-                  widget.toolbarActions.first,
-                columns,
                 if (issueAllButton != null) issueAllButton,
-                download,
-                if (widget.toolbarActions.length > 1)
-                  ...widget.toolbarActions.skip(1),
+                options,
               ];
               final actions = Wrap(
                 alignment: WrapAlignment.end,
@@ -454,7 +449,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
 
               return LayoutBuilder(
                 builder: (context, constraints) {
-                  final fullyUnified = constraints.maxWidth >= 1420 &&
+                  final fullyUnified = constraints.maxWidth >= 1100 &&
                       MediaQuery.textScalerOf(context).scale(14) <= 18;
                   if (fullyUnified) {
                     return SizedBox(
@@ -469,8 +464,8 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                             key: ValueKey('invoice-layout-selector'),
                           ),
                           const SizedBox(width: 8),
-                          SizedBox(width: 280, child: draftSearch),
-                          const Spacer(),
+                          Expanded(child: draftSearch),
+                          const SizedBox(width: 8),
                           actions,
                         ],
                       ),
@@ -502,13 +497,13 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                           ),
                           const SizedBox(width: 8),
                           Expanded(child: draftSearch),
-                          if (constraints.maxWidth >= 900) ...[
+                          if (constraints.maxWidth >= 600) ...[
                             const SizedBox(width: 8),
                             actions,
                           ],
                         ],
                       ),
-                      if (constraints.maxWidth < 900) ...[
+                      if (constraints.maxWidth < 600) ...[
                         const SizedBox(height: 4),
                         Align(alignment: Alignment.centerRight, child: actions),
                       ],

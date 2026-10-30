@@ -5,8 +5,6 @@ import 'package:hexora/presentation/shared/widgets/documents/compact_document_ro
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_compact_financial_summary.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
-import 'package:hexora/theme/themes/navigation_tokens.dart';
-import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -36,6 +34,18 @@ part '../invoice_list/widgets/invoice_download_menu.dart';
 part '../invoice_list/widgets/payment_notices.dart';
 part '../invoice_list/widgets/invoice_column_filters.dart';
 
+class InvoiceToolbarOptions {
+  const InvoiceToolbarOptions({
+    required this.onOpenRecentExports,
+    required this.recentExportsCount,
+    required this.onRefresh,
+  });
+
+  final VoidCallback onOpenRecentExports;
+  final int recentExportsCount;
+  final VoidCallback onRefresh;
+}
+
 class GroupInvoicesInvoicesView extends StatefulWidget {
   final List<Invoice> drafts;
   final List<Invoice> invoices;
@@ -64,7 +74,7 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
   final bool canEditIssued;
   final bool showHeaderTabs;
   final Widget? toolbarLeading;
-  final List<Widget> toolbarActions;
+  final InvoiceToolbarOptions? toolbarOptions;
 
   const GroupInvoicesInvoicesView({
     super.key,
@@ -95,7 +105,7 @@ class GroupInvoicesInvoicesView extends StatefulWidget {
     this.canEditIssued = false,
     this.showHeaderTabs = true,
     this.toolbarLeading,
-    this.toolbarActions = const [],
+    this.toolbarOptions,
   });
 
   @override
@@ -193,7 +203,7 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                           onDateFilterChanged: null,
                           allowClientNameSort: true,
                           toolbarLeading: widget.toolbarLeading,
-                          toolbarActions: widget.toolbarActions,
+                          toolbarOptions: widget.toolbarOptions,
                         ),
                         _InvoicesTabList(
                           emptyTitle: l.noInvoicesYet,
@@ -221,7 +231,7 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                           onDateFilterChanged: widget.onIssuedDateFilterChanged,
                           allowClientNameSort: false,
                           toolbarLeading: widget.toolbarLeading,
-                          toolbarActions: widget.toolbarActions,
+                          toolbarOptions: widget.toolbarOptions,
                         ),
                       ],
                     ),

@@ -15,7 +15,7 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
     required this.onSearchChanged,
     required this.onHeaderAction,
     this.leading,
-    this.externalActions = const [],
+    this.toolbarOptions,
     this.onMismatchTap,
     this.onDownloadFiltered,
     this.onDownloadExcelFiltered,
@@ -35,7 +35,7 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<_InvoiceHeaderAction> onHeaderAction;
   final Widget? leading;
-  final List<Widget> externalActions;
+  final InvoiceToolbarOptions? toolbarOptions;
   final VoidCallback? onMismatchTap;
   final VoidCallback? onDownloadFiltered;
   final VoidCallback? onDownloadExcelFiltered;
@@ -108,98 +108,26 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
     const layoutSelector = DocumentLayoutSelector(
       key: ValueKey('invoice-layout-selector'),
     );
-    final columnsAction = HexoraColumnVisibilityMenu(
-      moduleKey: 'facturas',
+    final optionsAction = InvoiceToolbarOptionsMenu(
+      count: count,
+      downloading: downloadingFiltered,
       availableColumns: _InvoicesTabListState._availableFinancialColumns,
       visibleColumns: visibleColumns,
-      onChanged: onColumnsChanged,
-    );
-    final downloadAction = _InvoiceDownloadMenu(
-      count: count,
-      loading: downloadingFiltered,
+      onColumnsChanged: onColumnsChanged,
+      unlinkedOnly: unlinkedOnly,
+      paymentSuggestionsLoading: paymentSuggestionsLoading,
+      toolbarOptions: toolbarOptions,
       onPdf: onDownloadFiltered,
       onExcel: onDownloadExcelFiltered,
-    );
-    final overflowAction = PopupMenuButton<_InvoiceHeaderAction>(
-      tooltip: isEs ? 'Más acciones' : 'More actions',
-      position: PopupMenuPosition.under,
-      onSelected: onHeaderAction,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      itemBuilder: (_) => [
-        CheckedPopupMenuItem(
-          value: _InvoiceHeaderAction.toggleUnlinked,
-          checked: unlinkedOnly,
-          child: Text(isEs ? 'Facturas no vinculadas' : 'Unlinked invoices'),
-        ),
-        NavigationPopupMenuItem(
-          value: _InvoiceHeaderAction.resolveLinks,
-          enabled: !paymentSuggestionsLoading,
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.auto_fix_high_rounded, size: 18),
-            title: Text(isEs ? 'Resolver vínculos…' : 'Resolve links…'),
-          ),
-        ),
-      ],
-      style: IconButton.styleFrom(
-        visualDensity: VisualDensity.standard,
-        fixedSize: const Size(32, 32),
-        minimumSize: const Size(32, 32),
-        padding: EdgeInsets.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        backgroundColor:
-            unlinkedOnly ? cs.primaryContainer : Colors.transparent,
-        foregroundColor:
-            unlinkedOnly ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-      ),
-      icon: paymentSuggestionsLoading
-          ? const SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2))
-          : const Icon(Icons.more_horiz_rounded, size: 18),
-    );
-    final orderedActionChildren = <Widget>[
-      if (externalActions.isNotEmpty) externalActions.first,
-      columnsAction,
-      downloadAction,
-      if (externalActions.length > 1) ...externalActions.skip(1),
-      overflowAction,
-    ];
-    final actions = SizedBox(
-      height: 34,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var index = 0;
-              index < orderedActionChildren.length;
-              index++) ...[
-            orderedActionChildren[index],
-            if (index != orderedActionChildren.length - 1)
-              const SizedBox(width: 6),
-          ],
-        ],
-      ),
-    );
-    final wrappedActions = ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 34),
-      child: Wrap(
-        alignment: WrapAlignment.end,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 6,
-        runSpacing: 4,
-        children: orderedActionChildren,
-      ),
+      onToggleUnlinked: () =>
+          onHeaderAction(_InvoiceHeaderAction.toggleUnlinked),
+      onResolveLinks: () => onHeaderAction(_InvoiceHeaderAction.resolveLinks),
     );
 
     final toolbar = LayoutBuilder(builder: (context, constraints) {
       final scaledText = MediaQuery.textScalerOf(context).scale(14);
-      final wide = constraints.maxWidth >= 1640 && scaledText <= 18;
+      final wide = constraints.maxWidth >= 1200 && scaledText <= 18;
       if (wide) {
-        const searchWidth = 280.0;
         return SizedBox(
           height: 44,
           child: Row(
@@ -210,11 +138,11 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
               ],
               layoutSelector,
               const SizedBox(width: 8),
-              SizedBox(width: searchWidth, child: search),
+              Expanded(flex: 3, child: search),
               const SizedBox(width: 8),
-              Expanded(child: totals),
+              Expanded(flex: 4, child: totals),
               const SizedBox(width: 8),
-              actions,
+              optionsAction,
             ],
           ),
         );
@@ -259,26 +187,15 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
             ),
             const SizedBox(height: 4),
           ],
-          if (compact) ...[
-            Row(
-              children: [
-                layoutSelector,
-                const SizedBox(width: 8),
-                Expanded(child: search),
-              ],
-            ),
-            const SizedBox(height: 6),
-            SizedBox(width: double.infinity, child: wrappedActions),
-          ] else
-            Row(
-              children: [
-                layoutSelector,
-                const SizedBox(width: 8),
-                Expanded(child: search),
-                const SizedBox(width: 8),
-                actions,
-              ],
-            ),
+          Row(
+            children: [
+              layoutSelector,
+              const SizedBox(width: 8),
+              Expanded(child: search),
+              const SizedBox(width: 8),
+              optionsAction,
+            ],
+          ),
           if (!totalsShareLeadingRow) ...[
             const SizedBox(height: 4),
             totals,
