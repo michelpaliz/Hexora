@@ -25,6 +25,7 @@ import 'package:hexora/presentation/screens/events/screens/actions/edit_screen/s
 import 'package:hexora/presentation/screens/events/screens/event_screen/event_detail/event_detail_screen.dart';
 import 'package:hexora/presentation/screens/agenda/agenda_screen.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/pulsing_ring_avatar.dart';
 import 'package:hexora/presentation/utils/roles/group_role.dart';
@@ -1278,7 +1279,10 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                                 child: miniPanelShell(
                                   title: miniCalendarDetailTitle(),
                                   trailing: detailTrailing,
-                                  child: miniCalendarDetailPanel(),
+                                  child: HexoraMenuContentTransition(
+                                    transitionKey: _panelView,
+                                    child: miniCalendarDetailPanel(),
+                                  ),
                                 ),
                               ),
                             ],
@@ -1544,40 +1548,49 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                         calendarSidebar(),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: isCalendarSection
-                              ? Row(
-                                  children: [
-                                    Expanded(
-                                      child: FolderPanel(
-                                        title: sectionTitle(),
-                                        showTab: true,
-                                        actions: calendarHeaderActions(),
-                                        child: calendarContent(
-                                          showActions: false,
-                                          showPresenceStrip: false,
+                          child: HexoraMenuContentTransition(
+                            transitionKey: _selectedSideMenu,
+                            child: isCalendarSection
+                                ? Row(
+                                    children: [
+                                      Expanded(
+                                        child: FolderPanel(
+                                          title: sectionTitle(),
+                                          showTab: true,
+                                          actions: calendarHeaderActions(),
+                                          child: calendarContent(
+                                            showActions: false,
+                                            showPresenceStrip: false,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    if (!_rightPanelCollapsed)
-                                      const SizedBox(width: 8),
-                                    Visibility(
-                                        visible: !_rightPanelCollapsed,
-                                        maintainState: true,
-                                        child: SizedBox(
-                                          width: HexoraDimensions.calendarPanel,
-                                          child: FolderPanel(
-                                            title: calendarRightPanelTitle(),
-                                            showTab: true,
-                                            child: calendarRightPanelContent(),
-                                          ),
-                                        )),
-                                  ],
-                                )
-                              : FolderPanel(
-                                  title: sectionTitle(),
-                                  showTab: true,
-                                  child: sectionContent(),
-                                ),
+                                      if (!_rightPanelCollapsed)
+                                        const SizedBox(width: 8),
+                                      Visibility(
+                                          visible: !_rightPanelCollapsed,
+                                          maintainState: true,
+                                          child: SizedBox(
+                                            width:
+                                                HexoraDimensions.calendarPanel,
+                                            child: FolderPanel(
+                                              title: calendarRightPanelTitle(),
+                                              showTab: true,
+                                              child:
+                                                  HexoraMenuContentTransition(
+                                                transitionKey: _panelView,
+                                                child:
+                                                    calendarRightPanelContent(),
+                                              ),
+                                            ),
+                                          )),
+                                    ],
+                                  )
+                                : FolderPanel(
+                                    title: sectionTitle(),
+                                    showTab: true,
+                                    child: sectionContent(),
+                                  ),
+                          ),
                         ),
                       ],
                     ),
