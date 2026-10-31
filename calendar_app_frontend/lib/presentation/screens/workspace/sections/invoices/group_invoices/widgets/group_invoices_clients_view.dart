@@ -49,8 +49,8 @@ class GroupInvoicesClientsView extends StatefulWidget {
 }
 
 class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
-  String? _entityFilter;
-  String? _propertyFilter;
+  String? _customerTypeFilter;
+  String? _propertyTypeFilter;
   bool _assignBusy = false;
   bool _hideInactive = true;
   bool _missingCurrentMonthInvoiceOnly = false;
@@ -75,20 +75,26 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
   void didUpdateWidget(covariant GroupInvoicesClientsView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.groupId != widget.groupId) {
+      _customerTypeFilter = null;
+      _propertyTypeFilter = null;
+      _missingCurrentMonthInvoiceOnly = false;
+      _hideInactive = true;
+      _search.clear();
       _reloadOptions();
     }
   }
 
   Future<void> _reloadOptions() async {
+    final groupId = widget.groupId;
     try {
-      final loaded = await ClientClassificationStore.getOptions(widget.groupId);
-      if (!mounted) return;
+      final loaded = await ClientClassificationStore.getOptions(groupId);
+      if (!mounted || widget.groupId != groupId) return;
       setState(() {
         _savedEntityTypes = loaded.entityTypes;
         _savedPropertyKinds = loaded.propertyKinds;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || widget.groupId != groupId) return;
       setState(() {
         _savedEntityTypes = const [];
         _savedPropertyKinds = const [];
@@ -126,17 +132,16 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
       if (!haystack.contains(q)) return false;
     }
 
-    final entityOk =
-        _entityFilter == null || (c.entityType ?? '').trim() == _entityFilter!;
-    final propertyOk = _propertyFilter == null ||
-        (c.propertyKind ?? '').trim() == _propertyFilter!;
-    return entityOk && propertyOk;
+    return (_customerTypeFilter == null ||
+            c.effectiveCustomerType == _customerTypeFilter) &&
+        (_propertyTypeFilter == null ||
+            c.effectivePropertyType == _propertyTypeFilter);
   }
 
   void _clearFilters() {
     setState(() {
-      _entityFilter = null;
-      _propertyFilter = null;
+      _customerTypeFilter = null;
+      _propertyTypeFilter = null;
       _missingCurrentMonthInvoiceOnly = false;
     });
   }
@@ -169,6 +174,18 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
       saved: _savedPropertyKinds,
       fromClients: widget.clients.map((c) => c.propertyKind),
     );
+    final customerTypeOptions = widget.clients
+        .map((c) => c.effectiveCustomerType)
+        .whereType<String>()
+        .toSet()
+        .toList()
+      ..sort();
+    final propertyTypeOptions = widget.clients
+        .map((c) => c.effectivePropertyType)
+        .whereType<String>()
+        .toSet()
+        .toList()
+      ..sort();
 
     final filteredClients = widget.clients.where(_matchesFilters).toList();
     final selectedHiddenByFilters = widget.selectedClient != null &&
@@ -201,21 +218,21 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
                     }),
                     searchController: _search,
                     onSearchChanged: () => setState(() {}),
-                    entityFilter: _entityFilter,
-                    propertyFilter: _propertyFilter,
-                    entityOptions: entityOptions,
-                    propertyOptions: propertyOptions,
+                    entityFilter: _customerTypeFilter,
+                    propertyFilter: _propertyTypeFilter,
+                    entityOptions: customerTypeOptions,
+                    propertyOptions: propertyTypeOptions,
                     onClearFilters: _clearFilters,
                     onToggleEntityFilter: (v) => setState(() {
-                      _entityFilter = _entityFilter == v ? null : v;
+                      _customerTypeFilter = _customerTypeFilter == v ? null : v;
                     }),
                     onTogglePropertyFilter: (v) => setState(() {
-                      _propertyFilter = _propertyFilter == v ? null : v;
+                      _propertyTypeFilter = _propertyTypeFilter == v ? null : v;
                     }),
                     onClearEntityFilter: () =>
-                        setState(() => _entityFilter = null),
+                        setState(() => _customerTypeFilter = null),
                     onClearPropertyFilter: () =>
-                        setState(() => _propertyFilter = null),
+                        setState(() => _propertyTypeFilter = null),
                     onSelectClient: widget.onSelectClient,
                   ),
                 ),

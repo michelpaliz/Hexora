@@ -116,12 +116,12 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
               extraActiveFilterCount:
                   widget.missingCurrentMonthInvoiceOnly ? 1 : 0,
               onClearFilters: widget.onClearFilters,
-              entityLabel: l.clientEntityTypeLabel,
+              entityLabel: 'Tipo de cliente',
               entityOptions: widget.entityOptions,
               entityFilter: widget.entityFilter,
               onToggleEntity: widget.onToggleEntityFilter,
               onClearEntity: widget.onClearEntityFilter,
-              propertyLabel: l.clientPropertyKindLabel,
+              propertyLabel: 'Tipo de inmueble',
               propertyOptions: widget.propertyOptions,
               propertyFilter: widget.propertyFilter,
               onToggleProperty: widget.onTogglePropertyFilter,
@@ -215,10 +215,12 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
 
                                 final subtitleParts = <String>[
                                   c.billing?.legalName ?? (c.email ?? ''),
-                                  if ((c.entityType ?? '').trim().isNotEmpty)
-                                    c.entityType!.trim(),
-                                  if ((c.propertyKind ?? '').trim().isNotEmpty)
-                                    c.propertyKind!.trim(),
+                                  if ((c.effectiveCustomerType ?? '').isNotEmpty)
+                                    clientClassificationLabel(
+                                        c.effectiveCustomerType!),
+                                  if ((c.effectivePropertyType ?? '').isNotEmpty)
+                                    clientClassificationLabel(
+                                        c.effectivePropertyType!),
                                 ].where((e) => e.trim().isNotEmpty).toList();
 
                                 return _ClientRow(

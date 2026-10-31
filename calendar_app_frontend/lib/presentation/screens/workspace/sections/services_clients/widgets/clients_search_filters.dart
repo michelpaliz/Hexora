@@ -3,6 +3,23 @@ import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/search_filters_header.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
+String clientClassificationLabel(String value) => const {
+      'particular': 'Particular',
+      'community': 'Comunidad de propietarios',
+      'company': 'Empresa',
+      'other': 'Otro',
+      'chalet': 'Chalet',
+      'apartment': 'Apartamento',
+      'building': 'Edificio / Urbanización',
+      'hotel': 'Hotel',
+      'commercial_premises': 'Local comercial',
+    }[value] ?? value;
+
+const _classificationOrder = <String>[
+  'particular', 'community', 'company', 'other',
+  'chalet', 'apartment', 'building', 'hotel', 'commercial_premises',
+];
+
 class ClientsSearchFilters extends StatelessWidget {
   final TextEditingController searchController;
   final VoidCallback onSearchChanged;
@@ -115,11 +132,13 @@ class ClientsSearchFilters extends StatelessWidget {
           if (!haystack.contains(q)) continue;
         }
         if (entityActive &&
-            (c.entityType ?? '').trim() != (entityFilter ?? '').trim()) {
+            (c.effectiveCustomerType ?? '').trim() !=
+                (entityFilter ?? '').trim()) {
           continue;
         }
         if (propertyActive &&
-            (c.propertyKind ?? '').trim() != (propertyFilter ?? '').trim()) {
+            (c.effectivePropertyType ?? '').trim() !=
+                (propertyFilter ?? '').trim()) {
           continue;
         }
         if (c.isActive == false) {
@@ -433,6 +452,13 @@ class _InlineFilterRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     final isActive = selected != null;
+    final sortedOptions = [...options]..sort((a, b) {
+      final aIndex = _classificationOrder.indexOf(a);
+      final bIndex = _classificationOrder.indexOf(b);
+      if (aIndex < 0) return bIndex < 0 ? a.compareTo(b) : 1;
+      if (bIndex < 0) return -1;
+      return aIndex.compareTo(bIndex);
+    });
 
     return Wrap(
       spacing: 6,
@@ -461,9 +487,9 @@ class _InlineFilterRow extends StatelessWidget {
             ),
           ],
         ),
-        for (final o in options)
+        for (final o in sortedOptions)
           _PillChip(
-            label: o,
+            label: clientClassificationLabel(o),
             selected: selected == o,
             onTap: () => selected == o ? onClear() : onToggle(o),
           ),
