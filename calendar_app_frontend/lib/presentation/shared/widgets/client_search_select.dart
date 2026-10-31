@@ -50,8 +50,8 @@ class ClientSearchSelect extends StatefulWidget {
     required this.clients,
     required this.selectedClientId,
     required this.onClientChanged,
-    this.useDefaultPropertyKind = true,
-    this.defaultPropertyKind = 'comunidad de propietarios',
+    this.useDefaultPropertyKind = false,
+    this.defaultPropertyKind = '',
     this.maxListHeight = 520,
     this.showAdvancedFilters = true,
     this.compact = false,
@@ -96,11 +96,10 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
 
   String? _resolveDefaultPropertyKind() {
     if (!widget.useDefaultPropertyKind) return null;
-    final match =
-        widget.clients.map((c) => (c.propertyKind ?? '').trim()).firstWhere(
-              (v) => v.toLowerCase() == widget.defaultPropertyKind,
-              orElse: () => '',
-            );
+    final match = widget.clients.map(_propertyTypeValue).firstWhere(
+          (v) => v.toLowerCase() == widget.defaultPropertyKind,
+          orElse: () => '',
+        );
     return match.isEmpty ? null : match;
   }
 
@@ -144,8 +143,8 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
       c.phone ?? '',
       c.billing?.legalName ?? '',
       c.pdfAlias ?? '',
-      c.effectiveCustomerType ?? '',
-      c.effectivePropertyType ?? '',
+      clientClassificationLabel(c.effectiveCustomerType ?? ''),
+      clientClassificationLabel(c.effectivePropertyType ?? ''),
       c.effectivePropertyRelationship ?? '',
       c.entityType ?? '',
       c.propertyKind ?? '',
@@ -159,6 +158,8 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
   String _propertyTypeValue(GroupClient client) =>
       (client.effectivePropertyType ?? client.propertyKind ?? '').trim();
 
+  // Kept for compatibility with older call sites during migration.
+  // ignore: unused_element
   String _classificationLabel(String value) =>
       {
         'particular': 'Particular',
@@ -227,20 +228,14 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
         .toLowerCase()
         .startsWith('es');
     final entityOptions = widget.showAdvancedFilters
-        ? (widget.clients
-            .map(_customerTypeValue)
-            .where((v) => v.isNotEmpty)
-            .toSet()
-            .toList()
-          ..sort())
+        ? sortedClientClassificationOptions(
+            widget.clients.map(_customerTypeValue),
+          )
         : const <String>[];
     final propertyOptions = widget.showAdvancedFilters
-        ? (widget.clients
-            .map(_propertyTypeValue)
-            .where((v) => v.isNotEmpty)
-            .toSet()
-            .toList()
-          ..sort())
+        ? sortedClientClassificationOptions(
+            widget.clients.map(_propertyTypeValue),
+          )
         : const <String>[];
     final filtered = widget.clients.where((c) {
       if (!_showInactive && c.isActive == false) return false;
@@ -292,7 +287,8 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                 if (alias.isNotEmpty) alias,
                 if (email.isNotEmpty) email,
                 if ((client.phone ?? '').isNotEmpty) client.phone!,
-                if (propertyType.isNotEmpty) _classificationLabel(propertyType),
+                if (propertyType.isNotEmpty)
+                  clientClassificationLabel(propertyType),
               ].join(' - ');
               return ConstrainedBox(
                 key: ValueKey('client-select-row-${client.id}'),
@@ -509,8 +505,9 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                     widget.showAdvancedFilters ? l.hideInactiveClients : null,
                 inactiveLabelOff:
                     widget.showAdvancedFilters ? l.showInactiveClients : null,
-                entityLabel:
-                    widget.showAdvancedFilters ? l.clientEntityTypeLabel : null,
+                entityLabel: widget.showAdvancedFilters
+                    ? (isSpanish ? 'Tipo de cliente' : 'Client type')
+                    : null,
                 entityOptions: entityOptions,
                 entityFilter: widget.showAdvancedFilters ? _entityFilter : null,
                 onToggleEntity: widget.showAdvancedFilters
@@ -520,7 +517,7 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                     ? () => setState(() => _entityFilter = null)
                     : null,
                 propertyLabel: widget.showAdvancedFilters
-                    ? l.clientPropertyKindLabel
+                    ? (isSpanish ? 'Tipo de inmueble' : 'Property type')
                     : null,
                 propertyOptions: propertyOptions,
                 propertyFilter:

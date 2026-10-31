@@ -73,6 +73,7 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
     final hasInvoiceFlagData =
         widget.allClients.any((c) => c.hasCurrentMonthInvoiceFlagData);
     final missingInvoiceCount = widget.allClients
@@ -144,12 +145,12 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                 setState(() => _status = 'all');
                 widget.onClearFilters();
               },
-              entityLabel: l.clientEntityTypeLabel,
+              entityLabel: isEs ? 'Tipo de cliente' : 'Client type',
               entityOptions: widget.entityOptions,
               entityFilter: widget.entityFilter,
               onToggleEntity: widget.onToggleEntityFilter,
               onClearEntity: widget.onClearEntityFilter,
-              propertyLabel: l.clientPropertyKindLabel,
+              propertyLabel: isEs ? 'Tipo de inmueble' : 'Property type',
               propertyOptions: widget.propertyOptions,
               propertyFilter: widget.propertyFilter,
               onToggleProperty: widget.onTogglePropertyFilter,
@@ -296,16 +297,13 @@ class _ClientRow extends StatelessWidget {
 
   static String _clean(String? v) => (v ?? '').trim();
 
-  static String _capitalize(String v) =>
-      v.isEmpty ? v : v[0].toUpperCase() + v.substring(1);
-
   /// One concise secondary line: the client's category, falling back to the
   /// legal name only when it adds information, then the email.
   String? _secondary() {
-    final property = _clean(client.propertyKind);
-    if (property.isNotEmpty) return _capitalize(property);
-    final entity = _clean(client.entityType);
-    if (entity.isNotEmpty) return _capitalize(entity);
+    final property = _clean(client.effectivePropertyType);
+    if (property.isNotEmpty) return clientClassificationLabel(property);
+    final entity = _clean(client.effectiveCustomerType);
+    if (entity.isNotEmpty) return clientClassificationLabel(entity);
     final legal = _clean(client.billing?.legalName);
     final name = client.name.trim().toLowerCase();
     if (legal.isNotEmpty && !legal.toLowerCase().contains(name)) return legal;
@@ -318,8 +316,8 @@ class _ClientRow extends StatelessWidget {
     final seen = <String>{};
     return [
       _clean(client.billing?.legalName),
-      _clean(client.entityType),
-      _clean(client.propertyKind),
+      clientClassificationLabel(_clean(client.effectiveCustomerType)),
+      clientClassificationLabel(_clean(client.effectivePropertyType)),
       _clean(client.email),
     ].where((v) => v.isNotEmpty && seen.add(v.toLowerCase())).join('\n');
   }

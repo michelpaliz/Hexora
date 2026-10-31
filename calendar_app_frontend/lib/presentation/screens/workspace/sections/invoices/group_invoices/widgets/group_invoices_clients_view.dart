@@ -86,20 +86,26 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
   void didUpdateWidget(covariant GroupInvoicesClientsView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.groupId != widget.groupId) {
+      _entityFilter = null;
+      _propertyFilter = null;
+      _missingCurrentMonthInvoiceOnly = false;
+      _hideInactive = true;
+      _search.clear();
       _reloadOptions();
     }
   }
 
   Future<void> _reloadOptions() async {
+    final groupId = widget.groupId;
     try {
-      final loaded = await ClientClassificationStore.getOptions(widget.groupId);
-      if (!mounted) return;
+      final loaded = await ClientClassificationStore.getOptions(groupId);
+      if (!mounted || widget.groupId != groupId) return;
       setState(() {
         _savedEntityTypes = loaded.entityTypes;
         _savedPropertyKinds = loaded.propertyKinds;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || widget.groupId != groupId) return;
       setState(() {
         _savedEntityTypes = const [];
         _savedPropertyKinds = const [];
@@ -137,10 +143,10 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
       if (!haystack.contains(q)) return false;
     }
 
-    final entityOk =
-        _entityFilter == null || (c.entityType ?? '').trim() == _entityFilter!;
+    final entityOk = _entityFilter == null ||
+        (c.effectiveCustomerType ?? '').trim() == _entityFilter!;
     final propertyOk = _propertyFilter == null ||
-        (c.propertyKind ?? '').trim() == _propertyFilter!;
+        (c.effectivePropertyType ?? '').trim() == _propertyFilter!;
     return entityOk && propertyOk;
   }
 
@@ -180,6 +186,18 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
       saved: _savedPropertyKinds,
       fromClients: widget.clients.map((c) => c.propertyKind),
     );
+    final customerTypeOptions = widget.clients
+        .map((client) => client.effectiveCustomerType)
+        .whereType<String>()
+        .where((value) => value.trim().isNotEmpty)
+        .toSet()
+        .toList();
+    final propertyTypeOptions = widget.clients
+        .map((client) => client.effectivePropertyType)
+        .whereType<String>()
+        .where((value) => value.trim().isNotEmpty)
+        .toSet()
+        .toList();
 
     final filteredClients = widget.clients.where(_matchesFilters).toList();
     final selectedHiddenByFilters = widget.selectedClient != null &&
@@ -210,8 +228,8 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
                 onSearchChanged: () => setState(() {}),
                 entityFilter: _entityFilter,
                 propertyFilter: _propertyFilter,
-                entityOptions: entityOptions,
-                propertyOptions: propertyOptions,
+                entityOptions: customerTypeOptions,
+                propertyOptions: propertyTypeOptions,
                 onClearFilters: _clearFilters,
                 onToggleEntityFilter: (v) => setState(() {
                   _entityFilter = _entityFilter == v ? null : v;

@@ -4,6 +4,51 @@ import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/search_filters_header.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
+String clientClassificationLabel(String value) =>
+    const {
+      'particular': 'Particular',
+      'community': 'Comunidad de propietarios',
+      'company': 'Empresa',
+      'other': 'Otro',
+      'chalet': 'Chalet',
+      'apartment': 'Apartamento',
+      'building': 'Edificio / Urbanización',
+      'hotel': 'Hotel',
+      'commercial_premises': 'Local comercial',
+      'owner': 'Propietario',
+      'administrator': 'Administrador',
+      'tenant': 'Inquilino',
+    }[value.toLowerCase()] ??
+    value;
+
+const _classificationOrder = <String>[
+  'particular',
+  'community',
+  'company',
+  'other',
+  'chalet',
+  'apartment',
+  'building',
+  'hotel',
+  'commercial_premises',
+  'owner',
+  'administrator',
+  'tenant',
+];
+
+List<String> sortedClientClassificationOptions(Iterable<String> options) {
+  final values =
+      options.where((value) => value.trim().isNotEmpty).toSet().toList();
+  values.sort((a, b) {
+    final aIndex = _classificationOrder.indexOf(a.toLowerCase());
+    final bIndex = _classificationOrder.indexOf(b.toLowerCase());
+    if (aIndex < 0) return bIndex < 0 ? a.compareTo(b) : 1;
+    if (bIndex < 0) return -1;
+    return aIndex.compareTo(bIndex);
+  });
+  return values;
+}
+
 class ClientsSearchFilters extends StatelessWidget {
   final TextEditingController searchController;
   final VoidCallback onSearchChanged;
@@ -140,11 +185,13 @@ class ClientsSearchFilters extends StatelessWidget {
           if (!haystack.contains(q)) continue;
         }
         if (entityActive &&
-            (c.entityType ?? '').trim() != (entityFilter ?? '').trim()) {
+            (c.effectiveCustomerType ?? '').trim() !=
+                (entityFilter ?? '').trim()) {
           continue;
         }
         if (propertyActive &&
-            (c.propertyKind ?? '').trim() != (propertyFilter ?? '').trim()) {
+            (c.effectivePropertyType ?? '').trim() !=
+                (propertyFilter ?? '').trim()) {
           continue;
         }
         if (c.isActive == false) {
@@ -314,10 +361,10 @@ class _ClassificationDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final values = <String>{
+    final values = sortedClientClassificationOptions(<String>{
       ...options.where((value) => value.isNotEmpty),
       if (selected != null && selected!.isNotEmpty) selected!
-    };
+    });
     final l = AppLocalizations.of(context)!;
     final normalizedSelected = (selected ?? '').trim();
 
@@ -372,7 +419,8 @@ class _ClassificationDropdown extends StatelessWidget {
           runSpacing: 4,
           children: [
             option('', l.all),
-            for (final value in values) option(value, value),
+            for (final value in values)
+              option(value, clientClassificationLabel(value)),
           ],
         ),
       ],
