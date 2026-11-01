@@ -192,6 +192,18 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     }
   }
 
+
+  Future<void> _showMemberPresence() async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _BusinessChatMembersDialog(
+        api: _api,
+        groupId: widget.groupId,
+        spanish: _es,
+      ),
+    );
+  }
+
   Future<void> _loadMessages(BusinessChatConversation conversation,
       {bool forceScroll = false}) async {
     try {
@@ -973,6 +985,10 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
             IconButton(
                 onPressed: _loading ? null : _refresh,
                 tooltip: _es ? 'Actualizar' : 'Refresh',
+            IconButton(
+                onPressed: _showMemberPresence,
+                tooltip: _es ? 'Ver miembros y conexión' : 'View members and presence',
+                icon: const Icon(Icons.people_alt_outlined)),
                 icon: const Icon(Icons.refresh)),
             if (_canCreateIssues)
               IconButton(
@@ -1350,4 +1366,143 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
       })),
     ]);
   }
+
+class _BusinessChatMembersDialog extends StatefulWidget {
+  const _BusinessChatMembersDialog({
+    required this.api,
+    required this.groupId,
+    required this.spanish,
+  });
+
+  final BusinessChatApi api;
+  final String groupId;
+  final bool spanish;
+
+  @override
+  State<_BusinessChatMembersDialog> createState() =>
+      _BusinessChatMembersDialogState();
+}
+
+class _BusinessChatMembersDialogState extends State<_BusinessChatMembersDialog> {
+  List<BusinessChatMember> _members = const [];
+  bool _loading = true;
+  String? _error;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final members = await widget.api.memberPresence(widget.groupId);
+      if (!mounted) return;
+      setState(() {
+        _members = members;
+        _loading = false;
+        _error = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = widget.spanish
+            ? 'No se pudo cargar la conexión de los miembros.'
+            : 'Could not load member presence.';
+      });
+    }
+  }
+
+  String _lastSeen(DateTime? value) {
+    if (value == null) {
+      return widget.spanish ? 'Sin conexión anterior registrada' : 'No previous connection recorded';
+    }
+    final local = value.toLocal();
+    return '${widget.spanish ? 'Última conexión' : 'Last seen'} · ${DateFormat('dd/MM/yyyy HH:mm').format(local)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final online = _members.where((member) => member.isOnline).length;
+    return AlertDialog(
+      title: Row(children: [
+        Expanded(child: Text(widget.spanish ? 'Miembros del negocio' : 'Business members')),
+        IconButton(
+          tooltip: widget.spanish ? 'Actualizar' : 'Refresh',
+          onPressed: _loading ? null : _load,
+          icon: const Icon(Icons.refresh),
+        ),
+      ]),
+      content: SizedBox(
+        width: 420,
+        height: 400,
+        child: _loading && _members.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null && _members.isEmpty
+                ? Text(_error!)
+                : Column(mainAxisSize: MainAxisSize.min, children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Text(widget.spanish
+                            ? '$online en línea · ${_members.length} miembros'
+                            : '$online online · ${_members.length} members'),
+                      ),
+                    ),
+                    if (_error != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                      ),
+                    Expanded(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: _members.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final member = _members[index];
+                          final photo = member.photoUrl;
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: CircleAvatar(
+                              backgroundImage: photo == null || photo.isEmpty ? null : NetworkImage(photo),
+                              child: photo == null || photo.isEmpty
+                                  ? Text(member.name.isEmpty ? '?' : member.name[0].toUpperCase())
+                                  : null,
+                            ),
+                            title: Text(member.name),
+                            subtitle: Text(member.isOnline
+                                ? (widget.spanish ? 'En línea' : 'Online')
+                                : _lastSeen(member.lastActiveAt)),
+                            trailing: Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: member.isOnline ? Colors.green : Theme.of(context).colorScheme.outlineVariant,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ]),
+      ),
+      actions: [TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: Text(widget.spanish ? 'Cerrar' : 'Close'),
+      )],
+    );
+  }
+}
 }

@@ -47,6 +47,32 @@ class BusinessChatMessage {
       );
 }
 
+class BusinessChatMember {
+  const BusinessChatMember({
+    required this.id,
+    required this.name,
+    required this.isOnline,
+    this.photoUrl,
+    this.lastActiveAt,
+  });
+
+  final String id;
+  final String name;
+  final bool isOnline;
+  final String? photoUrl;
+  final DateTime? lastActiveAt;
+
+  factory BusinessChatMember.fromJson(Map<String, dynamic> json) =>
+      BusinessChatMember(
+        id: (json['id'] ?? '').toString(),
+        name: (json['name'] ?? '').toString(),
+        isOnline: json['isOnline'] == true,
+        photoUrl: json['photoUrl']?.toString(),
+        lastActiveAt: DateTime.tryParse((json['lastActiveAt'] ?? '').toString()),
+      );
+}
+
+
 class BusinessChatConversation {
   const BusinessChatConversation(
       {required this.id,
@@ -110,6 +136,18 @@ class BusinessChatApi {
             BusinessChatConversation.fromJson(Map<String, dynamic>.from(item)))
         .toList();
     return data;
+  }
+
+  Future<List<BusinessChatMember>> memberPresence(String groupId) async {
+    final response = await AuthenticatedHttpClient.get(_uri(groupId, '/members'));
+    if (response.statusCode != 200) {
+      throw BackendApiException.fromResponse(response);
+    }
+    final data = Map<String, dynamic>.from(jsonDecode(response.body));
+    return (data['members'] as List<dynamic>? ?? const [])
+        .whereType<Map>()
+        .map((item) => BusinessChatMember.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
   }
 
   Future<List<BusinessChatMessage>> messages(
