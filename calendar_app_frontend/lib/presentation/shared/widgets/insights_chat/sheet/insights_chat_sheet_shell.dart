@@ -8,6 +8,7 @@ import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/components/hexora_ai_output_tokens.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/services/insights/insights_api.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 import '../insights_chat_enums.dart';
@@ -90,6 +91,103 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
     final dateRangeLabel = dateRange?.label(isEs: isEs);
     final contextTooltip =
         dateRangeLabel == null ? helperText : '$helperText\n$dateRangeLabel';
+
+    Future<void> showActionHistory() async {
+      final history = InsightsApi().loadActionHistory(widget.groupId);
+      String actionLabel(String action) => switch (action) {
+            'event_created' => isEs ? 'Evento creado' : 'Event created',
+            'income_linked' => isEs ? 'Ingreso vinculado' : 'Income linked',
+            'income_unlinked' =>
+              isEs ? 'Ingreso desvinculado' : 'Income unlinked',
+            'excel_exported' => isEs ? 'Excel exportado' : 'Excel exported',
+            _ => action,
+          };
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(isEs ? 'Actividad del asistente' : 'Assistant activity'),
+          content: SizedBox(
+            width: 520,
+            height: 360,
+            child: FutureBuilder<List<Map<String, dynamic>>>(
+              future: history,
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return Center(
+                    child: snapshot.hasError
+                        ? Text(
+                            isEs
+                                ? 'No se pudo cargar la actividad.'
+                                : 'Could not load activity.',
+                          )
+                        : const CircularProgressIndicator(),
+                  );
+                }
+                final actions = snapshot.data!;
+                if (actions.isEmpty) {
+                  return Center(
+                    child: Text(
+                      isEs
+                          ? 'Aun no hay acciones registradas.'
+                          : 'No actions recorded yet.',
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  itemCount: actions.length,
+                  itemBuilder: (context, index) {
+                    final row = actions[index];
+                    final actor = row['userId'];
+                    final name = actor is Map
+                        ? (actor['userName'] ??
+                                actor['name'] ??
+                                actor['email'] ??
+                                '')
+                            .toString()
+                        : '';
+                    final date = DateTime.tryParse(
+                      row['createdAt']?.toString() ?? '',
+                    )?.toLocal();
+                    final when = date == null
+                        ? ''
+                        : '${date.day.toString().padLeft(2, '0')}/'
+                            '${date.month.toString().padLeft(2, '0')}/'
+                            '${date.year} '
+                            '${date.hour.toString().padLeft(2, '0')}:'
+                            '${date.minute.toString().padLeft(2, '0')}';
+                    final details = row['details'];
+                    final what = details is Map
+                        ? (details['title'] ??
+                                details['filename'] ??
+                                details['concept'] ??
+                                '')
+                            .toString()
+                        : '';
+                    return ListTile(
+                      dense: true,
+                      title: Text(
+                        actionLabel(row['action']?.toString() ?? ''),
+                      ),
+                      subtitle: Text(
+                        [name, when, what]
+                            .where((value) => value.isNotEmpty)
+                            .join(' · '),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(isEs ? 'Cerrar' : 'Close'),
+            ),
+          ],
+        ),
+      );
+    }
 
     Future<void> showContextInfo() async {
       InsightsDateRange? draftRange = runtime.dateRange;
@@ -347,6 +445,61 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
         ),
       );
     }
+
+    Widget buildActionHistoryButton() => IconButton(
+          tooltip: isEs ? 'Actividad del asistente' : 'Assistant activity',
+          onPressed: showActionHistory,
+          icon: const Icon(Icons.history_rounded, size: 18),
+          constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+          padding: EdgeInsets.zero,
+        );
+
+    Widget buildInteractionModeTabs() => Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 420;
+              final selector = SegmentedButton<InsightsInteractionMode>(
+                segments: [
+                  ButtonSegment(
+                    value: InsightsInteractionMode.guided,
+                    icon: const Icon(
+                      Icons.dashboard_customize_outlined,
+                      size: 17,
+                    ),
+                    label: Text(
+                      compact
+                          ? (isEs ? 'Guiadas' : 'Guided')
+                          : (isEs ? 'Respuestas guiadas' : 'Guided answers'),
+                    ),
+                  ),
+                  ButtonSegment(
+                    value: InsightsInteractionMode.openQuestions,
+                    icon: const Icon(Icons.edit_note_rounded, size: 19),
+                    label: Text(
+                      compact
+                          ? (isEs ? 'Abiertas' : 'Open')
+                          : (isEs ? 'Preguntas abiertas' : 'Open questions'),
+                    ),
+                  ),
+                ],
+                selected: {runtime.interactionMode},
+                onSelectionChanged: sending
+                    ? null
+                    : (selection) =>
+                        runtime.setInteractionMode(selection.first),
+                showSelectedIcon: false,
+              );
+              if (compact) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: selector,
+                );
+              }
+              return SizedBox(width: double.infinity, child: selector);
+            },
+          ),
+        );
 
     Widget buildDesktopPaneToggleButton({required bool collapsed}) {
       final label = collapsed
@@ -1211,6 +1364,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                           const BoxConstraints(minWidth: 32, minHeight: 32),
                       padding: EdgeInsets.zero,
                     ),
+                    buildActionHistoryButton(),
                   ],
                 ),
               ],
@@ -1218,6 +1372,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
           ),
 
         // ── Toolbar chips ────────────────────────────────────────────
+        if (bottomInset == 0) buildInteractionModeTabs(),
+
         if (bottomInset == 0)
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
@@ -1228,6 +1384,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                   buildContextInfoButton(),
                   const SizedBox(width: 6),
                   buildStartOverButton(),
+                  const SizedBox(width: 6),
+                  buildActionHistoryButton(),
                   const SizedBox(width: 6),
                   if (dateRangeLabel != null) ...[
                     ConstrainedBox(
@@ -1514,6 +1672,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                               buildContextInfoButton(),
                                               const SizedBox(height: 6),
                                               buildStartOverButton(),
+                                              const SizedBox(height: 6),
+                                              buildActionHistoryButton(),
                                             ],
                                           ),
                                         ),
@@ -1564,6 +1724,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                                 buildContextInfoButton(),
                                                 const SizedBox(width: 6),
                                                 buildStartOverButton(),
+                                                const SizedBox(width: 6),
+                                                buildActionHistoryButton(),
                                                 const SizedBox(width: 6),
                                                 if (dateRangeLabel != null) ...[
                                                   ConstrainedBox(
@@ -1736,6 +1898,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                             ),
                                           ),
                                         ),
+                                        buildInteractionModeTabs(),
                                         Expanded(
                                             child: buildDesktopMessageList()),
                                         if (latestIncomeAmountPromptMessage !=

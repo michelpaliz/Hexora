@@ -1,5 +1,7 @@
 enum InsightsResponseMode { auto, stream }
 
+enum InsightsInteractionMode { guided, openQuestions }
+
 enum InsightsChatEndpointType {
   chat,
   chatAuto,

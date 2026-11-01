@@ -175,6 +175,59 @@ class InsightsApi {
 
   Uri get _healthUri => _resolveActionUri('/api/health');
 
+  Future<Map<String, dynamic>> loadConversation({
+    required String groupId,
+    required String scopeKey,
+  }) async {
+    final uri = _u('/conversations/current').replace(queryParameters: {
+      'groupId': groupId,
+      'scopeKey': scopeKey,
+    });
+    final response = await AuthenticatedHttpClient.get(
+      uri,
+      headers: await _authHeaders(),
+      client: _client,
+    );
+    return _decode<Map<String, dynamic>>(response, _toMap);
+  }
+
+  Future<void> saveConversation({
+    required String groupId,
+    required String scopeKey,
+    required String conversationId,
+    required List<Map<String, dynamic>> messages,
+  }) async {
+    final response = await AuthenticatedHttpClient.put(
+      _u('/conversations/current'),
+      headers: await _authJsonHeaders(),
+      body: jsonEncode({
+        'groupId': groupId,
+        'scopeKey': scopeKey,
+        'conversationId': conversationId,
+        'messages': messages,
+      }),
+      client: _client,
+    );
+    _decode<Map<String, dynamic>>(response, _toMap);
+  }
+
+  Future<List<Map<String, dynamic>>> loadActionHistory(String groupId) async {
+    final response = await AuthenticatedHttpClient.get(
+      _u('/chat/actions').replace(queryParameters: {'groupId': groupId}),
+      headers: await _authHeaders(),
+      client: _client,
+    );
+    final raw = _decode<Map<String, dynamic>>(response, _toMap)['actions'];
+    return raw is List
+        ? raw
+            .whereType<Map>()
+            .map((row) => row.map(
+                  (key, value) => MapEntry(key.toString(), value),
+                ))
+            .toList(growable: false)
+        : const [];
+  }
+
   Future<Map<String, String>> _plainJsonHeaders() async => <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
         'Accept': 'application/json',
@@ -681,8 +734,8 @@ class InsightsApi {
     String? dateFrom,
     String? dateTo,
   }) async {
-    final hasExplicitDateRange =
-        dateFrom?.trim().isNotEmpty == true && dateTo?.trim().isNotEmpty == true;
+    final hasExplicitDateRange = dateFrom?.trim().isNotEmpty == true &&
+        dateTo?.trim().isNotEmpty == true;
     return downloadInsightsExcelFromAction(
       InsightsExcelExportAction(
         type: 'export_excel',
@@ -691,7 +744,8 @@ class InsightsApi {
         body: <String, dynamic>{
           'groupId': groupId.trim(),
           'message': message.trim(),
-          if (!hasExplicitDateRange && days != null) 'days': days.clamp(30, 180),
+          if (!hasExplicitDateRange && days != null)
+            'days': days.clamp(30, 180),
           if (dateFrom?.trim().isNotEmpty == true) 'dateFrom': dateFrom!.trim(),
           if (dateTo?.trim().isNotEmpty == true) 'dateTo': dateTo!.trim(),
         },
@@ -744,12 +798,14 @@ class InsightsApi {
   Future<Map<String, dynamic>> confirmChatEvent({
     required String groupId,
     required Map<String, dynamic> eventPayload,
+    String? conversationId,
     bool confirm = true,
   }) async {
     final uri = _resolveActionUri('/api/insights/chat/events/confirm');
     final headers = await _authJsonHeaders();
     final body = jsonEncode(<String, dynamic>{
       'groupId': groupId.trim(),
+      if (conversationId != null) 'conversationId': conversationId,
       'confirm': confirm,
       'eventPayload': eventPayload,
     });
@@ -890,8 +946,9 @@ class InsightsApi {
   }
 
   Future<Map<String, dynamic>> executeJsonAction(
-    Map<String, dynamic> action,
-  ) async {
+    Map<String, dynamic> action, {
+    String? conversationId,
+  }) async {
     final endpoint = action['endpoint']?.toString().trim() ?? '';
     if (endpoint.isEmpty) {
       throw const InsightsApiException(
@@ -942,7 +999,11 @@ class InsightsApi {
       action['query_parameters'],
       action['params'],
     ]);
-    final headers = await _authJsonHeaders();
+    final headers = {
+      ...await _authJsonHeaders(),
+      'X-Hexora-Ai-Action': '1',
+      if (conversationId != null) 'X-Hexora-Ai-Conversation': conversationId,
+    };
     late final http.Response response;
 
     switch (method) {

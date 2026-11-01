@@ -1,8 +1,8 @@
-
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 import '../insights_action_tokens.dart';
+import '../insights_chat_enums.dart';
 import '../insights_chat_menu.dart';
 import '../insights_chat_message.dart';
 import 'insights_chat_sheet_base.dart';
@@ -15,6 +15,8 @@ mixin InsightsStarterMenuUi on InsightsChatSheetStateBase {
     required AppTypography t,
     required bool isEs,
   }) {
+    final openQuestions =
+        runtime.interactionMode == InsightsInteractionMode.openQuestions;
     final options = <InsightsMenuOption>[
       InsightsMenuOption(index: 1, label: isEs ? 'Ingresos' : 'Revenue'),
       InsightsMenuOption(index: 2, label: isEs ? 'Gastos' : 'Expenses'),
@@ -59,8 +61,12 @@ mixin InsightsStarterMenuUi on InsightsChatSheetStateBase {
                   Expanded(
                     child: Text(
                       isEs
-                          ? 'Elige un area para empezar'
-                          : 'Choose an area to start',
+                          ? openQuestions
+                              ? 'Pregunta sobre tu negocio'
+                              : 'Elige un area para empezar'
+                          : openQuestions
+                              ? 'Ask about your business'
+                              : 'Choose an area to start',
                       style: t.bodySmall.copyWith(
                         color: cs.onSurface,
                         fontWeight: FontWeight.w800,
@@ -70,45 +76,84 @@ mixin InsightsStarterMenuUi on InsightsChatSheetStateBase {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final option in options)
-                    ActionChip(
-                      onPressed: runtime.sending
-                          ? null
-                          : option.index == 5
-                              ? () => prefillEventCreationShortcut(isEs)
-                              : () => sendStarterChoice(option),
-                      avatar: CircleAvatar(
-                        radius: 10,
-                        backgroundColor: cs.primary.withValues(alpha: 0.16),
-                        child: Text(
-                          '${option.index}',
-                          style: t.bodySmall.copyWith(
-                            color: cs.primary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
+              const SizedBox(height: 8),
+              Text(
+                isEs
+                    ? openQuestions
+                        ? 'Escribe cualquier pregunta sobre este negocio. Ejemplos: «¿Cuánto ingresamos este mes?» o «¿Qué facturas siguen pendientes?».'
+                        : 'Elige una consulta guiada para ver ingresos, gastos, facturas, clientes o crear un evento.'
+                    : openQuestions
+                        ? 'Type a question about this business. Examples: “How much income did we have this month?” or “Which invoices are still unpaid?”'
+                        : 'Choose a guided query about income, expenses, invoices, clients, or creating an event.',
+                style: t.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 12,
+                  height: 1.35,
+                ),
+              ),
+              if (!openQuestions) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final option in options)
+                      ActionChip(
+                        onPressed: runtime.sending
+                            ? null
+                            : option.index == 5
+                                ? () => prefillEventCreationShortcut(isEs)
+                                : () => sendStarterChoice(option),
+                        avatar: CircleAvatar(
+                          radius: 10,
+                          backgroundColor: cs.primary.withValues(alpha: 0.16),
+                          child: Text(
+                            '${option.index}',
+                            style: t.bodySmall.copyWith(
+                              color: cs.primary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
-                      ),
-                      backgroundColor: cs.primary.withValues(alpha: 0.08),
-                      side: BorderSide.none,
-                      label: Text(
-                        option.label,
-                        style: t.bodySmall.copyWith(
-                          color: cs.onSurface,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
+                        backgroundColor: cs.primary.withValues(alpha: 0.08),
+                        side: BorderSide.none,
+                        label: Text(
+                          option.label,
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
                         ),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
+                  ],
+                ),
+              ],
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(
+                    Icons.hourglass_bottom_rounded,
+                    size: 14,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      isEs
+                          ? 'Límite de 60 mensajes por hora'
+                          : 'Limit of 60 messages per hour',
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontSize: 11,
                       ),
                     ),
+                  ),
                 ],
               ),
             ],
@@ -431,5 +476,4 @@ mixin InsightsStarterMenuUi on InsightsChatSheetStateBase {
       ),
     );
   }
-
 }
