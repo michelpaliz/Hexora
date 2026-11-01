@@ -197,6 +197,15 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     }
   }
 
+  Future<void> _showMemberPresence() => showHexoraDialog<void>(
+        context: context,
+        builder: (_) => _BusinessChatMembersDialog(
+          api: _api,
+          groupId: widget.groupId,
+          spanish: _es,
+        ),
+      );
+
   Future<void> _loadMessages(BusinessChatConversation conversation,
       {bool forceScroll = false}) async {
     try {
@@ -1064,6 +1073,13 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                     color: _liveConnected ? colors.primary : colors.outline)),
             const SizedBox(width: 8),
             HexoraButton.iconOnly(
+                icon: Icons.people_alt_outlined,
+                onPressed: _showMemberPresence,
+                tooltip: _es
+                    ? 'Ver miembros y conexión'
+                    : 'View members and presence',
+                size: HexoraButtonSize.compact),
+            HexoraButton.iconOnly(
                 icon: Icons.refresh,
                 onPressed: _loading ? null : _refresh,
                 tooltip: _es ? 'Actualizar' : 'Refresh',
@@ -1411,6 +1427,239 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
   }
 }
 
+class _BusinessChatMembersDialog extends StatefulWidget {
+  const _BusinessChatMembersDialog({
+    required this.api,
+    required this.groupId,
+    required this.spanish,
+  });
+
+  final BusinessChatApi api;
+  final String groupId;
+  final bool spanish;
+
+  @override
+  State<_BusinessChatMembersDialog> createState() =>
+      _BusinessChatMembersDialogState();
+}
+
+class _BusinessChatMembersDialogState
+    extends State<_BusinessChatMembersDialog> {
+  List<BusinessChatMember> _members = const [];
+  bool _loading = true;
+  String? _error;
+  Timer? _timer;
+  int _requestVersion = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _load(initial: true);
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _requestVersion++;
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load({bool initial = false}) async {
+    if (!initial && _loading) return;
+    final requestVersion = ++_requestVersion;
+    if (!initial) setState(() => _loading = true);
+    try {
+      final members = await widget.api.memberPresence(widget.groupId);
+      if (!mounted || requestVersion != _requestVersion) return;
+      members.sort((left, right) {
+        if (left.isOnline != right.isOnline) return left.isOnline ? -1 : 1;
+        return left.name.toLowerCase().compareTo(right.name.toLowerCase());
+      });
+      setState(() {
+        _members = members;
+        _loading = false;
+        _error = null;
+      });
+    } catch (_) {
+      if (!mounted || requestVersion != _requestVersion) return;
+      setState(() {
+        _loading = false;
+        _error = widget.spanish
+            ? 'No se pudo cargar el estado de los miembros.'
+            : 'Could not load member presence.';
+      });
+    }
+  }
+
+  String _lastSeen(DateTime? value) {
+    if (value == null) {
+      return widget.spanish
+          ? 'Sin conexión anterior registrada'
+          : 'No previous connection recorded';
+    }
+    final date = DateFormat('dd/MM/yyyy HH:mm').format(value.toLocal());
+    return widget.spanish ? 'Última conexión · $date' : 'Last seen · $date';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final size = MediaQuery.sizeOf(context);
+    final onlineCount = _members.where((member) => member.isOnline).length;
+    final contentHeight = (size.height * .58).clamp(280.0, 460.0).toDouble();
+
+    return AlertDialog(
+      title: Row(children: [
+        Icon(Icons.people_alt_outlined, color: colors.primary, size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+              widget.spanish ? 'Miembros del negocio' : 'Business members'),
+        ),
+      ]),
+      content: SizedBox(
+        width: 440,
+        height: contentHeight,
+        child: Column(children: [
+          Row(children: [
+            Expanded(
+              child: Text(
+                widget.spanish
+                    ? '$onlineCount en línea · ${_members.length} miembros'
+                    : '$onlineCount online · ${_members.length} members',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+            ),
+            if (_loading && _members.isNotEmpty) ...[
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: 8),
+            ],
+            HexoraButton.iconOnly(
+              icon: Icons.refresh,
+              onPressed: _loading ? null : _load,
+              tooltip: widget.spanish ? 'Actualizar' : 'Refresh',
+              size: HexoraButtonSize.compact,
+            ),
+          ]),
+          const SizedBox(height: 8),
+          if (_error != null && _members.isNotEmpty)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: colors.errorContainer.withValues(alpha: .55),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                _error!,
+                style: TextStyle(color: colors.onErrorContainer),
+              ),
+            ),
+          Expanded(child: _buildContent(colors)),
+        ]),
+      ),
+      actions: [
+        HexoraButton(
+          label: widget.spanish ? 'Cerrar' : 'Close',
+          onPressed: () => Navigator.of(context).pop(),
+          variant: HexoraButtonVariant.ghost,
+          size: HexoraButtonSize.compact,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent(ColorScheme colors) {
+    if (_loading && _members.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null && _members.isEmpty) {
+      return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.cloud_off_outlined, color: colors.outline, size: 30),
+          const SizedBox(height: 10),
+          Text(_error!, textAlign: TextAlign.center),
+          const SizedBox(height: 12),
+          HexoraButton(
+            icon: Icons.refresh,
+            label: widget.spanish ? 'Reintentar' : 'Retry',
+            onPressed: _load,
+            variant: HexoraButtonVariant.secondary,
+            size: HexoraButtonSize.compact,
+          ),
+        ]),
+      );
+    }
+    if (_members.isEmpty) {
+      return Center(
+        child: Text(widget.spanish
+            ? 'No hay miembros disponibles.'
+            : 'No members are available.'),
+      );
+    }
+
+    return ListView.separated(
+      itemCount: _members.length,
+      separatorBuilder: (_, __) => Divider(
+        height: 1,
+        color: colors.outlineVariant.withValues(alpha: .45),
+      ),
+      itemBuilder: (context, index) {
+        final member = _members[index];
+        final photo = member.photoUrl?.trim();
+        final status = member.isOnline
+            ? (widget.spanish ? 'En línea' : 'Online')
+            : _lastSeen(member.lastActiveAt);
+        return Semantics(
+          label: '${member.name}, $status',
+          child: ExcludeSemantics(
+            child: ListTile(
+              minTileHeight: 54,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 2),
+              leading: CircleAvatar(
+                radius: 18,
+                backgroundImage:
+                    photo == null || photo.isEmpty ? null : NetworkImage(photo),
+                child: photo == null || photo.isEmpty
+                    ? Text(member.name.isEmpty
+                        ? '?'
+                        : member.name[0].toUpperCase())
+                    : null,
+              ),
+              title: Text(
+                member.name.isEmpty
+                    ? (widget.spanish ? 'Miembro' : 'Member')
+                    : member.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                status,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: member.isOnline ? colors.primary : colors.outline,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _MessageBubble extends StatefulWidget {
   const _MessageBubble({
     required this.message,
@@ -1445,7 +1694,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
 
   void _showMobileActions() {
     showModalBottomSheet(
-      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
+        sheetAnimationStyle: HexoraMotion.sheetStyle(context),
         context: context,
         builder: (ctx) => SafeArea(
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
