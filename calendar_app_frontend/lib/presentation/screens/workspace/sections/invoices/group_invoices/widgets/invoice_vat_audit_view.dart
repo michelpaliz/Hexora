@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
@@ -28,6 +29,7 @@ class InvoiceVatAuditView extends StatefulWidget {
   @override
   State<InvoiceVatAuditView> createState() => _InvoiceVatAuditViewState();
 }
+
 class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
   final InvoicesApi _api = InvoicesApi();
   final TextEditingController _searchCtrl = TextEditingController();
@@ -46,8 +48,10 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
   Map<String, dynamic>? _selectedRow;
   bool _filtersExpanded = false;
 
-  bool get _isEs =>
-      Localizations.localeOf(context).languageCode.toLowerCase().startsWith('es');
+  bool get _isEs => Localizations.localeOf(context)
+      .languageCode
+      .toLowerCase()
+      .startsWith('es');
   String _tx(String es, String en) => _isEs ? es : en;
 
   @override
@@ -218,7 +222,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
     final ctrl = TextEditingController(
       text: (row['reviewNotes'] ?? row['review']?['notes'] ?? '').toString(),
     );
-    final submitted = await showDialog<String?>(
+    final submitted = await showHexoraDialog<String?>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(_tx('Marcar para corregir', 'Mark for correction')),
@@ -226,7 +230,8 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
           controller: ctrl,
           maxLines: 4,
           decoration: InputDecoration(
-            hintText: _tx('Añade una nota de revisión...', 'Add a review note...'),
+            hintText:
+                _tx('Añade una nota de revisión...', 'Add a review note...'),
           ),
         ),
         actions: [
@@ -321,8 +326,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                     child: Text(_error!,
                         style: t.bodySmall.copyWith(color: cs.error))),
                 TextButton(
-                    onPressed: _load,
-                    child: Text(_tx('Reintentar', 'Retry'))),
+                    onPressed: _load, child: Text(_tx('Reintentar', 'Retry'))),
               ],
             ),
           ),
@@ -343,9 +347,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                       return Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          SizedBox(
-                              width: 340,
-                              child: _listPanel(rows, cs, t)),
+                          SizedBox(width: 340, child: _listPanel(rows, cs, t)),
                           const SizedBox(width: 10),
                           Expanded(
                             child: _selectedRow == null
@@ -385,7 +387,8 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
               color: cs.secondary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(Icons.receipt_long_outlined, size: 16, color: cs.secondary),
+            child: Icon(Icons.receipt_long_outlined,
+                size: 16, color: cs.secondary),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -399,7 +402,8 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                     children: [
                       Text(
                         _tx('Auditoria IVA ingresos', 'Income VAT audit'),
-                        style: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
+                        style:
+                            t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
                       ),
                       Text(
                         _tx(
@@ -476,6 +480,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
       ),
     );
   }
+
   Widget _buildExportButton(ColorScheme cs) {
     return Container(
       decoration: BoxDecoration(
@@ -514,6 +519,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
       ),
     );
   }
+
   Widget _statChip(IconData icon, String label, String value, Color color,
       ColorScheme cs, AppTypography t,
       {bool highlight = false}) {
@@ -522,8 +528,8 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
       decoration: BoxDecoration(
         color: color.withValues(alpha: highlight ? 0.12 : 0.07),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-            color: color.withValues(alpha: highlight ? 0.35 : 0.2)),
+        border:
+            Border.all(color: color.withValues(alpha: highlight ? 0.35 : 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -542,9 +548,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                       letterSpacing: 0.3)),
               Text(value,
                   style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: color)),
+                      fontSize: 12, fontWeight: FontWeight.w800, color: color)),
             ],
           ),
         ],
@@ -555,11 +559,10 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
   // ── Filters bar ───────────────────────────────────────────────────────────
 
   Widget _filtersBar(ColorScheme cs, AppTypography t) {
-    final activeFilters = [_from, _to, _clientId]
-            .where((f) => f != null)
-            .length +
-        (_status != 'issued' ? 1 : 0) +
-        (_searchText.isNotEmpty ? 1 : 0);
+    final activeFilters =
+        [_from, _to, _clientId].where((f) => f != null).length +
+            (_status != 'issued' ? 1 : 0) +
+            (_searchText.isNotEmpty ? 1 : 0);
 
     return Container(
       decoration: BoxDecoration(
@@ -569,20 +572,17 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
       child: Column(
         children: [
           InkWell(
-            onTap: () =>
-                setState(() => _filtersExpanded = !_filtersExpanded),
+            onTap: () => setState(() => _filtersExpanded = !_filtersExpanded),
             borderRadius: BorderRadius.circular(10),
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               child: Row(
                 children: [
                   Icon(Icons.tune_rounded,
                       size: 15, color: cs.onSurfaceVariant),
                   const SizedBox(width: 7),
                   Text(_tx('Filtros', 'Filters'),
-                      style:
-                          t.bodySmall.copyWith(fontWeight: FontWeight.w700)),
+                      style: t.bodySmall.copyWith(fontWeight: FontWeight.w700)),
                   if (activeFilters > 0) ...[
                     const SizedBox(width: 6),
                     Container(
@@ -613,8 +613,8 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                           ),
                           hintStyle: TextStyle(
                               fontSize: 12,
-                              color: cs.onSurfaceVariant
-                                  .withValues(alpha: 0.5)),
+                              color:
+                                  cs.onSurfaceVariant.withValues(alpha: 0.5)),
                           prefixIcon: Icon(Icons.search_rounded,
                               size: 14, color: cs.onSurfaceVariant),
                           isDense: true,
@@ -648,8 +648,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
           ),
           if (_filtersExpanded) ...[
             Divider(
-                height: 1,
-                color: cs.outlineVariant.withValues(alpha: 0.25)),
+                height: 1, color: cs.outlineVariant.withValues(alpha: 0.25)),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
               child: Wrap(
@@ -707,8 +706,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                       ),
                       items: [
                         DropdownMenuItem<String?>(
-                            value: null,
-                            child: Text(_tx('Todos', 'All'))),
+                            value: null, child: Text(_tx('Todos', 'All'))),
                         ...widget.clients.map(
                           (c) => DropdownMenuItem<String?>(
                               value: c.id, child: Text(c.name)),
@@ -777,21 +775,18 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
       List<Map<String, dynamic>> rows, ColorScheme cs, AppTypography t) {
     return Container(
       decoration: BoxDecoration(
-        border:
-            Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             child: Row(
               children: [
                 Text('${rows.length} ${_tx('facturas', 'invoices')}',
-                    style:
-                        t.bodySmall.copyWith(fontWeight: FontWeight.w700)),
+                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w700)),
                 const Spacer(),
                 if (_loading)
                   SizedBox(
@@ -803,15 +798,12 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
               ],
             ),
           ),
-          Divider(
-              height: 1,
-              color: cs.outlineVariant.withValues(alpha: 0.25)),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.25)),
           Expanded(
             child: ListView.separated(
               itemCount: rows.length,
               separatorBuilder: (_, __) => Divider(
-                  height: 1,
-                  color: cs.outlineVariant.withValues(alpha: 0.15)),
+                  height: 1, color: cs.outlineVariant.withValues(alpha: 0.15)),
               itemBuilder: (_, i) => _listRow(rows[i], cs, t),
             ),
           ),
@@ -820,8 +812,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
     );
   }
 
-  Widget _listRow(
-      Map<String, dynamic> row, ColorScheme cs, AppTypography t) {
+  Widget _listRow(Map<String, dynamic> row, ColorScheme cs, AppTypography t) {
     final id = (row['id'] ?? '').toString();
     final isSuspect = row['isSuspect'] == true;
     final review = (row['reviewStatus'] ?? 'unreviewed').toString();
@@ -845,8 +836,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
               width: 3,
               height: 56,
               decoration: BoxDecoration(
-                color:
-                    accentColor.withValues(alpha: isSelected ? 1.0 : 0.5),
+                color: accentColor.withValues(alpha: isSelected ? 1.0 : 0.5),
                 borderRadius:
                     const BorderRadius.horizontal(left: Radius.circular(12)),
               ),
@@ -891,8 +881,8 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                     const SizedBox(height: 2),
                     Text(
                       (row['clientName'] ?? '—').toString(),
-                      style: t.bodySmall.copyWith(
-                          fontSize: 11, color: cs.onSurfaceVariant),
+                      style: t.bodySmall
+                          .copyWith(fontSize: 11, color: cs.onSurfaceVariant),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -944,8 +934,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
   Widget _detailPlaceholder(ColorScheme cs, AppTypography t) {
     return Container(
       decoration: BoxDecoration(
-        border:
-            Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Center(
@@ -953,8 +942,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.receipt_long_outlined,
-                size: 32,
-                color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
+                size: 32, color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
             const SizedBox(height: 8),
             Text(
               _tx('Selecciona una factura para ver el detalle.',
@@ -1020,8 +1008,8 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                     children: [
                       Text(
                         (row['invoiceNumber'] ?? '—').toString(),
-                        style: t.bodyMedium
-                            .copyWith(fontWeight: FontWeight.w900, fontSize: 16),
+                        style: t.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w900, fontSize: 16),
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -1123,8 +1111,8 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: cs.surfaceContainerHighest
-                            .withValues(alpha: 0.3),
+                        color:
+                            cs.surfaceContainerHighest.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(reviewNotes,
@@ -1195,12 +1183,24 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
     );
   }
 
-  Widget _amountTable(
-      Map<String, dynamic> row, bool hasDelta, ColorScheme cs, AppTypography t) {
+  Widget _amountTable(Map<String, dynamic> row, bool hasDelta, ColorScheme cs,
+      AppTypography t) {
     final tableRows = [
-      [_tx('Base', 'Base'), formatAuditMoney(row['storedSubtotal']), formatAuditMoney(row['derivedSubtotal'])],
-      ['IVA', formatAuditMoney(row['storedTaxTotal']), formatAuditMoney(row['derivedTaxTotal'])],
-      [_tx('Total', 'Total'), formatAuditMoney(row['storedTotal']), formatAuditMoney(row['derivedTotal'])],
+      [
+        _tx('Base', 'Base'),
+        formatAuditMoney(row['storedSubtotal']),
+        formatAuditMoney(row['derivedSubtotal'])
+      ],
+      [
+        'IVA',
+        formatAuditMoney(row['storedTaxTotal']),
+        formatAuditMoney(row['derivedTaxTotal'])
+      ],
+      [
+        _tx('Total', 'Total'),
+        formatAuditMoney(row['storedTotal']),
+        formatAuditMoney(row['derivedTotal'])
+      ],
     ];
 
     return Container(
@@ -1212,8 +1212,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
         children: [
           // Header
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             decoration: BoxDecoration(
               color: cs.surfaceContainerHighest.withValues(alpha: 0.2),
               borderRadius:
@@ -1251,14 +1250,12 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
             final r = entry.value;
             final isLast = i == tableRows.length - 1;
             return Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 border: !isLast
                     ? Border(
                         bottom: BorderSide(
-                            color: cs.outlineVariant
-                                .withValues(alpha: 0.15)))
+                            color: cs.outlineVariant.withValues(alpha: 0.15)))
                     : null,
               ),
               child: Row(
@@ -1268,9 +1265,8 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                       child: Text(r[0],
                           style: TextStyle(
                               fontSize: 11,
-                              fontWeight: isLast
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
+                              fontWeight:
+                                  isLast ? FontWeight.w800 : FontWeight.w600,
                               color: cs.onSurfaceVariant))),
                   Expanded(
                       flex: 3,
@@ -1278,9 +1274,8 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                           textAlign: TextAlign.right,
                           style: TextStyle(
                               fontSize: 11,
-                              fontWeight: isLast
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
+                              fontWeight:
+                                  isLast ? FontWeight.w800 : FontWeight.w600,
                               color: cs.onSurface))),
                   Expanded(
                       flex: 3,
@@ -1288,9 +1283,8 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                           textAlign: TextAlign.right,
                           style: TextStyle(
                               fontSize: 11,
-                              fontWeight: isLast
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
+                              fontWeight:
+                                  isLast ? FontWeight.w800 : FontWeight.w600,
                               color: cs.primary))),
                 ],
               ),
@@ -1298,12 +1292,9 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
           }),
           // Delta row
           if (hasDelta) ...[
-            Divider(
-                height: 1,
-                color: cs.outlineVariant.withValues(alpha: 0.2)),
+            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.2)),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: cs.error.withValues(alpha: 0.06),
                 borderRadius:
@@ -1374,7 +1365,10 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
                         color: cs.error,
                         fontSize: 11),
                   ),
-                  if ((reason['message'] ?? '').toString().trim().isNotEmpty) ...[
+                  if ((reason['message'] ?? '')
+                      .toString()
+                      .trim()
+                      .isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text((reason['message'] ?? '').toString(),
                         style: t.bodySmall
@@ -1390,15 +1384,14 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
   }
 
   Widget _actionBtn(String label, IconData icon, Color color, bool busy,
-      VoidCallback onTap, AppTypography t, ColorScheme cs) =>
+          VoidCallback onTap, AppTypography t, ColorScheme cs) =>
       GestureDetector(
         onTap: busy ? null : onTap,
         child: AnimatedOpacity(
           opacity: busy ? 0.5 : 1.0,
           duration: const Duration(milliseconds: 150),
           child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(7),
@@ -1432,8 +1425,7 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.inbox_rounded,
-                size: 32,
-                color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
+                size: 32, color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
             const SizedBox(height: 8),
             Text(
               _tx('No hay facturas para este filtro.',
@@ -1443,5 +1435,4 @@ class _InvoiceVatAuditViewState extends State<InvoiceVatAuditView> {
           ],
         ),
       );
-
 }

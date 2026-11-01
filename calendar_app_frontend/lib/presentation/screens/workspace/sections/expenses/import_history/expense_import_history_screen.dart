@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/services/expenses/expenses_api.dart';
 import 'package:intl/intl.dart';
 
@@ -135,7 +136,8 @@ class _ExpenseImportHistoryScreenState
       };
 
   String _fileReason(String value) => switch (value) {
-        'duplicate' || 'possible_duplicate' =>
+        'duplicate' ||
+        'possible_duplicate' =>
           _isEs ? 'Posible duplicado' : 'Possible duplicate',
         'not_confirmed' => _isEs ? 'No seleccionado' : 'Not selected',
         'validation_error' => _isEs ? 'Datos no válidos' : 'Invalid data',
@@ -257,6 +259,7 @@ class _ExpenseImportHistoryScreenState
         side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: ExpansionTile(
+        expansionAnimationStyle: HexoraMotion.expansionStyle(context),
         key: ValueKey('$id-$_requestVersion'),
         tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
         childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 10),

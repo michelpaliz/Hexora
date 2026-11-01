@@ -423,7 +423,7 @@ extension _ExpenseRecentUploadsTableSection on _ExpenseRecentUploadsTabState {
               ValueListenableBuilder<bool>(
                 valueListenable: _columnFilterBusy,
                 builder: (context, busy, _) => AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 150),
+                  duration: HexoraMotion.duration(context, HexoraMotion.fast),
                   child: busy
                       ? Row(
                           key: const ValueKey('vat-filter-loading'),

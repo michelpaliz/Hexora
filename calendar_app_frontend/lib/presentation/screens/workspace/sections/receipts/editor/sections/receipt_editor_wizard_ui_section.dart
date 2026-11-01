@@ -679,12 +679,15 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
         if (widget.embedded != true) _buildStepIndicator(context),
         const SizedBox(height: 6),
         Expanded(
-          child: _step == 0
-              ? _buildClientStep(context)
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _buildStepBody(context),
-                ),
+          child: HexoraStepTransition(
+            step: _step,
+            child: _step == 0
+                ? _buildClientStep(context)
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildStepBody(context),
+                  ),
+          ),
         ),
         HexoraDocumentFooter(
           compact: true,

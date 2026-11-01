@@ -2,6 +2,7 @@ import 'mobile/workers_mobile_view.dart';
 import 'widgets/worker_directory_tabs.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
@@ -293,6 +294,7 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
   Future<Worker?> _openEditWorkerDialog(
       BuildContext context, Group group, Worker worker) {
     return showModalBottomSheet<Worker>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(

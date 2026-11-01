@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 Future<void> showPremiumUpgradeDialog(
@@ -6,7 +7,7 @@ Future<void> showPremiumUpgradeDialog(
   required String message,
 }) async {
   final l = AppLocalizations.of(context)!;
-  await showDialog<void>(
+  await showHexoraDialog<void>(
     context: context,
     builder: (ctx) {
       return AlertDialog(
@@ -41,7 +42,7 @@ Future<void> showManagedGroupLimitDialog(
   required String message,
 }) async {
   final l = AppLocalizations.of(context)!;
-  await showDialog<void>(
+  await showHexoraDialog<void>(
     context: context,
     builder: (ctx) => AlertDialog(
       title: Text(l.error),

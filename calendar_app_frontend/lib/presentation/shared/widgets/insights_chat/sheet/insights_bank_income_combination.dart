@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
@@ -281,7 +282,7 @@ mixin InsightsBankIncomeCombination on InsightsChatSheetStateBase {
         ),
       );
     }
-    return showDialog<Map<String, dynamic>>(
+    return showHexoraDialog<Map<String, dynamic>>(
       context: sourceContext,
       builder: (context) => StatefulBuilder(
         builder: (context, setSelectorState) => Dialog(
@@ -328,5 +329,4 @@ mixin InsightsBankIncomeCombination on InsightsChatSheetStateBase {
           : 'invoice-$safeNumber.pdf',
     );
   }
-
 }

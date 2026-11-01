@@ -807,6 +807,8 @@ extension _GroupInvoicesBudgetsViewStepContentSection
                                     dividerColor: Colors.transparent,
                                   ),
                                   child: ExpansionTile(
+                                    expansionAnimationStyle:
+                                        HexoraMotion.expansionStyle(context),
                                     initiallyExpanded: !narrow,
                                     maintainState: true,
                                     tilePadding: EdgeInsets.zero,

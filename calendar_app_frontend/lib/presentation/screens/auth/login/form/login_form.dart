@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/services/auth/email_verification_state.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/auth/exceptions/auth_exceptions.dart';
@@ -135,6 +136,7 @@ class _LoginFormState extends State<LoginForm> {
     final cs = Theme.of(context).colorScheme;
 
     showModalBottomSheet(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(

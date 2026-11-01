@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:intl/intl.dart';
 
 import 'package:hexora/models/presupuesto/presupuesto_kind.dart';
@@ -37,7 +38,7 @@ Future<List<TelegramIssuedPresupuestoSelection>?>
   required String groupId,
   PresupuestosApi? api,
 }) {
-  return showDialog<List<TelegramIssuedPresupuestoSelection>>(
+  return showHexoraDialog<List<TelegramIssuedPresupuestoSelection>>(
     context: context,
     builder: (dialogContext) => Dialog(
       clipBehavior: Clip.antiAlias,
@@ -171,7 +172,7 @@ class _TelegramIssuedPresupuestoPickerDialogState
     if (_selected.isEmpty) return;
     final drafts = _selected.values.where(_isDraft).length;
     if (drafts > 0) {
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showHexoraDialog<bool>(
         context: context,
         builder: (confirmationContext) => AlertDialog(
           title: Text(

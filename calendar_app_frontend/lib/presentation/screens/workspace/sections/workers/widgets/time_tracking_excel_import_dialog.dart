@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/time_tracking/working_time_excel_import.dart';
@@ -40,7 +41,7 @@ class TimeTrackingExcelImportDialog extends StatefulWidget {
     Worker? initialWorker,
     DateTime? initialMonth,
   }) async {
-    final result = await showDialog<bool>(
+    final result = await showHexoraDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (_) => TimeTrackingExcelImportDialog(
@@ -367,7 +368,7 @@ class _TimeTrackingExcelImportDialogState
       );
       if (!mounted) return;
       setState(() => _instructions = instructions);
-      await showDialog<void>(
+      await showHexoraDialog<void>(
         context: context,
         builder: (dialogContext) => _ImportInstructionsDialog(
           isSpanish: _isSpanish,
@@ -632,7 +633,7 @@ class _TimeTrackingExcelImportDialogState
       }
     }
     final workerName = worker == null ? null : _workerLabel(worker);
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) {
         final cs = Theme.of(dialogContext).colorScheme;
@@ -789,7 +790,7 @@ class _TimeTrackingExcelImportDialogState
 
     if (index < 0 || index >= parsed.payload.entries.length) return;
     setState(() => _editingJsonRowIndex = index);
-    final updated = await showDialog<Map<String, dynamic>>(
+    final updated = await showHexoraDialog<Map<String, dynamic>>(
       context: context,
       builder: (_) => _JsonEntryEditorDialog(
         isSpanish: _isSpanish,

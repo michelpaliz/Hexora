@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// How the workspace is shared between the document list and its preview.
@@ -288,8 +289,8 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
           child: TweenAnimationBuilder<double>(
             key: ValueKey(widget.selectionKey),
             tween: Tween(begin: 1, end: 0),
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
+            duration: HexoraMotion.duration(context, HexoraMotion.navigation),
+            curve: HexoraMotion.enter,
             builder: (context, value, child) => Transform.translate(
               offset: Offset(drawerWidth * value, 0),
               child: child,

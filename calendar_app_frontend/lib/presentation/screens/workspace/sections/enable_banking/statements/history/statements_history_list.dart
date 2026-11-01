@@ -1,5 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -278,7 +279,8 @@ class StatementsHistoryList extends StatelessWidget {
                                           reprocessing
                                       ? null
                                       : () async {
-                                          final ok = await showDialog<bool>(
+                                          final ok =
+                                              await showHexoraDialog<bool>(
                                             context: context,
                                             builder: (dialogContext) {
                                               return AlertDialog(
@@ -340,7 +342,7 @@ class StatementsHistoryList extends StatelessWidget {
                                       return;
                                     }
                                     if (value == 'delete') {
-                                      final ok = await showDialog<bool>(
+                                      final ok = await showHexoraDialog<bool>(
                                         context: context,
                                         builder: (dialogContext) {
                                           return AlertDialog(

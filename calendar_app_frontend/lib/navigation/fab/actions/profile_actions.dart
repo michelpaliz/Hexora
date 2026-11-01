@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
@@ -17,6 +18,7 @@ Future<void> openProfileActions(BuildContext context, Color accent) async {
   }
 
   await showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
     context: context,
     showDragHandle: true,
     backgroundColor: Theme.of(context).colorScheme.surface,

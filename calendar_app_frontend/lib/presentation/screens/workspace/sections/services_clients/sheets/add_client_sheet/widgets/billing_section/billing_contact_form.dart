@@ -43,8 +43,6 @@ class BillingContactForm extends StatelessWidget {
               prefixIcon: const Icon(Icons.alternate_email_rounded),
               isRequired: c.isBillingRequired('billingEmail'),
               isFilled: c.billingEmail.text.trim().isNotEmpty,
-              showCheck: c.isBillingRequired('billingEmail') &&
-                  c.billingEmail.text.trim().isNotEmpty,
             ),
             onChanged: (_) => onFieldChanged(),
             validator: (v) {
@@ -78,8 +76,6 @@ class BillingContactForm extends StatelessWidget {
               prefixIcon: const Icon(Icons.phone_in_talk),
               isRequired: c.isBillingRequired('billingPhone'),
               isFilled: c.billingPhone.text.trim().isNotEmpty,
-              showCheck: c.isBillingRequired('billingPhone') &&
-                  c.billingPhone.text.trim().isNotEmpty,
             ),
             onChanged: (_) => onFieldChanged(),
             validator: (v) {

@@ -1,6 +1,7 @@
 // presentation/c-group-calendar-section/screens/calendar/screen/main_calendar_view.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/weather/day_summary.dart';
@@ -169,7 +170,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
     if (kIsWeb) {
       // On web, keep the 3-column layout in place by showing a dialog instead of full navigation.
-      added = await showDialog<bool>(
+      added = await showHexoraDialog<bool>(
         context: context,
         builder: (dialogCtx) {
           final media = MediaQuery.of(dialogCtx).size;

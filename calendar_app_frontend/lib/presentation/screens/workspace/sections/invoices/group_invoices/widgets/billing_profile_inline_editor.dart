@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/services/invoicing/billing_profile_api.dart';
@@ -31,8 +32,7 @@ class BillingProfileInlineEditor extends StatefulWidget {
       _BillingProfileInlineEditorState();
 }
 
-class _BillingProfileInlineEditorState
-    extends State<BillingProfileInlineEditor>
+class _BillingProfileInlineEditorState extends State<BillingProfileInlineEditor>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   late final TabController _tabController;
@@ -121,9 +121,21 @@ class _BillingProfileInlineEditorState
     _language = TextEditingController(text: p?.language ?? '');
 
     for (final c in [
-      _legalName, _taxId, _logoUrl, _street, _extra, _city,
-      _province, _postal, _country, _email, _website, _iban,
-      _currency, _vatRate, _language,
+      _legalName,
+      _taxId,
+      _logoUrl,
+      _street,
+      _extra,
+      _city,
+      _province,
+      _postal,
+      _country,
+      _email,
+      _website,
+      _iban,
+      _currency,
+      _vatRate,
+      _language,
     ]) {
       c.addListener(_recomputeDirty);
     }
@@ -186,10 +198,21 @@ class _BillingProfileInlineEditorState
     final initial = widget.initial;
     final bool next = initial == null
         ? [
-            _legalName.text, _taxId.text, _logoUrl.text, _street.text,
-            _extra.text, _city.text, _province.text, _postal.text,
-            _country.text, _email.text, _website.text, _iban.text,
-            _currency.text, _vatRate.text, _language.text,
+            _legalName.text,
+            _taxId.text,
+            _logoUrl.text,
+            _street.text,
+            _extra.text,
+            _city.text,
+            _province.text,
+            _postal.text,
+            _country.text,
+            _email.text,
+            _website.text,
+            _iban.text,
+            _currency.text,
+            _vatRate.text,
+            _language.text,
           ].any((e) => e.trim().isNotEmpty)
         : !(_legalName.text.trim() == initial.legalName &&
             _taxId.text.trim() == initial.taxId &&
@@ -240,7 +263,7 @@ class _BillingProfileInlineEditorState
   // ── Logo ──
 
   void _showLogoDialog(String url) {
-    showDialog<void>(
+    showHexoraDialog<void>(
       context: context,
       builder: (_) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -254,9 +277,11 @@ class _BillingProfileInlineEditorState
                 child: ConstrainedBox(
                   constraints:
                       const BoxConstraints(maxWidth: 520, maxHeight: 400),
-                  child: Image.network(url, fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) =>
-                          const Icon(Icons.image_not_supported_outlined, size: 64)),
+                  child: Image.network(url,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Icon(
+                          Icons.image_not_supported_outlined,
+                          size: 64)),
                 ),
               ),
               const SizedBox(height: 12),
@@ -275,7 +300,7 @@ class _BillingProfileInlineEditorState
     final l = AppLocalizations.of(context)!;
     if (!mounted || widget.initial == null) return;
 
-    final picked = await showDialog<PlatformFile>(
+    final picked = await showHexoraDialog<PlatformFile>(
       context: context,
       builder: (context) {
         PlatformFile? selected;
@@ -465,8 +490,7 @@ class _BillingProfileInlineEditorState
         email: _email.text.trim().isEmpty ? null : _email.text.trim(),
         website: updatedWebsite,
         iban: _iban.text.trim().isEmpty ? null : _iban.text.trim(),
-        currency:
-            _currency.text.trim().isEmpty ? 'EUR' : _currency.text.trim(),
+        currency: _currency.text.trim().isEmpty ? 'EUR' : _currency.text.trim(),
         vatRate: vat,
         language: _language.text.trim().isEmpty ? null : _language.text.trim(),
       );
@@ -498,8 +522,7 @@ class _BillingProfileInlineEditorState
         : cs.surfaceContainerHighest.withValues(alpha: 0.22);
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(8),
-      borderSide:
-          BorderSide(color: cs.outlineVariant.withValues(alpha: 0.45)),
+      borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.45)),
     );
     return InputDecoration(
       labelText: label,
@@ -509,8 +532,7 @@ class _BillingProfileInlineEditorState
       isDense: true,
       filled: true,
       fillColor: fieldColor,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       enabledBorder: border,
       focusedBorder: border.copyWith(
         borderSide: BorderSide(color: cs.primary, width: 1.5),
@@ -571,8 +593,7 @@ class _BillingProfileInlineEditorState
           ],
           Text(title,
               style: t.bodySmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: cs.onSurfaceVariant)),
+                  fontWeight: FontWeight.w700, color: cs.onSurfaceVariant)),
         ],
       ),
     );
@@ -600,8 +621,8 @@ class _BillingProfileInlineEditorState
           controller: _taxId,
           label: l.billingTaxId,
           icon: Icons.numbers_outlined,
-          style: t.bodySmall.copyWith(
-              fontWeight: FontWeight.w800, letterSpacing: 0.2),
+          style: t.bodySmall
+              .copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.2),
           suffix: _copySuffix(_taxId),
           helper: l.billingTaxIdHelper,
           validator: (v) =>
@@ -641,16 +662,14 @@ class _BillingProfileInlineEditorState
           _textField(
               controller: _city,
               label: l.addressCity,
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? l.fieldIsRequired
-                  : null),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null),
           const SizedBox(height: 10),
           _textField(
               controller: _province,
               label: l.addressProvince,
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? l.fieldIsRequired
-                  : null),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null),
         ],
         const SizedBox(height: 10),
         if (wide)
@@ -677,16 +696,14 @@ class _BillingProfileInlineEditorState
               controller: _postal,
               label: l.addressPostalCode,
               keyboardType: TextInputType.number,
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? l.fieldIsRequired
-                  : null),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null),
           const SizedBox(height: 10),
           _textField(
               controller: _country,
               label: l.addressCountry,
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? l.fieldIsRequired
-                  : null),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null),
         ],
       ],
     );
@@ -749,17 +766,14 @@ class _BillingProfileInlineEditorState
           valueListenable: _logoUrl,
           builder: (_, v, __) {
             final url = v.text.trim();
-            final displayUrl = url == _logoPreviewSourceUrl
-                ? (_logoPreviewUrl ?? url)
-                : url;
+            final displayUrl =
+                url == _logoPreviewSourceUrl ? (_logoPreviewUrl ?? url) : url;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 GestureDetector(
                   onTap: url.isEmpty
-                      ? (_logoBusy || widget.initial == null
-                          ? null
-                          : _pickLogo)
+                      ? (_logoBusy || widget.initial == null ? null : _pickLogo)
                       : () => _showLogoDialog(displayUrl),
                   child: Container(
                     height: 100,
@@ -803,8 +817,7 @@ class _BillingProfileInlineEditorState
                                 fit: BoxFit.contain,
                                 errorBuilder: (_, __, ___) => Center(
                                     child: Icon(Icons.broken_image_outlined,
-                                        size: 28,
-                                        color: cs.onSurfaceVariant))),
+                                        size: 28, color: cs.onSurfaceVariant))),
                           ),
                   ),
                 ),
@@ -851,8 +864,8 @@ class _BillingProfileInlineEditorState
           controller: _iban,
           label: l.billingIban,
           icon: Icons.account_balance_outlined,
-          style: t.bodySmall.copyWith(
-              fontWeight: FontWeight.w800, letterSpacing: 0.2),
+          style: t.bodySmall
+              .copyWith(fontWeight: FontWeight.w800, letterSpacing: 0.2),
           suffix: _copySuffix(_iban),
           helper: l.billingIbanHelper,
         ),
@@ -868,8 +881,7 @@ class _BillingProfileInlineEditorState
                   ? null
                   : () {
                       final current = _parsedVatRate() ?? 21;
-                      _vatRate.text =
-                          (current - 1).clamp(0, 100).toString();
+                      _vatRate.text = (current - 1).clamp(0, 100).toString();
                     },
               icon: const Icon(Icons.remove_circle_outline, size: 20),
             ),
@@ -878,15 +890,12 @@ class _BillingProfileInlineEditorState
                 controller: _vatRate,
                 label: '${l.billingTaxRate} %',
                 icon: Icons.percent,
-                keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 helper: l.billingTaxRateHelper,
                 validator: (_) {
                   final vat = _parsedVatRate();
-                  return vat == null ||
-                          !vat.isFinite ||
-                          vat < 0 ||
-                          vat > 100
+                  return vat == null || !vat.isFinite || vat < 0 || vat > 100
                       ? 'Introduce un IVA entre 0 y 100'
                       : null;
                 },
@@ -897,8 +906,7 @@ class _BillingProfileInlineEditorState
                   ? null
                   : () {
                       final current = _parsedVatRate() ?? 21;
-                      _vatRate.text =
-                          (current + 1).clamp(0, 100).toString();
+                      _vatRate.text = (current + 1).clamp(0, 100).toString();
                     },
               icon: const Icon(Icons.add_circle_outline, size: 20),
             ),
@@ -912,15 +920,12 @@ class _BillingProfileInlineEditorState
     final l = AppLocalizations.of(context)!;
     final t = AppTypography.of(context);
 
-    final currencyValue = _currency.text.trim().isEmpty
-        ? 'EUR'
-        : _currency.text.trim();
-    final currencyKnown =
-        _currencies.any((c) => c.$1 == currencyValue);
+    final currencyValue =
+        _currency.text.trim().isEmpty ? 'EUR' : _currency.text.trim();
+    final currencyKnown = _currencies.any((c) => c.$1 == currencyValue);
 
     final langValue = _language.text.trim();
-    final langKnown =
-        _languages.any((l) => l.$1 == langValue);
+    final langKnown = _languages.any((l) => l.$1 == langValue);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
@@ -933,8 +938,7 @@ class _BillingProfileInlineEditorState
             isDense: true,
             style: t.bodySmall,
             decoration: _dec(context,
-                label: l.billingCurrency,
-                helper: l.billingCurrencyHelper),
+                label: l.billingCurrency, helper: l.billingCurrencyHelper),
             items: [
               for (final c in _currencies)
                 DropdownMenuItem(value: c.$1, child: Text(c.$2)),
@@ -950,9 +954,7 @@ class _BillingProfileInlineEditorState
             icon: Icons.currency_exchange_outlined,
             helper: l.billingCurrencyHelper,
           ),
-
         const SizedBox(height: 18),
-
         _sectionLabel(l.billingLanguage, icon: Icons.translate_outlined),
         if (langKnown || langValue.isEmpty)
           DropdownButtonFormField<String>(
@@ -960,8 +962,7 @@ class _BillingProfileInlineEditorState
             isDense: true,
             style: t.bodySmall,
             decoration: _dec(context,
-                label: l.billingLanguage,
-                helper: l.billingLanguageHelper),
+                label: l.billingLanguage, helper: l.billingLanguageHelper),
             items: [
               for (final lang in _languages)
                 DropdownMenuItem(value: lang.$1, child: Text(lang.$2)),
@@ -1005,8 +1006,7 @@ class _BillingProfileInlineEditorState
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: Row(
               children: [
-                Icon(Icons.business_rounded,
-                    size: 20, color: cs.primary),
+                Icon(Icons.business_rounded, size: 20, color: cs.primary),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -1015,14 +1015,13 @@ class _BillingProfileInlineEditorState
                         : _legalName.text.trim(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: t.bodyMedium
-                        .copyWith(fontWeight: FontWeight.w700),
+                    style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: complete
                         ? Colors.green.withValues(alpha: 0.10)
@@ -1040,18 +1039,14 @@ class _BillingProfileInlineEditorState
                             ? Icons.verified_rounded
                             : Icons.pending_actions_rounded,
                         size: 14,
-                        color: complete
-                            ? Colors.green.shade700
-                            : cs.primary,
+                        color: complete ? Colors.green.shade700 : cs.primary,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         '$_completionPercent%',
                         style: t.caption.copyWith(
                           fontWeight: FontWeight.w700,
-                          color: complete
-                              ? Colors.green.shade700
-                              : cs.primary,
+                          color: complete ? Colors.green.shade700 : cs.primary,
                         ),
                       ),
                     ],
@@ -1103,42 +1098,29 @@ class _BillingProfileInlineEditorState
             top: false,
             child: Container(
               margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: subtleTint,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: cs.primary.withValues(alpha: .16)),
+                border: Border.all(color: cs.primary.withValues(alpha: .16)),
               ),
               child: Row(
                 children: [
-                  Icon(
-                      _hasChanges
-                          ? Icons.edit_note
-                          : Icons.check_circle,
+                  Icon(_hasChanges ? Icons.edit_note : Icons.check_circle,
                       size: 20,
-                      color: _hasChanges
-                          ? cs.primary
-                          : Colors.green.shade700),
+                      color: _hasChanges ? cs.primary : Colors.green.shade700),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _hasChanges
-                          ? (es
-                              ? 'Hay cambios pendientes'
-                              : 'Unsaved changes')
-                          : (es
-                              ? 'Perfil actualizado'
-                              : 'Profile up to date'),
+                          ? (es ? 'Hay cambios pendientes' : 'Unsaved changes')
+                          : (es ? 'Perfil actualizado' : 'Profile up to date'),
                       style: t.caption,
                     ),
                   ),
                   const SizedBox(width: 8),
                   HexoraButton(
-                    onPressed: (!_hasChanges || _saving)
-                        ? null
-                        : _resetFields,
+                    onPressed: (!_hasChanges || _saving) ? null : _resetFields,
                     label: es ? 'Descartar' : 'Discard',
                     icon: Icons.undo,
                     variant: HexoraButtonVariant.secondary,
@@ -1147,8 +1129,7 @@ class _BillingProfileInlineEditorState
                   const SizedBox(width: 8),
                   HexoraButton(
                     key: const ValueKey('billing-profile-save'),
-                    onPressed:
-                        (!_hasChanges || _saving) ? null : _save,
+                    onPressed: (!_hasChanges || _saving) ? null : _save,
                     label: _saving ? l.saving : l.saveChanges,
                     icon: Icons.check,
                     loading: _saving,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -26,7 +27,7 @@ class BillingLegalAndTax extends StatelessWidget {
     final prefix = c.embeddedBillingPrefix;
     var remainingName = c.embeddedBillingRemainder ?? '';
     if (prefix == null || remainingName.isEmpty) return;
-    final confirmedName = await showDialog<String>(
+    final confirmedName = await showHexoraDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Separar prefijo'),
@@ -98,8 +99,6 @@ class BillingLegalAndTax extends StatelessWidget {
                 prefixIcon: const Icon(Icons.badge_outlined),
                 isRequired: c.isBillingRequired('billingLegalName'),
                 isFilled: c.billingLegalName.text.trim().isNotEmpty,
-                showCheck: c.isBillingRequired('billingLegalName') &&
-                    c.billingLegalName.text.trim().isNotEmpty,
               ),
               textInputAction: TextInputAction.next,
               onChanged: (_) => onFieldChanged(),
@@ -131,8 +130,6 @@ class BillingLegalAndTax extends StatelessWidget {
                 prefixIcon: const Icon(Icons.numbers),
                 isRequired: c.isBillingRequired('billingTaxId'),
                 isFilled: c.billingTaxId.text.trim().isNotEmpty,
-                showCheck: c.isBillingRequired('billingTaxId') &&
-                    c.billingTaxId.text.trim().isNotEmpty,
               ),
               textInputAction: TextInputAction.next,
               onChanged: (_) => onFieldChanged(),
@@ -150,7 +147,31 @@ class BillingLegalAndTax extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        // Subtle label separating "Identidad fiscal" above from the PDF
+        // presentation fields below. Pure typography, no card wrapping.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(2, 14, 2, 8),
+          child: Row(
+            children: [
+              Icon(
+                Icons.picture_as_pdf_outlined,
+                size: 14,
+                color: cs.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                (isSpanish ? 'Presentación en PDF' : 'PDF presentation')
+                    .toUpperCase(),
+                style: text.labelSmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
         ClientFormFields(
           first: TextFormField(
             controller: c.pdfPrefix,
@@ -164,9 +185,6 @@ class BillingLegalAndTax extends StatelessWidget {
               hintText: isSpanish
                   ? 'p. ej., Com. de Prop.'
                   : 'e.g. Homeowners Assoc.',
-              helperText: isSpanish
-                  ? 'Se muestra antes del nombre.'
-                  : 'Shown before the billing name.',
               prefixIcon: const Icon(Icons.short_text_outlined),
               isFilled: c.pdfPrefix.text.trim().isNotEmpty,
             ).copyWith(
@@ -194,9 +212,6 @@ class BillingLegalAndTax extends StatelessWidget {
                   ? 'Alias para PDF (opcional)'
                   : 'PDF alias (optional)',
               hintText: isSpanish ? 'p. ej., Las Alondras' : 'e.g. The Larks',
-              helperText: isSpanish
-                  ? 'Nombre alternativo mostrado debajo.'
-                  : 'Alternative name shown below.',
               prefixIcon: const Icon(Icons.picture_as_pdf_outlined),
               isFilled: c.pdfAlias.text.trim().isNotEmpty,
             ),
@@ -224,55 +239,55 @@ class BillingLegalAndTax extends StatelessWidget {
           ),
         ],
         if (c.pdfBillingNamePreview.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.55),
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.picture_as_pdf_outlined,
-                  size: 18,
-                  color: cs.primary,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isSpanish ? 'Vista previa en PDF' : 'PDF preview',
-                        style: text.labelSmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        c.pdfBillingNamePreview,
-                        style: text.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (c.pdfAliasPreview.isNotEmpty)
-                        Text(
-                          c.pdfAliasPreview,
-                          style: text.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                    ],
+          const SizedBox(height: 6),
+          // Compact inline preview, immediately below the PDF fields.
+          DefaultTextStyle(
+            style: text.bodySmall!.copyWith(color: cs.onSurfaceVariant),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.picture_as_pdf_outlined,
+                    size: 14,
+                    color: cs.onSurfaceVariant,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 6),
+                  Text(
+                    isSpanish ? 'Vista previa:' : 'Preview:',
+                    style: text.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: c.pdfBillingNamePreview,
+                            style: text.bodySmall?.copyWith(
+                              color: cs.onSurface,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (c.pdfAliasPreview.isNotEmpty)
+                            TextSpan(
+                              text: '  ·  ${c.pdfAliasPreview}',
+                              style: text.bodySmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

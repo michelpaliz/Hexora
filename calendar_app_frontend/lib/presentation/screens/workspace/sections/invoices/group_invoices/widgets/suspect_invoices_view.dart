@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/suspects/suspect_invoices_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
@@ -47,8 +48,10 @@ class _SuspectInvoicesViewState extends State<SuspectInvoicesView> {
   String? _reviewFilter = _ReviewStatus.unreviewed;
   Map<String, dynamic>? _previewInvoice;
 
-  bool get _isEs =>
-      Localizations.localeOf(context).languageCode.toLowerCase().startsWith('es');
+  bool get _isEs => Localizations.localeOf(context)
+      .languageCode
+      .toLowerCase()
+      .startsWith('es');
 
   String _tx(String es, String en) => _isEs ? es : en;
 
@@ -199,7 +202,7 @@ class _SuspectInvoicesViewState extends State<SuspectInvoicesView> {
 
   Future<void> _deleteInvoice(String invoiceId) async {
     if (_deletingIds.contains(invoiceId)) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(_tx('Eliminar factura', 'Delete invoice')),
@@ -245,8 +248,9 @@ class _SuspectInvoicesViewState extends State<SuspectInvoicesView> {
     try {
       final response = await _invoicesApi.previewPdf(id);
       final bytes = InvoiceEditorPdf.validatePdf(response);
-      final number =
-          (invoice['invoiceNumber'] ?? invoice['number'] ?? '').toString().trim();
+      final number = (invoice['invoiceNumber'] ?? invoice['number'] ?? '')
+          .toString()
+          .trim();
       final fileName =
           (number.isEmpty ? 'invoice-preview-$id' : 'invoice-$number')
               .replaceAll('/', '-');
@@ -306,7 +310,8 @@ class _SuspectInvoicesViewState extends State<SuspectInvoicesView> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
             child: _InvoiceSuspectStatsBar(
-              scanned: _response?['totalInvoicesScanned'] ?? _response?['totalScanned'],
+              scanned: _response?['totalInvoicesScanned'] ??
+                  _response?['totalScanned'],
               suspectCount: _response?['suspectCount'],
               displayedCount: suspects.length,
               filter: _reviewFilter,
@@ -406,8 +411,8 @@ class _SuspectInvoicesViewState extends State<SuspectInvoicesView> {
                           )
                         : _InvoiceSuspectPreviewPanel(
                             invoice: _previewInvoice!,
-                            busy: _busyIds
-                                .contains(_invoiceId(_previewInvoice)),
+                            busy:
+                                _busyIds.contains(_invoiceId(_previewInvoice)),
                             deleting: _deletingIds
                                 .contains(_invoiceId(_previewInvoice)),
                             notesVisible: _notesVisible
@@ -434,13 +439,14 @@ class _SuspectInvoicesViewState extends State<SuspectInvoicesView> {
                               _invoiceId(_previewInvoice),
                               _ReviewStatus.unreviewed,
                             ),
-                            onEdit: () =>
-                                widget.onEditInvoice(_invoiceId(_previewInvoice)),
+                            onEdit: () => widget
+                                .onEditInvoice(_invoiceId(_previewInvoice)),
                             onDelete: () =>
                                 _deleteInvoice(_invoiceId(_previewInvoice)),
                             onClose: () =>
                                 setState(() => _previewInvoice = null),
-                            onFullPage: () => _openFullPreview(_previewInvoice!),
+                            onFullPage: () =>
+                                _openFullPreview(_previewInvoice!),
                             tx: _tx,
                             fmt: _fmt,
                           ),
@@ -538,7 +544,9 @@ class _InvoiceSuspectStatsBar extends StatelessWidget {
               filterActive
                   ? Icons.filter_alt_outlined
                   : Icons.document_scanner_outlined,
-              filterActive ? tx('Resultados del filtro', 'Filter results') : tx('Analizados', 'Scanned'),
+              filterActive
+                  ? tx('Resultados del filtro', 'Filter results')
+                  : tx('Analizados', 'Scanned'),
               filterActive
                   ? (suspectCount?.toString() ?? displayedCount.toString())
                   : scanned?.toString() ?? '-',
@@ -569,7 +577,8 @@ class _InvoiceSuspectStatsBar extends StatelessWidget {
             children: [
               filterChip(tx('Todos', 'All'), null),
               const SizedBox(width: 8),
-              filterChip(tx('Sin revisar', 'Unreviewed'), _ReviewStatus.unreviewed),
+              filterChip(
+                  tx('Sin revisar', 'Unreviewed'), _ReviewStatus.unreviewed),
               const SizedBox(width: 8),
               filterChip(
                 tx('Confirmado correcto', 'Confirmed OK'),
@@ -639,11 +648,11 @@ class _InvoiceSuspectCard extends StatelessWidget {
     ]);
     final invoiceNumber =
         (invoice['invoiceNumber'] ?? invoice['number'] ?? '').toString().trim();
-    final issueDate =
-        (invoice['issueDate'] ?? invoice['registeredAt'] ?? '').toString().trim();
-    final reviewStatus =
-        invoice['suspicionReview']?['status']?.toString() ??
-            _ReviewStatus.unreviewed;
+    final issueDate = (invoice['issueDate'] ?? invoice['registeredAt'] ?? '')
+        .toString()
+        .trim();
+    final reviewStatus = invoice['suspicionReview']?['status']?.toString() ??
+        _ReviewStatus.unreviewed;
     final reasons = _reasons(invoice);
     final isLinked = invoice['isLinked'] == true;
     final linkedEntriesCount =
@@ -697,14 +706,17 @@ class _InvoiceSuspectCard extends StatelessWidget {
                     children: [
                       Text(
                         clientName,
-                        style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+                        style:
+                            t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         [
                           if (invoiceNumber.isNotEmpty) invoiceNumber,
                           if (issueDate.isNotEmpty)
-                            issueDate.length >= 10 ? issueDate.substring(0, 10) : issueDate,
+                            issueDate.length >= 10
+                                ? issueDate.substring(0, 10)
+                                : issueDate,
                         ].join(' · '),
                         style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
                       ),
@@ -712,13 +724,31 @@ class _InvoiceSuspectCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                _iconBtn(context, icon: Icons.visibility_outlined, color: cs.primary, tooltip: tx('Vista previa', 'Preview'), onTap: onPreview, selected: selected),
+                _iconBtn(context,
+                    icon: Icons.visibility_outlined,
+                    color: cs.primary,
+                    tooltip: tx('Vista previa', 'Preview'),
+                    onTap: onPreview,
+                    selected: selected),
                 const SizedBox(width: 6),
-                _iconBtn(context, icon: Icons.open_in_full_rounded, color: cs.primary, tooltip: tx('Ver preview PDF', 'Open PDF'), onTap: onFullPage),
+                _iconBtn(context,
+                    icon: Icons.open_in_full_rounded,
+                    color: cs.primary,
+                    tooltip: tx('Ver preview PDF', 'Open PDF'),
+                    onTap: onFullPage),
                 const SizedBox(width: 6),
-                _iconBtn(context, icon: Icons.edit_outlined, color: cs.secondary, tooltip: tx('Editar factura', 'Edit invoice'), onTap: onEdit),
+                _iconBtn(context,
+                    icon: Icons.edit_outlined,
+                    color: cs.secondary,
+                    tooltip: tx('Editar factura', 'Edit invoice'),
+                    onTap: onEdit),
                 const SizedBox(width: 6),
-                _iconBtn(context, icon: Icons.delete_outline, color: cs.error, tooltip: tx('Eliminar', 'Delete'), onTap: onDelete, loading: deleting),
+                _iconBtn(context,
+                    icon: Icons.delete_outline,
+                    color: cs.error,
+                    tooltip: tx('Eliminar', 'Delete'),
+                    onTap: onDelete,
+                    loading: deleting),
               ],
             ),
             const SizedBox(height: 10),
@@ -771,10 +801,10 @@ class _InvoiceSuspectCard extends StatelessWidget {
                 children: [
                   for (final reason in reasons)
                     if (_buildReasonDeltaBadge(
-                          context,
-                          code: reason['code']?.toString(),
-                          delta: reason['delta'],
-                        )
+                      context,
+                      code: reason['code']?.toString(),
+                      delta: reason['delta'],
+                    )
                         case final badge?)
                       badge,
                 ],
@@ -790,8 +820,8 @@ class _InvoiceSuspectCard extends StatelessWidget {
                     context,
                     title: tx('Importes guardados', 'Stored amounts'),
                     color: cs.onSurfaceVariant,
-                    values:
-                        Map<String, dynamic>.from(invoice['suspicion']['stored']),
+                    values: Map<String, dynamic>.from(
+                        invoice['suspicion']['stored']),
                     fmt: fmt,
                   ),
                 if (invoice['suspicion']?['derived'] is Map)
@@ -799,8 +829,8 @@ class _InvoiceSuspectCard extends StatelessWidget {
                     context,
                     title: tx('Importes derivados', 'Derived amounts'),
                     color: cs.primary,
-                    values:
-                        Map<String, dynamic>.from(invoice['suspicion']['derived']),
+                    values: Map<String, dynamic>.from(
+                        invoice['suspicion']['derived']),
                     fmt: fmt,
                   ),
               ],
@@ -975,12 +1005,14 @@ class _InvoiceSuspectPreviewPanelState
       if (_invoice['clientId'] is Map) _invoice['clientId']['name'],
     ]);
     final invoiceNumber =
-        (_invoice['invoiceNumber'] ?? _invoice['number'] ?? '').toString().trim();
-    final issueDate =
-        (_invoice['issueDate'] ?? _invoice['registeredAt'] ?? '').toString().trim();
-    final reviewStatus =
-        _invoice['suspicionReview']?['status']?.toString() ??
-            _ReviewStatus.unreviewed;
+        (_invoice['invoiceNumber'] ?? _invoice['number'] ?? '')
+            .toString()
+            .trim();
+    final issueDate = (_invoice['issueDate'] ?? _invoice['registeredAt'] ?? '')
+        .toString()
+        .trim();
+    final reviewStatus = _invoice['suspicionReview']?['status']?.toString() ??
+        _ReviewStatus.unreviewed;
 
     late final Color statusColor;
     late final String statusLabel;
@@ -1016,13 +1048,30 @@ class _InvoiceSuspectPreviewPanelState
                     style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
                   ),
                 ),
-                _iconBtn(context, icon: Icons.open_in_full_rounded, color: cs.primary, tooltip: widget.tx('Ver preview PDF', 'Open PDF'), onTap: widget.onFullPage),
+                _iconBtn(context,
+                    icon: Icons.open_in_full_rounded,
+                    color: cs.primary,
+                    tooltip: widget.tx('Ver preview PDF', 'Open PDF'),
+                    onTap: widget.onFullPage),
                 const SizedBox(width: 6),
-                _iconBtn(context, icon: Icons.edit_outlined, color: cs.primary, tooltip: widget.tx('Editar factura', 'Edit invoice'), onTap: widget.onEdit),
+                _iconBtn(context,
+                    icon: Icons.edit_outlined,
+                    color: cs.primary,
+                    tooltip: widget.tx('Editar factura', 'Edit invoice'),
+                    onTap: widget.onEdit),
                 const SizedBox(width: 6),
-                _iconBtn(context, icon: Icons.delete_outline, color: cs.error, tooltip: widget.tx('Eliminar', 'Delete'), onTap: widget.onDelete, loading: widget.deleting),
+                _iconBtn(context,
+                    icon: Icons.delete_outline,
+                    color: cs.error,
+                    tooltip: widget.tx('Eliminar', 'Delete'),
+                    onTap: widget.onDelete,
+                    loading: widget.deleting),
                 const SizedBox(width: 6),
-                _iconBtn(context, icon: Icons.close, color: cs.onSurface, tooltip: widget.tx('Cerrar', 'Close'), onTap: widget.onClose),
+                _iconBtn(context,
+                    icon: Icons.close,
+                    color: cs.onSurface,
+                    tooltip: widget.tx('Cerrar', 'Close'),
+                    onTap: widget.onClose),
               ],
             ),
           ),
@@ -1037,12 +1086,14 @@ class _InvoiceSuspectPreviewPanelState
                     constraints: const BoxConstraints(minHeight: 220),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+                      border: Border.all(
+                          color: cs.outlineVariant.withValues(alpha: 0.35)),
                     ),
                     child: FutureBuilder<Uint8List?>(
                       future: _pdfBytesFuture,
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return const Center(
                             child: Padding(
                               padding: EdgeInsets.all(24),
@@ -1071,7 +1122,9 @@ class _InvoiceSuspectPreviewPanelState
                     ),
                   ),
                   const SizedBox(height: 14),
-                  Text(clientName, style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800)),
+                  Text(clientName,
+                      style:
+                          t.bodyMedium.copyWith(fontWeight: FontWeight.w800)),
                   if (invoiceNumber.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(invoiceNumber, style: t.bodySmall),
@@ -1079,7 +1132,9 @@ class _InvoiceSuspectPreviewPanelState
                   if (issueDate.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(
-                      issueDate.length >= 10 ? issueDate.substring(0, 10) : issueDate,
+                      issueDate.length >= 10
+                          ? issueDate.substring(0, 10)
+                          : issueDate,
                       style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ],
@@ -1097,10 +1152,12 @@ class _InvoiceSuspectPreviewPanelState
                       Expanded(
                         child: _totalsCard(
                           context,
-                          title: widget.tx('Importes guardados', 'Stored amounts'),
+                          title:
+                              widget.tx('Importes guardados', 'Stored amounts'),
                           color: cs.onSurfaceVariant,
                           values: _invoice['suspicion']?['stored'] is Map
-                              ? Map<String, dynamic>.from(_invoice['suspicion']['stored'])
+                              ? Map<String, dynamic>.from(
+                                  _invoice['suspicion']['stored'])
                               : const {},
                           fmt: widget.fmt,
                         ),
@@ -1109,10 +1166,12 @@ class _InvoiceSuspectPreviewPanelState
                       Expanded(
                         child: _totalsCard(
                           context,
-                          title: widget.tx('Importes derivados', 'Derived amounts'),
+                          title: widget.tx(
+                              'Importes derivados', 'Derived amounts'),
                           color: cs.primary,
                           values: _invoice['suspicion']?['derived'] is Map
-                              ? Map<String, dynamic>.from(_invoice['suspicion']['derived'])
+                              ? Map<String, dynamic>.from(
+                                  _invoice['suspicion']['derived'])
                               : const {},
                           fmt: widget.fmt,
                         ),
@@ -1125,12 +1184,35 @@ class _InvoiceSuspectPreviewPanelState
                     runSpacing: 8,
                     children: [
                       if (reviewStatus != _ReviewStatus.confirmedOk)
-                        _actionChip(context, label: widget.tx('Marcar como correcto', 'Mark as correct'), icon: Icons.check_rounded, color: cs.tertiary, busy: widget.busy, onTap: widget.onConfirmOk),
+                        _actionChip(context,
+                            label: widget.tx(
+                                'Marcar como correcto', 'Mark as correct'),
+                            icon: Icons.check_rounded,
+                            color: cs.tertiary,
+                            busy: widget.busy,
+                            onTap: widget.onConfirmOk),
                       if (reviewStatus != _ReviewStatus.needsFix)
-                        _actionChip(context, label: widget.tx('Marcar para corregir', 'Mark for fix'), icon: Icons.build_outlined, color: cs.error, busy: widget.busy, onTap: widget.onNeedsFix),
+                        _actionChip(context,
+                            label: widget.tx(
+                                'Marcar para corregir', 'Mark for fix'),
+                            icon: Icons.build_outlined,
+                            color: cs.error,
+                            busy: widget.busy,
+                            onTap: widget.onNeedsFix),
                       if (reviewStatus != _ReviewStatus.unreviewed)
-                        _actionChip(context, label: widget.tx('Restablecer revision', 'Reset review'), icon: Icons.undo_rounded, color: cs.onSurfaceVariant, busy: widget.busy, onTap: widget.onReset),
-                      _actionChip(context, label: widget.tx('Notas', 'Notes'), icon: Icons.notes_rounded, color: cs.onSurfaceVariant, busy: false, onTap: widget.onToggleNotes),
+                        _actionChip(context,
+                            label: widget.tx(
+                                'Restablecer revision', 'Reset review'),
+                            icon: Icons.undo_rounded,
+                            color: cs.onSurfaceVariant,
+                            busy: widget.busy,
+                            onTap: widget.onReset),
+                      _actionChip(context,
+                          label: widget.tx('Notas', 'Notes'),
+                          icon: Icons.notes_rounded,
+                          color: cs.onSurfaceVariant,
+                          busy: false,
+                          onTap: widget.onToggleNotes),
                     ],
                   ),
                   if (widget.notesVisible) ...[
@@ -1139,7 +1221,9 @@ class _InvoiceSuspectPreviewPanelState
                       controller: widget.noteController,
                       maxLines: 3,
                       decoration: InputDecoration(
-                        hintText: widget.tx('Anade una nota antes de guardar...', 'Add a note before saving...'),
+                        hintText: widget.tx(
+                            'Anade una nota antes de guardar...',
+                            'Add a note before saving...'),
                       ),
                     ),
                   ],

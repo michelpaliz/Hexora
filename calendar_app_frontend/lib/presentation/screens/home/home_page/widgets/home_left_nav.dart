@@ -1,6 +1,7 @@
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
@@ -156,7 +157,12 @@ class _HomeSidebarContent extends StatelessWidget {
       children: [
         _SidebarProfileHeader(user: user, isDark: isDark),
         const SizedBox(height: 8),
-        Divider(height: 1, thickness: 1, color: dividerColor, indent: 16, endIndent: 16),
+        Divider(
+            height: 1,
+            thickness: 1,
+            color: dividerColor,
+            indent: 16,
+            endIndent: 16),
         const SizedBox(height: 8),
         for (final item in navItems)
           Padding(
@@ -206,7 +212,7 @@ class _SidebarProfileHeader extends StatelessWidget {
         children: [
           GestureDetector(
             onTap: hasPhoto
-                ? () => showDialog<void>(
+                ? () => showHexoraDialog<void>(
                       context: context,
                       barrierColor: Colors.black.withValues(alpha: 0.72),
                       builder: (_) => UserAvatarViewerDialog(user: user),

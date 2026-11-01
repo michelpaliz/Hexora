@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -73,6 +74,7 @@ class ProfileDetailsCard extends StatelessWidget {
               count: '$notificationsCount'),
           const Divider(height: 1, indent: 50),
           ExpansionTile(
+            expansionAnimationStyle: HexoraMotion.expansionStyle(context),
             leading: Icon(Icons.badge_outlined,
                 color: cs.onSurfaceVariant, size: 22),
             title: Text(

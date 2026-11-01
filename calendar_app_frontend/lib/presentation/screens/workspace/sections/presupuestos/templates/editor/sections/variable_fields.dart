@@ -357,6 +357,7 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
                 border: Border.all(color: _editorBorder(theme, alpha: 0.65)),
               ),
               child: ExpansionTile(
+                expansionAnimationStyle: HexoraMotion.expansionStyle(context),
                 tilePadding: const EdgeInsets.symmetric(horizontal: 14),
                 childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 4),
                 leading: Icon(

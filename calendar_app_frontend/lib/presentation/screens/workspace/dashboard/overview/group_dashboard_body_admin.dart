@@ -1,5 +1,7 @@
 // lib/presentation/screens/workspace/dashboard/overview/group_dashboard_body_admin.dart
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
@@ -80,7 +82,7 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
     final rootNav = Navigator.of(context, rootNavigator: true);
 
     if (!rootNav.mounted) return;
-    showDialog<void>(
+    showHexoraDialog<void>(
       context: rootNav.context,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
@@ -195,8 +197,10 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
                 Sections.services),
             destination(Icons.map_outlined,
                 es ? 'Mapa y visitas' : 'Map and visits', Sections.maps),
-            destination(Icons.forum_outlined,
-                es ? 'Chat de la empresa' : 'Business chat', Sections.businessChat),
+            destination(
+                Icons.forum_outlined,
+                es ? 'Chat de la empresa' : 'Business chat',
+                Sections.businessChat),
           ]),
           const SizedBox(height: 12),
           group([
@@ -227,8 +231,10 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
             elevation: 0,
             color: cs.surfaceContainerLow,
             child: ExpansionTile(
+              expansionAnimationStyle: HexoraMotion.expansionStyle(context),
               key: const PageStorageKey('group-details'),
-              title: Text(es ? 'Información del negocio' : 'Business information'),
+              title:
+                  Text(es ? 'Información del negocio' : 'Business information'),
               leading: const Icon(Icons.info_outline),
               childrenPadding: const EdgeInsets.all(12),
               children: [

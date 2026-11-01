@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/typography/hexora_design_tokens.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 
 /// Desktop density without scaling content or reducing mobile hit targets.
 ThemeData compactComponentTheme(ThemeData base) {
@@ -21,17 +22,26 @@ ThemeData compactComponentTheme(ThemeData base) {
         letterSpacing: 0,
       ),
     ),
-    minimumSize: const WidgetStatePropertyAll(
-        Size(64, HexoraDimensions.buttonStandard)),
-    padding: const WidgetStatePropertyAll(
-        EdgeInsets.symmetric(
-            horizontal: HexoraTableTokens.cellPadding, vertical: 4)),
+    minimumSize:
+        const WidgetStatePropertyAll(Size(64, HexoraDimensions.buttonStandard)),
+    padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(
+        horizontal: HexoraTableTokens.cellPadding, vertical: 4)),
     shape: WidgetStatePropertyAll(RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(HexoraDimensions.radius))),
     visualDensity: VisualDensity.standard,
     iconSize: const WidgetStatePropertyAll(HexoraDimensions.buttonIconSize),
   );
   return base.copyWith(
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: HexoraPageTransitionsBuilder(),
+        TargetPlatform.iOS: HexoraPageTransitionsBuilder(),
+        TargetPlatform.macOS: HexoraPageTransitionsBuilder(),
+        TargetPlatform.windows: HexoraPageTransitionsBuilder(),
+        TargetPlatform.linux: HexoraPageTransitionsBuilder(),
+        TargetPlatform.fuchsia: HexoraPageTransitionsBuilder(),
+      },
+    ),
     cardTheme: base.cardTheme.copyWith(
       color: isLight ? AppColors.formSection : base.cardTheme.color,
       elevation: 0,

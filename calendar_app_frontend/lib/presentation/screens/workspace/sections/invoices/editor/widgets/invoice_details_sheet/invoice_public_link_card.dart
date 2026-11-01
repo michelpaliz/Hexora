@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 
@@ -60,7 +61,7 @@ class _InvoicePublicLinkCardState extends State<InvoicePublicLinkCard> {
 
   Future<void> _change({required bool revoke}) async {
     if (revoke || _url != null) {
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showHexoraDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: Text(

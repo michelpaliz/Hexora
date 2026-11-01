@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/documents/private_document.dart';
 import 'package:hexora/services/documents/private_documents_api.dart';
 import 'package:intl/intl.dart';
@@ -10,7 +11,7 @@ class PrivateDocumentUploadDialog {
     required PrivateDocumentsApi api,
     required String groupId,
   }) {
-    return showDialog<PrivateDocument?>(
+    return showHexoraDialog<PrivateDocument?>(
       context: context,
       builder: (_) =>
           _PrivateDocumentUploadDialogBody(api: api, groupId: groupId),

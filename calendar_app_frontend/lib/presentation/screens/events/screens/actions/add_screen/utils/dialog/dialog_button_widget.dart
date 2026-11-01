@@ -1,6 +1,7 @@
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/l10n/app_localizations.dart'; // ⬅️ add
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 
 class DialogButtonWidget extends StatefulWidget {
   final List<User> selectedUsers;
@@ -30,7 +31,7 @@ class _DialogButtonWidgetState extends State<DialogButtonWidget> {
   void _showUserSelectionDialog(BuildContext context) {
     final loc = AppLocalizations.of(context)!; // ⬅️
 
-    showDialog(
+    showHexoraDialog(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(

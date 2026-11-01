@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/expense_upload_models.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/operations/form_helpers.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -129,6 +130,7 @@ class _ExpenseLinesEditorState extends State<ExpenseLinesEditor> {
           ),
         ),
         child: ExpansionTile(
+          expansionAnimationStyle: HexoraMotion.expansionStyle(context),
           tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
           childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
           shape: RoundedRectangleBorder(

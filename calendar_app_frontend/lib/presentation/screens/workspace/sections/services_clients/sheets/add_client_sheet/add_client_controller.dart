@@ -60,7 +60,7 @@ class AddClientController {
   bool active = true;
   bool billingExpanded = false;
   bool serviceLocationExpanded = false;
-  bool serviceLocationEnabled = true;
+  bool serviceLocationEnabled = false;
   bool saving = false;
   final Map<String, bool> _touched = {};
 
@@ -374,6 +374,9 @@ class AddClientController {
     }
     if (longitude == null || longitude < -180 || longitude > 180) {
       return 'La longitud debe estar entre -180 y 180.';
+    }
+    if (latitude == 0 && longitude == 0) {
+      return 'Configura una ubicación válida; 0,0 no se guardará.';
     }
     if (radius == null || radius < 10 || radius > 1000) {
       return 'El radio debe estar entre 10 y 1.000 metros.';

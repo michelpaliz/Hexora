@@ -23,6 +23,8 @@ import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_editor_components.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_client_step.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
+import 'package:hexora/presentation/shared/widgets/motion/hexora_step_transition.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';

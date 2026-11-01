@@ -26,7 +26,6 @@ InputDecoration buildInputDecoration(
   String? helperText,
   Widget? prefixIcon,
   bool isFilled = false,
-  bool showCheck = false,
   bool isRequired = false,
 }) {
   final cs = Theme.of(context).colorScheme;
@@ -47,11 +46,6 @@ InputDecoration buildInputDecoration(
             data: IconThemeData(size: 17, color: cs.onSurfaceVariant),
             child: prefixIcon),
     prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-    suffixIcon: showCheck
-        ? const Icon(Icons.check_circle_rounded,
-            size: 18, color: Color(0xFF079B55))
-        : null,
-    suffixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
     filled: true,
     fillColor: isLight ? AppColors.inputBackground : cs.surface,
     enabledBorder: buildInputBorder(context),

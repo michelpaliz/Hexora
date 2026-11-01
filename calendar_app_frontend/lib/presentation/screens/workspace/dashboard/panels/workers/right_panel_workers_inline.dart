@@ -3,6 +3,8 @@ import 'package:hexora/presentation/shared/widgets/navigation_menu_header.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
@@ -388,7 +390,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
   }
 
   Future<void> _openPayrollHistoryDialog() async {
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (_) => _PayrollHistoryDialog(
         group: widget.group,
@@ -550,6 +552,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
   Future<void> _addSharedHours() async {
     if (_workers.isEmpty) return;
     final created = await showModalBottomSheet<bool>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       builder: (_) => FractionallySizedBox(
@@ -1046,6 +1049,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     }
     final ordered = [w, ..._workers.where((x) => x.id != w.id)];
     final created = await showModalBottomSheet<bool>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       builder: (_) => FractionallySizedBox(

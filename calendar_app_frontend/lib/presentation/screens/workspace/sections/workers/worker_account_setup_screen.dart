@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
@@ -51,6 +52,7 @@ class _WorkerAccountSetupScreenState extends State<WorkerAccountSetupScreen> {
 
   Future<void> _setup(Worker worker) async {
     final created = await showModalBottomSheet<bool>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       builder: (_) =>
@@ -63,6 +65,7 @@ class _WorkerAccountSetupScreenState extends State<WorkerAccountSetupScreen> {
 
   Future<void> _create() async {
     final created = await showModalBottomSheet<bool>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       builder: (_) => _WorkerAccountSetupSheet(group: widget.group),

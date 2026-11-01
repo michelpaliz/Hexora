@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -434,7 +435,7 @@ class _GeofencedVisitsViewState extends State<GeofencedVisitsView> {
     final initial = _selectedCompanionIds.isEmpty
         ? tracking.participantWorkerIds.toSet()
         : _selectedCompanionIds;
-    return showDialog<Set<String>>(
+    return showHexoraDialog<Set<String>>(
       context: context,
       builder: (context) => _VisitTeamDialog(
         responsible: responsible,
@@ -1776,7 +1777,7 @@ Future<void> _showVisitTeamPopover(
   WorkerVisit visit,
   bool isSpanish,
 ) =>
-    showDialog<void>(
+    showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final cs = Theme.of(dialogContext).colorScheme;

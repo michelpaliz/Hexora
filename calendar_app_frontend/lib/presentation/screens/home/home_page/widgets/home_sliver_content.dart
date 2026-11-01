@@ -5,6 +5,7 @@ import 'package:hexora/presentation/screens/profile/view/widgets/profile_details
 import 'package:hexora/presentation/shared/widgets/weather/weather_summary_card.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
@@ -91,7 +92,7 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
 
   Future<void> _openCreateGroup(BuildContext context) async {
     if (kIsWeb) {
-      await showDialog<void>(
+      await showHexoraDialog<void>(
         context: context,
         builder: (_) => Dialog(
           backgroundColor: Colors.transparent,
@@ -111,8 +112,7 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
 
   // ── Settings actions ──────────────────────────────────────────────────
 
-  bool get _isSpanish =>
-      Localizations.localeOf(context).languageCode == 'es';
+  bool get _isSpanish => Localizations.localeOf(context).languageCode == 'es';
 
   void _snack(String text) {
     if (!mounted) return;
@@ -265,10 +265,10 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                   compact: !widget.isWide,
                   settingsActive: false,
                   notificationsActive: false,
-                  onSettings: () => setState(
-                      () => _activeView = _HomeView.settings),
-                  onNotifications: () => setState(
-                      () => _activeView = _HomeView.notifications),
+                  onSettings: () =>
+                      setState(() => _activeView = _HomeView.settings),
+                  onNotifications: () =>
+                      setState(() => _activeView = _HomeView.notifications),
                 ),
               ),
               SliverToBoxAdapter(
@@ -295,8 +295,7 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                   subtitle: _isSpanish
                       ? 'Cuenta, preferencias y contacto'
                       : 'Account, preferences & contact',
-                  onBack: () => setState(
-                      () => _activeView = _HomeView.groups),
+                  onBack: () => setState(() => _activeView = _HomeView.groups),
                 ),
               ),
 
@@ -308,8 +307,7 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                   subtitle: _isSpanish
                       ? 'Revisa tus avisos y alertas'
                       : 'Review your alerts and updates',
-                  onBack: () => setState(
-                      () => _activeView = _HomeView.groups),
+                  onBack: () => setState(() => _activeView = _HomeView.groups),
                 ),
               ),
 
@@ -319,19 +317,17 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                   icon: Icons.person_outlined,
                   title: _isSpanish ? 'Mi perfil' : 'My profile',
                   subtitle: '@${widget.user.userName}',
-                  onBack: () => setState(
-                      () => _activeView = _HomeView.settings),
+                  onBack: () =>
+                      setState(() => _activeView = _HomeView.settings),
                   trailing: OutlinedButton.icon(
-                    onPressed: () => setState(
-                        () => _activeView = _HomeView.settings),
+                    onPressed: () =>
+                        setState(() => _activeView = _HomeView.settings),
                     icon: const Icon(Icons.settings_outlined, size: 16),
-                    label: Text(
-                        _isSpanish ? 'Configuración' : 'Settings'),
+                    label: Text(_isSpanish ? 'Configuración' : 'Settings'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: cs.primary,
                       side: BorderSide(
-                          color:
-                              cs.outlineVariant.withValues(alpha: 0.8)),
+                          color: cs.outlineVariant.withValues(alpha: 0.8)),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 8),
                       shape: RoundedRectangleBorder(
@@ -357,8 +353,7 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                             children: [
                               OutlinedButton.icon(
                                 onPressed: () => _openCreateGroup(context),
-                                icon:
-                                    const Icon(Icons.add_rounded, size: 18),
+                                icon: const Icon(Icons.add_rounded, size: 18),
                                 label: Text(loc.createGroup),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: cs.primary,
@@ -401,8 +396,8 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                   child: _InlineProfileCard(
                     userName: _userName,
                     photoUrl: photoUrl,
-                    onTap: () => setState(
-                        () => _activeView = _HomeView.profile),
+                    onTap: () =>
+                        setState(() => _activeView = _HomeView.profile),
                   ),
                 ),
               ),
@@ -427,17 +422,14 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                       userName: _userName,
                       onEditUsername: () async {
                         final successMessage = loc.successChangingUsername;
-                        final newName =
-                            await showChangeUsernameDialog(context);
+                        final newName = await showChangeUsernameDialog(context);
                         if (newName == null) return;
                         final err = await _changeUsername(newName);
                         _snack(err ?? successMessage);
                       },
-                      onEditProfile: () =>
-                          showProfileEditDialog(context),
+                      onEditProfile: () => showProfileEditDialog(context),
                       onChangePassword: () async {
-                        final result =
-                            await showChangePasswordDialog(context);
+                        final result = await showChangePasswordDialog(context);
                         if (result == null) return;
                         await _changePassword(
                             result.current, result.newPass, result.confirm);
@@ -471,8 +463,7 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                       onChangeLanguage: () => showLanguageSheet(context),
                       autoStatementImportEnabled: autoImportEnabled,
                       autoStatementImportBusy: _autoStatementImportLoading,
-                      onToggleAutoStatementImport:
-                          _toggleAutoStatementImport,
+                      onToggleAutoStatementImport: _toggleAutoStatementImport,
                     ),
                   ),
                 ),
@@ -484,9 +475,8 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: SectionHeader(
-                    title: _isSpanish
-                        ? 'Contactar con Hexora'
-                        : 'Contact Hexora',
+                    title:
+                        _isSpanish ? 'Contactar con Hexora' : 'Contact Hexora',
                     markerHeight: widget.isWide ? 30 : 24,
                     padding: const EdgeInsets.fromLTRB(0, 6, 0, 8),
                   ),
@@ -537,8 +527,8 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                         ? widget.user.name
                         : widget.user.userName,
                     photoUrl: photoUrl,
-                    onTap: () => setState(
-                        () => _activeView = _HomeView.settings),
+                    onTap: () =>
+                        setState(() => _activeView = _HomeView.settings),
                     subtitle: '@${widget.user.userName}  ·  '
                         '${widget.user.email}',
                   ),
@@ -554,28 +544,24 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                     userId: widget.user.id,
                     groupsCount: widget.user.groupIds.length,
                     calendarsCount: widget.user.sharedCalendars.length,
-                    notificationsCount: context
-                        .read<NotificationDomain>()
-                        .notifications
-                        .length,
+                    notificationsCount:
+                        context.read<NotificationDomain>().notifications.length,
                     onCopyEmail: () {
-                      Clipboard.setData(
-                          ClipboardData(text: widget.user.email));
+                      Clipboard.setData(ClipboardData(text: widget.user.email));
                       _snack(loc.copiedToClipboard);
                     },
                     onCopyId: () {
-                      Clipboard.setData(
-                          ClipboardData(text: widget.user.id));
+                      Clipboard.setData(ClipboardData(text: widget.user.id));
                       _snack(loc.copiedToClipboard);
                     },
-                    onTapUsername: () => setState(
-                        () => _activeView = _HomeView.settings),
-                    onTapTeams: () => Navigator.pushNamed(
-                        context, AppRoutes.showGroups),
-                    onTapCalendars: () => Navigator.pushNamed(
-                        context, AppRoutes.agenda),
-                    onTapNotifications: () => setState(
-                        () => _activeView = _HomeView.notifications),
+                    onTapUsername: () =>
+                        setState(() => _activeView = _HomeView.settings),
+                    onTapTeams: () =>
+                        Navigator.pushNamed(context, AppRoutes.showGroups),
+                    onTapCalendars: () =>
+                        Navigator.pushNamed(context, AppRoutes.agenda),
+                    onTapNotifications: () =>
+                        setState(() => _activeView = _HomeView.notifications),
                   ),
                 ),
               ),
@@ -707,7 +693,7 @@ class _HeroGreeting extends StatelessWidget {
           // Avatar — tappable; shows photo dialog or navigates to profile
           GestureDetector(
             onTap: hasPhoto
-                ? () => showDialog<void>(
+                ? () => showHexoraDialog<void>(
                       context: context,
                       barrierColor: Colors.black.withValues(alpha: 0.72),
                       builder: (_) => UserAvatarViewerDialog(user: user),
@@ -804,8 +790,7 @@ class _HeroGreeting extends StatelessWidget {
             tooltip: loc.notifications,
             color: notificationsActive ? cs.primary : cs.onSurfaceVariant,
             onPressed: onNotifications ??
-                () => Navigator.pushNamed(
-                    context, AppRoutes.showNotifications),
+                () => Navigator.pushNamed(context, AppRoutes.showNotifications),
           ),
           IconButton(
             icon: Icon(settingsActive

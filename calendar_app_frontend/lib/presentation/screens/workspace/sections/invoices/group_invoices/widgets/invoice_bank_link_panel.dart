@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/shared/bank_transaction_link_panel.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/statements_controller.dart';
@@ -155,7 +156,7 @@ class _InvoiceBankLinkPanelState extends State<InvoiceBankLinkPanel> {
         (entry['description'] ?? entry['details'] ?? 'Movimiento').toString();
     final amount =
         StatementsFormatters.formatCurrency(context, entry['amount']);
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(isEs ? 'Vincular movimiento' : 'Link transaction'),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
@@ -32,6 +33,7 @@ class InfoHelpButton extends StatelessWidget {
         : loc.groups; // fallback short label
 
     showModalBottomSheet(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       useSafeArea: true,
       showDragHandle: true,

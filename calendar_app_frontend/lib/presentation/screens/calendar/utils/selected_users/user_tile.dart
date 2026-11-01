@@ -1,6 +1,7 @@
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/screens/calendar/utils/selected_users/invitation_functions/dismiss_user_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 
 class UserTile extends StatelessWidget {
   final String userName;
@@ -9,7 +10,8 @@ class UserTile extends StatelessWidget {
   final Function(String userName) onDismissed; // Logical removal
   final Function(String userName) onChangeRole;
 
-  const UserTile({super.key,
+  const UserTile({
+    super.key,
     required this.userName,
     required this.user,
     required this.roleValue,
@@ -25,7 +27,7 @@ class UserTile extends StatelessWidget {
           ? DismissDirection.endToStart
           : DismissDirection.none,
       confirmDismiss: (direction) async {
-        bool? confirmDismissal = await showDialog<bool>(
+        bool? confirmDismissal = await showHexoraDialog<bool>(
           context: context,
           builder: (BuildContext dialogContext) {
             return DismissUserDialog(
@@ -67,7 +69,7 @@ class UserTile extends StatelessWidget {
           backgroundImage: (user.photoUrl != null && user.photoUrl!.isNotEmpty)
               ? NetworkImage(user.photoUrl!)
               : const AssetImage('assets/images/default_profile.png')
-                    as ImageProvider,
+                  as ImageProvider,
           // Default profile picture
         ),
         trailing: roleValue.trim() != 'Administrator'

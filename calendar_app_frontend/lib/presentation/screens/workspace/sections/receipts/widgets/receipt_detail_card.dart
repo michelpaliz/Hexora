@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'dart:typed_data';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
@@ -104,6 +105,7 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
 
   void _openDetailsSheet() {
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,

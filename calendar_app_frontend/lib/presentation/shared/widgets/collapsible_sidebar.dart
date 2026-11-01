@@ -1,5 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/navigation_menu_header.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 
@@ -48,7 +49,7 @@ class CollapsibleSidebar extends StatelessWidget {
   static const double expandedWidth = NavigationTokens.sidebarWidth;
   static const double collapsedWidth = NavigationTokens.railWidth;
   static const double responsiveBreakpoint = NavigationTokens.mobileBreakpoint;
-  static const Duration animationDuration = Duration(milliseconds: 180);
+  static const Duration animationDuration = NavigationTokens.motion;
 
   final String title;
   final IconData headerIcon;
@@ -80,7 +81,7 @@ class CollapsibleSidebar extends StatelessWidget {
     return AnimatedContainer(
       key: const ValueKey('collapsible-sidebar'),
       duration: animationDuration,
-      curve: Curves.easeOutCubic,
+      curve: HexoraMotion.enter,
       width: width,
       decoration: BoxDecoration(
         color: cs.surface,

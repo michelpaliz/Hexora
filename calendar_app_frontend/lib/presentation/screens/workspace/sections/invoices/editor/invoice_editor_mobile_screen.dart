@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/invoice.dart';
@@ -375,9 +376,8 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
     final invoiceNumberDisplay = isDraft
         ? (isEs ? 'Pendiente de numeración' : 'Pending numbering')
         : _c.previewInvoiceNumber;
-    final statusLabel = isDraft
-        ? (isEs ? 'Borrador' : 'Draft')
-        : (isEs ? 'Emitida' : 'Issued');
+    final statusLabel =
+        isDraft ? (isEs ? 'Borrador' : 'Draft') : (isEs ? 'Emitida' : 'Issued');
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
@@ -396,8 +396,7 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
               ),
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: isDraft
                       ? cs.surfaceContainerHighest
@@ -409,9 +408,8 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
                   style: t.bodySmall.copyWith(
                     fontWeight: FontWeight.w800,
                     fontSize: 11,
-                    color: isDraft
-                        ? cs.onSurfaceVariant
-                        : cs.onSecondaryContainer,
+                    color:
+                        isDraft ? cs.onSurfaceVariant : cs.onSecondaryContainer,
                   ),
                 ),
               ),
@@ -576,7 +574,8 @@ class _InvoiceEditorMobileScreenState extends State<InvoiceEditorMobileScreen> {
                   child: Form(
                     key: _c.formKey,
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 160),
+                      duration:
+                          HexoraMotion.duration(context, HexoraMotion.fast),
                       switchInCurve: Curves.easeOut,
                       switchOutCurve: Curves.easeIn,
                       child: KeyedSubtree(

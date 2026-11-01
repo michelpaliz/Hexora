@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice_block.dart';
@@ -29,6 +30,8 @@ import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_editor_components.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_client_step.dart';
+import 'package:hexora/presentation/shared/widgets/motion/hexora_step_transition.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -633,7 +636,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       return;
     }
     final isEs = _isSpanishLocale;
-    final result = await showDialog<String>(
+    final result = await showHexoraDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(isEs ? 'Tienes cambios sin guardar' : 'Unsaved changes'),
@@ -1039,35 +1042,15 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         ]),
       ),
       Expanded(
-        child: _visibleStep == 0
-            ? Padding(
-                key: const ValueKey('budget_wizard_content'),
-                padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
-                child: Column(
-                  children: [
-                    Expanded(child: _buildStepContent(cs, l)),
-                    if (_error != null) ...[
-                      const SizedBox(height: 8),
-                      _BudgetInlineErrorCard(
-                        message: _error!,
-                        visibleStep: _visibleStep,
-                        isSpanishLocale: _isSpanishLocale,
-                      ),
-                    ],
-                  ],
-                ),
-              )
-            : _visibleStep == 3
-                ? Padding(
-                    key: const ValueKey('budget_wizard_content'),
-                    padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
-                    child: _buildStepContent(cs, l),
-                  )
-                : ListView(
-                    key: const ValueKey('budget_wizard_content'),
-                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+        child: HexoraStepTransition(
+          step: _visibleStep,
+          child: _visibleStep == 0
+              ? Padding(
+                  key: const ValueKey('budget_wizard_content'),
+                  padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+                  child: Column(
                     children: [
-                      _buildStepContent(cs, l),
+                      Expanded(child: _buildStepContent(cs, l)),
                       if (_error != null) ...[
                         const SizedBox(height: 8),
                         _BudgetInlineErrorCard(
@@ -1078,6 +1061,29 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                       ],
                     ],
                   ),
+                )
+              : _visibleStep == 3
+                  ? Padding(
+                      key: const ValueKey('budget_wizard_content'),
+                      padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+                      child: _buildStepContent(cs, l),
+                    )
+                  : ListView(
+                      key: const ValueKey('budget_wizard_content'),
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                      children: [
+                        _buildStepContent(cs, l),
+                        if (_error != null) ...[
+                          const SizedBox(height: 8),
+                          _BudgetInlineErrorCard(
+                            message: _error!,
+                            visibleStep: _visibleStep,
+                            isSpanishLocale: _isSpanishLocale,
+                          ),
+                        ],
+                      ],
+                    ),
+        ),
       ),
       SafeArea(
           top: false,
@@ -1550,7 +1556,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     final id = _budgetId(budget).trim();
     if (id.isEmpty || _deletingBudgetIds.contains(id)) return;
     final number = _budgetNumber(budget);
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
             title: Text(l.groupInvoicesRemoveDraftTitle),
@@ -1727,7 +1733,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     bool submitting = false;
 
     try {
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showHexoraDialog<bool>(
             context: context,
             builder: (ctx) {
               return StatefulBuilder(
@@ -1942,7 +1948,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       String? errorText;
       bool submitting = false;
 
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showHexoraDialog<bool>(
             context: context,
             builder: (ctx) {
               return StatefulBuilder(
@@ -2107,7 +2113,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     if (id.isEmpty || _convertingBudgetIds.contains(id)) return;
 
     debugPrint('presupuesto_convert_click id=$id');
-    final confirm = await showDialog<bool>(
+    final confirm = await showHexoraDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Text('Convertir presupuesto a factura'),

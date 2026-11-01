@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:hexora/models/clients/client.dart';

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/services/invoicing/models/manual_editor_capabilities.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
@@ -10,6 +11,7 @@ class CapabilitiesInfoPanel extends StatelessWidget {
 
   static void show(BuildContext context, ManualEditorCapabilities caps) {
     showModalBottomSheet(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       useSafeArea: true,

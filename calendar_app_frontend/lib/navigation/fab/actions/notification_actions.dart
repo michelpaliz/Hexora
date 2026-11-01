@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/notification/notification_api_client.dart';
@@ -19,7 +20,7 @@ Future<void> confirmAndClearAllNotifications(BuildContext context) async {
     return;
   }
 
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showHexoraDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
           title: Text(loc.clearAllConfirmTitle),

@@ -3,6 +3,7 @@ import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/receipts/editor/widgets/receipt_line_draft.dart';
 import 'package:hexora/presentation/screens/workspace/sections/receipts/editor/widgets/receipt_lines_editor.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class ReceiptFormCard extends StatelessWidget {
@@ -136,6 +137,7 @@ class ReceiptFormCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             ExpansionTile(
+              expansionAnimationStyle: HexoraMotion.expansionStyle(context),
               tilePadding: EdgeInsets.zero,
               childrenPadding: const EdgeInsets.only(bottom: 10),
               collapsedIconColor: cs.onSurfaceVariant,

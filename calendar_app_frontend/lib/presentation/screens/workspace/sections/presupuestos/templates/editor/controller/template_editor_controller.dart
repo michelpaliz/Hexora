@@ -227,7 +227,7 @@ class _PresupuestoTemplateEditorScreenState
       if (_selectedDefaultKey != null &&
           _selectedDefaultKey != key &&
           _hasTemplateEdits()) {
-        final replace = await showDialog<bool>(
+        final replace = await showHexoraDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: const Text('Cambiar tipo de presupuesto'),
@@ -881,7 +881,7 @@ class _PresupuestoTemplateEditorScreenState
   Future<bool> _confirmUnresolvedVariables(String action) async {
     if (_unresolvedKeys.isEmpty) return true;
     final keys = _unresolvedKeys.map((key) => '[$key]').join(', ');
-    return await showDialog<bool>(
+    return await showHexoraDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: const Text('Variables sin completar'),
@@ -975,7 +975,7 @@ class _PresupuestoTemplateEditorScreenState
     final id = _string(template['_id']) ?? _string(template['id']);
     if (id == null || id.isEmpty || _deletingTemplateId != null) return;
     final name = _string(template['name']) ?? 'Plantilla sin nombre';
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Eliminar plantilla'),

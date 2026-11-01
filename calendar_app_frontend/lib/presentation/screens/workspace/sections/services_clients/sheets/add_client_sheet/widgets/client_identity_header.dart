@@ -37,7 +37,7 @@ class ClientIdentityHeader extends StatefulWidget {
 }
 
 class _ClientIdentityHeaderState extends State<ClientIdentityHeader> {
-  static const double _avatarSize = 44;
+  static const double _avatarSize = 40;
 
   bool _picking = false;
 
@@ -151,7 +151,7 @@ class _ClientIdentityHeaderState extends State<ClientIdentityHeader> {
             ],
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
             mainAxisSize: MainAxisSize.min,

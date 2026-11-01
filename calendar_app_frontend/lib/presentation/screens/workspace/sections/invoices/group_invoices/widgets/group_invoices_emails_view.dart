@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/invoice.dart';
@@ -26,7 +28,8 @@ class GroupInvoicesEmailsView extends StatefulWidget {
   });
 
   @override
-  State<GroupInvoicesEmailsView> createState() => _GroupInvoicesEmailsViewState();
+  State<GroupInvoicesEmailsView> createState() =>
+      _GroupInvoicesEmailsViewState();
 }
 
 class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
@@ -158,7 +161,7 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
 
   void _openDetails(Map<String, dynamic> log) {
     const encoder = JsonEncoder.withIndent('  ');
-    showDialog<void>(
+    showHexoraDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Email details'),
@@ -183,9 +186,11 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
     if (invoice == null) return;
     final client = widget.clients.firstWhere(
       (c) => c.id == invoice.clientId,
-      orElse: () => GroupClient(id: invoice.clientId, name: '-', isActive: true),
+      orElse: () =>
+          GroupClient(id: invoice.clientId, name: '-', isActive: true),
     );
     await showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -244,12 +249,13 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
               ),
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   color: cs.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(12),
-                  border:
-                      Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+                  border: Border.all(
+                      color: cs.outlineVariant.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -258,8 +264,9 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
                           ? Icons.check_circle_outline
                           : Icons.warning_amber_outlined,
                       size: 18,
-                      color:
-                          _configured == true ? cs.primary : cs.onSurfaceVariant,
+                      color: _configured == true
+                          ? cs.primary
+                          : cs.onSurfaceVariant,
                     ),
                     const SizedBox(width: 8),
                     Expanded(

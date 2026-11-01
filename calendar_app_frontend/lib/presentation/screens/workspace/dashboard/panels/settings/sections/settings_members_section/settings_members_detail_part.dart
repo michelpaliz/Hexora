@@ -136,7 +136,7 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
             Row(
               children: [
                 GestureDetector(
-                  onTap: () => showDialog<void>(
+                  onTap: () => showHexoraDialog<void>(
                     context: context,
                     barrierColor: Colors.black.withValues(alpha: 0.72),
                     builder: (_) => UserAvatarViewerDialog(user: user),
@@ -538,6 +538,7 @@ extension _SettingsMembersDetailPart on _SettingsMembersSectionState {
         borderRadius: BorderRadius.circular(10),
       ),
       child: ExpansionTile(
+        expansionAnimationStyle: HexoraMotion.expansionStyle(context),
         dense: true,
         visualDensity: VisualDensity.compact,
         tilePadding: const EdgeInsets.symmetric(horizontal: 10),

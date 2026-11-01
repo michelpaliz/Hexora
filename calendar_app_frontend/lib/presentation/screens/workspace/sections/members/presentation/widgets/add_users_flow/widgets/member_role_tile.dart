@@ -1,5 +1,6 @@
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
 import 'package:hexora/presentation/utils/roles/group_role.dart';
@@ -57,6 +58,7 @@ class MemberRoleTile extends StatelessWidget {
     Future<void> pickRole() async {
       if (!editable) return;
       final selected = await showModalBottomSheet<GroupRole>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
         context: context,
         useSafeArea: true,
         isScrollControlled: true,

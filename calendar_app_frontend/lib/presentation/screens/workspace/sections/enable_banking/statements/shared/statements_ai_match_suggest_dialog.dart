@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
@@ -46,7 +47,7 @@ class StatementsAiMatchSuggestDialog {
   ) async {
     final entryId = (entry['_id'] ?? entry['id'])?.toString().trim() ?? '';
     if (entryId.isEmpty) return;
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) => _buildSurface(
         hostContext: dialogContext,
@@ -631,21 +632,18 @@ class StatementsAiMatchSuggestDialog {
                               const SizedBox(height: 10),
                             ],
                             Builder(builder: (rowCtx) {
-                              final bestKey =
-                                  _suggestionKey(ordered.first, 0);
+                              final bestKey = _suggestionKey(ordered.first, 0);
                               return _buildSuggestionRow(
                                 context: rowCtx,
                                 suggestion: ordered.first,
                                 suggestionKey: bestKey,
                                 index: 0,
-                                isSelected:
-                                    bestKey == selectedSuggestionId,
-                                isExpanded: expandedSuggestionIds
-                                    .contains(bestKey),
+                                isSelected: bestKey == selectedSuggestionId,
+                                isExpanded:
+                                    expandedSuggestionIds.contains(bestKey),
                                 isEs: isEs,
                                 enabled: !applying,
-                                applyingSuggestionId:
-                                    applyingSuggestionId,
+                                applyingSuggestionId: applyingSuggestionId,
                                 targetAmount: targetAmount,
                                 entryDate: _tryParseDate(
                                   effectiveEntry['date'],
@@ -674,15 +672,12 @@ class StatementsAiMatchSuggestDialog {
                                 entryDate: _tryParseDate(
                                   effectiveEntry['date'],
                                 ),
-                                selectedSuggestionId:
-                                    selectedSuggestionId,
-                                expandedSuggestionIds:
-                                    expandedSuggestionIds,
+                                selectedSuggestionId: selectedSuggestionId,
+                                expandedSuggestionIds: expandedSuggestionIds,
                                 collapsedMonths: collapsedMonths,
                                 isEs: isEs,
                                 applying: applying,
-                                applyingSuggestionId:
-                                    applyingSuggestionId,
+                                applyingSuggestionId: applyingSuggestionId,
                                 onSelect: selectSuggestion,
                                 onToggleDetails: toggleDetails,
                                 onToggleMonth: (key) => setState(() {
@@ -1338,8 +1333,7 @@ class StatementsAiMatchSuggestDialog {
   }
 
   @visibleForTesting
-  static int daysBetweenForTest(DateTime a, DateTime b) =>
-      _daysBetween(a, b);
+  static int daysBetweenForTest(DateTime a, DateTime b) => _daysBetween(a, b);
 
   @visibleForTesting
   static String monthYearLabelForTest(String key, {bool isEs = true}) =>
@@ -2342,13 +2336,11 @@ class StatementsAiMatchSuggestDialog {
     final successColor = HexoraDocumentStatus.issued.color(context);
     final scoreColor = _scoreColor(context, score);
     final documents = _documentList(suggestion);
-    final firstDoc = documents.isNotEmpty
-        ? documents.first
-        : const <String, dynamic>{};
-    final customerName =
-        _text(suggestion['counterpartyName']).isNotEmpty
-            ? _text(suggestion['counterpartyName'])
-            : _text(firstDoc['counterpartyName']);
+    final firstDoc =
+        documents.isNotEmpty ? documents.first : const <String, dynamic>{};
+    final customerName = _text(suggestion['counterpartyName']).isNotEmpty
+        ? _text(suggestion['counterpartyName'])
+        : _text(firstDoc['counterpartyName']);
     final invoiceDate = _tryParseDate(firstDoc['issueDate']);
     final invoiceDateStr = invoiceDate != null
         ? StatementsFormatters.formatDate(context, firstDoc['issueDate'])
@@ -2881,8 +2873,7 @@ class StatementsAiMatchSuggestDialog {
     for (final key in monthKeys) {
       for (final suggestion in groups[key]!) {
         final origIdx = ordered.indexOf(suggestion);
-        final sKey =
-            _suggestionKey(suggestion, origIdx >= 0 ? origIdx : 0);
+        final sKey = _suggestionKey(suggestion, origIdx >= 0 ? origIdx : 0);
         if (sKey == selectedSuggestionId) {
           collapsedMonths.remove(key);
           break;

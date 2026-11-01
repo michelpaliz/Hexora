@@ -4,6 +4,7 @@ import 'package:hexora/services/groups/event/socket/socket_manager.dart';
 import 'widgets/dashboard_presence_strip.dart';
 // lib/presentation/screens/workspace/dashboard/header/group_header_view.dart
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/clients/client_api.dart';
@@ -135,7 +136,7 @@ class _GroupHeaderViewState extends State<GroupHeaderView> {
     setState(() => _openingEditor = true);
     final rootNav = Navigator.of(context, rootNavigator: true);
 
-    showDialog<void>(
+    showHexoraDialog<void>(
       context: rootNav.context,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),

@@ -6,6 +6,8 @@ import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -416,7 +418,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
 
   Future<void> _chooseClient() async {
     if (!widget.canEdit || _clients.isEmpty) return;
-    final selected = await showDialog<GroupClient>(
+    final selected = await showHexoraDialog<GroupClient>(
       context: context,
       builder: (dialogContext) => _ClientPickerDialog(
         clients: _clients,
@@ -520,7 +522,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
       if (autoSelectFirst || results.length == 1) {
         selected = results.first;
       } else {
-        selected = await showDialog<AzureMapSearchResult>(
+        selected = await showHexoraDialog<AzureMapSearchResult>(
           context: context,
           builder: (context) => AlertDialog(
             title: Text(_isSpanish ? 'Elegir dirección' : 'Choose address'),
@@ -694,7 +696,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
 
   Future<void> _removeLocation(GroupClient client) async {
     if (_removingLocation) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(
@@ -1671,6 +1673,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
             title: Text(_isSpanish ? 'Geocerca activa' : 'Geofence enabled'),
           ),
           ExpansionTile(
+            expansionAnimationStyle: HexoraMotion.expansionStyle(context),
             tilePadding: EdgeInsets.zero,
             childrenPadding: EdgeInsets.zero,
             title: Text(

@@ -1334,7 +1334,7 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: const Text('Confirmar importación'),
@@ -1391,7 +1391,7 @@ mixin _ExpenseUploadImportActionsSection on _ExpenseUploadScreenStateBase {
           .where((item) => item.isNotEmpty)
           .take(5)
           .toList(growable: false);
-      await showDialog<void>(
+      await showHexoraDialog<void>(
         context: context,
         builder: (dialogContext) => AlertDialog(
           icon: Icon(

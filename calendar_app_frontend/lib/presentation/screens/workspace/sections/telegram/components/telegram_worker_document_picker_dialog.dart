@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -32,7 +33,7 @@ Future<TelegramWorkerDocumentSelection?> showTelegramWorkerDocumentPickerDialog(
   BuildContext context, {
   required String groupId,
 }) {
-  return showDialog<TelegramWorkerDocumentSelection>(
+  return showHexoraDialog<TelegramWorkerDocumentSelection>(
     context: context,
     barrierDismissible: false,
     builder: (dialogContext) => Dialog(

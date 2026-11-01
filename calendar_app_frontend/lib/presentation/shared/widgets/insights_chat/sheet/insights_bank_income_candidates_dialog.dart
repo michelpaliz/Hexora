@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 import 'insights_chat_sheet_base.dart';
@@ -20,7 +21,7 @@ mixin InsightsBankIncomeCandidatesDialog on InsightsChatSheetStateBase {
     final selectedCombinationIds = <int, String>{};
     var linkingCandidate = false;
     String? linkError;
-    return showDialog<Map<String, dynamic>>(
+    return showHexoraDialog<Map<String, dynamic>>(
       context: context,
       builder: (routeContext) {
         return StatefulBuilder(
@@ -958,5 +959,4 @@ mixin InsightsBankIncomeCandidatesDialog on InsightsChatSheetStateBase {
       },
     );
   }
-
 }

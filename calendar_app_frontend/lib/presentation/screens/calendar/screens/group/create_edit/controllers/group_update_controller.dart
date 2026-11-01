@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
@@ -53,7 +54,8 @@ class GroupUpdateController {
         photoUrl: imageUrl,
       );
 
-      final groupSaved = await groupDomain.updateGroup(updatedGroup, userDomain);
+      final groupSaved =
+          await groupDomain.updateGroup(updatedGroup, userDomain);
       if (!groupSaved) {
         throw StateError('Business update failed');
       }
@@ -95,7 +97,7 @@ class GroupUpdateController {
   }
 
   void _showError(String message) {
-    showDialog(
+    showHexoraDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Error'),

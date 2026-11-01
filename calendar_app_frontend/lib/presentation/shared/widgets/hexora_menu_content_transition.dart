@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 
 /// Applies the shared Hexora transition when a module menu changes content.
 ///
@@ -9,7 +10,7 @@ class HexoraMenuContentTransition extends StatefulWidget {
     super.key,
     required this.transitionKey,
     required this.child,
-    this.duration = const Duration(milliseconds: 180),
+    this.duration = HexoraMotion.standard,
   });
 
   final Object transitionKey;
@@ -32,11 +33,11 @@ class _HexoraMenuContentTransitionState
   late final Animation<double> _opacity = Tween<double>(
     begin: 0.82,
     end: 1,
-  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+  ).animate(CurvedAnimation(parent: _controller, curve: HexoraMotion.enter));
   late final Animation<Offset> _offset = Tween<Offset>(
     begin: const Offset(0.012, 0),
     end: Offset.zero,
-  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+  ).animate(CurvedAnimation(parent: _controller, curve: HexoraMotion.enter));
 
   @override
   void didUpdateWidget(covariant HexoraMenuContentTransition oldWidget) {

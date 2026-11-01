@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -26,6 +27,7 @@ class ClientPickerField extends FormField<String> {
 
             Future<void> openPicker() async {
               final picked = await showModalBottomSheet<String>(
+                sheetAnimationStyle: HexoraMotion.sheetStyle(state.context),
                 context: state.context,
                 showDragHandle: true,
                 isScrollControlled: true,

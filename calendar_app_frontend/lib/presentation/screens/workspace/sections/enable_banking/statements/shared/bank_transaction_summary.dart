@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 
 import '../statements_formatters.dart';
 import 'statements_shared_utils.dart';
@@ -243,8 +244,7 @@ class _BankTransactionSummaryState extends State<BankTransactionSummary> {
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                     padding: const EdgeInsets.symmetric(horizontal: 6),
-                    minimumSize:
-                        const Size(0, HexoraDimensions.buttonCompact),
+                    minimumSize: const Size(0, HexoraDimensions.buttonCompact),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   iconAlignment: IconAlignment.end,
@@ -264,8 +264,8 @@ class _BankTransactionSummaryState extends State<BankTransactionSummary> {
             ],
           ),
           AnimatedSize(
-            duration: const Duration(milliseconds: 160),
-            curve: Curves.easeOut,
+            duration: HexoraMotion.duration(context, HexoraMotion.fast),
+            curve: HexoraMotion.enter,
             alignment: Alignment.topCenter,
             child: !_expanded || details.isEmpty
                 ? const SizedBox(width: double.infinity)

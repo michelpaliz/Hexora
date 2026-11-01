@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:intl/intl.dart';
 
@@ -10,7 +11,7 @@ Future<DateTime?> showWorkerMonthPickerDialog({
   int? maxYear,
   bool allowFutureMonths = false,
 }) {
-  return showDialog<DateTime>(
+  return showHexoraDialog<DateTime>(
     context: context,
     builder: (_) => _WorkerMonthPickerDialog(
       initialDate: initialDate,

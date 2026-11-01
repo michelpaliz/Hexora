@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:hexora/models/clients/client.dart';
@@ -233,7 +235,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     final contentTypeCtrl = TextEditingController();
     final sizeCtrl = TextEditingController();
 
-    final result = await showDialog<MailOutgoingAttachment>(
+    final result = await showHexoraDialog<MailOutgoingAttachment>(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -428,7 +430,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       _confirmingSend = true;
       bool? confirmed;
       try {
-        confirmed = await showDialog<bool>(
+        confirmed = await showHexoraDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
             icon: const Icon(Icons.warning_amber_rounded),
@@ -852,7 +854,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       return;
     }
     final hasSelected = _selectedComposeTemplateId != null;
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogCtx) => Dialog(
         insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
@@ -1122,7 +1124,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
             (a, b) => _invoiceDisplayDate(b).compareTo(_invoiceDisplayDate(a)));
       final clients = responses[1] as List<GroupClient>;
 
-      final selected = await showDialog<Invoice>(
+      final selected = await showHexoraDialog<Invoice>(
         context: context,
         builder: (dialogContext) => _RecentIssuedInvoicesDialog(
           invoices: invoices,
@@ -1674,7 +1676,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
 
       final media = MediaQuery.of(context);
       final compact = media.size.width < 700;
-      await showDialog<void>(
+      await showHexoraDialog<void>(
         context: context,
         barrierDismissible: true,
         builder: (dialogContext) {
@@ -1764,7 +1766,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     final labelCtrl = TextEditingController(text: selectedText);
     final urlCtrl = TextEditingController(text: 'https://');
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(l.mailComposeAddAttachment),
@@ -1820,6 +1822,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   Future<void> _showAttachmentActions() async {
     final l = AppLocalizations.of(context)!;
     final choice = await showModalBottomSheet<String>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       builder: (context) {
         return SafeArea(

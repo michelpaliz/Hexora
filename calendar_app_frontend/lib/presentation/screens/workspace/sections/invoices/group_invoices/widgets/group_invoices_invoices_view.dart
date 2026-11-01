@@ -6,6 +6,7 @@ import 'package:hexora/presentation/shared/widgets/documents/document_split_view
 import 'package:hexora/presentation/shared/widgets/financial/hexora_compact_financial_summary.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';

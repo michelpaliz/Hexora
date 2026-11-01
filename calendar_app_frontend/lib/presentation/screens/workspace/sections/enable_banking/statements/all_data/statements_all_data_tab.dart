@@ -2,6 +2,8 @@ import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.da
 import 'package:hexora/presentation/shared/widgets/panels/hexora_side_panel.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -272,7 +274,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     }
 
     var applied = false;
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final cs = Theme.of(dialogContext).colorScheme;
@@ -753,8 +755,9 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                   ),
                 ),
                 AnimatedSize(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeInOut,
+                  duration:
+                      HexoraMotion.duration(context, HexoraMotion.standard),
+                  curve: HexoraMotion.emphasized,
                   child: customExpanded
                       ? Padding(
                           padding: const EdgeInsets.only(top: 4),
@@ -840,6 +843,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     final isMobile = MediaQuery.sizeOf(context).width < 600;
     if (isMobile) {
       await showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
@@ -849,7 +853,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         ),
       );
     } else {
-      await showDialog<void>(
+      await showHexoraDialog<void>(
         context: context,
         barrierDismissible: true,
         builder: (dialogContext) => Dialog(
@@ -877,7 +881,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         TextEditingController(text: _descriptionSearchController.text);
     var applied = false;
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final l = AppLocalizations.of(dialogContext)!;
@@ -955,7 +959,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         TextEditingController(text: _notesSearchController.text);
     var applied = false;
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final l = AppLocalizations.of(dialogContext)!;
@@ -1031,7 +1035,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         TextEditingController(text: _clientProviderController.text);
     var applied = false;
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final l = AppLocalizations.of(dialogContext)!;
@@ -1446,7 +1450,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     await s.loadClients();
     if (!mounted) return;
     String query = '';
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final l = AppLocalizations.of(dialogContext)!;
@@ -1560,7 +1564,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     final initial = _noProcedeReasonsByEntryId[entryId] ?? '';
     final reasonController = TextEditingController(text: initial);
     String? error;
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final l = AppLocalizations.of(dialogContext)!;

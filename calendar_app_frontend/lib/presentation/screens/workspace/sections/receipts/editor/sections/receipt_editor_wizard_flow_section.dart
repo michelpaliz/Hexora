@@ -44,7 +44,7 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
     }
     final l = AppLocalizations.of(context)!;
     final isEs = l.localeName.toLowerCase().startsWith('es');
-    final result = await showDialog<String>(
+    final result = await showHexoraDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(isEs ? 'Tienes cambios sin guardar' : 'Unsaved changes'),

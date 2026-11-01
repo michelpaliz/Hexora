@@ -2,6 +2,7 @@ import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.da
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hexora/presentation/shared/widgets/panels/hexora_side_panel.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
@@ -102,7 +103,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
             'excel_exported' => isEs ? 'Excel exportado' : 'Excel exported',
             _ => action,
           };
-      await showDialog<void>(
+      await showHexoraDialog<void>(
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: Text(isEs ? 'Actividad del asistente' : 'Assistant activity'),
@@ -192,7 +193,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
     Future<void> showContextInfo() async {
       InsightsDateRange? draftRange = runtime.dateRange;
       final now = DateTime.now();
-      await showDialog<void>(
+      await showHexoraDialog<void>(
         context: context,
         builder: (dialogContext) => StatefulBuilder(
           builder: (dialogContext, setDialogState) {

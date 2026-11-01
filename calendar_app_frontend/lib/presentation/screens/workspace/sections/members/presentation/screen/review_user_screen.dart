@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
@@ -193,6 +194,7 @@ class _ReviewAndAddUsersScreenState extends State<ReviewAndAddUsersScreen> {
                   AddUsersTab(
                     openPicker: () async {
                       await showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
                         context: context,
                         isScrollControlled: true,
                         useSafeArea: true,

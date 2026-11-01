@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/statements_formatters.dart';
 import 'package:hexora/theme/components/hexora_ai_output_tokens.dart';
@@ -315,7 +316,7 @@ mixin InsightsTableView on InsightsChatSheetStateBase {
       );
     }
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(isEs ? 'Filtrar fechas' : 'Filter dates'),

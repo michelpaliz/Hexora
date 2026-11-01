@@ -1,5 +1,6 @@
 // lib/.../dialog_content/profile_alert_dialog.dart (or your existing path)
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
@@ -34,7 +35,7 @@ void showProfileAlertDialog(
     barrierDismissible: true,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     barrierColor: Colors.black.withValues(alpha: 0.45),
-    transitionDuration: const Duration(milliseconds: 320),
+    transitionDuration: HexoraMotion.duration(context, HexoraMotion.navigation),
     pageBuilder: (context, animation, secondaryAnimation) {
       final t = AppTypography.of(context);
       final l = AppLocalizations.of(context)!;
@@ -49,7 +50,8 @@ void showProfileAlertDialog(
                 const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
-              side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
+              side:
+                  BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
             ),
             child: PopScope(
               canPop: true, // ESC/back dismisses

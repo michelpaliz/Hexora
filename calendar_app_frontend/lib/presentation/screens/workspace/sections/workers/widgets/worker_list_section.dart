@@ -1,5 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -249,7 +250,8 @@ class _WorkerRowState extends State<_WorkerRow> {
                                     const SizedBox(width: 5),
                                     Expanded(
                                       child: Text(
-                                        _metaLine(l, isLinked, role, w.operationalRole),
+                                        _metaLine(l, isLinked, role,
+                                            w.operationalRole),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: t.bodySmall.copyWith(
@@ -326,8 +328,7 @@ class _WorkerRowState extends State<_WorkerRow> {
                             final baseStyle = IconButton.styleFrom(
                               minimumSize: const Size(32, 32),
                               padding: EdgeInsets.zero,
-                              tapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               visualDensity: VisualDensity.compact,
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8)),
@@ -346,8 +347,8 @@ class _WorkerRowState extends State<_WorkerRow> {
                                     backgroundColor: WidgetStatePropertyAll(
                                         cs.primary.withValues(alpha: 0.08)),
                                     side: WidgetStatePropertyAll(BorderSide(
-                                        color: cs.primary
-                                            .withValues(alpha: 0.3))),
+                                        color:
+                                            cs.primary.withValues(alpha: 0.3))),
                                   ),
                                   onPressed: widget.onAddHours,
                                   icon: const Icon(Icons.schedule_outlined,
@@ -367,8 +368,8 @@ class _WorkerRowState extends State<_WorkerRow> {
                                   tooltip: l.editWorker,
                                   style: baseStyle,
                                   onPressed: widget.onEdit,
-                                  icon: const Icon(Icons.edit_outlined,
-                                      size: 16),
+                                  icon:
+                                      const Icon(Icons.edit_outlined, size: 16),
                                 ),
                                 if (widget.spacious) ...[
                                   const SizedBox(width: 5),
@@ -407,7 +408,7 @@ class _WorkerRowState extends State<_WorkerRow> {
                                                   : 'Name copied'),
                                         ));
                                       } else if (value == 'notes') {
-                                        showDialog<void>(
+                                        showHexoraDialog<void>(
                                             context: context,
                                             builder: (context) => AlertDialog(
                                                   title: Text(name),
@@ -459,10 +460,15 @@ class _WorkerRowState extends State<_WorkerRow> {
     );
   }
 
-  String _metaLine(AppLocalizations l, bool isLinked, String role, String operationalRole) {
+  String _metaLine(
+      AppLocalizations l, bool isLinked, String role, String operationalRole) {
     final typeLabel = isLinked ? l.linkedUser : l.externalWorker;
     final workerRole = operationalRole == 'supervisor' ? 'Supervisor' : null;
-    return [typeLabel, if (workerRole != null) workerRole, if (role.isNotEmpty) role].join(' · ');
+    return [
+      typeLabel,
+      if (workerRole != null) workerRole,
+      if (role.isNotEmpty) role
+    ].join(' · ');
   }
 }
 
@@ -712,4 +718,3 @@ class _NotePreview extends StatelessWidget {
 }
 
 // ── Hover-aware action icon ───────────────────────────────────────────────────
-

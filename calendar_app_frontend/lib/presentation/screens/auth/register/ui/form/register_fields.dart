@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
@@ -145,7 +146,7 @@ Widget buildRegisterButton(
             return;
           }
 
-          showDialog(
+          showHexoraDialog(
             context: context,
             builder: (BuildContext context) {
               return AlertDialog(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import '../utils/notification_destination.dart';
 import 'package:hexora/models/notifications/notification_localization.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
@@ -9,6 +10,7 @@ import 'package:hexora/presentation/screens/notifications/show-notifications/uti
 import 'package:hexora/presentation/shared/widgets/buttons/rounded_action_button.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
@@ -112,7 +114,7 @@ class NotificationCard extends StatelessWidget {
   }
 
   Future<bool> _confirmDismiss(BuildContext context, AppLocalizations loc) =>
-      showDialog<bool>(
+      showHexoraDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
           title: Text(loc.confirmation),
@@ -730,6 +732,7 @@ class _EventCard extends StatelessWidget {
         child:
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           ExpansionTile(
+            expansionAnimationStyle: HexoraMotion.expansionStyle(context),
             tilePadding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
             childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
             shape: const Border(),

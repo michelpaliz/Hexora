@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:provider/provider.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/user/presence_domain.dart';
@@ -32,6 +33,7 @@ class DashboardPresenceStrip extends StatelessWidget {
           );
     if (MediaQuery.sizeOf(context).width < 700) {
       return ExpansionTile(
+        expansionAnimationStyle: HexoraMotion.expansionStyle(context),
         key: ValueKey(group.id),
         initiallyExpanded: true,
         tilePadding: EdgeInsets.zero,

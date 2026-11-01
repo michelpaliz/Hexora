@@ -348,7 +348,7 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
                     onRemove: () async {
                       final isEs =
                           Localizations.localeOf(context).languageCode == 'es';
-                      final confirmed = await showDialog<bool>(
+                      final confirmed = await showHexoraDialog<bool>(
                         context: context,
                         builder: (dialogCtx) => AlertDialog(
                           title: Row(children: [

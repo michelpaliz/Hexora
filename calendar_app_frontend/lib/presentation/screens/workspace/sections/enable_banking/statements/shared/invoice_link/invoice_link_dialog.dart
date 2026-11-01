@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/services/expenses/expenses_api.dart';
@@ -82,7 +83,7 @@ class InvoiceLinkDialog {
       expenseOnly: expenseOnly,
     );
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(

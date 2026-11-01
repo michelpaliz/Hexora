@@ -747,7 +747,7 @@ class _ClientGroupTableState extends State<_ClientGroupTable> {
       barrierDismissible: true,
       barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
       barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 140),
+      transitionDuration: HexoraMotion.duration(context, HexoraMotion.fast),
       pageBuilder: (context, animation, secondaryAnimation) =>
           _ColumnFilterPopover(
         anchor: anchor,
@@ -812,7 +812,7 @@ class _ClientGroupTableState extends State<_ClientGroupTable> {
       barrierDismissible: true,
       barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
       barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 140),
+      transitionDuration: HexoraMotion.duration(context, HexoraMotion.fast),
       pageBuilder: (context, animation, secondaryAnimation) =>
           _ColumnFilterPopover(
         anchor: anchor,
@@ -1338,7 +1338,8 @@ class _TaxReportContentState extends State<_TaxReportContent> {
           barrierLabel:
               MaterialLocalizations.of(context).modalBarrierDismissLabel,
           barrierColor: Colors.transparent,
-          transitionDuration: const Duration(milliseconds: 140),
+          transitionDuration:
+              HexoraMotion.duration(context, HexoraMotion.fast),
           pageBuilder: (context, animation, secondaryAnimation) =>
               _ColumnFilterPopover(
             anchor: anchor,
@@ -1478,6 +1479,8 @@ class _TaxReportContentState extends State<_TaxReportContent> {
                 else
                   for (var i = 0; i < visibleEntries.length; i++)
                     ExpansionTile(
+                      expansionAnimationStyle:
+                          HexoraMotion.expansionStyle(context),
                       key: PageStorageKey(
                           'vat-entry-${section.name}-${visibleEntries[i].index}'),
                       tilePadding: const EdgeInsets.only(right: 12),
@@ -1684,6 +1687,7 @@ class _TaxReportContentState extends State<_TaxReportContent> {
       ]),
       for (var i = 0; i < providers.length; i++)
         ExpansionTile(
+          expansionAnimationStyle: HexoraMotion.expansionStyle(context),
           key: PageStorageKey('irpf-provider-$i'),
           title: Text('Registros · ${_party(providers[i], 'provider')}'),
           children: [_irpfRecords(_providerRecords(providers[i], records))],

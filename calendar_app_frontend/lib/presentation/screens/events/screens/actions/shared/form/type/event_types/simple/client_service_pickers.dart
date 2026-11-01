@@ -1,5 +1,6 @@
 // widgets/client_service_pickers.dart
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -91,7 +92,7 @@ class _SearchablePickerField extends StatelessWidget {
   }
 
   Future<void> _openSearch(BuildContext context) async {
-    final result = await showDialog<String?>(
+    final result = await showHexoraDialog<String?>(
       context: context,
       barrierColor: Colors.black54,
       builder: (_) => _SearchDialog(

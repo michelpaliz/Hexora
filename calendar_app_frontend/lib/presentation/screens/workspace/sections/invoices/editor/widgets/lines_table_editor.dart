@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_form_sheet/invoice_lines_editor.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -410,7 +411,7 @@ class _LineRowState extends State<_LineRow> {
             child: Align(
               alignment: Alignment.centerRight,
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
+                duration: HexoraMotion.duration(context, HexoraMotion.standard),
                 transitionBuilder: (child, anim) =>
                     FadeTransition(opacity: anim, child: child),
                 child: Text(

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
@@ -107,7 +108,7 @@ class _ClientClassificationManagerDialogState
     if (_saving || _closing) return;
     _closing = true;
     if (_dirty) {
-      final discard = await showDialog<bool>(
+      final discard = await showHexoraDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
                 title: Text(t('¿Descartar los cambios?', 'Discard changes?')),

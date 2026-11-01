@@ -1,6 +1,7 @@
 import 'package:hexora/presentation/screens/workspace/sections/undone_events/pending_events_bulk_action.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:flutter/services.dart'
     show KeyDownEvent, KeyEvent, LogicalKeyboardKey;
 import 'package:hexora/models/calendar/events/event.dart';
@@ -2164,8 +2165,8 @@ class _DesktopSidebar extends StatelessWidget {
 
             // ── Event detail (when selected) ──────────────────────────
             AnimatedSize(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
+              duration: HexoraMotion.duration(context, HexoraMotion.navigation),
+              curve: HexoraMotion.enter,
               child: selectedEvent != null
                   ? _SidebarEventDetail(
                       event: selectedEvent!,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
@@ -46,7 +47,7 @@ class StatementsInvoiceSuggestDialog {
     var refreshing = false;
     int? linkingIdx;
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final l = AppLocalizations.of(dialogContext)!;
@@ -57,8 +58,7 @@ class StatementsInvoiceSuggestDialog {
             StatementsSharedUtils.entryText(entry, ['date', 'valueDate']);
         final entryDescription =
             StatementsSharedUtils.entryText(entry, ['description']);
-        final entryAmount =
-            StatementsSharedUtils.entryText(entry, ['amount']);
+        final entryAmount = StatementsSharedUtils.entryText(entry, ['amount']);
         final entryClientId =
             (entry['clientId'] ?? entry['client_id'])?.toString().trim() ?? '';
         final isIncome = !expenseOnly;
@@ -115,8 +115,7 @@ class StatementsInvoiceSuggestDialog {
         }
 
         Future<void> previewSuggestedInvoice(Map<String, dynamic> inv) async {
-          final invoiceId =
-              (inv['_id'] ?? inv['id'])?.toString().trim() ?? '';
+          final invoiceId = (inv['_id'] ?? inv['id'])?.toString().trim() ?? '';
           if (invoiceId.isEmpty) return;
           try {
             final response = await _invoicesApi.previewPdf(invoiceId);
@@ -128,8 +127,7 @@ class StatementsInvoiceSuggestDialog {
             await pdf_launcher.launchPdfPreview(bytes, fileName: fileName);
           } catch (e) {
             if (!dialogContext.mounted) return;
-            final msg =
-                e.toString().replaceFirst('Exception: ', '').trim();
+            final msg = e.toString().replaceFirst('Exception: ', '').trim();
             ScaffoldMessenger.of(dialogContext).showSnackBar(
               SnackBar(content: Text(msg.isEmpty ? l.preview : msg)),
             );
@@ -264,7 +262,7 @@ class StatementsInvoiceSuggestDialog {
           }
 
           Future<bool> confirmAlreadyLinked() async {
-            final confirmed = await showDialog<bool>(
+            final confirmed = await showHexoraDialog<bool>(
               context: dialogContext,
               builder: (context) => AlertDialog(
                 title: Text(l.statementsInvoiceAlreadyLinkedTitle),
@@ -292,10 +290,8 @@ class StatementsInvoiceSuggestDialog {
               final inv = currentOptions[i];
               final invId =
                   inv['_id']?.toString() ?? inv['id']?.toString() ?? '';
-              final suggestedClientId =
-                  extractSuggestedClientId(inv) ?? '';
-              final invoiceNumber =
-                  inv['invoiceNumber']?.toString() ?? '-';
+              final suggestedClientId = extractSuggestedClientId(inv) ?? '';
+              final invoiceNumber = inv['invoiceNumber']?.toString() ?? '-';
               final issueDate = inv['issueDate']?.toString() ?? '';
               final status =
                   resolveStatusLabel(inv['status']?.toString() ?? '');
@@ -309,10 +305,9 @@ class StatementsInvoiceSuggestDialog {
               final linkedElsewhere = findLinkedEntryByInvoice(invId);
               final alreadyLinkedByApi = inv['alreadyLinked'] == true ||
                   inv['isAlreadyLinked'] == true;
-              final linkedEntriesCount =
-                  (inv['linkedEntriesCount'] is num)
-                      ? (inv['linkedEntriesCount'] as num).toInt()
-                      : 0;
+              final linkedEntriesCount = (inv['linkedEntriesCount'] is num)
+                  ? (inv['linkedEntriesCount'] as num).toInt()
+                  : 0;
               final linkedEntryDate =
                   (inv['linkedEntryDate']?.toString().trim() ?? '');
               final linkedEntryAmountRaw =
@@ -324,8 +319,7 @@ class StatementsInvoiceSuggestDialog {
               final isLinking = linkingIdx == i;
               final actionsEnabled = canLink && linkingIdx == null;
               final isBestMatch = i == 0 && !isAlreadySelected;
-              final accentColor =
-                  isBestMatch ? cs.primary : cs.outlineVariant;
+              final accentColor = isBestMatch ? cs.primary : cs.outlineVariant;
 
               return Container(
                 decoration: BoxDecoration(
@@ -353,11 +347,9 @@ class StatementsInvoiceSuggestDialog {
                         ),
                         Expanded(
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(
-                                14, 12, 14, 12),
+                            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 // Header: number + badges + total
                                 Row(
@@ -377,10 +369,8 @@ class StatementsInvoiceSuggestDialog {
                                             child: Text(
                                               invoiceNumber,
                                               maxLines: 1,
-                                              overflow:
-                                                  TextOverflow.ellipsis,
-                                              style:
-                                                  tt.titleSmall?.copyWith(
+                                              overflow: TextOverflow.ellipsis,
+                                              style: tt.titleSmall?.copyWith(
                                                 fontWeight: FontWeight.w700,
                                               ),
                                             ),
@@ -459,8 +449,7 @@ class StatementsInvoiceSuggestDialog {
                                     if (status.isNotEmpty) ...[
                                       const SizedBox(width: 14),
                                       Container(
-                                        padding:
-                                            const EdgeInsets.symmetric(
+                                        padding: const EdgeInsets.symmetric(
                                           horizontal: 8,
                                           vertical: 2,
                                         ),
@@ -490,8 +479,7 @@ class StatementsInvoiceSuggestDialog {
                                     decoration: BoxDecoration(
                                       color: cs.errorContainer
                                           .withValues(alpha: 0.18),
-                                      borderRadius:
-                                          BorderRadius.circular(8),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Column(
                                       crossAxisAlignment:
@@ -508,11 +496,9 @@ class StatementsInvoiceSuggestDialog {
                                             Expanded(
                                               child: Text(
                                                 l.statementsInvoiceAlreadySelected,
-                                                style:
-                                                    tt.bodySmall?.copyWith(
+                                                style: tt.bodySmall?.copyWith(
                                                   color: cs.error,
-                                                  fontWeight:
-                                                      FontWeight.w600,
+                                                  fontWeight: FontWeight.w600,
                                                 ),
                                               ),
                                             ),
@@ -533,22 +519,18 @@ class StatementsInvoiceSuggestDialog {
                                                 ? '-'
                                                 : linkedEntryDate,
                                             linkedEntriesCount > 0
-                                                ? linkedEntriesCount
-                                                    .toString()
+                                                ? linkedEntriesCount.toString()
                                                 : '1',
                                           ),
                                           style: tt.bodySmall?.copyWith(
                                             color: cs.onSurfaceVariant,
                                           ),
                                         ),
-                                        if (linkedEntryAmountRaw
-                                                .isNotEmpty ||
-                                            linkedEntryDescription
-                                                .isNotEmpty)
+                                        if (linkedEntryAmountRaw.isNotEmpty ||
+                                            linkedEntryDescription.isNotEmpty)
                                           Padding(
                                             padding:
-                                                const EdgeInsets.only(
-                                                    top: 4),
+                                                const EdgeInsets.only(top: 4),
                                             child: Text(
                                               [
                                                 if (linkedEntryAmountRaw
@@ -563,12 +545,9 @@ class StatementsInvoiceSuggestDialog {
                                                   linkedEntryDescription,
                                               ].join(' · '),
                                               maxLines: 2,
-                                              overflow:
-                                                  TextOverflow.ellipsis,
-                                              style:
-                                                  tt.bodySmall?.copyWith(
-                                                color:
-                                                    cs.onSurfaceVariant,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: tt.bodySmall?.copyWith(
+                                                color: cs.onSurfaceVariant,
                                               ),
                                             ),
                                           ),
@@ -579,13 +558,11 @@ class StatementsInvoiceSuggestDialog {
                                 const SizedBox(height: 10),
                                 // Action buttons
                                 Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.end,
+                                  mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
                                     TextButton.icon(
                                       onPressed: actionsEnabled
-                                          ? () =>
-                                              previewSuggestedInvoice(inv)
+                                          ? () => previewSuggestedInvoice(inv)
                                           : null,
                                       icon: const Icon(
                                         Icons.visibility_outlined,
@@ -600,13 +577,11 @@ class StatementsInvoiceSuggestDialog {
                                             icon: const SizedBox(
                                               width: 17,
                                               height: 17,
-                                              child:
-                                                  CircularProgressIndicator(
+                                              child: CircularProgressIndicator(
                                                 strokeWidth: 2,
                                               ),
                                             ),
-                                            label: Text(
-                                                l.statementsActionLink),
+                                            label: Text(l.statementsActionLink),
                                           )
                                         : FilledButton.icon(
                                             onPressed: actionsEnabled
@@ -618,12 +593,11 @@ class StatementsInvoiceSuggestDialog {
                                                         return;
                                                       }
                                                     }
-                                                    setState(() =>
-                                                        linkingIdx = i);
+                                                    setState(
+                                                        () => linkingIdx = i);
                                                     try {
                                                       final outcome =
-                                                          await s
-                                                              .linkInvoice(
+                                                          await s.linkInvoice(
                                                         entryId: entryId,
                                                         invoiceId: invId,
                                                         invoiceDisplayNumber:
@@ -645,8 +619,7 @@ class StatementsInvoiceSuggestDialog {
                                                           .mounted) {
                                                         return;
                                                       }
-                                                      if (!outcome
-                                                          .success) {
+                                                      if (!outcome.success) {
                                                         final msg = outcome
                                                                 .errorMessage ??
                                                             '';
@@ -656,13 +629,11 @@ class StatementsInvoiceSuggestDialog {
                                                                 .toLowerCase()
                                                                 .contains(
                                                                     'invalid invoiceid')) {
-                                                          ScaffoldMessenger
-                                                                  .of(
-                                                                      dialogContext)
+                                                          ScaffoldMessenger.of(
+                                                                  dialogContext)
                                                               .showSnackBar(
                                                             SnackBar(
-                                                              content:
-                                                                  Text(
+                                                              content: Text(
                                                                 l.statementsInvalidInvoiceToast,
                                                               ),
                                                             ),
@@ -674,35 +645,30 @@ class StatementsInvoiceSuggestDialog {
                                                                 .toLowerCase()
                                                                 .contains(
                                                                     'invoice not found')) {
-                                                          ScaffoldMessenger
-                                                                  .of(
-                                                                      dialogContext)
+                                                          ScaffoldMessenger.of(
+                                                                  dialogContext)
                                                               .showSnackBar(
                                                             SnackBar(
-                                                              content:
-                                                                  Text(
+                                                              content: Text(
                                                                 l.statementsInvoiceNotFoundToast,
                                                               ),
                                                             ),
                                                           );
                                                         } else {
-                                                          ScaffoldMessenger
-                                                                  .of(
-                                                                      dialogContext)
+                                                          ScaffoldMessenger.of(
+                                                                  dialogContext)
                                                               .showSnackBar(
                                                             SnackBar(
                                                                 content:
-                                                                    Text(
-                                                                        msg)),
+                                                                    Text(msg)),
                                                           );
                                                         }
                                                         return;
                                                       }
                                                       if (outcome
                                                           .alreadyLinked) {
-                                                        ScaffoldMessenger
-                                                                .of(
-                                                                    dialogContext)
+                                                        ScaffoldMessenger.of(
+                                                                dialogContext)
                                                             .showSnackBar(
                                                           SnackBar(
                                                             content: Text(
@@ -713,9 +679,8 @@ class StatementsInvoiceSuggestDialog {
                                                       }
                                                       if (outcome
                                                           .hasRepetitiveInvoiceLink) {
-                                                        ScaffoldMessenger
-                                                                .of(
-                                                                    dialogContext)
+                                                        ScaffoldMessenger.of(
+                                                                dialogContext)
                                                             .showSnackBar(
                                                           SnackBar(
                                                             content: Text(
@@ -759,16 +724,14 @@ class StatementsInvoiceSuggestDialog {
                                                       if (dialogContext
                                                           .mounted) {
                                                         setState(() =>
-                                                            linkingIdx =
-                                                                null);
+                                                            linkingIdx = null);
                                                       }
                                                     }
                                                   }
                                                 : null,
                                             icon: const Icon(Icons.link,
                                                 size: 17),
-                                            label: Text(
-                                                l.statementsActionLink),
+                                            label: Text(l.statementsActionLink),
                                           ),
                                   ],
                                 ),
@@ -840,8 +803,7 @@ class StatementsInvoiceSuggestDialog {
                             ),
                           ),
                           IconButton(
-                            onPressed: () =>
-                                Navigator.of(dialogContext).pop(),
+                            onPressed: () => Navigator.of(dialogContext).pop(),
                             icon: const Icon(Icons.close),
                             tooltip: l.close,
                           ),
@@ -863,8 +825,7 @@ class StatementsInvoiceSuggestDialog {
                                       decimal: true),
                               style: tt.bodySmall,
                               decoration: InputDecoration(
-                                labelText:
-                                    l.statementsInvoiceSuggestTolerance,
+                                labelText: l.statementsInvoiceSuggestTolerance,
                                 border: const OutlineInputBorder(),
                                 isDense: true,
                                 contentPadding: const EdgeInsets.symmetric(
@@ -901,8 +862,7 @@ class StatementsInvoiceSuggestDialog {
                                 ? null
                                 : () async {
                                     setState(() => refreshing = true);
-                                    final newOptions =
-                                        await s.suggestInvoices(
+                                    final newOptions = await s.suggestInvoices(
                                       entryId,
                                       type: selectedType,
                                       tolerance: tolerance,
@@ -922,19 +882,16 @@ class StatementsInvoiceSuggestDialog {
                     // ── Body ──
                     Flexible(
                       child: Padding(
-                        padding:
-                            const EdgeInsets.fromLTRB(24, 0, 24, 20),
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
                         child: refreshing
-                            ? const Center(
-                                child: CircularProgressIndicator())
+                            ? const Center(child: CircularProgressIndicator())
                             : currentOptions.isEmpty
                                 ? Center(
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Icon(
-                                          Icons
-                                              .search_off_outlined,
+                                          Icons.search_off_outlined,
                                           size: 48,
                                           color: cs.onSurfaceVariant
                                               .withValues(alpha: 0.4),

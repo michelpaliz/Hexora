@@ -115,7 +115,6 @@ class ClientContactForm extends StatelessWidget {
                     prefixIcon: const Icon(Icons.person_outline),
                     isRequired: true,
                     isFilled: c.name.text.trim().isNotEmpty,
-                    showCheck: c.name.text.trim().isNotEmpty,
                   ),
                   textInputAction: TextInputAction.next,
                   onChanged: (_) => onFieldChanged(),
@@ -182,15 +181,20 @@ class ClientContactForm extends StatelessWidget {
         if (section == ClientContactSection.classification)
           _ClientFormSection(
             children: [
+              // The active tab identifies the section, so no explicit heading
+              // is needed. The manage action stays as a subtle ghost button.
               Align(
                 alignment: Alignment.centerRight,
                 child: HexoraButton(
                   onPressed: onManageClassification,
                   label: l.clientClassificationManageCta,
+                  icon: Icons.tune_rounded,
                   variant: HexoraButtonVariant.ghost,
+                  size: HexoraButtonSize.compact,
+                  tooltip: l.clientClassificationManageCta,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               ClientFormFields(
                   first: DropdownButtonFormField<String>(
                     isExpanded: true,
@@ -256,41 +260,61 @@ class ClientContactForm extends StatelessWidget {
                       isFilled: c.propertyType.text.trim().isNotEmpty,
                     ),
                   )),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                isExpanded: true,
-                initialValue: c.propertyRelationship.text.trim().isEmpty
-                    ? null
-                    : c.propertyRelationship.text.trim(),
-                hint: Text(
-                  '${l.select}...',
-                  style: text.bodyLarge!.copyWith(
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.65),
-                  ),
-                ),
-                style: text.bodyLarge?.copyWith(color: cs.onSurface),
-                items: relationshipOptions
-                    .map(
-                      (e) => DropdownMenuItem(
-                        value: e,
-                        child: Text(
-                          classificationLabel(e),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+              const SizedBox(height: 8),
+              // On wide desktops the relationship selector pairs with blank
+              // space on its right so it keeps the same column width as the
+              // other dropdowns above.
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final relationship = DropdownButtonFormField<String>(
+                    isExpanded: true,
+                    initialValue: c.propertyRelationship.text.trim().isEmpty
+                        ? null
+                        : c.propertyRelationship.text.trim(),
+                    hint: Text(
+                      '${l.select}...',
+                      style: text.bodyLarge!.copyWith(
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.65),
                       ),
-                    )
-                    .toList(),
-                onChanged: (v) {
-                  c.propertyRelationship.text = (v ?? '').trim();
-                  onFieldChanged();
+                    ),
+                    style: text.bodyLarge?.copyWith(color: cs.onSurface),
+                    items: relationshipOptions
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(
+                              classificationLabel(e),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) {
+                      c.propertyRelationship.text = (v ?? '').trim();
+                      onFieldChanged();
+                    },
+                    decoration: buildInputDecoration(
+                      context,
+                      label: 'Relación con el inmueble (opcional)',
+                      prefixIcon: const Icon(Icons.handshake_outlined),
+                      isFilled: c.propertyRelationship.text.trim().isNotEmpty,
+                    ),
+                  );
+                  final textScale =
+                      MediaQuery.textScalerOf(context).scale(14) / 14;
+                  if (constraints.maxWidth < 380 * textScale) {
+                    return relationship;
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: relationship),
+                      const SizedBox(width: 10),
+                      const Expanded(child: SizedBox.shrink()),
+                    ],
+                  );
                 },
-                decoration: buildInputDecoration(
-                  context,
-                  label: 'Relación con el inmueble (opcional)',
-                  prefixIcon: const Icon(Icons.handshake_outlined),
-                  isFilled: c.propertyRelationship.text.trim().isNotEmpty,
-                ),
               ),
             ],
           ),

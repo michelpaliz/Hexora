@@ -240,7 +240,7 @@ $html
         : '';
     final labelCtrl = TextEditingController(text: selectionText);
 
-    final result = await showDialog<Map<String, String>>(
+    final result = await showHexoraDialog<Map<String, String>>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(l.mailComposeFormat),

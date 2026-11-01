@@ -1,5 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_list_row.dart';
 import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:hexora/theme/components/themed_buttons.dart';
@@ -109,7 +110,7 @@ class WorkerDirectoryCard extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                       content: Text(isEs ? 'Nombre copiado' : 'Name copied')));
                 } else {
-                  showDialog<void>(
+                  showHexoraDialog<void>(
                       context: context,
                       builder: (context) => AlertDialog(
                             title: Text(name),

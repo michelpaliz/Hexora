@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
@@ -161,7 +162,7 @@ class _UserProfileCardState extends State<_UserProfileCard> {
   }
 
   void _openImageViewer() {
-    showDialog<void>(
+    showHexoraDialog<void>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.72),
       builder: (ctx) => UserAvatarViewerDialog(

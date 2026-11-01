@@ -2,6 +2,7 @@ import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.da
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/l10n/build_context_locale.dart';
@@ -174,7 +175,7 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
       if (mounted) await _load();
       return;
     }
-    await showDialog<void>(
+    await showHexoraDialog<void>(
         context: context,
         builder: (_) =>
             ClientClassificationManagerDialog(groupId: widget.groupId));
@@ -182,7 +183,7 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
   }
 
   Future<bool> confirm(String title, String message) async =>
-      await showDialog<bool>(
+      await showHexoraDialog<bool>(
           context: context,
           builder: (context) =>
               AlertDialog(title: Text(title), content: Text(message), actions: [
@@ -196,7 +197,7 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
       false;
   Future<String?> _askCategory(
       {required bool entity, String? initial, required String title}) async {
-    return showDialog<String>(
+    return showHexoraDialog<String>(
         context: context,
         builder: (_) => _ClassificationNameDialog(
               title: title,
@@ -359,7 +360,7 @@ class _ClientClassificationsViewState extends State<ClientClassificationsView> {
   }
 
   Future<void> _reviewDuplicates() async {
-    await showDialog<void>(
+    await showHexoraDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
                 title: Text(tr('Posibles duplicados', 'Possible duplicates')),

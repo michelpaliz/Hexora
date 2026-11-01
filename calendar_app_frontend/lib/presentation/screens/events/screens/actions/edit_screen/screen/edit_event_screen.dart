@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
 import 'package:hexora/services/auth/token/authenticated_http_client.dart';
@@ -183,7 +184,7 @@ class _EditEventScreenState extends EditEventLogic<EditEventScreen>
 
   @override
   void showErrorDialog(BuildContext context) {
-    showDialog<void>(
+    showHexoraDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(AppLocalizations.of(context)!.event),

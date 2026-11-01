@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/viewmodels/groups/group_view_model.dart';
@@ -47,6 +48,7 @@ class AddUserButton extends StatelessWidget {
 
   void _openSheet(BuildContext context) {
     showModalBottomSheet(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       useSafeArea: true,

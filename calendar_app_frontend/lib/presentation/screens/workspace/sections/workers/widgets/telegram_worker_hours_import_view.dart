@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/time_tracking/working_time_excel_import.dart';
 import 'package:hexora/models/workers/worker.dart';
@@ -1327,7 +1328,7 @@ class _TelegramWorkerHoursImportViewState
     final cs = Theme.of(context).colorScheme;
     final importedEntries = _importedEntriesForDialog(submittedEntries, result);
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(isEs ? 'Horas importadas' : 'Imported hours'),
@@ -1520,7 +1521,7 @@ class _TelegramWorkerHoursImportViewState
         .where((value) => value.isNotEmpty)
         .join(' y ');
 
-    return showDialog<_OverlapDialogAction>(
+    return showHexoraDialog<_OverlapDialogAction>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Solapamiento de horas'),
@@ -1885,7 +1886,7 @@ class _TelegramWorkerHoursImportViewState
     final isEs = _isSpanish(context);
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -2488,7 +2489,7 @@ class _TelegramWorkerHoursImportViewState
     required List<String> reasons,
     required Color color,
   }) {
-    return showDialog<void>(
+    return showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Row(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class ExpenseProviderPicker extends StatefulWidget {
@@ -136,6 +137,7 @@ class _ExpenseProviderPickerState extends State<ExpenseProviderPicker> {
 
   Future<void> _openMobilePicker() async {
     await showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       useSafeArea: true,

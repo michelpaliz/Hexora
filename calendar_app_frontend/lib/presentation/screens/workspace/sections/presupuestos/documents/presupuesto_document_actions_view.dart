@@ -9,6 +9,7 @@ import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/services/presupuestos/presupuestos_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
@@ -296,7 +297,7 @@ class _PresupuestoDocumentActionsViewState
   }) async {
     if (unresolved.isEmpty) return true;
     final keys = unresolved.map((key) => '[$key]').join(', ');
-    return await showDialog<bool>(
+    return await showHexoraDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: const Text('Variables sin completar'),
@@ -342,7 +343,7 @@ class _PresupuestoDocumentActionsViewState
       if (mounted) setState(() => _checkingVariablesId = null);
     }
     if (!mounted) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Emitir presupuesto'),
@@ -420,7 +421,7 @@ class _PresupuestoDocumentActionsViewState
   Future<void> _removeSelected() async {
     final drafts = _selectedDrafts;
     if (_mutationBusy || drafts.isEmpty) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('Eliminar ${drafts.length} borradores'),
@@ -499,7 +500,7 @@ class _PresupuestoDocumentActionsViewState
 
   Future<void> _remove(Map<String, dynamic> document) async {
     if (_mutationBusy) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Eliminar borrador'),
@@ -806,115 +807,111 @@ class _PresupuestoDocumentActionsViewState
     final start = currentPage * _pageSize;
     final visible = documents.skip(start).take(_pageSize).toList();
     return Column(children: [
-        if (documents.isEmpty)
-          _DocumentEmptyState(
-              mode: widget.mode, searchQuery: _search.text.trim())
-        else
-          LayoutBuilder(builder: (context, constraints) {
-            final table = constraints.maxWidth >= 760;
-            return Column(children: [
-              if (table)
-                Container(
-                  color: cs.primary.withValues(alpha: .035),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                  child: Row(children: [
-                    SizedBox(
-                      width: 36,
-                      child: Checkbox(
-                        value: visible.every((d) =>
-                            _selected.contains(presupuestoDocumentId(d))),
-                        onChanged: (value) => setState(() {
-                          for (final d in visible) {
-                            final id = presupuestoDocumentId(d);
-                            if (value == true) {
-                              _selected.add(id);
-                            } else {
-                              _selected.remove(id);
-                            }
+      if (documents.isEmpty)
+        _DocumentEmptyState(mode: widget.mode, searchQuery: _search.text.trim())
+      else
+        LayoutBuilder(builder: (context, constraints) {
+          final table = constraints.maxWidth >= 760;
+          return Column(children: [
+            if (table)
+              Container(
+                color: cs.primary.withValues(alpha: .035),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                child: Row(children: [
+                  SizedBox(
+                    width: 36,
+                    child: Checkbox(
+                      value: visible.every(
+                          (d) => _selected.contains(presupuestoDocumentId(d))),
+                      onChanged: (value) => setState(() {
+                        for (final d in visible) {
+                          final id = presupuestoDocumentId(d);
+                          if (value == true) {
+                            _selected.add(id);
+                          } else {
+                            _selected.remove(id);
                           }
-                        }),
-                      ),
+                        }
+                      }),
                     ),
-                    Expanded(
-                        flex: 5,
-                        child: _tableHeaderLabel(context, 'Propuesta')),
-                    Expanded(
-                        flex: 3, child: _tableHeaderLabel(context, 'Cliente')),
-                    if (_visibleFinancialColumns
-                        .contains(HexoraFinancialColumn.date))
-                      const HexoraFinancialHeaderCell(
-                          label: 'Fecha', width: 104),
-                    SizedBox(
-                        width: 110,
-                        child: _tableHeaderLabel(context, 'Estado')),
-                    if (_visibleFinancialColumns
-                        .contains(HexoraFinancialColumn.total))
-                      const HexoraFinancialHeaderCell(
-                          label: 'Total', width: 120, numeric: true),
-                    SizedBox(
-                        width: HexoraTableTokens.actionColumn,
-                        child: _tableHeaderLabel(context, 'Acciones')),
-                  ]),
-                ),
-              for (final document in visible)
-                _DocumentRow(
-                  document: document,
-                  clients: widget.clients,
-                  mode: widget.mode,
-                  table: table,
-                  selected: _selected.contains(presupuestoDocumentId(document)),
-                  onSelect: (value) => setState(() {
-                    final id = presupuestoDocumentId(document);
-                    if (value == true) {
-                      _selected.add(id);
-                    } else {
-                      _selected.remove(id);
-                    }
-                  }),
-                  fileBusy: _fileBusyId == presupuestoDocumentId(document),
-                  fileActionsDisabled: _fileBusyId != null,
-                  issuing: _workspace
-                          .isIssuing(presupuestoDocumentId(document)) ||
-                      _checkingVariablesId == presupuestoDocumentId(document),
-                  onOpen: presupuestoDocumentStatus(document) == 'draft'
-                      ? () => _openEditor(document)
-                      : () => _openPdf(document, preview: true),
-                  onPreview: () => _selectDetail(document),
-                  onDownload: () => _openPdf(document, preview: false),
-                  onIssue: () => _issue(document),
-                  onDelete: () => _remove(document),
-                  onDuplicate: () => _duplicate(document),
-                  mutationBusy: _mutationBusy,
-                  visibleFinancialColumns: _visibleFinancialColumns,
-                ),
-            ]);
-          }),
-        if (pageCount > 1 || documents.length != _workspace.documents.length)
-          Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              child: Row(children: [
-                Expanded(
-                    child: Text(
-                        'Mostrando ${documents.isEmpty ? 0 : start + 1}–${start + visible.length} de ${documents.length} propuestas',
-                        style: Theme.of(context).textTheme.bodySmall)),
-                HexoraButton.iconOnly(
-                    icon: Icons.chevron_left,
-                    tooltip: 'Página anterior',
-                    size: HexoraButtonSize.compact,
-                    onPressed: currentPage > 0
-                        ? () => setState(() => _page = currentPage - 1)
-                        : null),
-                Text('${currentPage + 1} / $pageCount'),
-                HexoraButton.iconOnly(
-                    icon: Icons.chevron_right,
-                    tooltip: 'Página siguiente',
-                    size: HexoraButtonSize.compact,
-                    onPressed: currentPage + 1 < pageCount
-                        ? () => setState(() => _page = currentPage + 1)
-                        : null),
-              ])),
-      ]);
+                  ),
+                  Expanded(
+                      flex: 5, child: _tableHeaderLabel(context, 'Propuesta')),
+                  Expanded(
+                      flex: 3, child: _tableHeaderLabel(context, 'Cliente')),
+                  if (_visibleFinancialColumns
+                      .contains(HexoraFinancialColumn.date))
+                    const HexoraFinancialHeaderCell(label: 'Fecha', width: 104),
+                  SizedBox(
+                      width: 110, child: _tableHeaderLabel(context, 'Estado')),
+                  if (_visibleFinancialColumns
+                      .contains(HexoraFinancialColumn.total))
+                    const HexoraFinancialHeaderCell(
+                        label: 'Total', width: 120, numeric: true),
+                  SizedBox(
+                      width: HexoraTableTokens.actionColumn,
+                      child: _tableHeaderLabel(context, 'Acciones')),
+                ]),
+              ),
+            for (final document in visible)
+              _DocumentRow(
+                document: document,
+                clients: widget.clients,
+                mode: widget.mode,
+                table: table,
+                selected: _selected.contains(presupuestoDocumentId(document)),
+                onSelect: (value) => setState(() {
+                  final id = presupuestoDocumentId(document);
+                  if (value == true) {
+                    _selected.add(id);
+                  } else {
+                    _selected.remove(id);
+                  }
+                }),
+                fileBusy: _fileBusyId == presupuestoDocumentId(document),
+                fileActionsDisabled: _fileBusyId != null,
+                issuing:
+                    _workspace.isIssuing(presupuestoDocumentId(document)) ||
+                        _checkingVariablesId == presupuestoDocumentId(document),
+                onOpen: presupuestoDocumentStatus(document) == 'draft'
+                    ? () => _openEditor(document)
+                    : () => _openPdf(document, preview: true),
+                onPreview: () => _selectDetail(document),
+                onDownload: () => _openPdf(document, preview: false),
+                onIssue: () => _issue(document),
+                onDelete: () => _remove(document),
+                onDuplicate: () => _duplicate(document),
+                mutationBusy: _mutationBusy,
+                visibleFinancialColumns: _visibleFinancialColumns,
+              ),
+          ]);
+        }),
+      if (pageCount > 1 || documents.length != _workspace.documents.length)
+        Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Row(children: [
+              Expanded(
+                  child: Text(
+                      'Mostrando ${documents.isEmpty ? 0 : start + 1}–${start + visible.length} de ${documents.length} propuestas',
+                      style: Theme.of(context).textTheme.bodySmall)),
+              HexoraButton.iconOnly(
+                  icon: Icons.chevron_left,
+                  tooltip: 'Página anterior',
+                  size: HexoraButtonSize.compact,
+                  onPressed: currentPage > 0
+                      ? () => setState(() => _page = currentPage - 1)
+                      : null),
+              Text('${currentPage + 1} / $pageCount'),
+              HexoraButton.iconOnly(
+                  icon: Icons.chevron_right,
+                  tooltip: 'Página siguiente',
+                  size: HexoraButtonSize.compact,
+                  onPressed: currentPage + 1 < pageCount
+                      ? () => setState(() => _page = currentPage + 1)
+                      : null),
+            ])),
+    ]);
   }
 
   Widget _tableHeaderLabel(
@@ -1273,33 +1270,31 @@ class _DocumentRow extends StatelessWidget {
                         child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                          Tooltip(
-                              message: title,
-                              child: line(title)),
-                          const SizedBox(height: 2),
-                          Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                            if (_documentNumber(document).isNotEmpty)
-                              Text(_documentNumber(document),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                      fontSize: 11,
-                                      color: cs.onSurfaceVariant)),
-                            if (_documentNumber(document).isNotEmpty &&
-                                (_isDraft || _isIssued))
-                              Text(' · ',
-                                  style: TextStyle(
-                                      fontSize: 11,
-                                      color: cs.onSurfaceVariant)),
-                            if (_isDraft)
-                              Text(
-                                  '${presupuestoDocumentImageCount(document)} img',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                      fontSize: 11,
-                                      color: cs.onSurfaceVariant)),
-                            if (_isIssued) _deliveryIndicator(context),
-                          ]),
-                        ]))),
+                              Tooltip(message: title, child: line(title)),
+                              const SizedBox(height: 2),
+                              Row(mainAxisSize: MainAxisSize.min, children: [
+                                if (_documentNumber(document).isNotEmpty)
+                                  Text(_documentNumber(document),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                              fontSize: 11,
+                                              color: cs.onSurfaceVariant)),
+                                if (_documentNumber(document).isNotEmpty &&
+                                    (_isDraft || _isIssued))
+                                  Text(' · ',
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          color: cs.onSurfaceVariant)),
+                                if (_isDraft)
+                                  Text(
+                                      '${presupuestoDocumentImageCount(document)} img',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                              fontSize: 11,
+                                              color: cs.onSurfaceVariant)),
+                                if (_isIssued) _deliveryIndicator(context),
+                              ]),
+                            ]))),
                 Expanded(
                     flex: 3,
                     child: Padding(
@@ -1432,9 +1427,8 @@ class _DocumentRow extends StatelessWidget {
 
   Widget _deliveryIndicator(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final channel = document['deliveryChannel'] == 'telegram'
-        ? 'Telegram'
-        : 'Email';
+    final channel =
+        document['deliveryChannel'] == 'telegram' ? 'Telegram' : 'Email';
     final sentAt = DateTime.tryParse('${document['sentAt'] ?? ''}')?.toLocal();
     final details = sentAt == null
         ? 'Enviado por $channel'
@@ -1458,95 +1452,95 @@ class _DocumentRow extends StatelessWidget {
   Widget _actions(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return PopupMenuButton<String>(
-          tooltip: 'Más acciones',
-          offset: const Offset(0, 46),
-          elevation: 8,
-          color: cs.surfaceContainerLowest,
-          surfaceTintColor: Colors.transparent,
-          constraints: const BoxConstraints(minWidth: 220),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-              color: cs.outlineVariant.withValues(alpha: 0.45),
+      tooltip: 'Más acciones',
+      offset: const Offset(0, 46),
+      elevation: 8,
+      color: cs.surfaceContainerLowest,
+      surfaceTintColor: Colors.transparent,
+      constraints: const BoxConstraints(minWidth: 220),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: cs.outlineVariant.withValues(alpha: 0.45),
+        ),
+      ),
+      onSelected: (value) {
+        switch (value) {
+          case 'open':
+            onOpen();
+          case 'preview':
+            onPreview();
+          case 'issue':
+            onIssue();
+          case 'delete':
+            onDelete();
+          case 'download':
+            onDownload();
+          case 'duplicate':
+            onDuplicate();
+        }
+      },
+      itemBuilder: (context) => <PopupMenuEntry<String>>[
+        NavigationPopupMenuItem<String>(
+          value: 'duplicate',
+          enabled: !mutationBusy,
+          child: _actionMenuItem(context,
+              icon: Icons.copy_outlined, label: 'Duplicar como borrador'),
+        ),
+        NavigationPopupMenuItem<String>(
+          value: 'download',
+          enabled: !fileActionsDisabled,
+          child: _actionMenuItem(context,
+              icon: Icons.download_outlined, label: 'Descargar'),
+        ),
+        if (_isDraft)
+          NavigationPopupMenuItem<String>(
+            value: 'open',
+            child: _actionMenuItem(
+              context,
+              icon: Icons.edit_note_rounded,
+              label: 'Editar propuesta',
             ),
           ),
-          onSelected: (value) {
-            switch (value) {
-              case 'open':
-                onOpen();
-              case 'preview':
-                onPreview();
-              case 'issue':
-                onIssue();
-              case 'delete':
-                onDelete();
-              case 'download':
-                onDownload();
-              case 'duplicate':
-                onDuplicate();
-            }
-          },
-          itemBuilder: (context) => <PopupMenuEntry<String>>[
-            NavigationPopupMenuItem<String>(
-              value: 'duplicate',
-              enabled: !mutationBusy,
-              child: _actionMenuItem(context,
-                  icon: Icons.copy_outlined, label: 'Duplicar como borrador'),
-            ),
-            NavigationPopupMenuItem<String>(
-              value: 'download',
-              enabled: !fileActionsDisabled,
-              child: _actionMenuItem(context,
-                  icon: Icons.download_outlined, label: 'Descargar'),
-            ),
-            if (_isDraft)
-              NavigationPopupMenuItem<String>(
-                value: 'open',
-                child: _actionMenuItem(
-                  context,
-                  icon: Icons.edit_note_rounded,
-                  label: 'Editar propuesta',
-                ),
-              ),
-            NavigationPopupMenuItem<String>(
-              value: 'preview',
-              enabled: !fileActionsDisabled,
-              child: _actionMenuItem(
-                context,
-                icon: Icons.picture_as_pdf_outlined,
-                label: 'Vista previa del PDF',
-              ),
-            ),
-            if (_isDraft)
-              NavigationPopupMenuItem<String>(
-                value: 'issue',
-                enabled: !issuing,
-                child: _actionMenuItem(
-                  context,
-                  icon: Icons.publish_rounded,
-                  label: issuing ? 'Comprobando…' : 'Emitir propuesta',
-                  color: cs.primary,
-                ),
-              ),
-            if (_isDraft) const PopupMenuDivider(),
-            if (_isDraft)
-              NavigationPopupMenuItem<String>(
-                value: 'delete',
-                enabled: !mutationBusy,
-                child: _actionMenuItem(
-                  context,
-                  icon: Icons.delete_outline_rounded,
-                  label: 'Eliminar borrador',
-                  color: cs.error,
-                ),
-              ),
-          ],
-          child: SizedBox.square(
-            dimension: HexoraDimensions.touchTarget,
-            child: Icon(Icons.more_vert_rounded,
-                size: HexoraTableTokens.icon, color: cs.onSurfaceVariant),
+        NavigationPopupMenuItem<String>(
+          value: 'preview',
+          enabled: !fileActionsDisabled,
+          child: _actionMenuItem(
+            context,
+            icon: Icons.picture_as_pdf_outlined,
+            label: 'Vista previa del PDF',
           ),
-        );
+        ),
+        if (_isDraft)
+          NavigationPopupMenuItem<String>(
+            value: 'issue',
+            enabled: !issuing,
+            child: _actionMenuItem(
+              context,
+              icon: Icons.publish_rounded,
+              label: issuing ? 'Comprobando…' : 'Emitir propuesta',
+              color: cs.primary,
+            ),
+          ),
+        if (_isDraft) const PopupMenuDivider(),
+        if (_isDraft)
+          NavigationPopupMenuItem<String>(
+            value: 'delete',
+            enabled: !mutationBusy,
+            child: _actionMenuItem(
+              context,
+              icon: Icons.delete_outline_rounded,
+              label: 'Eliminar borrador',
+              color: cs.error,
+            ),
+          ),
+      ],
+      child: SizedBox.square(
+        dimension: HexoraDimensions.touchTarget,
+        child: Icon(Icons.more_vert_rounded,
+            size: HexoraTableTokens.icon, color: cs.onSurfaceVariant),
+      ),
+    );
   }
 
   Widget _actionMenuItem(

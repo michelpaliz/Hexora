@@ -3,6 +3,7 @@ import 'package:hexora/presentation/shared/widgets/documents/hexora_status_badge
 import 'package:hexora/presentation/shared/widgets/documents/mobile_document_card.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
@@ -105,6 +106,7 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
       widget.receipt.deliveryStatus,
     );
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       useRootNavigator: true,
       backgroundColor: cs.surface,

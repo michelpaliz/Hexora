@@ -124,6 +124,7 @@ class _MailConsoleView extends StatelessWidget {
 
     void openFolderSheet() {
       showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
         context: context,
         isScrollControlled: true,
         shape: const RoundedRectangleBorder(

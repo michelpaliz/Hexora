@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 
 Future<void> showErrorDialog(BuildContext context, String text) {
-  return showDialog(
+  return showHexoraDialog(
     context: context,
     builder: (context) {
       return AlertDialog(
@@ -18,4 +19,3 @@ Future<void> showErrorDialog(BuildContext context, String text) {
     },
   );
 }
-

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -377,6 +379,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
       ),
     );
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -891,7 +894,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
     Future<void> handleCancel() async {
       final isEs = l.localeName.toLowerCase().startsWith('es');
       final messenger = ScaffoldMessenger.of(context);
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showHexoraDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
           icon: const Icon(Icons.cancel_outlined, size: 28),
@@ -945,7 +948,7 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
         final l = AppLocalizations.of(context)!;
         final isEs = l.localeName.toLowerCase().startsWith('es');
         if (_hasUnsavedRuleChanges()) {
-          final shouldSaveAndRun = await showDialog<bool>(
+          final shouldSaveAndRun = await showHexoraDialog<bool>(
                 context: context,
                 builder: (dialogContext) => AlertDialog(
                   title: Text(isEs

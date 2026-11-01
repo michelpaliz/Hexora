@@ -49,7 +49,7 @@ class _InvoiceEditorView extends StatelessWidget {
         // ignore: unused_element
         void showStep1Missing() {
           if (step1Missing.isEmpty) return;
-          showDialog<void>(
+          showHexoraDialog<void>(
             context: context,
             builder: (_) => AlertDialog(
               title: Text(l.invoiceStepCreateTitle),
@@ -396,11 +396,10 @@ class _InvoiceEditorView extends StatelessWidget {
                         Expanded(
                           child: Text(
                             label,
-                            style: (strong ? t.bodyMedium : t.bodySmall)
-                                .copyWith(
-                              color: strong
-                                  ? cs.onSurface
-                                  : cs.onSurfaceVariant,
+                            style:
+                                (strong ? t.bodyMedium : t.bodySmall).copyWith(
+                              color:
+                                  strong ? cs.onSurface : cs.onSurfaceVariant,
                               fontWeight:
                                   strong ? FontWeight.w800 : FontWeight.w600,
                             ),
@@ -410,8 +409,7 @@ class _InvoiceEditorView extends StatelessWidget {
                         Text(
                           value,
                           textAlign: TextAlign.right,
-                          style: (strong ? t.bodyMedium : t.bodySmall)
-                              .copyWith(
+                          style: (strong ? t.bodyMedium : t.bodySmall).copyWith(
                             fontWeight:
                                 strong ? FontWeight.w900 : FontWeight.w700,
                             fontFeatures: tabularFigures,
@@ -491,8 +489,8 @@ class _InvoiceEditorView extends StatelessWidget {
                             children: [
                               Expanded(
                                 flex: 5,
-                                child:
-                                    Text(l.descriptionLabel, style: headerStyle),
+                                child: Text(l.descriptionLabel,
+                                    style: headerStyle),
                               ),
                               Expanded(
                                 flex: 2,
@@ -523,8 +521,7 @@ class _InvoiceEditorView extends StatelessWidget {
                           const SizedBox(height: 6),
                           Divider(
                               height: 1,
-                              color:
-                                  cs.outlineVariant.withValues(alpha: 0.5)),
+                              color: cs.outlineVariant.withValues(alpha: 0.5)),
                           const SizedBox(height: 6),
                           ...summaryRows.map((row) {
                             final rawDesc = (row['desc'] ?? '').toString();
@@ -729,8 +726,8 @@ class _InvoiceEditorView extends StatelessWidget {
                       Expanded(
                         child: Text(
                           selectedClientName,
-                          style: t.bodyLarge
-                              .copyWith(fontWeight: FontWeight.w900),
+                          style:
+                              t.bodyLarge.copyWith(fontWeight: FontWeight.w900),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1147,7 +1144,7 @@ class _InvoiceEditorView extends StatelessWidget {
         ),
     };
     try {
-      final save = await showDialog<bool>(
+      final save = await showHexoraDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: Text(isEs

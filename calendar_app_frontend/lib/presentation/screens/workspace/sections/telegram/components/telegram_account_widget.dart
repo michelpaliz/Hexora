@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/telegram/telegram.dart';
 
 /// Shows connected Telegram account info
@@ -94,9 +95,8 @@ class TelegramConnectedAccountWidget extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: isLoading
-                  ? null
-                  : () => _showDisconnectConfirmation(context),
+              onPressed:
+                  isLoading ? null : () => _showDisconnectConfirmation(context),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.red[600],
                 side: BorderSide(color: Colors.red[600]!),
@@ -119,7 +119,7 @@ class TelegramConnectedAccountWidget extends StatelessWidget {
   }
 
   void _showDisconnectConfirmation(BuildContext context) {
-    showDialog(
+    showHexoraDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Disconnect Telegram?'),

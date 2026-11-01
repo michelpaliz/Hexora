@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/shared/widgets/insights_chat/insights_chat_runtime.dart';
@@ -118,6 +119,7 @@ class _InsightsChatFabState extends State<InsightsChatFab> {
 
   Future<void> _openSheet(BuildContext context) {
     return showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       useSafeArea: true,

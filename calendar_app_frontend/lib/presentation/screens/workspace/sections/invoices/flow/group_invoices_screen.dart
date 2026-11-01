@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
@@ -56,6 +57,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   }) {
     final l = AppLocalizations.of(context)!;
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,

@@ -1,6 +1,7 @@
 import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -195,7 +196,7 @@ class _NotificationCategoryFilterBarState
             children: [
               content,
               AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
+                duration: HexoraMotion.duration(context, HexoraMotion.standard),
                 child: _showMoreFilters
                     ? Padding(
                         key: const ValueKey('more-filters-open'),

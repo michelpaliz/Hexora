@@ -608,8 +608,8 @@ class _BatchJobProgressCard extends StatelessWidget {
               ),
             ),
             AnimatedSize(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOutCubic,
+              duration: HexoraMotion.duration(context, HexoraMotion.standard),
+              curve: HexoraMotion.enter,
               child: warningsExpanded
                   ? Padding(
                       padding: const EdgeInsets.only(top: 8),

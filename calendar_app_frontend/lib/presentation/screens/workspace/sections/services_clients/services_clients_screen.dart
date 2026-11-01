@@ -1,6 +1,7 @@
 import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/service_catalog/service.dart';
@@ -181,7 +182,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
 
   Future<void> _confirmDeleteClient(GroupClient client) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.remove),
@@ -230,7 +231,7 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
 
   Future<void> _confirmDeleteService(Service service) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.remove),

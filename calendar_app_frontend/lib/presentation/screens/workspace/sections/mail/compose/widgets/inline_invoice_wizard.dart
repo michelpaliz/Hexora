@@ -591,7 +591,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel>
         for (final invoice in details) invoice.id: invoice,
       };
       setState(() => _comparingInvoiceIds.remove(historical.id));
-      await showDialog<void>(
+      await showHexoraDialog<void>(
         context: context,
         builder: (_) => _InvoiceComparisonDialog(
           currentInvoices: selectedInvoices
@@ -686,7 +686,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel>
                 dimension: 30,
                 child: Center(
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 150),
+                    duration: HexoraMotion.duration(context, HexoraMotion.fast),
                     child: selected
                         ? Icon(
                             Icons.check_circle_rounded,

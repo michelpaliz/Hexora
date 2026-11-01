@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/profile/edit/controller/profile_edit_controller.dart';
@@ -11,7 +12,7 @@ import 'package:provider/provider.dart';
 import 'widgets/labeled_field.dart';
 
 Future<void> showProfileEditDialog(BuildContext context) {
-  return showDialog<void>(
+  return showHexoraDialog<void>(
     context: context,
     barrierDismissible: false,
     builder: (_) => const _ProfileEditDialog(),
@@ -79,7 +80,7 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
       if (!_saving) Navigator.of(context).pop();
       return;
     }
-    final discard = await showDialog<bool>(
+    final discard = await showHexoraDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Descartar cambios'),

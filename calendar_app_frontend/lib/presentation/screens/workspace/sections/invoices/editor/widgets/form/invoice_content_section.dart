@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/gestures.dart';
 import 'package:hexora/models/invoice/invoice_block.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
@@ -397,7 +398,7 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
       final example = cap.example.resolve(currentLang).trim();
 
       Future<void> showDetails() {
-        return showDialog<void>(
+        return showHexoraDialog<void>(
           context: context,
           builder: (dialogContext) {
             return AlertDialog(
@@ -671,7 +672,7 @@ class _InvoiceContentSectionState extends State<InvoiceContentSection> {
       final isSpanish = currentLang.startsWith('es');
 
       Future<void> showDiscountInfo() {
-        return showDialog<void>(
+        return showHexoraDialog<void>(
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: Text(isSpanish ? 'Descuento' : 'Discount'),

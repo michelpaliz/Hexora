@@ -2,6 +2,7 @@ import 'package:hexora/models/notifications/user_invitation_status.dart';
 import 'package:hexora/presentation/screens/calendar/utils/selected_users/invitation_functions/role_change_dialog_actions.dart';
 import 'package:hexora/presentation/screens/calendar/utils/selected_users/invitation_functions/role_change_dialog_content.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 
 class RoleChangeDialog {
   static void show(
@@ -13,7 +14,7 @@ class RoleChangeDialog {
     Map<String, String> usersRoles, // map to store user roles
     Map<String, UserInviteStatus> usersInvitations, // map for user invitations
   ) {
-    showDialog(
+    showHexoraDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(

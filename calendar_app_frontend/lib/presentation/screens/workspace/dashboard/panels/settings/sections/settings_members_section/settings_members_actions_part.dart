@@ -45,7 +45,7 @@ extension _SettingsMembersActionsPart on _SettingsMembersSectionState {
   Future<bool> _confirmDiscardPendingRole(BuildContext context) async {
     if (_pendingRole == null) return true;
 
-    return await showDialog<bool>(
+    return await showHexoraDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: const Text('Descartar cambios'),
@@ -74,7 +74,7 @@ extension _SettingsMembersActionsPart on _SettingsMembersSectionState {
     final messenger = ScaffoldMessenger.of(context);
     final displayName = user.name.isNotEmpty ? user.name : user.userName;
 
-    final confirm = await showDialog<bool>(
+    final confirm = await showHexoraDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
             title: Text(l.remove),

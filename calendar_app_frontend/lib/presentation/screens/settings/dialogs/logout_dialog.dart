@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 /// Shared confirmation for standalone and dashboard Settings.
-Future<bool?> showLogoutDialog(BuildContext context) => showDialog<bool>(
+Future<bool?> showLogoutDialog(BuildContext context) => showHexoraDialog<bool>(
       context: context,
       builder: (context) {
         final cs = Theme.of(context).colorScheme;

@@ -11,9 +11,11 @@ import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_editor_components.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_client_step.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
@@ -123,7 +125,7 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
     }
     final l = AppLocalizations.of(context)!;
     final isEs = l.localeName.toLowerCase().startsWith('es');
-    final result = await showDialog<String>(
+    final result = await showHexoraDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(isEs ? 'Tienes cambios sin guardar' : 'Unsaved changes'),
@@ -172,13 +174,10 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
   void _goToStep(int index) {
     final next = index.clamp(0, 3);
     _c.setCurrentStepIndex(next);
-    final reducedMotion =
-        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     _tabController.animateTo(
       next,
-      duration:
-          reducedMotion ? Duration.zero : const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
+      duration: HexoraMotion.duration(context, HexoraMotion.navigation),
+      curve: HexoraMotion.enter,
     );
   }
 

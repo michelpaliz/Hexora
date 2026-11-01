@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/hexora_design_tokens.dart';
@@ -311,7 +312,7 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                 })),
           if (hasFilters && !widget.filtersInMenu)
             AnimatedSize(
-                duration: const Duration(milliseconds: 180),
+                duration: HexoraMotion.duration(context, HexoraMotion.standard),
                 alignment: Alignment.topCenter,
                 child: _expanded
                     ? Padding(

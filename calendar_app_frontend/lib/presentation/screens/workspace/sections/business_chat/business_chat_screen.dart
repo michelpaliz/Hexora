@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/auth/token/token_service.dart';
 import 'package:hexora/services/business_chat/business_chat_api.dart';
 import 'package:hexora/services/config/api_constants.dart';
@@ -342,7 +344,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     var workerId = '';
     var clientId = '';
     var eventId = '';
-    return showDialog<(String, String, String?, String?, String?)>(
+    return showHexoraDialog<(String, String, String?, String?, String?)>(
         context: context,
         builder: (context) => StatefulBuilder(
             builder: (context, refreshDialog) => AlertDialog(
@@ -481,7 +483,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
             : 'No active workers with a Hexora account are available.');
         return;
       }
-      final workerId = await showDialog<String>(
+      final workerId = await showHexoraDialog<String>(
           context: context,
           builder: (context) => SimpleDialog(
                 title: Text(_es ? 'Asignar incidencia' : 'Assign incident'),
@@ -517,27 +519,25 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
       final selected = <String>{};
       final formKey = GlobalKey<FormState>();
 
-      final result = await showDialog<(String, List<String>)>(
+      final result = await showHexoraDialog<(String, List<String>)>(
           context: context,
           builder: (dialogContext) {
             final viewportH = MediaQuery.of(dialogContext).size.height;
-            return StatefulBuilder(
-                builder: (dialogContext, refreshDialog) {
+            return StatefulBuilder(builder: (dialogContext, refreshDialog) {
               final query = searchCtrl.text.toLowerCase();
               final filtered = unique.where((m) {
                 final name =
                     (m['name'] ?? m['userName'] ?? '').toString().toLowerCase();
                 return query.isEmpty || name.contains(query);
               }).toList();
-              final canCreate = titleCtrl.text.trim().isNotEmpty &&
-                  selected.isNotEmpty;
+              final canCreate =
+                  titleCtrl.text.trim().isNotEmpty && selected.isNotEmpty;
 
               return AlertDialog(
                 title: Text(_es ? 'Nuevo chat de equipo' : 'New team chat'),
                 content: ConstrainedBox(
                     constraints: BoxConstraints(
-                        maxWidth: 480,
-                        maxHeight: viewportH * 0.7),
+                        maxWidth: 480, maxHeight: viewportH * 0.7),
                     child: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -548,16 +548,14 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                   controller: titleCtrl,
                                   maxLength: 120,
                                   onChanged: (_) => refreshDialog(() {}),
-                                  validator: (v) =>
-                                      (v ?? '').trim().isEmpty
-                                          ? (_es
-                                              ? 'Escribe un nombre'
-                                              : 'Enter a name')
-                                          : null,
+                                  validator: (v) => (v ?? '').trim().isEmpty
+                                      ? (_es
+                                          ? 'Escribe un nombre'
+                                          : 'Enter a name')
+                                      : null,
                                   decoration: InputDecoration(
-                                      labelText: _es
-                                          ? 'Nombre del chat'
-                                          : 'Chat name',
+                                      labelText:
+                                          _es ? 'Nombre del chat' : 'Chat name',
                                       counterText: '',
                                       border: OutlineInputBorder(
                                           borderRadius:
@@ -573,19 +571,17 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                       ? 'Buscar participantes…'
                                       : 'Search participants…',
                                   isDense: true,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 10),
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(vertical: 10),
                                   border: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(8)))),
+                                      borderRadius: BorderRadius.circular(8)))),
                           const SizedBox(height: 8),
                           Text(
                               _es
                                   ? '${selected.length + 1}/50 participantes (incluyéndote)'
                                   : '${selected.length + 1}/50 participants (including you)',
-                              style: Theme.of(dialogContext)
-                                  .textTheme
-                                  .bodySmall),
+                              style:
+                                  Theme.of(dialogContext).textTheme.bodySmall),
                           const SizedBox(height: 8),
                           Flexible(
                               child: filtered.isEmpty
@@ -604,14 +600,14 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                       itemCount: filtered.length,
                                       itemBuilder: (context, index) {
                                         final member = filtered[index];
-                                        final id = (member['id'] ?? '')
-                                            .toString();
+                                        final id =
+                                            (member['id'] ?? '').toString();
                                         final name = (member['name'] ??
                                                 member['userName'] ??
                                                 id)
                                             .toString();
-                                        final role = (member['role'] ?? '')
-                                            .toString();
+                                        final role =
+                                            (member['role'] ?? '').toString();
                                         return CheckboxListTile(
                                             value: selected.contains(id),
                                             title: Text(name,
@@ -624,18 +620,14 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                                         fontSize: 12))
                                                 : null,
                                             dense: true,
-                                            onChanged:
-                                                !selected.contains(id) &&
-                                                        selected.length >= 49
-                                                    ? null
-                                                    : (value) =>
-                                                        refreshDialog(() {
-                                                          value == true
-                                                              ? selected
-                                                                  .add(id)
-                                                              : selected
-                                                                  .remove(id);
-                                                        }));
+                                            onChanged: !selected.contains(id) &&
+                                                    selected.length >= 49
+                                                ? null
+                                                : (value) => refreshDialog(() {
+                                                      value == true
+                                                          ? selected.add(id)
+                                                          : selected.remove(id);
+                                                    }));
                                       })),
                         ])),
                 actions: [
@@ -675,7 +667,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
       final byId = {
         for (final member in members) (member['id'] ?? '').toString(): member
       };
-      await showDialog<void>(
+      await showHexoraDialog<void>(
           context: context,
           builder: (dialogContext) => StatefulBuilder(
               builder: (dialogContext, refreshDialog) => AlertDialog(
@@ -741,7 +733,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                       if (_canCreateTeam)
                         TextButton(
                             onPressed: () async {
-                              final confirmed = await showDialog<bool>(
+                              final confirmed = await showHexoraDialog<bool>(
                                   context: dialogContext,
                                   builder: (context) => AlertDialog(
                                           title: Text(_es
@@ -788,79 +780,72 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                   final selected = <String>{};
                                   final remaining =
                                       50 - conversation.participantIds.length;
-                                  final chosen = await showDialog<List<String>>(
-                                      context: dialogContext,
-                                      builder: (context) => StatefulBuilder(
-                                          builder: (context, update) =>
-                                              AlertDialog(
-                                                title: Text(_es
-                                                    ? 'Añadir participantes'
-                                                    : 'Add participants'),
-                                                content: SizedBox(
-                                                    width: 400,
-                                                    height: 320,
-                                                    child: Column(children: [
-                                                      Text(_es
-                                                          ? '${selected.length}/$remaining plazas seleccionadas'
-                                                          : '${selected.length}/$remaining places selected'),
-                                                      const SizedBox(height: 8),
-                                                      Expanded(
-                                                          child: ListView(
-                                                              children:
-                                                                  available.map(
-                                                                      (member) {
-                                                        final id =
-                                                            (member['id'] ?? '')
-                                                                .toString();
-                                                        return CheckboxListTile(
-                                                            value: selected
-                                                                .contains(id),
-                                                            title: Text((member[
-                                                                        'name'] ??
-                                                                    member[
-                                                                        'userName'] ??
-                                                                    id)
-                                                                .toString()),
-                                                            onChanged: !selected
-                                                                        .contains(
-                                                                            id) &&
-                                                                    selected.length >=
-                                                                        remaining
-                                                                ? null
-                                                                : (value) =>
-                                                                    update(() {
-                                                                      if (value ==
-                                                                          true) {
-                                                                        selected
-                                                                            .add(id);
-                                                                      } else {
-                                                                        selected
-                                                                            .remove(id);
-                                                                      }
-                                                                    }));
-                                                      }).toList())),
-                                                    ])),
-                                                actions: [
-                                                  TextButton(
-                                                      onPressed: () =>
-                                                          Navigator.pop(
-                                                              context),
-                                                      child: Text(_es
-                                                          ? 'Cancelar'
-                                                          : 'Cancel')),
-                                                  FilledButton(
-                                                      onPressed: selected
-                                                              .isEmpty
-                                                          ? null
-                                                          : () => Navigator.pop(
-                                                              context,
-                                                              selected
-                                                                  .toList()),
-                                                      child: Text(_es
-                                                          ? 'Añadir'
-                                                          : 'Add'))
-                                                ],
-                                              )));
+                                  final chosen =
+                                      await showHexoraDialog<List<String>>(
+                                          context: dialogContext,
+                                          builder: (context) => StatefulBuilder(
+                                              builder:
+                                                  (context, update) =>
+                                                      AlertDialog(
+                                                        title: Text(_es
+                                                            ? 'Añadir participantes'
+                                                            : 'Add participants'),
+                                                        content: SizedBox(
+                                                            width: 400,
+                                                            height: 320,
+                                                            child: Column(
+                                                                children: [
+                                                                  Text(_es
+                                                                      ? '${selected.length}/$remaining plazas seleccionadas'
+                                                                      : '${selected.length}/$remaining places selected'),
+                                                                  const SizedBox(
+                                                                      height:
+                                                                          8),
+                                                                  Expanded(
+                                                                      child: ListView(
+                                                                          children: available.map((member) {
+                                                                    final id = (member['id'] ??
+                                                                            '')
+                                                                        .toString();
+                                                                    return CheckboxListTile(
+                                                                        value: selected.contains(
+                                                                            id),
+                                                                        title: Text((member['name'] ??
+                                                                                member['userName'] ??
+                                                                                id)
+                                                                            .toString()),
+                                                                        onChanged: !selected.contains(id) && selected.length >= remaining
+                                                                            ? null
+                                                                            : (value) => update(() {
+                                                                                  if (value == true) {
+                                                                                    selected.add(id);
+                                                                                  } else {
+                                                                                    selected.remove(id);
+                                                                                  }
+                                                                                }));
+                                                                  }).toList())),
+                                                                ])),
+                                                        actions: [
+                                                          TextButton(
+                                                              onPressed: () =>
+                                                                  Navigator.pop(
+                                                                      context),
+                                                              child: Text(_es
+                                                                  ? 'Cancelar'
+                                                                  : 'Cancel')),
+                                                          FilledButton(
+                                                              onPressed: selected
+                                                                      .isEmpty
+                                                                  ? null
+                                                                  : () => Navigator.pop(
+                                                                      context,
+                                                                      selected
+                                                                          .toList()),
+                                                              child: Text(_es
+                                                                  ? 'Añadir'
+                                                                  : 'Add'))
+                                                        ],
+                                                      )));
                                   if (chosen == null || chosen.isEmpty) return;
                                   try {
                                     await _api.addParticipants(widget.groupId,
@@ -892,7 +877,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
       String? actionLabel}) async {
     final name = TextEditingController(text: initialValue);
     final description = TextEditingController();
-    return showDialog<(String, String)>(
+    return showHexoraDialog<(String, String)>(
         context: context,
         builder: (context) => AlertDialog(
               title: Text(title),
@@ -995,7 +980,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
   void _showIssueDetails(BusinessChatConversation conversation) {
     final issue = conversation.issue;
     if (issue == null) return;
-    showDialog<void>(
+    showHexoraDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
               title: Text(issue['title']?.toString() ?? conversation.title),
@@ -1100,15 +1085,13 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
       Expanded(child: LayoutBuilder(builder: (context, constraints) {
         final narrow = constraints.maxWidth < 700;
         const sidebarW = 280.0;
-        final chatWidth = narrow
-            ? constraints.maxWidth
-            : constraints.maxWidth - sidebarW - 1;
+        final chatWidth =
+            narrow ? constraints.maxWidth : constraints.maxWidth - sidebarW - 1;
         return Row(children: [
           if (!narrow || !_showChatOnNarrow)
             SizedBox(
                 width: narrow ? constraints.maxWidth : sidebarW,
-                child: NavigationSurface(
-                    builder: (sidebarCtx) {
+                child: NavigationSurface(builder: (sidebarCtx) {
                   final sc = Theme.of(sidebarCtx).colorScheme;
                   if (_conversations.isEmpty) {
                     return Center(
@@ -1179,8 +1162,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                    fontSize: 12,
-                                    color: sc.onSurfaceVariant)),
+                                    fontSize: 12, color: sc.onSurfaceVariant)),
                             trailing: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -1192,8 +1174,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                             color: sc.onSurfaceVariant)),
                                   if (conversation.unreadCount > 0)
                                     Padding(
-                                        padding:
-                                            const EdgeInsets.only(top: 2),
+                                        padding: const EdgeInsets.only(top: 2),
                                         child: Badge(
                                             label: Text(
                                                 '${conversation.unreadCount}'))),
@@ -1371,8 +1352,8 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                       showSender: showSender,
                                       canEdit: canEdit,
                                       canDelete: canDelete,
-                                      maxWidth: chatWidth *
-                                          (narrow ? 0.85 : 0.65),
+                                      maxWidth:
+                                          chatWidth * (narrow ? 0.85 : 0.65),
                                       narrow: narrow,
                                       es: _es,
                                       onAction: _messageAction,
@@ -1387,9 +1368,8 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                       child: Row(children: [
                         HexoraButton.iconOnly(
                             icon: Icons.attach_file,
-                            onPressed: _sending || _selected == null
-                                ? null
-                                : _attach,
+                            onPressed:
+                                _sending || _selected == null ? null : _attach,
                             tooltip: _es
                                 ? 'Adjuntar foto o PDF'
                                 : 'Attach photo or PDF',
@@ -1465,6 +1445,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
 
   void _showMobileActions() {
     showModalBottomSheet(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
         context: context,
         builder: (ctx) => SafeArea(
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -1532,8 +1513,8 @@ class _MessageBubbleState extends State<_MessageBubble> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
@@ -1581,8 +1562,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
                               onPressed: () =>
                                   widget.onAttachment(widget.message),
                               icon: Icon(
-                                  (widget.message.attachment!['mimeType'] ??
-                                              '')
+                                  (widget.message.attachment!['mimeType'] ?? '')
                                           .toString()
                                           .startsWith('image/')
                                       ? Icons.image_outlined
@@ -1590,9 +1570,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
                                   size: 16),
                               label: Text(
                                 (widget.message.attachment!['fileName'] ??
-                                        (widget.es
-                                            ? 'Adjunto'
-                                            : 'Attachment'))
+                                        (widget.es ? 'Adjunto' : 'Attachment'))
                                     .toString(),
                                 style: const TextStyle(fontSize: 12),
                               ),
@@ -1605,8 +1583,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
                             children: [
                               Text(
                                 '${DateFormat('HH:mm').format(widget.message.createdAt.toLocal())}${widget.message.editedAt != null ? (widget.es ? ' · Editado' : ' · Edited') : ''}',
-                                style:
-                                    Theme.of(context).textTheme.labelSmall,
+                                style: Theme.of(context).textTheme.labelSmall,
                               ),
                               if (hasActions &&
                                   (widget.mine || !widget.showSender)) ...[
@@ -1637,13 +1614,11 @@ class _MessageBubbleState extends State<_MessageBubble> {
           child: PopupMenuButton<String>(
             padding: EdgeInsets.zero,
             iconSize: 14,
-            onSelected: (value) =>
-                widget.onAction(widget.message, value),
+            onSelected: (value) => widget.onAction(widget.message, value),
             itemBuilder: (_) => [
               if (widget.canEdit)
                 PopupMenuItem(
-                    value: 'edit',
-                    child: Text(widget.es ? 'Editar' : 'Edit')),
+                    value: 'edit', child: Text(widget.es ? 'Editar' : 'Edit')),
               if (widget.canDelete)
                 PopupMenuItem(
                     value: 'delete',

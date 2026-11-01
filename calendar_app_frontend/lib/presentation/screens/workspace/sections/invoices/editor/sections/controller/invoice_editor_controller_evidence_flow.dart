@@ -152,7 +152,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     final title = (_lastOcrImageName ?? '').trim().isEmpty
         ? l.invoiceLinesModePhoto
         : _lastOcrImageName!.trim();
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final cs = Theme.of(dialogContext).colorScheme;
@@ -408,7 +408,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
         return;
       }
 
-      await showDialog<void>(
+      await showHexoraDialog<void>(
         context: context,
         builder: (dialogContext) {
           final l = AppLocalizations.of(dialogContext)!;
@@ -778,7 +778,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
         if (reason == null) return;
         _issuedChangeReason = reason;
       } else if (editing && confirmIfEditing) {
-        final confirmed = await showDialog<bool>(
+        final confirmed = await showHexoraDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
             title: const Text('Update Draft Invoice'),
@@ -866,7 +866,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     final formKey = GlobalKey<FormState>();
     final isEs = Localizations.localeOf(context).languageCode == 'es';
     try {
-      return await showDialog<String>(
+      return await showHexoraDialog<String>(
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: Text(isEs ? 'Confirmar cambios' : 'Confirm changes'),
@@ -1184,7 +1184,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     }
 
     if (!context.mounted) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.invoiceIssueConfirmTitle),
@@ -1326,7 +1326,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     final draft = _savedInvoice;
     if (draft == null) return;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.invoiceDraftRemoveTitle),
@@ -1404,7 +1404,7 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
 
   Future<void> deleteDraftById(BuildContext context, Invoice draft) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.invoiceDraftRemoveTitle),

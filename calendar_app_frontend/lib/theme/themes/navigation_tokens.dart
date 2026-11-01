@@ -1,4 +1,5 @@
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:flutter/material.dart';
 
 /// Navigation-only sizing. Do not apply these values to forms or body text.
@@ -18,7 +19,7 @@ abstract final class NavigationTokens {
   static const double radius = 8;
   static const double indicatorWidth = 3;
   static const double mobileBreakpoint = 760;
-  static const Duration motion = Duration(milliseconds: 180);
+  static const Duration motion = HexoraMotion.standard;
 
   // App shell (global bar + contextual toolbar).
   static const double globalBarHeight = 56;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/shared/widgets/client_search_select.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 
 enum DocumentClientMode { existing, manual }
 
@@ -79,10 +80,8 @@ class DocumentClientStep extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final canUseManual = allowManual && manual != null;
-        final reducedMotion =
-            MediaQuery.maybeOf(context)?.disableAnimations ?? false;
         final duration =
-            reducedMotion ? Duration.zero : const Duration(milliseconds: 220);
+            HexoraMotion.duration(context, HexoraMotion.navigation);
 
         Widget existingContent() {
           final wide = constraints.maxWidth >= twoColumnBreakpoint;
@@ -167,12 +166,12 @@ class DocumentClientStep extends StatelessWidget {
             Expanded(
               child: AnimatedSize(
                 duration: duration,
-                curve: Curves.easeInOutCubic,
+                curve: HexoraMotion.emphasized,
                 alignment: Alignment.topCenter,
                 child: AnimatedSwitcher(
                   duration: duration,
-                  switchInCurve: Curves.easeInOutCubic,
-                  switchOutCurve: Curves.easeInOutCubic,
+                  switchInCurve: HexoraMotion.emphasized,
+                  switchOutCurve: HexoraMotion.emphasized,
                   layoutBuilder: (currentChild, previousChildren) => ClipRect(
                     child: Stack(
                       alignment: Alignment.topCenter,

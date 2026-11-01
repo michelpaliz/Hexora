@@ -5,6 +5,8 @@ import 'package:hexora/services/emails/email_api.dart';
 import '../invoice_email_widgets.dart';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -110,6 +112,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
   Future<void> _openSendInvoice({required bool canSend}) async {
     if (!canSend) return;
     await showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -234,6 +237,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
 
   void _openDetailsDialog(BuildContext context) {
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,

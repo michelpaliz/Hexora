@@ -198,7 +198,7 @@ Widget _composeRecipientsCard(
           ],
           // ── CC / BCC expanded fields ──────────────────────────────
           AnimatedSize(
-            duration: const Duration(milliseconds: 200),
+            duration: HexoraMotion.duration(context, HexoraMotion.standard),
             alignment: Alignment.topCenter,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

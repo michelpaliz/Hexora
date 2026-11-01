@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'dart:ui' show FontFeature, PointerDeviceKind;
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/expenses/expenses_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/form_sections/expense_document_totals_fields.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/form_sections/provider_picker.dart';
@@ -790,7 +792,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     final total = _formatAmountOrText(item['total'] ?? '');
     String? deleteError;
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
@@ -1630,7 +1632,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       setState(() => _suspendBackgroundPreview = true);
     }
     try {
-      return await showDialog<bool>(
+      return await showHexoraDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (dialogContext) => _OcrReprocessReviewDialog(
@@ -3100,7 +3102,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (context) {
         return Dialog(
@@ -3362,7 +3364,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     final t = AppTypography.of(context);
 
     try {
-      await showDialog<void>(
+      await showHexoraDialog<void>(
         context: context,
         builder: (context) {
           final deleteIds = <String>{...initialDeleteIds};

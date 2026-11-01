@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/notifications/user_invitation_status.dart';
@@ -84,6 +85,7 @@ class EventActionManager {
 
     if (isWide) {
       showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
         context: context,
         isScrollControlled: true,
         useSafeArea: true,

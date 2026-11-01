@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/presentation/utils/validation/email_validator.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -727,7 +728,8 @@ class BillingProfileSheetForm extends StatelessWidget {
                 child: Row(
                   children: [
                     AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
+                      duration:
+                          HexoraMotion.duration(context, HexoraMotion.standard),
                       child: hasChanges
                           ? Row(
                               key: const ValueKey('dirty'),

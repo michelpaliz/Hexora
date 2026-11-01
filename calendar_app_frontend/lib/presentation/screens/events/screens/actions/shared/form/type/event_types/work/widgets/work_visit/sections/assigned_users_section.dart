@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/user/user.dart';
 
@@ -35,7 +36,7 @@ class AssignedUsersSection extends StatelessWidget {
     List<User>? result;
 
     if (isDesktop) {
-      result = await showDialog<List<User>>(
+      result = await showHexoraDialog<List<User>>(
         context: context,
         builder: (_) => _WorkerPickerDialog(
           available: available,
@@ -207,8 +208,8 @@ class _WorkerPickerBodyState extends State<_WorkerPickerBody> {
                   ),
                   child: Text(
                     '$count',
-                    style: tt.labelMedium
-                        ?.copyWith(color: cs.onPrimaryContainer),
+                    style:
+                        tt.labelMedium?.copyWith(color: cs.onPrimaryContainer),
                   ),
                 ),
             ],
@@ -224,8 +225,7 @@ class _WorkerPickerBodyState extends State<_WorkerPickerBody> {
               final user = widget.available[i];
               final name = widget.nameOf(user);
               final selected = _selectedIds.contains(user.id);
-              final initial =
-                  name.isNotEmpty ? name[0].toUpperCase() : '?';
+              final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
               return Material(
                 color: selected
@@ -302,13 +302,10 @@ class _WorkerPickerBodyState extends State<_WorkerPickerBody> {
           top: false,
           minimum: const EdgeInsets.fromLTRB(20, 12, 20, 16),
           child: FilledButton(
-            onPressed: count == 0
-                ? null
-                : () => Navigator.pop(context, _result),
+            onPressed:
+                count == 0 ? null : () => Navigator.pop(context, _result),
             child: Text(
-              count == 0
-                  ? l.confirm
-                  : '${l.confirm} ($count)',
+              count == 0 ? l.confirm : '${l.confirm} ($count)',
             ),
           ),
         ),

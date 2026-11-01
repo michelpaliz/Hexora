@@ -11,6 +11,8 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
@@ -642,7 +644,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   }
 
   Future<void> _openClientClassificationManager() async {
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (_) => ClientClassificationManagerDialog(
         groupId: widget.group.id,
@@ -839,7 +841,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
 
   Future<void> _showStoredInvoiceZipDownloads() async {
     if (!mounted) return;
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) => _InvoiceZipDownloadsDialog(state: this),
     );
@@ -938,7 +940,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     }
     final l = AppLocalizations.of(context)!;
     final isEs = l.localeName.toLowerCase().startsWith('es');
-    final result = await showDialog<bool>(
+    final result = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(isEs ? 'Tienes cambios sin guardar' : 'Unsaved changes'),
@@ -1167,6 +1169,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
 
   void _openInvoiceDetail(Invoice invoice) {
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -1236,6 +1239,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       return;
     }
     final updated = await showModalBottomSheet<GroupClient>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -1264,6 +1268,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       return;
     }
     final created = await showModalBottomSheet<GroupClient>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -1353,7 +1358,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
 
   Future<void> _deleteInvoice(Invoice invoice) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(
@@ -1412,7 +1417,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
           label: l.details,
           onPressed: () {
             if (!mounted) return;
-            showDialog<void>(
+            showHexoraDialog<void>(
               context: context,
               builder: (_) => AlertDialog(
                 title: Text(l.details),
@@ -1567,7 +1572,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     setState(() => _confirmingIssueAllDrafts = true);
     bool? confirmed;
     try {
-      confirmed = await showDialog<bool>(
+      confirmed = await showHexoraDialog<bool>(
         context: context,
         useRootNavigator: true,
         builder: (dialogContext) => AlertDialog(
@@ -1667,7 +1672,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
 
   Future<void> _issueInvoice(Invoice invoice) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       useRootNavigator: true,
       builder: (dialogContext) => AlertDialog(
@@ -1713,7 +1718,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     if (mounted) {
       setState(() => _disableReceiptPreviewInteraction = true);
     }
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       useRootNavigator: true,
       builder: (dialogContext) => AlertDialog(
@@ -1762,7 +1767,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
 
   Future<void> _deleteReceipt(Receipt receipt) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.groupReceiptsRemoveDraftTitle),
@@ -1863,7 +1868,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         _updatingReceiptDeliveryIds.contains(receipt.id)) {
       return;
     }
-    final selection = await showDialog<ReceiptMarkSentSelection>(
+    final selection = await showHexoraDialog<ReceiptMarkSentSelection>(
       context: context,
       builder: (_) => const ReceiptMarkSentDialog(),
     );
@@ -1894,7 +1899,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         _updatingReceiptDeliveryIds.contains(receipt.id)) {
       return;
     }
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => const ReceiptMarkUnsentDialog(),
     );
@@ -1945,7 +1950,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     String? fileName;
     String? errorText;
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(

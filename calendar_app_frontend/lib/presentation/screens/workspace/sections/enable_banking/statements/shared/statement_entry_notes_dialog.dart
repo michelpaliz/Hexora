@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 
 import '../statements_controller.dart';
 import 'statements_shared_utils.dart';
@@ -17,7 +18,7 @@ class StatementEntryNotesDialog {
     );
 
     try {
-      await showDialog<void>(
+      await showHexoraDialog<void>(
         context: context,
         builder: (dialogContext) {
           var saving = false;

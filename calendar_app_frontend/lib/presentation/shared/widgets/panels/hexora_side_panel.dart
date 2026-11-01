@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 /// Standard shell for side-panel content.
@@ -298,7 +299,8 @@ class HexoraSidePanelHost {
       barrierDismissible: barrierDismissible,
       barrierLabel: barrierLabel ?? localizations.modalBarrierDismissLabel,
       barrierColor: Colors.black.withValues(alpha: 0.34),
-      transitionDuration: const Duration(milliseconds: 240),
+      transitionDuration:
+          HexoraMotion.duration(context, HexoraMotion.navigation),
       routeSettings: settings,
       pageBuilder: (dialogContext, animation, secondaryAnimation) {
         final media = MediaQuery.of(dialogContext);
@@ -344,8 +346,8 @@ class HexoraSidePanelHost {
             MediaQuery.sizeOf(context).width >= mobileBreakpoint;
         final curved = CurvedAnimation(
           parent: animation,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
+          curve: HexoraMotion.enter,
+          reverseCurve: HexoraMotion.exit,
         );
         final offset = Tween<Offset>(
           begin: overlaysPage ? const Offset(1, 0) : const Offset(0, 1),
@@ -400,8 +402,6 @@ class HexoraSidePanelLayout extends StatelessWidget {
   final double minContentWidth;
   final Color? backgroundColor;
 
-  static const Duration _duration = Duration(milliseconds: 220);
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -416,14 +416,14 @@ class HexoraSidePanelLayout extends StatelessWidget {
         final open = panel != null;
         final media = MediaQuery.of(context);
         final motionDuration =
-            media.disableAnimations ? Duration.zero : _duration;
+            media.disableAnimations ? Duration.zero : HexoraMotion.navigation;
 
         return Stack(
           fit: StackFit.expand,
           children: [
             AnimatedPadding(
               duration: motionDuration,
-              curve: Curves.easeOutCubic,
+              curve: HexoraMotion.enter,
               padding: EdgeInsets.only(right: open && docked ? panelWidth : 0),
               child: child,
             ),
@@ -436,8 +436,8 @@ class HexoraSidePanelLayout extends StatelessWidget {
                 ignoring: !open,
                 child: AnimatedSwitcher(
                   duration: motionDuration,
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
+                  switchInCurve: HexoraMotion.enter,
+                  switchOutCurve: HexoraMotion.exit,
                   transitionBuilder: (panelChild, animation) => SlideTransition(
                     position: Tween<Offset>(
                       begin: const Offset(1, 0),

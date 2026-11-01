@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
@@ -46,15 +47,18 @@ class _InvoiceAccountantCompareViewState
   bool _filtersExpanded = false;
   Map<String, dynamic>? _selectedRow;
 
-  bool get _isEs =>
-      Localizations.localeOf(context).languageCode.toLowerCase().startsWith('es');
+  bool get _isEs => Localizations.localeOf(context)
+      .languageCode
+      .toLowerCase()
+      .startsWith('es');
   String _tx(String es, String en) => _isEs ? es : en;
 
   @override
   void initState() {
     super.initState();
     _searchCtrl.addListener(() {
-      if (mounted) setState(() => _search = _searchCtrl.text.trim().toLowerCase());
+      if (mounted)
+        setState(() => _search = _searchCtrl.text.trim().toLowerCase());
     });
   }
 
@@ -100,8 +104,8 @@ class _InvoiceAccountantCompareViewState
   Future<void> _compare() async {
     final picked = _file;
     if (picked == null || picked.bytes == null) {
-      setState(() =>
-          _error = _tx('Debes subir un Excel.', 'You must upload an Excel file.'));
+      setState(() => _error =
+          _tx('Debes subir un Excel.', 'You must upload an Excel file.'));
       return;
     }
     setState(() {
@@ -131,8 +135,8 @@ class _InvoiceAccountantCompareViewState
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text(
-                _tx('No se pudo comparar el Excel.', 'Could not compare the Excel.'))),
+            content: Text(_tx('No se pudo comparar el Excel.',
+                'Could not compare the Excel.'))),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -142,13 +146,19 @@ class _InvoiceAccountantCompareViewState
   List<Map<String, dynamic>> get _rows {
     final raw = _response?['rows'];
     if (raw is! List) return const [];
-    return raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    return raw
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
   }
 
   List<Map<String, dynamic>> get _missingInAccountant {
     final raw = _response?['missingInAccountant'];
     if (raw is! List) return const [];
-    return raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    return raw
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
   }
 
   List<Map<String, dynamic>> get _visibleItems {
@@ -296,7 +306,8 @@ class _InvoiceAccountantCompareViewState
               color: cs.secondary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(Icons.compare_arrows_rounded, size: 18, color: cs.secondary),
+            child: Icon(Icons.compare_arrows_rounded,
+                size: 18, color: cs.secondary),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -341,7 +352,9 @@ class _InvoiceAccountantCompareViewState
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    hasFile ? Icons.description_outlined : Icons.upload_file_rounded,
+                    hasFile
+                        ? Icons.description_outlined
+                        : Icons.upload_file_rounded,
                     size: 14,
                     color: hasFile ? cs.secondary : cs.onSurfaceVariant,
                   ),
@@ -390,8 +403,7 @@ class _InvoiceAccountantCompareViewState
             style: FilledButton.styleFrom(
               backgroundColor: cs.secondary,
               foregroundColor: cs.onSecondary,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               shape: RoundedRectangleBorder(
@@ -422,17 +434,14 @@ class _InvoiceAccountantCompareViewState
       child: Column(
         children: [
           InkWell(
-            onTap: () =>
-                setState(() => _filtersExpanded = !_filtersExpanded),
+            onTap: () => setState(() => _filtersExpanded = !_filtersExpanded),
             borderRadius: BorderRadius.vertical(
               top: const Radius.circular(12),
-              bottom: _filtersExpanded
-                  ? Radius.zero
-                  : const Radius.circular(12),
+              bottom:
+                  _filtersExpanded ? Radius.zero : const Radius.circular(12),
             ),
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
                   Icon(Icons.tune_rounded,
@@ -460,8 +469,7 @@ class _InvoiceAccountantCompareViewState
                   const Spacer(),
                   Text(
                     '${_tx('Tolerancia', 'Tolerance')}: ',
-                    style:
-                        TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+                    style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
                   ),
                   SizedBox(
                     width: 58,
@@ -476,14 +484,12 @@ class _InvoiceAccountantCompareViewState
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(7),
                           borderSide: BorderSide(
-                              color: cs.outlineVariant
-                                  .withValues(alpha: 0.4)),
+                              color: cs.outlineVariant.withValues(alpha: 0.4)),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(7),
                           borderSide: BorderSide(
-                              color: cs.outlineVariant
-                                  .withValues(alpha: 0.3)),
+                              color: cs.outlineVariant.withValues(alpha: 0.3)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(7),
@@ -506,9 +512,7 @@ class _InvoiceAccountantCompareViewState
             ),
           ),
           if (_filtersExpanded) ...[
-            Divider(
-                height: 1,
-                color: cs.outlineVariant.withValues(alpha: 0.2)),
+            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.2)),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
               child: Wrap(
@@ -532,8 +536,7 @@ class _InvoiceAccountantCompareViewState
                             value: 'void',
                             child: Text(_tx('Anuladas', 'Void'))),
                       ],
-                      onChanged: (v) =>
-                          setState(() => _status = v ?? 'issued'),
+                      onChanged: (v) => setState(() => _status = v ?? 'issued'),
                       cs: cs,
                     ),
                   ),
@@ -544,11 +547,9 @@ class _InvoiceAccountantCompareViewState
                       value: _clientId,
                       items: [
                         DropdownMenuItem<String?>(
-                            value: null,
-                            child: Text(_tx('Todos', 'All'))),
-                        ...widget.clients.map((c) =>
-                            DropdownMenuItem<String?>(
-                                value: c.id, child: Text(c.name))),
+                            value: null, child: Text(_tx('Todos', 'All'))),
+                        ...widget.clients.map((c) => DropdownMenuItem<String?>(
+                            value: c.id, child: Text(c.name))),
                       ],
                       onChanged: (v) => setState(() => _clientId = v),
                       cs: cs,
@@ -561,8 +562,7 @@ class _InvoiceAccountantCompareViewState
                       value: _currency,
                       items: [
                         DropdownMenuItem<String?>(
-                            value: null,
-                            child: Text(_tx('Todas', 'All'))),
+                            value: null, child: Text(_tx('Todas', 'All'))),
                         const DropdownMenuItem<String?>(
                             value: 'EUR', child: Text('EUR')),
                       ],
@@ -583,8 +583,7 @@ class _InvoiceAccountantCompareViewState
                         _currency = null;
                         _status = 'issued';
                       }),
-                      icon:
-                          const Icon(Icons.restart_alt_rounded, size: 14),
+                      icon: const Icon(Icons.restart_alt_rounded, size: 14),
                       label: Text(_tx('Limpiar', 'Reset'),
                           style: const TextStyle(fontSize: 12)),
                       style: TextButton.styleFrom(
@@ -615,11 +614,9 @@ class _InvoiceAccountantCompareViewState
       initialValue: value,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle:
-            TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+        labelStyle: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
         isDense: true,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide:
@@ -632,8 +629,7 @@ class _InvoiceAccountantCompareViewState
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide:
-              BorderSide(color: cs.secondary.withValues(alpha: 0.6)),
+          borderSide: BorderSide(color: cs.secondary.withValues(alpha: 0.6)),
         ),
       ),
       style: const TextStyle(fontSize: 12),
@@ -649,8 +645,7 @@ class _InvoiceAccountantCompareViewState
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
@@ -664,16 +659,14 @@ class _InvoiceAccountantCompareViewState
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.calendar_today_outlined,
-                size: 12,
-                color: hasValue ? cs.secondary : cs.onSurfaceVariant),
+                size: 12, color: hasValue ? cs.secondary : cs.onSurfaceVariant),
             const SizedBox(width: 5),
             Text(
               '$label: ${value ?? '—'}',
               style: TextStyle(
                 fontSize: 12,
                 color: hasValue ? cs.secondary : cs.onSurfaceVariant,
-                fontWeight:
-                    hasValue ? FontWeight.w600 : FontWeight.normal,
+                fontWeight: hasValue ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
           ],
@@ -686,8 +679,7 @@ class _InvoiceAccountantCompareViewState
 
   Widget _errorBanner(ColorScheme cs) {
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: cs.errorContainer.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(10),
@@ -698,13 +690,12 @@ class _InvoiceAccountantCompareViewState
           Icon(Icons.error_outline_rounded, size: 16, color: cs.error),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(_error!,
-                style: TextStyle(fontSize: 12, color: cs.error)),
+            child:
+                Text(_error!, style: TextStyle(fontSize: 12, color: cs.error)),
           ),
           IconButton(
             onPressed: () => setState(() => _error = null),
-            icon: Icon(Icons.close_rounded,
-                size: 14, color: cs.error),
+            icon: Icon(Icons.close_rounded, size: 14, color: cs.error),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),
@@ -767,8 +758,8 @@ class _InvoiceAccountantCompareViewState
     );
   }
 
-  Widget _statChip(IconData icon, String label, String value,
-      Color color, ColorScheme cs) {
+  Widget _statChip(
+      IconData icon, String label, String value, Color color, ColorScheme cs) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
@@ -809,12 +800,17 @@ class _InvoiceAccountantCompareViewState
     final tabs = [
       ('all', _tx('Todas', 'All'), null),
       ('match', _tx('Coinciden', 'Matches'), summary['matchedCount']),
-      ('mismatch', _tx('Diferencias', 'Mismatches'),
-          summary['mismatchCount']),
-      ('missing_in_hexora', _tx('Sin Hexora', 'No Hexora'),
-          summary['missingInHexoraCount']),
-      ('missing_in_accountant', _tx('Sin asesoría', 'No accountant'),
-          summary['missingInAccountantCount']),
+      ('mismatch', _tx('Diferencias', 'Mismatches'), summary['mismatchCount']),
+      (
+        'missing_in_hexora',
+        _tx('Sin Hexora', 'No Hexora'),
+        summary['missingInHexoraCount']
+      ),
+      (
+        'missing_in_accountant',
+        _tx('Sin asesoría', 'No accountant'),
+        summary['missingInAccountantCount']
+      ),
     ];
     return Row(
       children: [
@@ -846,25 +842,24 @@ class _InvoiceAccountantCompareViewState
                   color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
               prefixIcon: Icon(Icons.search_rounded,
                   size: 15, color: cs.onSurfaceVariant),
-              prefixIconConstraints:
-                  const BoxConstraints(minWidth: 34),
+              prefixIconConstraints: const BoxConstraints(minWidth: 34),
               isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 8),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                    color: cs.outlineVariant.withValues(alpha: 0.4)),
+                borderSide:
+                    BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                    color: cs.outlineVariant.withValues(alpha: 0.3)),
+                borderSide:
+                    BorderSide(color: cs.outlineVariant.withValues(alpha: 0.3)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                    color: cs.secondary.withValues(alpha: 0.6)),
+                borderSide:
+                    BorderSide(color: cs.secondary.withValues(alpha: 0.6)),
               ),
             ),
           ),
@@ -873,15 +868,13 @@ class _InvoiceAccountantCompareViewState
     );
   }
 
-  Widget _tabChip(
-      String id, String label, dynamic count, ColorScheme cs) {
+  Widget _tabChip(String id, String label, dynamic count, ColorScheme cs) {
     final selected = _tab == id;
     return GestureDetector(
       onTap: () => setState(() => _tab = id),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: selected
               ? cs.secondary.withValues(alpha: 0.12)
@@ -900,17 +893,14 @@ class _InvoiceAccountantCompareViewState
               label,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight:
-                    selected ? FontWeight.w700 : FontWeight.w500,
-                color:
-                    selected ? cs.secondary : cs.onSurfaceVariant,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: selected ? cs.secondary : cs.onSurfaceVariant,
               ),
             ),
             if (count != null) ...[
               const SizedBox(width: 5),
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 5, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                 decoration: BoxDecoration(
                   color: selected
                       ? cs.secondary.withValues(alpha: 0.2)
@@ -922,9 +912,7 @@ class _InvoiceAccountantCompareViewState
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: selected
-                        ? cs.secondary
-                        : cs.onSurfaceVariant,
+                    color: selected ? cs.secondary : cs.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -945,14 +933,12 @@ class _InvoiceAccountantCompareViewState
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.search_off_rounded,
-                size: 32,
-                color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
+                size: 32, color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
             const SizedBox(height: 8),
             Text(
               _tx('No hay resultados para este filtro.',
                   'No results for this filter.'),
-              style:
-                  TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+              style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
             ),
           ],
         ),
@@ -969,8 +955,7 @@ class _InvoiceAccountantCompareViewState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-                width: 340,
-                child: _listPanel(items, cs, t, singleCol: false)),
+                width: 340, child: _listPanel(items, cs, t, singleCol: false)),
             const SizedBox(width: 10),
             Expanded(
               child: _selectedRow != null
@@ -988,16 +973,14 @@ class _InvoiceAccountantCompareViewState
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.2)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
       ),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.touch_app_outlined,
-                size: 28,
-                color: cs.onSurfaceVariant.withValues(alpha: 0.25)),
+                size: 28, color: cs.onSurfaceVariant.withValues(alpha: 0.25)),
             const SizedBox(height: 8),
             Text(
               _tx('Selecciona una fila para ver el detalle',
@@ -1014,20 +997,18 @@ class _InvoiceAccountantCompareViewState
 
   // ─── List panel ───────────────────────────────────────────────────────────────
 
-  Widget _listPanel(List<Map<String, dynamic>> items, ColorScheme cs,
-      AppTypography t,
+  Widget _listPanel(
+      List<Map<String, dynamic>> items, ColorScheme cs, AppTypography t,
       {required bool singleCol}) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
-        border:
-            Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: cs.surfaceContainerHighest.withValues(alpha: 0.2),
               borderRadius:
@@ -1046,15 +1027,12 @@ class _InvoiceAccountantCompareViewState
               ],
             ),
           ),
-          Divider(
-              height: 1,
-              color: cs.outlineVariant.withValues(alpha: 0.2)),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.2)),
           Expanded(
             child: ListView.separated(
               itemCount: items.length,
               separatorBuilder: (_, __) => Divider(
-                  height: 1,
-                  color: cs.outlineVariant.withValues(alpha: 0.12)),
+                  height: 1, color: cs.outlineVariant.withValues(alpha: 0.12)),
               itemBuilder: (context, index) =>
                   _listRow(items[index], cs, t, singleCol: singleCol),
             ),
@@ -1064,8 +1042,7 @@ class _InvoiceAccountantCompareViewState
     );
   }
 
-  Widget _listRow(Map<String, dynamic> row, ColorScheme cs,
-      AppTypography t,
+  Widget _listRow(Map<String, dynamic> row, ColorScheme cs, AppTypography t,
       {required bool singleCol}) {
     final missingInAccountant = row['_missingInAccountant'] == true;
     final status = missingInAccountant
@@ -1080,14 +1057,13 @@ class _InvoiceAccountantCompareViewState
         ? Map<String, dynamic>.from(row['accountant'])
         : const <String, dynamic>{};
     final clientName =
-        (accountant['clientName'] ?? hexora['clientName'] ?? '—')
-            .toString();
+        (accountant['clientName'] ?? hexora['clientName'] ?? '—').toString();
     final total = hexora['total'] ?? accountant['total'];
 
     return InkWell(
       onTap: () {
         if (singleCol) {
-          showDialog(
+          showHexoraDialog(
             context: context,
             builder: (_) => Dialog(
               shape: RoundedRectangleBorder(
@@ -1111,9 +1087,7 @@ class _InvoiceAccountantCompareViewState
         child: Row(
           children: [
             Container(
-                width: 3,
-                height: 54,
-                color: color.withValues(alpha: 0.7)),
+                width: 3, height: 54, color: color.withValues(alpha: 0.7)),
             const SizedBox(width: 10),
             Expanded(
               child: Padding(
@@ -1136,8 +1110,7 @@ class _InvoiceAccountantCompareViewState
                           Text(
                             clientName,
                             style: TextStyle(
-                                fontSize: 11,
-                                color: cs.onSurfaceVariant),
+                                fontSize: 11, color: cs.onSurfaceVariant),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
@@ -1150,8 +1123,7 @@ class _InvoiceAccountantCompareViewState
                           Text(
                             formatAuditMoney(total),
                             style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700),
+                                fontSize: 12, fontWeight: FontWeight.w700),
                           ),
                         const SizedBox(height: 2),
                         Container(
@@ -1208,15 +1180,13 @@ class _InvoiceAccountantCompareViewState
             .toList()
         : const <Map<String, dynamic>>[];
     final clientName =
-        (accountant['clientName'] ?? hexora['clientName'] ?? '—')
-            .toString();
+        (accountant['clientName'] ?? hexora['clientName'] ?? '—').toString();
     final invoiceNumber = (row['invoiceNumber'] ?? '—').toString();
 
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
-        border:
-            Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1238,8 +1208,8 @@ class _InvoiceAccountantCompareViewState
                     color: color.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.receipt_long_outlined,
-                      size: 15, color: color),
+                  child:
+                      Icon(Icons.receipt_long_outlined, size: 15, color: color),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -1248,24 +1218,21 @@ class _InvoiceAccountantCompareViewState
                     children: [
                       Text(invoiceNumber,
                           style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800)),
+                              fontSize: 13, fontWeight: FontWeight.w800)),
                       Text(clientName,
                           style: TextStyle(
-                              fontSize: 11,
-                              color: cs.onSurfaceVariant),
+                              fontSize: 11, color: cs.onSurfaceVariant),
                           overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                        color: color.withValues(alpha: 0.2)),
+                    border: Border.all(color: color.withValues(alpha: 0.2)),
                   ),
                   child: Text(_statusLabel(status),
                       style: TextStyle(
@@ -1285,9 +1252,7 @@ class _InvoiceAccountantCompareViewState
               ],
             ),
           ),
-          Divider(
-              height: 1,
-              color: cs.outlineVariant.withValues(alpha: 0.2)),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.2)),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(14),
@@ -1314,18 +1279,14 @@ class _InvoiceAccountantCompareViewState
                     ],
                   ),
                   const SizedBox(height: 14),
-                  _comparisonTable(
-                      accountant, hexora, deltas, color, cs, t),
+                  _comparisonTable(accountant, hexora, deltas, color, cs, t),
                   if (reasons.isNotEmpty) ...[
                     const SizedBox(height: 14),
-                    Text(
-                        _tx('Motivos detectados', 'Detected reasons'),
+                    Text(_tx('Motivos detectados', 'Detected reasons'),
                         style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700)),
+                            fontSize: 11, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 6),
-                    ...reasons
-                        .map((r) => _reasonRow(r, color, cs, t)),
+                    ...reasons.map((r) => _reasonRow(r, color, cs, t)),
                   ],
                   const SizedBox(height: 14),
                   Wrap(
@@ -1363,8 +1324,7 @@ class _InvoiceAccountantCompareViewState
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.2)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1372,8 +1332,7 @@ class _InvoiceAccountantCompareViewState
           Icon(icon, size: 11, color: cs.onSurfaceVariant),
           const SizedBox(width: 4),
           Text(label,
-              style: TextStyle(
-                  fontSize: 11, color: cs.onSurfaceVariant)),
+              style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
         ],
       ),
     );
@@ -1390,14 +1349,12 @@ class _InvoiceAccountantCompareViewState
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        border:
-            Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 12, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             decoration: BoxDecoration(
               color: cs.surfaceContainerHighest.withValues(alpha: 0.2),
               borderRadius:
@@ -1442,21 +1399,15 @@ class _InvoiceAccountantCompareViewState
               ],
             ),
           ),
-          Divider(
-              height: 1,
-              color: cs.outlineVariant.withValues(alpha: 0.2)),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.2)),
           _tableRow(_tx('Base', 'Base'), accountant['subtotal'],
               hexora['subtotal'], deltas['subtotal'], false, color, cs),
-          Divider(
-              height: 1,
-              color: cs.outlineVariant.withValues(alpha: 0.1)),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.1)),
           _tableRow('IVA', accountant['taxTotal'], hexora['taxTotal'],
               deltas['taxTotal'], false, color, cs),
-          Divider(
-              height: 1,
-              color: cs.outlineVariant.withValues(alpha: 0.1)),
-          _tableRow(_tx('Total', 'Total'), accountant['total'],
-              hexora['total'], deltas['total'], true, color, cs),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.1)),
+          _tableRow(_tx('Total', 'Total'), accountant['total'], hexora['total'],
+              deltas['total'], true, color, cs),
         ],
       ),
     );
@@ -1471,14 +1422,12 @@ class _InvoiceAccountantCompareViewState
     Color color,
     ColorScheme cs,
   ) {
-    final delta = deltaVal is num
-        ? deltaVal.toDouble()
-        : double.tryParse('$deltaVal');
+    final delta =
+        deltaVal is num ? deltaVal.toDouble() : double.tryParse('$deltaVal');
     final hasDelta = delta != null && delta.abs() > 0.001;
 
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       color: isTotal && hasDelta ? color.withValues(alpha: 0.05) : null,
       child: Row(
         children: [
@@ -1488,8 +1437,7 @@ class _InvoiceAccountantCompareViewState
               label,
               style: TextStyle(
                 fontSize: 11,
-                fontWeight:
-                    isTotal ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: isTotal ? FontWeight.w700 : FontWeight.w500,
                 color: cs.onSurfaceVariant,
               ),
             ),
@@ -1501,8 +1449,7 @@ class _InvoiceAccountantCompareViewState
               textAlign: TextAlign.right,
               style: TextStyle(
                   fontSize: 12,
-                  fontWeight:
-                      isTotal ? FontWeight.w700 : FontWeight.w400),
+                  fontWeight: isTotal ? FontWeight.w700 : FontWeight.w400),
             ),
           ),
           Expanded(
@@ -1512,8 +1459,7 @@ class _InvoiceAccountantCompareViewState
               textAlign: TextAlign.right,
               style: TextStyle(
                   fontSize: 12,
-                  fontWeight:
-                      isTotal ? FontWeight.w700 : FontWeight.w400),
+                  fontWeight: isTotal ? FontWeight.w700 : FontWeight.w400),
             ),
           ),
           Expanded(
@@ -1535,8 +1481,8 @@ class _InvoiceAccountantCompareViewState
     );
   }
 
-  Widget _reasonRow(Map<String, dynamic> reason, Color color,
-      ColorScheme cs, AppTypography t) {
+  Widget _reasonRow(Map<String, dynamic> reason, Color color, ColorScheme cs,
+      AppTypography t) {
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -1550,30 +1496,24 @@ class _InvoiceAccountantCompareViewState
         children: [
           Row(
             children: [
-              Icon(Icons.info_outline_rounded,
-                  size: 12, color: color),
+              Icon(Icons.info_outline_rounded, size: 12, color: color),
               const SizedBox(width: 5),
               Expanded(
                 child: Text(
-                  (reason['message'] ?? reason['code'] ?? '')
-                      .toString(),
+                  (reason['message'] ?? reason['code'] ?? '').toString(),
                   style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: color),
+                      fontSize: 11, fontWeight: FontWeight.w700, color: color),
                 ),
               ),
             ],
           ),
-          if (reason['accountant'] != null ||
-              reason['hexora'] != null) ...[
+          if (reason['accountant'] != null || reason['hexora'] != null) ...[
             const SizedBox(height: 4),
             Text(
               '${_tx('Asesoría', 'Accountant')}: ${formatAuditMoney(reason['accountant'])} · '
               'Hexora: ${formatAuditMoney(reason['hexora'])} · '
               'Δ ${formatAuditMoney(reason['delta'])}',
-              style: TextStyle(
-                  fontSize: 11, color: cs.onSurfaceVariant),
+              style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
             ),
           ],
         ],
@@ -1586,16 +1526,13 @@ class _InvoiceAccountantCompareViewState
     return OutlinedButton.icon(
       onPressed: onTap,
       icon: Icon(icon, size: 14, color: color),
-      label: Text(label,
-          style: TextStyle(fontSize: 12, color: color)),
+      label: Text(label, style: TextStyle(fontSize: 12, color: color)),
       style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(
-            horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         minimumSize: Size.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         side: BorderSide(color: color.withValues(alpha: 0.3)),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }

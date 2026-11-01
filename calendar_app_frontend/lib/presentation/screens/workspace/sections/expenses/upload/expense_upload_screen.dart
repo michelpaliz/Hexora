@@ -8,6 +8,8 @@ import 'package:flutter_dropzone/flutter_dropzone.dart';
 import 'package:flutter_dropzone_platform_interface/flutter_dropzone_platform_interface.dart'
     show FlutterDropzonePlatform;
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/services/expenses/expenses_api.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
@@ -1481,7 +1483,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   Future<void> _cancelManualExpenseDraft() async {
     if (_submitting) return;
     if (_hasManualExpenseDraft) {
-      final discard = await showDialog<bool>(
+      final discard = await showHexoraDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: const Text('Descartar cambios'),

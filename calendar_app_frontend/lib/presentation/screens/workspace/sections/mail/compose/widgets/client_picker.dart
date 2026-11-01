@@ -23,7 +23,7 @@ class _ClientSearchField extends StatelessWidget {
           );
 
   Future<void> _openPicker(BuildContext context) async {
-    final result = await showDialog<String>(
+    final result = await showHexoraDialog<String>(
       context: context,
       builder: (_) => _ClientPickerDialog(
         clients: clients,

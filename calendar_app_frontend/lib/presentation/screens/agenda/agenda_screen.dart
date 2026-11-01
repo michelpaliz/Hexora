@@ -1,5 +1,6 @@
 import 'package:hexora/navigation/fab/contextual_fab.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/models/calendar/agenda_model.dart';
 import 'package:hexora/models/calendar/events/event.dart';
@@ -364,8 +365,9 @@ class _AgendaDesktopLayoutState extends State<_AgendaDesktopLayout> {
 
               // Right: event detail panel (slides in)
               AnimatedSize(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
+                duration:
+                    HexoraMotion.duration(context, HexoraMotion.navigation),
+                curve: HexoraMotion.enter,
                 child: _selectedItem != null
                     ? Row(
                         mainAxisSize: MainAxisSize.min,

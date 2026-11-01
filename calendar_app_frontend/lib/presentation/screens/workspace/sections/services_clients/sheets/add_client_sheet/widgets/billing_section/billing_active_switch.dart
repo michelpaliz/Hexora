@@ -17,23 +17,34 @@ class ActiveSwitch extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
-    return SwitchListTile(
-      contentPadding: EdgeInsets.zero,
-      dense: false,
-      value: value,
-      onChanged: onChanged,
-      title: Text(
-        l.active,
-        style: text.bodyLarge!.copyWith(
-          fontWeight: FontWeight.w600,
+    return Row(
+      children: [
+        Icon(
+          value ? Icons.check_circle_outline : Icons.pause_circle_outline,
+          size: 18,
+          color: value ? cs.primary : cs.onSurfaceVariant,
         ),
-      ),
-      subtitle: Text(
-        value ? l.clientWillBeActive : l.clientWillBeInactive,
-        style: text.bodyMedium!.copyWith(
-          color: cs.onSurfaceVariant,
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l.active,
+                style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              Text(
+                value ? l.clientWillBeActive : l.clientWillBeInactive,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: text.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ],
+          ),
         ),
-      ),
+        Switch.adaptive(value: value, onChanged: onChanged),
+      ],
     );
   }
 }

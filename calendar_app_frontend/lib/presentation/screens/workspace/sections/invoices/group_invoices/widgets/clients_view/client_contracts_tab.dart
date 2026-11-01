@@ -1,6 +1,8 @@
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/clients/client_contract.dart';
 import 'package:hexora/services/clients/client_contracts_api.dart';
@@ -97,6 +99,7 @@ class _ClientContractsTabState extends State<ClientContractsTab> {
   }) async {
     try {
       return await showModalBottomSheet<ClientContractFormResult>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
         context: context,
         isScrollControlled: true,
         showDragHandle: true,
@@ -266,7 +269,7 @@ class _ClientContractsTabState extends State<ClientContractsTab> {
 
   Future<void> _handleDelete(ClientContract contract) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.contractDeleteTitle),
@@ -795,8 +798,8 @@ class _ClientContractCardState extends State<_ClientContractCard> {
                   ],
                 ),
               AnimatedSize(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeInOut,
+                duration: HexoraMotion.duration(context, HexoraMotion.standard),
+                curve: HexoraMotion.emphasized,
                 alignment: Alignment.topCenter,
                 child: _expanded
                     ? Column(

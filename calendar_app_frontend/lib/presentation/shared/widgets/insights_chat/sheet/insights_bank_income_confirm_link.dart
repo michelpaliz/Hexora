@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 import 'insights_chat_sheet_base.dart';
@@ -24,15 +25,14 @@ mixin InsightsBankIncomeConfirmLink on InsightsChatSheetStateBase {
     final count = bankIncomeMatchedInvoiceCount(row);
     var submitting = false;
     String? errorMessage;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: sourceContext,
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setConfirmationState) {
           final cs = Theme.of(context).colorScheme;
           final t = AppTypography.of(context);
-          final percent =
-              formatBankIncomeMatchNumber(row['matchScorePercent']);
+          final percent = formatBankIncomeMatchNumber(row['matchScorePercent']);
           final depositDate = bankIncomeCandidateValue(
             row,
             const ['date', 'fecha'],
@@ -395,5 +395,4 @@ mixin InsightsBankIncomeConfirmLink on InsightsChatSheetStateBase {
       ),
     );
   }
-
 }

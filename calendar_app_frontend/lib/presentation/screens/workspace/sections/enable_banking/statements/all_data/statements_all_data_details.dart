@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -57,12 +58,13 @@ class StatementsAllDataDetails {
       barrierDismissible: true,
       barrierLabel: l.close,
       barrierColor: Colors.black.withValues(alpha: 0.28),
-      transitionDuration: const Duration(milliseconds: 260),
+      transitionDuration:
+          HexoraMotion.duration(context, HexoraMotion.navigation),
       transitionBuilder: (_, anim, __, child) => SlideTransition(
         position: Tween<Offset>(
           begin: const Offset(1, 0),
           end: Offset.zero,
-        ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+        ).animate(CurvedAnimation(parent: anim, curve: HexoraMotion.enter)),
         child: child,
       ),
       pageBuilder: (dialogContext, _, __) {
@@ -737,6 +739,7 @@ class _RawDataSection extends StatelessWidget {
           border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
         ),
         child: ExpansionTile(
+          expansionAnimationStyle: HexoraMotion.expansionStyle(context),
           tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
           childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
           shape: const Border(),

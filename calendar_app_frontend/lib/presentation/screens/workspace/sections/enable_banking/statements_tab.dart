@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:provider/provider.dart';
@@ -147,26 +148,26 @@ class _StatementsTabState extends State<StatementsTab>
         : _StepStatus.disabled;
 
     Widget buildAutoImportCard() {
-      final enabled =
-          auth.currentUser?.autoStatementImportEnabled ?? false;
+      final enabled = auth.currentUser?.autoStatementImportEnabled ?? false;
       return Card(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         child: SwitchListTile.adaptive(
           dense: true,
           visualDensity: VisualDensity.compact,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
           title: Text(
             l.autoStatementImportTitle,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+                  fontWeight: FontWeight.w700,
+                ),
           ),
           subtitle: Text(
             l.autoStatementImportHelper,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontSize: 11,
-              color: cs.onSurfaceVariant,
-            ),
+                  fontSize: 11,
+                  color: cs.onSurfaceVariant,
+                ),
           ),
           value: enabled,
           onChanged: _autoStatementImportLoading
@@ -199,25 +200,32 @@ class _StatementsTabState extends State<StatementsTab>
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.cloud_upload_outlined, size: 20, color: cs.onSurfaceVariant),
+                      Icon(Icons.cloud_upload_outlined,
+                          size: 20, color: cs.onSurfaceVariant),
                       const SizedBox(width: 8),
                       Text(
                         l.statementsDragDropTitle,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                              fontWeight: FontWeight.w700,
+                            ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 6),
                   Text(
                     l.statementsDragDropHint,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(fontSize: 11),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     l.statementsFormatsHint,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(fontSize: 11),
                   ),
                   const SizedBox(height: 10),
                   Align(
@@ -227,10 +235,12 @@ class _StatementsTabState extends State<StatementsTab>
                       onPressed: _pickStatementFile,
                       label: Text(l.statementsChooseFile),
                       style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        textStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        textStyle:
+                            Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
                       ),
                     ),
                   ),
@@ -496,9 +506,10 @@ class _StatementsTabState extends State<StatementsTab>
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            fontWeight: FontWeight.w700,
-          )),
+          Text(title,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  )),
           const SizedBox(height: 6),
           if (step == 1) ...[
             Text(l.statementsUploadDescription,
@@ -541,7 +552,7 @@ class _StatementsTabState extends State<StatementsTab>
           ? buildUploadWorkspace()
           : (step == 2 ? buildReviewWorkspace() : buildConfirmWorkspace());
       return AnimatedSwitcher(
-        duration: const Duration(milliseconds: 250),
+        duration: HexoraMotion.duration(context, HexoraMotion.navigation),
         transitionBuilder: (child, animation) {
           final offset = Tween<Offset>(
             begin: const Offset(0.08, 0),
@@ -598,10 +609,10 @@ class _StatementsTabState extends State<StatementsTab>
             tooltip: _collapseLeftPanel
                 ? l.statementsPanelExpand
                 : l.statementsPanelCollapse,
-            onPressed: () => setState(() => _collapseLeftPanel = !_collapseLeftPanel),
-            icon: Icon(_collapseLeftPanel
-                ? Icons.chevron_right
-                : Icons.chevron_left),
+            onPressed: () =>
+                setState(() => _collapseLeftPanel = !_collapseLeftPanel),
+            icon: Icon(
+                _collapseLeftPanel ? Icons.chevron_right : Icons.chevron_left),
           ),
         ],
       );
@@ -611,7 +622,8 @@ class _StatementsTabState extends State<StatementsTab>
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < 720;
         final isTablet = !isMobile && constraints.maxWidth < 1024;
-        final leftCollapsed = isMobile ? false : (isTablet ? _collapseLeftPanel : false);
+        final leftCollapsed =
+            isMobile ? false : (isTablet ? _collapseLeftPanel : false);
 
         if (isMobile) {
           return ListView(
@@ -675,7 +687,8 @@ class _StatementsTabState extends State<StatementsTab>
                           ),
                         ),
                         child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 250),
+                          duration: HexoraMotion.duration(
+                              context, HexoraMotion.navigation),
                           child: KeyedSubtree(
                             key: ValueKey(_activeStep),
                             child: buildLeftPanel(_activeStep),

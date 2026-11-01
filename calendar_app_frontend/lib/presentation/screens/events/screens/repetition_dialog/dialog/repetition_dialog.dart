@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
 import 'package:hexora/models/calendar/recurrence/utils/custom_day_week.dart';
 import 'package:hexora/presentation/screens/events/screens/repetition_dialog/utils/frequency_selector.dart';
@@ -103,7 +104,7 @@ class _RepetitionScreenState extends State<RepetitionScreen> {
   Future<void> _handleRemovePressed() async {
     final l = AppLocalizations.of(context)!;
     if (widget.initialRecurrenceRule != null) {
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showHexoraDialog<bool>(
         context: context,
         builder: (ctx) {
           final t = Theme.of(ctx);

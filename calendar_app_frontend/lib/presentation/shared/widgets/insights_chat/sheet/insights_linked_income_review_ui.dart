@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/insights/insights_api.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:intl/intl.dart';
@@ -904,7 +905,7 @@ mixin InsightsLinkedIncomeReviewUi on InsightsChatSheetStateBase {
     final invoices = linkedIncomeReviewInvoices(row);
     final concept =
         (row['concept'] ?? row['description'])?.toString().trim() ?? '';
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(isEs ? 'Desvincular ingreso' : 'Unlink income'),
@@ -1089,7 +1090,7 @@ mixin InsightsLinkedIncomeReviewUi on InsightsChatSheetStateBase {
       0,
       (total, row) => total + linkedIncomeReviewInvoices(row).length,
     );
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {

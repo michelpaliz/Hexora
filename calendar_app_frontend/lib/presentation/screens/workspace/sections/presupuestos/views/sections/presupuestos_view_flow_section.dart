@@ -483,7 +483,7 @@ extension _GroupInvoicesBudgetsViewFlowSection
     final initial = _issuedEditReasonCtrl.text.trim();
     final controller = TextEditingController(text: initial);
     String? errorText;
-    final result = await showDialog<String>(
+    final result = await showHexoraDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {

@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/presupuestos/presupuestos_api.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 
@@ -112,7 +113,7 @@ class _PresupuestoImageLibraryViewState
     final dot = fileName.lastIndexOf('.');
     final initialName = dot > 0 ? fileName.substring(0, dot) : fileName;
     final controller = TextEditingController(text: initialName);
-    final result = await showDialog<String>(
+    final result = await showHexoraDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(_isEs ? 'Guardar imagen' : 'Save image'),
@@ -144,7 +145,7 @@ class _PresupuestoImageLibraryViewState
 
   Future<void> _delete(PresupuestoLibraryImage image) async {
     if (_deletingId != null) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(_isEs ? 'Eliminar imagen' : 'Delete image'),
@@ -193,7 +194,7 @@ class _PresupuestoImageLibraryViewState
 
   void _preview(PresupuestoLibraryImage image) {
     if (image.readUrl.isEmpty) return;
-    showDialog<void>(
+    showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) => Dialog(
         clipBehavior: Clip.antiAlias,
@@ -504,7 +505,7 @@ Future<PresupuestoLibraryImage?> showPresupuestoImageLibraryPicker(
   required PresupuestosApi api,
   required String groupId,
 }) {
-  return showDialog<PresupuestoLibraryImage>(
+  return showHexoraDialog<PresupuestoLibraryImage>(
     context: context,
     builder: (_) => _PresupuestoImageLibraryPickerDialog(
       api: api,

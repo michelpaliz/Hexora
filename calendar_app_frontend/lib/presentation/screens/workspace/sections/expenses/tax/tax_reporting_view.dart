@@ -1,5 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/services/tax/tax_reporting_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/all_data/statements_all_data_skeleton.dart';
 import 'package:hexora/presentation/shared/utils/formatting/money_format_utils.dart';
@@ -498,8 +499,8 @@ class _FilterSurface extends StatelessWidget {
           if (footer != null) footer!,
         ]);
     return AnimatedSize(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOutCubic,
+      duration: HexoraMotion.duration(context, HexoraMotion.standard),
+      curve: HexoraMotion.enter,
       child: ConstrainedBox(
         key: const ValueKey('tax-period-filter'),
         constraints: const BoxConstraints(minHeight: _summaryBarItemHeight),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -38,6 +39,7 @@ class _StatementsMobileAnalyticsViewState
   void _openFilterSheet(BuildContext context) {
     final controller = context.read<StatementsAnalyticsController>();
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       useSafeArea: true,

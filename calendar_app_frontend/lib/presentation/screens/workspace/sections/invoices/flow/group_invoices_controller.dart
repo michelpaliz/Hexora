@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -187,6 +189,7 @@ class GroupInvoicesController extends ChangeNotifier {
     _set(_s.copyWith(busyProfile: true));
     try {
       final updated = await showModalBottomSheet<BillingProfile>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
         context: context,
         isScrollControlled: true,
         showDragHandle: true,
@@ -209,6 +212,7 @@ class GroupInvoicesController extends ChangeNotifier {
 
   Future<void> openEditClient(BuildContext context, GroupClient client) async {
     final updated = await showModalBottomSheet<GroupClient>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -247,7 +251,7 @@ class GroupInvoicesController extends ChangeNotifier {
   }
 
   Future<void> deleteInvoice(BuildContext context, Invoice invoice) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(

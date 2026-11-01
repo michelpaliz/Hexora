@@ -22,7 +22,7 @@ extension _InvoiceListDialogs on _InvoicesTabListState {
     }).toList();
 
     if (!mounted) return;
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final cs = Theme.of(dialogContext).colorScheme;
@@ -206,7 +206,7 @@ extension _InvoiceListDialogs on _InvoicesTabListState {
       return;
     }
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final cs = Theme.of(dialogContext).colorScheme;

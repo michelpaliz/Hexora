@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
@@ -136,7 +137,7 @@ class _AddClientSheetState extends State<AddClientSheet>
   }
 
   Future<void> _manageClassificationOptions() async {
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (_) =>
           ClientClassificationManagerDialog(groupId: widget.groupId),
@@ -425,17 +426,6 @@ class _AddClientSheetState extends State<AddClientSheet>
                 ),
               ),
             ],
-            if (hasError) ...[
-              const SizedBox(width: 6),
-              Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.error,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ],
           ],
         ),
       );
@@ -486,8 +476,31 @@ class _AddClientSheetState extends State<AddClientSheet>
     final pad = MediaQuery.of(context).viewInsets.bottom + 12;
     final inline = !widget.closeOnSave && !widget.fullScreen;
 
+    // Reuse the Hexora motion tokens for the tab fade.
+    const tabFade = Duration(milliseconds: 200);
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+
+    // Keep each tab's subtree in the widget tree so controllers, focus,
+    // validation state and scroll positions survive tab switches without
+    // rebuilding the editor.
+    Widget tabChild(int index, Widget child) {
+      final isActive = _sectionTab.index == index;
+      return Offstage(
+        offstage: !isActive,
+        child: TickerMode(
+          enabled: isActive,
+          child: AnimatedOpacity(
+            duration: reduceMotion ? Duration.zero : tabFade,
+            curve: Curves.easeOut,
+            opacity: isActive ? 1 : 0,
+            child: child,
+          ),
+        ),
+      );
+    }
+
     final form = Padding(
-      padding: EdgeInsets.fromLTRB(16, 8, 16, widget.fullScreen ? 12 : pad),
+      padding: EdgeInsets.fromLTRB(16, 4, 16, widget.fullScreen ? 12 : pad),
       child: Form(
         key: c.formKey,
         child: SingleChildScrollView(
@@ -498,17 +511,17 @@ class _AddClientSheetState extends State<AddClientSheet>
             children: [
               if (!inline) ...[
                 _identityHeader(),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
               ],
               _editorTabs(context),
-              const SizedBox(height: 8),
-              Offstage(
-                offstage: _sectionTab.index != 0,
-                child: Column(
+              const SizedBox(height: 10),
+              tabChild(
+                0,
+                Column(
                   children: [
                     _contactSection(ClientContactSection.general),
                     if (c.isEdit) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                       ServiceLocationSection(
                         controller: c,
                         locating: _locatingServiceAddress,
@@ -516,7 +529,7 @@ class _AddClientSheetState extends State<AddClientSheet>
                         onChanged: () => setState(() {}),
                       ),
                     ],
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     ActiveSwitch(
                       value: c.active,
                       onChanged: (v) => setState(() => c.active = v),
@@ -524,20 +537,20 @@ class _AddClientSheetState extends State<AddClientSheet>
                   ],
                 ),
               ),
-              Offstage(
-                offstage: _sectionTab.index != 1,
-                child: _contactSection(ClientContactSection.classification),
+              tabChild(
+                1,
+                _contactSection(ClientContactSection.classification),
               ),
-              Offstage(
-                offstage: _sectionTab.index != 2,
-                child: BillingSection(
+              tabChild(
+                2,
+                BillingSection(
                   c: c,
                   showValidation: _showValidation,
                   onFieldChanged: () => setState(() {}),
                   onFieldBlur: (key) => setState(() => c.markTouched(key)),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               if (!widget.fullScreen && !inline)
                 SaveButton(
                   saving: c.saving,
@@ -564,20 +577,24 @@ class _AddClientSheetState extends State<AddClientSheet>
                 border: Border(
                     top: BorderSide(
                         color: cs.outlineVariant.withValues(alpha: .4)))),
-            child: Row(children: [
-              if (widget.onCancel != null) ...[
-                HexoraButton(
-                    onPressed: c.saving ? null : widget.onCancel,
-                    label: l.cancel,
-                    variant: HexoraButtonVariant.secondary),
-                const SizedBox(width: 8),
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                if (widget.onCancel != null) ...[
+                  HexoraButton(
+                      onPressed: c.saving ? null : widget.onCancel,
+                      label: l.cancel,
+                      variant: HexoraButtonVariant.secondary,
+                      size: HexoraButtonSize.standard),
+                ],
+                SaveButton(
+                    saving: c.saving,
+                    isEdit: c.isEdit,
+                    onPressed: c.saving ? null : _onSave),
               ],
-              Expanded(
-                  child: SaveButton(
-                      saving: c.saving,
-                      isEdit: c.isEdit,
-                      onPressed: c.saving ? null : _onSave)),
-            ])),
+            )),
       ]);
     }
     if (!widget.fullScreen) return form;
@@ -606,15 +623,30 @@ class _AddClientSheetState extends State<AddClientSheet>
                   color: Theme.of(context).colorScheme.outlineVariant,
                 )),
               ),
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Center(
                 heightFactor: 1,
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 808),
-                  child: SaveButton(
-                    saving: c.saving,
-                    isEdit: c.isEdit,
-                    onPressed: c.saving ? null : _onSave,
+                  child: Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      HexoraButton(
+                        onPressed: c.saving
+                            ? null
+                            : (widget.onCancel ??
+                                () => Navigator.of(context).maybePop()),
+                        label: l.cancel,
+                        variant: HexoraButtonVariant.secondary,
+                      ),
+                      SaveButton(
+                        saving: c.saving,
+                        isEdit: c.isEdit,
+                        onPressed: c.saving ? null : _onSave,
+                      ),
+                    ],
                   ),
                 ),
               ),

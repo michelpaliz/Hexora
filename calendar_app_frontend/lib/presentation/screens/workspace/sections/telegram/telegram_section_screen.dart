@@ -4,6 +4,8 @@ import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/telegram/telegram.dart';
 import 'package:hexora/services/telegram/domain/telegram_domain.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
@@ -697,7 +699,8 @@ class _ConnectedFlowState extends State<_ConnectedFlow> {
                 ],
                 Expanded(
                     child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 220),
+                  duration:
+                      HexoraMotion.duration(context, HexoraMotion.navigation),
                   layoutBuilder: (currentChild, previousChildren) {
                     return Stack(
                       alignment: Alignment.topLeft,
@@ -798,7 +801,7 @@ class _ConnectedFlowState extends State<_ConnectedFlow> {
     BuildContext context,
     TelegramDomain domain,
   ) {
-    showDialog(
+    showHexoraDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Disconnect Telegram?'),
@@ -1418,6 +1421,7 @@ class ResponsiveWorkspaceLayout extends StatelessWidget {
 
   void _openChatsDrawer(BuildContext context, Widget chatsSidebar) {
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,

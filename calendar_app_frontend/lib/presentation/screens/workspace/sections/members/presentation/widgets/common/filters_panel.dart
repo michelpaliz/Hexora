@@ -1,5 +1,6 @@
 // lib/.../filters_panel.dart
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/presentation/screens/calendar/utils/selected_users/filter_chips.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/components/gradient_surface.dart';
@@ -50,7 +51,7 @@ class FiltersPanel extends StatelessWidget {
 
         // Keep labels EXACT; pass counts separately
         AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
+          duration: HexoraMotion.duration(context, HexoraMotion.navigation),
           child: FilterChips(
             key: ValueKey('$showAccepted-$showPending-$showNotAccepted'),
             showAccepted: showAccepted,

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/service_catalog/service.dart';
@@ -139,6 +141,7 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
 
   Future<void> _openAddClientSheet() async {
     final created = await showModalBottomSheet<GroupClient>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -169,6 +172,7 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
 
   Future<void> _openAddServiceSheet() async {
     final created = await showModalBottomSheet<Service>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -190,6 +194,7 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
 
   Future<void> _openEditClientSheet(GroupClient c) async {
     final updated = await showModalBottomSheet<GroupClient>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -219,6 +224,7 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
 
   Future<void> _openEditServiceSheet(Service s) async {
     final updated = await showModalBottomSheet<Service>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -299,7 +305,7 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
 
   Future<void> _confirmDeleteClient(GroupClient client) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.remove),
@@ -349,7 +355,7 @@ class _ServicesClientsInlinePanelState extends State<ServicesClientsInlinePanel>
 
   Future<void> _confirmDeleteService(Service service) async {
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l.remove),

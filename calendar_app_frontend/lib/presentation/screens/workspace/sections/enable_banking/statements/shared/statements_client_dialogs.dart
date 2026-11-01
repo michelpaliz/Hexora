@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import '../statements_controller.dart';
@@ -26,7 +27,7 @@ class StatementsClientDialogs {
       return;
     }
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final l = AppLocalizations.of(dialogContext)!;
@@ -40,8 +41,10 @@ class StatementsClientDialogs {
               separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (_, i) {
                 final opt = options[i];
-                final id = opt['_id']?.toString() ?? opt['id']?.toString() ?? '';
-                final name = opt['name']?.toString() ?? l.statementsUnnamedClient;
+                final id =
+                    opt['_id']?.toString() ?? opt['id']?.toString() ?? '';
+                final name =
+                    opt['name']?.toString() ?? l.statementsUnnamedClient;
                 final legal = (opt['billing'] is Map)
                     ? (opt['billing'] as Map)['legalName']?.toString()
                     : null;
@@ -90,7 +93,7 @@ class StatementsClientDialogs {
 
     String query = '';
 
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
@@ -98,9 +101,14 @@ class StatementsClientDialogs {
             final filtered = s.clients.where((c) {
               final name = c['name']?.toString().toLowerCase() ?? '';
               final legal = (c['billing'] is Map)
-                  ? (c['billing'] as Map)['legalName']?.toString().toLowerCase() ?? ''
+                  ? (c['billing'] as Map)['legalName']
+                          ?.toString()
+                          .toLowerCase() ??
+                      ''
                   : '';
-              return query.isEmpty || name.contains(query) || legal.contains(query);
+              return query.isEmpty ||
+                  name.contains(query) ||
+                  legal.contains(query);
             }).toList();
 
             final l = AppLocalizations.of(dialogContext)!;
@@ -118,7 +126,8 @@ class StatementsClientDialogs {
                         border: const OutlineInputBorder(),
                         isDense: true,
                       ),
-                      onChanged: (v) => setState(() => query = v.trim().toLowerCase()),
+                      onChanged: (v) =>
+                          setState(() => query = v.trim().toLowerCase()),
                     ),
                     const SizedBox(height: 12),
                     if (s.loadingClients)
@@ -149,8 +158,11 @@ class StatementsClientDialogs {
                           separatorBuilder: (_, __) => const Divider(height: 1),
                           itemBuilder: (_, i) {
                             final c = filtered[i];
-                            final id = c['id']?.toString() ?? c['_id']?.toString() ?? '';
-                            final name = c['name']?.toString() ?? l.statementsUnnamedClient;
+                            final id = c['id']?.toString() ??
+                                c['_id']?.toString() ??
+                                '';
+                            final name = c['name']?.toString() ??
+                                l.statementsUnnamedClient;
                             final legal = (c['billing'] is Map)
                                 ? (c['billing'] as Map)['legalName']?.toString()
                                 : null;

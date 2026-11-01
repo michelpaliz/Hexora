@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/models/notifications/notification_localization.dart';
 import 'package:hexora/models/jobs/background_job.dart';
 import 'package:hexora/models/jobs/job_notification.dart';
@@ -239,6 +240,8 @@ class NotificationsTabView extends StatelessWidget {
                     if (activity.isNotEmpty)
                       SliverToBoxAdapter(
                         child: ExpansionTile(
+                          expansionAnimationStyle:
+                              HexoraMotion.expansionStyle(context),
                           key: const PageStorageKey(
                               'notification-import-activity'),
                           leading: const Icon(Icons.document_scanner_outlined),

@@ -15,14 +15,14 @@ class ClientFormFields extends StatelessWidget {
       if (constraints.maxWidth < 380 * textScale) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [first, const SizedBox(height: 12), second],
+          children: [first, const SizedBox(height: 8), second],
         );
       }
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(child: first),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(child: second),
         ],
       );

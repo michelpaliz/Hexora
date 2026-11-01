@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 
 import 'error_message.dart';
 
@@ -90,7 +91,7 @@ void _emit(
 void _showDetails(
     BuildContext context, String? title, String message, String details) {
   final es = Localizations.maybeLocaleOf(context)?.languageCode == 'es';
-  showDialog<void>(
+  showHexoraDialog<void>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       icon: Icon(Icons.error_outline_rounded,

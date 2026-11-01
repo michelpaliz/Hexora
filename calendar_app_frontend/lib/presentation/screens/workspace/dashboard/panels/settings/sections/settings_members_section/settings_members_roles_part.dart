@@ -7,7 +7,7 @@ extension _SettingsMembersRolesPart on _SettingsMembersSectionState {
         .groupRepository
         .getGroupPermissions(widget.group.id);
 
-    showDialog<void>(
+    showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final size = MediaQuery.sizeOf(dialogContext);

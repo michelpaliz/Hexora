@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 Future<String?> showChangeUsernameDialog(BuildContext context) {
-  return showDialog<String>(
+  return showHexoraDialog<String>(
     context: context,
     builder: (_) => const _ChangeUsernameDialog(),
   );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
@@ -40,7 +41,7 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
   Future<void> _openEditDialog(Group group) async {
     final isWide = MediaQuery.of(context).size.width >= 600;
     if (isWide) {
-      await showDialog<bool>(
+      await showHexoraDialog<bool>(
         context: context,
         builder: (_) => _EditBusinessDialog(group: group),
       );
@@ -85,7 +86,7 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
         _showError(l.removeMembersFirst);
         return;
       }
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showHexoraDialog<bool>(
         context: context,
         builder: (_) => DeleteGroupDialog(groupName: fresh.name),
       );
@@ -163,8 +164,8 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
           decoration: BoxDecoration(
             color: cs.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.35)),
+            border:
+                Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,8 +192,7 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
                       const SizedBox(height: 2),
                       Text(
                         liveGroup.description,
-                        style: t.bodySmall
-                            .copyWith(color: cs.onSurfaceVariant),
+                        style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -200,8 +200,7 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
                     const SizedBox(height: 4),
                     Text(
                       createdStr,
-                      style: t.caption
-                          .copyWith(color: cs.onSurfaceVariant),
+                      style: t.caption.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ],
                 ),
@@ -217,8 +216,7 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
                     side: BorderSide(
-                        color:
-                            cs.outlineVariant.withValues(alpha: .55)),
+                        color: cs.outlineVariant.withValues(alpha: .55)),
                   ),
                   onPressed: () => _openEditDialog(liveGroup),
                 ),
@@ -234,8 +232,8 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
           decoration: BoxDecoration(
             color: cs.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.35)),
+            border:
+                Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
           ),
           child: Column(
             children: [
@@ -288,8 +286,7 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
             decoration: BoxDecoration(
               color: cs.errorContainer.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
-              border:
-                  Border.all(color: cs.error.withValues(alpha: 0.25)),
+              border: Border.all(color: cs.error.withValues(alpha: 0.25)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,8 +308,7 @@ class _SettingsInfoSectionState extends State<SettingsInfoSection> {
                 const SizedBox(height: 8),
                 Text(
                   'Eliminar este negocio es permanente y no se puede deshacer.',
-                  style:
-                      t.caption.copyWith(color: cs.onSurfaceVariant),
+                  style: t.caption.copyWith(color: cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: 12),
                 HexoraButton(
@@ -371,14 +367,12 @@ class _InfoRow extends StatelessWidget {
             children: [
               Text(
                 value,
-                style: t.bodySmall
-                    .copyWith(fontWeight: FontWeight.w600),
+                style: t.bodySmall.copyWith(fontWeight: FontWeight.w600),
               ),
               if (detail != null && detail!.isNotEmpty)
                 Text(
                   detail!,
-                  style: t.caption
-                      .copyWith(color: cs.onSurfaceVariant),
+                  style: t.caption.copyWith(color: cs.onSurfaceVariant),
                 ),
             ],
           ),
@@ -427,12 +421,12 @@ class _EditBusinessDialogState extends State<_EditBusinessDialog> {
 
   Future<bool> _onWillPop() async {
     if (!_dirty && _pickedImage == null) return true;
-    final discard = await showDialog<bool>(
+    final discard = await showHexoraDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Descartar cambios'),
-        content: const Text(
-            'Tienes cambios sin guardar. ¿Deseas descartarlos?'),
+        content:
+            const Text('Tienes cambios sin guardar. ¿Deseas descartarlos?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -471,8 +465,7 @@ class _EditBusinessDialogState extends State<_EditBusinessDialog> {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content:
-                  Text(AppLocalizations.of(context)!.groupPhotoUpdated)),
+              content: Text(AppLocalizations.of(context)!.groupPhotoUpdated)),
         );
       }
     } catch (_) {
@@ -480,8 +473,7 @@ class _EditBusinessDialogState extends State<_EditBusinessDialog> {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(
-                  AppLocalizations.of(context)!.failedToEditGroup)),
+              content: Text(AppLocalizations.of(context)!.failedToEditGroup)),
         );
       }
     }
@@ -503,8 +495,7 @@ class _EditBusinessDialogState extends State<_EditBusinessDialog> {
         if (shouldPop && context.mounted) Navigator.pop(context);
       },
       child: Dialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
           child: Column(
@@ -519,8 +510,8 @@ class _EditBusinessDialogState extends State<_EditBusinessDialog> {
                     Expanded(
                       child: Text(
                         l.editGroup,
-                        style: t.bodyLarge
-                            .copyWith(fontWeight: FontWeight.w700),
+                        style:
+                            t.bodyLarge.copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
                     IconButton(
@@ -612,8 +603,7 @@ class _EditBusinessDialogState extends State<_EditBusinessDialog> {
                     ),
                     const SizedBox(width: 8),
                     HexoraButton(
-                      onPressed:
-                          canSave && !_saving ? _save : null,
+                      onPressed: canSave && !_saving ? _save : null,
                       label: 'Guardar cambios',
                       icon: Icons.save_outlined,
                       loading: _saving,

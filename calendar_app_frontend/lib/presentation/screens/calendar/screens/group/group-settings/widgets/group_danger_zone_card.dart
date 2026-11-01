@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/theme/components/themed_buttons.dart';
 
@@ -66,7 +67,8 @@ class GroupDangerZoneCard extends StatelessWidget {
                   ),
                   onPressed: isRemoving ? null : onRemove,
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
+                    duration:
+                        HexoraMotion.duration(context, HexoraMotion.standard),
                     child: isRemoving
                         ? SizedBox(
                             key: const ValueKey('removing'),

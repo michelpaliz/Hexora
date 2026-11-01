@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/notifications/notification_localization.dart';
 import 'package:hexora/models/notifications/notification_user.dart';
 import 'package:hexora/services/clients/client_api.dart';
@@ -52,7 +54,7 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
 
   Future<void> _confirmDelete(bool isEs) async {
     if (widget.onDelete == null) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(isEs ? 'Eliminar notificación' : 'Delete notification'),
@@ -579,6 +581,8 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
 
                   // ── Context ───────────────────────────────────────────────────────
                   ExpansionTile(
+                    expansionAnimationStyle:
+                        HexoraMotion.expansionStyle(context),
                     tilePadding: EdgeInsets.zero,
                     childrenPadding: EdgeInsets.zero,
                     title: Text(

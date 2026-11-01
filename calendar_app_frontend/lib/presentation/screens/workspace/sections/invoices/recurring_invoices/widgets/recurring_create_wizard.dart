@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/invoice/invoice_block.dart';
 import 'package:hexora/models/invoice/invoice_concept_utils.dart';
 import 'package:hexora/models/clients/client.dart';
@@ -464,7 +465,7 @@ class _RecurringCreateWizardState extends State<RecurringCreateWizard> {
     }
     final l = AppLocalizations.of(context)!;
     final isEs = l.localeName.toLowerCase().startsWith('es');
-    final result = await showDialog<String>(
+    final result = await showHexoraDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(isEs ? 'Tienes cambios sin guardar' : 'Unsaved changes'),

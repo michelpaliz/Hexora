@@ -90,7 +90,7 @@ extension _SettingsMembersAddUserPart on _SettingsMembersSectionState {
                 openPicker: () async {
                   final useDialog = MediaQuery.sizeOf(context).width >= 720;
                   if (useDialog) {
-                    await showDialog<void>(
+                    await showHexoraDialog<void>(
                       context: context,
                       barrierDismissible: false,
                       builder: (_) => ChangeNotifierProvider.value(
@@ -102,6 +102,7 @@ extension _SettingsMembersAddUserPart on _SettingsMembersSectionState {
                   }
 
                   await showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
                     context: context,
                     isScrollControlled: true,
                     useSafeArea: true,

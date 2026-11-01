@@ -1,6 +1,7 @@
 import 'package:hexora/models/calendar/recurrence/legacy_recurrence_rule.dart';
 import 'package:hexora/presentation/screens/events/screens/repetition_dialog/dialog/repetition_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 class RepetitionToggle extends StatelessWidget {
@@ -56,7 +57,8 @@ class RepetitionToggle extends StatelessWidget {
             ),
             child: Center(
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
+                duration:
+                    HexoraMotion.duration(context, HexoraMotion.navigation),
                 child: isRepetitive
                     ? const Text(
                         'ON',

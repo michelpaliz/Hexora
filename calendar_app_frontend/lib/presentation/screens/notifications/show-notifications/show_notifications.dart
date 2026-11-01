@@ -1,5 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/notifications/notification_localization.dart';
 import 'package:hexora/services/groups/event/repository/i_event_repository.dart';
 import 'utils/event_args_helper.dart';
@@ -129,7 +130,7 @@ class _ShowNotificationsState extends State<ShowNotifications>
     if (_clearing) return;
     final t = Theme.of(context).textTheme;
 
-    final confirm = await showDialog<bool>(
+    final confirm = await showHexoraDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(
@@ -477,7 +478,7 @@ class _ShowNotificationsState extends State<ShowNotifications>
     // text instead of linking to an unrelated page or silently doing nothing.
     if (!mounted) return;
     final loc = AppLocalizations.of(context)!;
-    await showDialog<void>(
+    await showHexoraDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
               title: Text(notification.getLocalizedTitle(loc)),

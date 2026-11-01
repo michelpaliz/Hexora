@@ -18,15 +18,12 @@ class SaveButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
 
-    return SizedBox(
-      width: double.infinity,
-      child: HexoraButton(
-        icon: Icons.save_outlined,
-        label: isEdit ? l.saveChanges : l.saveClient,
-        onPressed: onPressed,
-        loading: saving,
-        size: HexoraButtonSize.large,
-      ),
+    return HexoraButton(
+      icon: Icons.save_outlined,
+      label: isEdit ? l.saveChanges : l.saveClient,
+      onPressed: onPressed,
+      loading: saving,
+      size: HexoraButtonSize.standard,
     );
   }
 }

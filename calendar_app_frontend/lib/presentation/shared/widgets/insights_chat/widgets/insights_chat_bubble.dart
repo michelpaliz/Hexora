@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -194,7 +195,7 @@ class _ChatBubbleState extends State<ChatBubble> {
                 ),
               // Action row: copy button appears on hover or after tap
               AnimatedSize(
-                duration: const Duration(milliseconds: 150),
+                duration: HexoraMotion.duration(context, HexoraMotion.fast),
                 alignment:
                     isUser ? Alignment.centerRight : Alignment.centerLeft,
                 child: showActions

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group_business_hours.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
@@ -7,7 +8,7 @@ Future<GroupBusinessHours?> showBusinessHoursDialog(
   BuildContext context, {
   GroupBusinessHours? initial,
 }) {
-  return showDialog<GroupBusinessHours>(
+  return showHexoraDialog<GroupBusinessHours>(
     context: context,
     builder: (_) => _BusinessHoursDialog(initial: initial),
   );

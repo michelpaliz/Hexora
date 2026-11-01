@@ -181,7 +181,7 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
           ),
           const SizedBox(height: 16),
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 160),
+            duration: HexoraMotion.duration(context, HexoraMotion.fast),
             child: Text(
               _dragging
                   ? (isEs
@@ -225,8 +225,7 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(0, HexoraDimensions.buttonLarge),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: HexoraDimensions.space * 2),
+                      horizontal: 16, vertical: HexoraDimensions.space * 2),
                   shape: RoundedRectangleBorder(
                     borderRadius:
                         BorderRadius.circular(HexoraDimensions.radius),
@@ -241,8 +240,7 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(0, HexoraDimensions.buttonLarge),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: HexoraDimensions.space * 2),
+                      horizontal: 16, vertical: HexoraDimensions.space * 2),
                   shape: RoundedRectangleBorder(
                     borderRadius:
                         BorderRadius.circular(HexoraDimensions.radius),

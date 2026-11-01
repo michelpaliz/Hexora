@@ -1,5 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
@@ -114,7 +115,7 @@ Future<bool> showLogOutDialog(BuildContext context) {
   final dialogBg = ThemeColors.cardBg(context);
   final onDialog = ThemeColors.textPrimary(context);
 
-  return showDialog<bool>(
+  return showHexoraDialog<bool>(
     context: context,
     builder: (ctx) {
       return AlertDialog(

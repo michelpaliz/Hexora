@@ -2,6 +2,8 @@ import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.da
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
@@ -105,7 +107,7 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
     final textCtrl = TextEditingController(text: initial);
     String? fieldError;
 
-    final result = await showDialog<double>(
+    final result = await showHexoraDialog<double>(
       context: context,
       builder: (dialogCtx) {
         return StatefulBuilder(
@@ -178,6 +180,7 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
   Future<void> _addEntry(BuildContext context) async {
     final c = context.read<WorkerTimeTrackingController>();
     final created = await showModalBottomSheet<bool>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       builder: (_) => FractionallySizedBox(
@@ -571,7 +574,8 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
                         value: 0,
                         checked: _showMissingDays,
                         child: Text(l.toggleEmptyDays)),
-                    NavigationPopupMenuItem(value: 1, child: Text(l.exportExcel)),
+                    NavigationPopupMenuItem(
+                        value: 1, child: Text(l.exportExcel)),
                     NavigationPopupMenuItem(
                         value: 2,
                         child: Text(

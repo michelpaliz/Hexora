@@ -1,6 +1,7 @@
 import 'package:hexora/theme/typography/typography_extension.dart';
 // calendar_surface.dart
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/models/weather/day_summary.dart';
@@ -328,7 +329,7 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
       alwaysUse24HourFormat: true,
     );
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) {
         final cs = Theme.of(dialogContext).colorScheme;

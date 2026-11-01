@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:intl/intl.dart';
@@ -101,7 +102,7 @@ class HexoraFilterableHeaderCell extends StatelessWidget {
   Future<void> _showFilterDialog(BuildContext context) {
     final viewport = MediaQuery.sizeOf(context);
     final maxHeight = (viewport.height - 48).clamp(240.0, 520.0);
-    return showDialog<void>(
+    return showHexoraDialog<void>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.08),
       builder: (dialogContext) {

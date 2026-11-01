@@ -3,6 +3,7 @@ import 'package:hexora/presentation/screens/events/screens/repetition_dialog/dia
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 
 mixin AddEventDialogs {
   /// Opens the recurrence configuration screen and returns the selected rule.
@@ -14,7 +15,7 @@ mixin AddEventDialogs {
   }) {
     if (kIsWeb) {
       // Keep the add-event flow in place on web by using a dialog instead of a full navigation push.
-      return showDialog<List?>(
+      return showHexoraDialog<List?>(
         context: context,
         builder: (dialogCtx) {
           final media = MediaQuery.of(dialogCtx).size;
@@ -57,7 +58,7 @@ mixin AddEventDialogs {
   }
 
   void showErrorDialog(BuildContext context) {
-    showDialog(
+    showHexoraDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
@@ -75,7 +76,7 @@ mixin AddEventDialogs {
   }
 
   void showGroupFetchErrorDialog(BuildContext context) {
-    showDialog(
+    showHexoraDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
@@ -95,7 +96,7 @@ mixin AddEventDialogs {
   }
 
   void showRepetitionInfoDialog(BuildContext context) {
-    showDialog(
+    showHexoraDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(

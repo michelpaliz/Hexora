@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -1340,6 +1342,7 @@ class TelegramChatComposer extends StatelessWidget {
                 ),
               ),
               child: ExpansionTile(
+                expansionAnimationStyle: HexoraMotion.expansionStyle(context),
                 key: const PageStorageKey('telegram-composer-attachments'),
                 initiallyExpanded: true,
                 maintainState: true,
@@ -1560,7 +1563,8 @@ class TelegramChatComposer extends StatelessWidget {
                 // ── Send button ────────────────────────────────
                 const SizedBox(width: 10),
                 AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
+                  duration:
+                      HexoraMotion.duration(context, HexoraMotion.standard),
                   child: FilledButton.icon(
                     key: ValueKey(isSending),
                     onPressed: canSend ? onSend : null,
@@ -1611,6 +1615,7 @@ class TelegramChatComposer extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     FocusManager.instance.primaryFocus?.unfocus();
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       showDragHandle: true,
       builder: (sheetContext) {
@@ -2266,7 +2271,7 @@ class _MediaPlaceholder extends StatelessWidget {
     });
 
     if (!context.mounted) return;
-    await showDialog<void>(
+    await showHexoraDialog<void>(
       context: context,
       builder: (dialogContext) {
         final l = AppLocalizations.of(dialogContext)!;

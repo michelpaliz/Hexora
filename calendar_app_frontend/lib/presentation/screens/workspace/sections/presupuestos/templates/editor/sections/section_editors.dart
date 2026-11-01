@@ -75,6 +75,7 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
         side: BorderSide(color: _editorBorder(theme)),
       ),
       child: ExpansionTile(
+        expansionAnimationStyle: HexoraMotion.expansionStyle(context),
         initiallyExpanded: index == 0,
         title: Text(
           section.title.text.trim().isEmpty
@@ -198,8 +199,8 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
                 ),
                 PopupMenuItem(
                   value: 'down',
-                  enabled: !section.isPinned &&
-                      index + 1 < _firstPinnedSectionIndex,
+                  enabled:
+                      !section.isPinned && index + 1 < _firstPinnedSectionIndex,
                   child: const ListTile(
                     contentPadding: EdgeInsets.zero,
                     dense: true,

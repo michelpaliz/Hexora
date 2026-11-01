@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/theme/themes/mobile_theme.dart';
 
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -136,6 +137,7 @@ class _StatementsMobileViewState extends State<StatementsMobileView> {
     var date = _dateRange;
     var amount = _amountType;
     final result = await showModalBottomSheet<(_DateRange, _AmountType)>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
       useSafeArea: true,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
@@ -591,8 +592,6 @@ class _VatComparisonChartCard extends StatefulWidget {
 
 class _VatComparisonChartCardState extends State<_VatComparisonChartCard>
     with SingleTickerProviderStateMixin {
-  static const _chartAnimationDuration = Duration(milliseconds: 750);
-
   late final AnimationController _chartAnimationController;
   late final Animation<double> _chartAnimation;
   late _VatChartValues _chartFrom;
@@ -636,11 +635,11 @@ class _VatComparisonChartCardState extends State<_VatComparisonChartCard>
     _chartTo = _targetChartValues;
     _chartAnimationController = AnimationController(
       vsync: this,
-      duration: _chartAnimationDuration,
+      duration: HexoraMotion.chart,
     )..addListener(_handleChartAnimationTick);
     _chartAnimation = CurvedAnimation(
       parent: _chartAnimationController,
-      curve: Curves.easeOutCubic,
+      curve: HexoraMotion.enter,
     );
   }
 
@@ -740,6 +739,21 @@ class _VatComparisonChartCardState extends State<_VatComparisonChartCard>
     );
   }
 
+  String _chartValueLabel(double value, {required bool compact}) {
+    if (compact) {
+      return NumberFormat.compactCurrency(
+        locale: 'es_ES',
+        symbol: '€',
+        decimalDigits: 1,
+      ).format(value);
+    }
+    final amount = NumberFormat.decimalPatternDigits(
+      locale: 'es_ES',
+      decimalDigits: 0,
+    ).format(value);
+    return '$amount €';
+  }
+
   void _nudgeToDetails(BuildContext context) {
     final scrollable = Scrollable.maybeOf(context);
     final position = scrollable?.position;
@@ -820,6 +834,10 @@ class _VatComparisonChartCardState extends State<_VatComparisonChartCard>
         : (recordedPurchaseTax - purchaseTax).abs() >= 0.005
             ? 'IVA registrado: ${formatVatAmount(recordedPurchaseTax)}'
             : null;
+    final purchaseSeriesLabel = purchaseTaxUsesExpenseFallback
+        ? 'Compras · IVA registrado'
+        : 'Compras · IVA deducible';
+    final compactChartLabels = MediaQuery.sizeOf(context).width < 900;
     final axisScaleValues = [
       salesBase,
       purchaseBase,
@@ -837,7 +855,7 @@ class _VatComparisonChartCardState extends State<_VatComparisonChartCard>
     );
     final axisMaximum = largestChartValue <= 0
         ? axisInterval
-        : (largestChartValue / axisInterval).ceil() * axisInterval;
+        : ((largestChartValue * 1.18) / axisInterval).ceil() * axisInterval;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -956,7 +974,10 @@ class _VatComparisonChartCardState extends State<_VatComparisonChartCard>
                   const SizedBox(width: 12),
                   _VatLegendDot(color: cs.primary, label: 'Ventas'),
                   const SizedBox(width: 8),
-                  _VatLegendDot(color: cs.tertiary, label: 'Compras'),
+                  _VatLegendDot(
+                    color: cs.tertiary,
+                    label: purchaseSeriesLabel,
+                  ),
                 ],
               );
               final counts = Text(
@@ -1048,7 +1069,7 @@ class _VatComparisonChartCardState extends State<_VatComparisonChartCard>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '${isSales ? 'Ventas emitidas' : 'Compras deducibles'}'
+                            '${isSales ? 'Ventas emitidas' : isTax ? purchaseSeriesLabel : 'Compras'}'
                             ' · ${datum.label}',
                             style: t.bodySmall.copyWith(
                               color: cs.onInverseSurface,
@@ -1057,7 +1078,7 @@ class _VatComparisonChartCardState extends State<_VatComparisonChartCard>
                             ),
                           ),
                           Text(
-                            formatVatAmount(amount),
+                            '${formatVatAmount(amount)} €',
                             style: t.bodySmall.copyWith(
                               color: cs.onInverseSurface,
                               fontWeight: FontWeight.w800,
@@ -1082,7 +1103,20 @@ class _VatComparisonChartCardState extends State<_VatComparisonChartCard>
                     borderRadius: const BorderRadius.horizontal(
                       right: Radius.circular(6),
                     ),
-                    width: 0.32,
+                    width: 0.42,
+                    dataLabelMapper: (datum, _) => _chartValueLabel(
+                      datum.sales,
+                      compact: compactChartLabels,
+                    ),
+                    dataLabelSettings: DataLabelSettings(
+                      isVisible: true,
+                      labelAlignment: ChartDataLabelAlignment.outer,
+                      textStyle: TextStyle(
+                        color: cs.onSurfaceVariant,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                   BarSeries<_VatChartDatum, String>(
                     name: 'Compras deducibles',
@@ -1094,7 +1128,20 @@ class _VatComparisonChartCardState extends State<_VatComparisonChartCard>
                     borderRadius: const BorderRadius.horizontal(
                       right: Radius.circular(6),
                     ),
-                    width: 0.32,
+                    width: 0.42,
+                    dataLabelMapper: (datum, _) => _chartValueLabel(
+                      datum.purchases,
+                      compact: compactChartLabels,
+                    ),
+                    dataLabelSettings: DataLabelSettings(
+                      isVisible: true,
+                      labelAlignment: ChartDataLabelAlignment.outer,
+                      textStyle: TextStyle(
+                        color: cs.onSurfaceVariant,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1804,8 +1851,9 @@ class _VatSectionCardState extends State<VatSectionCard> {
                           ),
                           // Expanded preview panel
                           AnimatedSize(
-                            duration: const Duration(milliseconds: 220),
-                            curve: Curves.easeInOut,
+                            duration: HexoraMotion.duration(
+                                context, HexoraMotion.navigation),
+                            curve: HexoraMotion.emphasized,
                             child: isExpanded
                                 ? _EntryPreviewPanel(
                                     l: l,

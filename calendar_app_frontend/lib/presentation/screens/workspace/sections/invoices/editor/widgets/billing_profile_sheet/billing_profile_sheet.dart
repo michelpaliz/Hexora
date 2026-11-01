@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/services/invoicing/billing_profile_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/billing_profile_sheet/billing_profile_sheet_form.dart';
@@ -175,7 +176,7 @@ class _BillingProfileSheetState extends State<BillingProfileSheet> {
     final l = AppLocalizations.of(context)!;
     if (!mounted) return;
 
-    final picked = await showDialog<PlatformFile>(
+    final picked = await showHexoraDialog<PlatformFile>(
       context: context,
       builder: (context) {
         PlatformFile? selected;
@@ -197,11 +198,12 @@ class _BillingProfileSheetState extends State<BillingProfileSheet> {
                 '[logo-upload] name: ${file.name} | ext: ${file.extension} | size: ${file.size}',
               );
               // Extension-based type check (PlatformFile has no MIME type property)
-              final ext = (file.extension?.toLowerCase().trim().isNotEmpty == true
-                      ? file.extension!
-                      : file.name.split('.').last)
-                  .toLowerCase()
-                  .trim();
+              final ext =
+                  (file.extension?.toLowerCase().trim().isNotEmpty == true
+                          ? file.extension!
+                          : file.name.split('.').last)
+                      .toLowerCase()
+                      .trim();
               final validType = const ['png', 'jpg', 'jpeg'].contains(ext);
               final tooLarge = file.size > 15 * 1024 * 1024;
               setDialogState(() {

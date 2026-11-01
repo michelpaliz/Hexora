@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/presupuesto/presupuesto_kind.dart';
@@ -382,7 +383,7 @@ class _PresupuestoInvoiceConversionViewState
     var eligibleOnly = _showEligibleOnly;
     Map<String, dynamic>? selected;
     try {
-      selected = await showDialog<Map<String, dynamic>>(
+      selected = await showHexoraDialog<Map<String, dynamic>>(
         context: context,
         builder: (dialogContext) => StatefulBuilder(
           builder: (context, setDialogState) {
@@ -589,7 +590,7 @@ class _PresupuestoInvoiceConversionViewState
       return;
     }
     if (_configurationDirty && _selectedPresupuesto != null) {
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showHexoraDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           title: Text(_isSpanish ? 'Cambiar presupuesto' : 'Change proposal'),
@@ -802,7 +803,7 @@ class _PresupuestoInvoiceConversionViewState
       return;
     }
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
@@ -1173,18 +1174,15 @@ class _PresupuestoInvoiceConversionViewState
         typeLabel = _isSpanish ? 'Factura de anticipo' : 'Advance invoice';
         description = _advanceDescriptionController.text.trim();
         if (_advanceAmountMode == _AdvanceAmountMode.fixedGross) {
-          invoiceGross =
-              _parseDouble(_advanceFixedAmountController.text);
+          invoiceGross = _parseDouble(_advanceFixedAmountController.text);
         } else {
           final percent = _parseDouble(_advancePercentController.text);
           if (percent != null && percent > 0 && percent <= 100) {
             final factor = percent / 100;
             invoiceGross =
                 proposalGross == null ? null : proposalGross * factor;
-            invoiceBase =
-                proposalBase == null ? null : proposalBase * factor;
-            invoiceVat =
-                proposalVat == null ? null : proposalVat * factor;
+            invoiceBase = proposalBase == null ? null : proposalBase * factor;
+            invoiceVat = proposalVat == null ? null : proposalVat * factor;
           }
         }
         if (description.isEmpty) {
@@ -1301,9 +1299,7 @@ class _PresupuestoInvoiceConversionViewState
                 // Proposal total reference
                 if (proposalGross != null) ...[
                   _SummaryAmountRow(
-                    label: _isSpanish
-                        ? 'Total presupuesto'
-                        : 'Proposal total',
+                    label: _isSpanish ? 'Total presupuesto' : 'Proposal total',
                     value: _currencyFormatter.format(proposalGross),
                     typo: typo,
                     cs: cs,

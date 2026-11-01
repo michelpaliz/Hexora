@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -12,7 +13,7 @@ class ChangePasswordResult {
 }
 
 Future<ChangePasswordResult?> showChangePasswordDialog(BuildContext context) {
-  return showDialog<ChangePasswordResult>(
+  return showHexoraDialog<ChangePasswordResult>(
     context: context,
     builder: (_) => const _ChangePasswordDialog(),
   );

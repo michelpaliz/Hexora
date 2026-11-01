@@ -1,5 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/weather/weather_summary_card.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/models/weather/work_condition_result.dart';
 import 'package:hexora/services/weather/work_conditions_api.dart';
@@ -65,6 +66,7 @@ class _WorkConditionsCardState extends State<WorkConditionsCard> {
   void _showAffected(WorkConditionResult result) {
     final es = Localizations.localeOf(context).languageCode == 'es';
     showModalBottomSheet<void>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       showDragHandle: true,
       builder: (context) => SafeArea(

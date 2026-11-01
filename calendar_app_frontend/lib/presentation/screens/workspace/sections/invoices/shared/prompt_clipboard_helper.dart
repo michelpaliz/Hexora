@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 
 bool canPresentUiOnContext(BuildContext context) {
@@ -31,7 +32,7 @@ Future<T?> showSafeDialogOnActiveView<T>({
   if (!canPresentUiOnContext(context)) {
     return Future<T?>.value(null);
   }
-  return showDialog<T>(
+  return showHexoraDialog<T>(
     context: context,
     barrierDismissible: barrierDismissible,
     barrierColor: barrierColor,

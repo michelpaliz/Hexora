@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/groups/event/domain/event_domain.dart';
@@ -352,7 +353,7 @@ mixin InsightsEventAssistant on InsightsChatSheetStateBase {
     final assistant = eventAssistantForMessage(message);
     final preview = eventPreviewForMessage(message);
     if (assistant == null || preview == null) return;
-    final updated = await showDialog<Map<String, dynamic>>(
+    final updated = await showHexoraDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => InsightsEventEditDialog(
         groupId: widget.groupId,

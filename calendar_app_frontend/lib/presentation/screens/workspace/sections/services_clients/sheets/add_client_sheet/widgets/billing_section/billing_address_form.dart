@@ -42,8 +42,6 @@ class BillingAddressForm extends StatelessWidget {
               prefixIcon: const Icon(Icons.home_outlined),
               isRequired: requireBilling,
               isFilled: c.billingStreet.text.trim().isNotEmpty,
-              showCheck:
-                  requireBilling && c.billingStreet.text.trim().isNotEmpty,
             ),
             onChanged: (_) => onFieldChanged(),
             validator: (v) {
@@ -88,8 +86,6 @@ class BillingAddressForm extends StatelessWidget {
                   prefixIcon: const Icon(Icons.location_city_rounded),
                   isRequired: c.isBillingRequired('billingCity'),
                   isFilled: c.billingCity.text.trim().isNotEmpty,
-                  showCheck: c.isBillingRequired('billingCity') &&
-                      c.billingCity.text.trim().isNotEmpty,
                 ),
                 onChanged: (_) => onFieldChanged(),
                 validator: (v) {
@@ -137,8 +133,6 @@ class BillingAddressForm extends StatelessWidget {
                   prefixIcon: const Icon(Icons.local_post_office_outlined),
                   isRequired: c.isBillingRequired('billingPostal'),
                   isFilled: c.billingPostal.text.trim().isNotEmpty,
-                  showCheck: c.isBillingRequired('billingPostal') &&
-                      c.billingPostal.text.trim().isNotEmpty,
                 ),
                 onChanged: (_) {
                   c.autofillBillingAddressFromPostalCode();
@@ -172,8 +166,6 @@ class BillingAddressForm extends StatelessWidget {
                   prefixIcon: const Icon(Icons.public),
                   isRequired: c.isBillingRequired('billingCountry'),
                   isFilled: c.billingCountry.text.trim().isNotEmpty,
-                  showCheck: c.isBillingRequired('billingCountry') &&
-                      c.billingCountry.text.trim().isNotEmpty,
                 ),
                 onChanged: (_) => onFieldChanged(),
                 validator: (v) {

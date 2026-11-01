@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/time_tracking/time_entry.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/functions/edit_time_entry_sheet.dart';
@@ -34,7 +36,7 @@ class TimeEntryCard extends StatelessWidget {
 
   Future<bool> _confirmAndDelete(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
-    final ok = await showDialog<bool>(
+    final ok = await showHexoraDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l.delete),
@@ -104,6 +106,7 @@ class TimeEntryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         onTap: () async {
           final updated = await showModalBottomSheet<bool>(
+      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
             context: context,
             isScrollControlled: true,
             shape: const RoundedRectangleBorder(

@@ -262,7 +262,7 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
     }.toList()
       ..removeWhere((e) => e.trim().isEmpty);
 
-    final result = await showDialog<Map<String, String?>>(
+    final result = await showHexoraDialog<Map<String, String?>>(
       context: context,
       builder: (context) {
         return AlertDialog(

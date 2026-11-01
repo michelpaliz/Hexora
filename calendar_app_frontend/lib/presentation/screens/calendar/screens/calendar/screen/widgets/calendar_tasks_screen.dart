@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
@@ -58,7 +59,8 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
   Future<void> _loadUsers() async {
     setState(() => _loadingUsers = true);
     try {
-      final users = await context.read<UserDomain>().getUsersForGroup(widget.group);
+      final users =
+          await context.read<UserDomain>().getUsersForGroup(widget.group);
       if (!mounted) return;
       setState(() {
         _groupUsers = users;
@@ -180,7 +182,7 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
       60: _isSpanish ? '1 h antes' : '1 h before',
     };
 
-    final created = await showDialog<bool>(
+    final created = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) {
         final cs = Theme.of(dialogContext).colorScheme;
@@ -323,10 +325,12 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                           spacing: 8,
                           runSpacing: 8,
                           children: _groupUsers.map((user) {
-                            final selected = selectedRecipients.contains(user.id);
-                            final label = (user.displayName?.trim().isNotEmpty ?? false)
-                                ? user.displayName!.trim()
-                                : user.name;
+                            final selected =
+                                selectedRecipients.contains(user.id);
+                            final label =
+                                (user.displayName?.trim().isNotEmpty ?? false)
+                                    ? user.displayName!.trim()
+                                    : user.name;
                             return FilterChip(
                               label: Text(label),
                               selected: selected,
@@ -463,8 +467,10 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        _buildFilterChip('pending', _isSpanish ? 'Pendientes' : 'Pending'),
-                        _buildFilterChip('done', _isSpanish ? 'Hechas' : 'Done'),
+                        _buildFilterChip(
+                            'pending', _isSpanish ? 'Pendientes' : 'Pending'),
+                        _buildFilterChip(
+                            'done', _isSpanish ? 'Hechas' : 'Done'),
                         _buildFilterChip('all', _isSpanish ? 'Todas' : 'All'),
                         FilterChip(
                           label: Text(_isSpanish ? 'Solo mías' : 'Mine'),
@@ -547,7 +553,8 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         task.title,
@@ -558,7 +565,8 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                                               : TextDecoration.none,
                                         ),
                                       ),
-                                      if (task.note?.trim().isNotEmpty ?? false) ...[
+                                      if (task.note?.trim().isNotEmpty ??
+                                          false) ...[
                                         const SizedBox(height: 4),
                                         Text(
                                           task.note!.trim(),
@@ -592,12 +600,15 @@ class _CalendarTasksScreenState extends State<CalendarTasksScreen> {
                                         decoration: BoxDecoration(
                                           color: _statusColor(context, task)
                                               .withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(999),
+                                          borderRadius:
+                                              BorderRadius.circular(999),
                                         ),
                                         child: Text(
                                           task.isCompleted
                                               ? (_isSpanish ? 'Hecha' : 'Done')
-                                              : (_isSpanish ? 'Pendiente' : 'Pending'),
+                                              : (_isSpanish
+                                                  ? 'Pendiente'
+                                                  : 'Pending'),
                                           style: typo.bodySmall.copyWith(
                                             color: _statusColor(context, task),
                                             fontWeight: FontWeight.w700,
