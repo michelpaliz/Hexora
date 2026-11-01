@@ -3,6 +3,7 @@ import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/auth/models/verification_result.dart';
 import 'package:hexora/services/auth/repositories/auth_repository.dart';
 import 'package:hexora/presentation/shared/jobs/ocr_import_jobs_store.dart';
+import 'package:hexora/services/insights/insights_history_store.dart';
 
 class AuthService with ChangeNotifier implements AuthRepository {
   final AuthRepository _repo;
@@ -35,8 +36,15 @@ class AuthService with ChangeNotifier implements AuthRepository {
   @override
   Future<void> logOut() async {
     OcrImportJobsStore.instance.resetForSession();
-    await _repo.logOut();
-    currentUser = null;
+    try {
+      await _repo.logOut();
+    } finally {
+      try {
+        await InsightsHistoryStore.clearForSignedOutSession();
+      } finally {
+        currentUser = null;
+      }
+    }
   }
 
   @override

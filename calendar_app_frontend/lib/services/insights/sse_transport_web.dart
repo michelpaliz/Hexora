@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use, avoid_web_libraries_in_flutter
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:html' as html;
 
 import 'package:http/http.dart' as http;
@@ -64,7 +65,15 @@ Stream<String> postSseLines({
     }
 
     if (!controller.isClosed) {
-      controller.addError(Exception('Streaming request failed ($status)'));
+      var errorMessage = 'Streaming request failed ($status)';
+      try {
+        final decoded = jsonDecode(text);
+        if (decoded is Map && decoded['message'] is String) {
+          final message = (decoded['message'] as String).trim();
+          if (message.isNotEmpty) errorMessage = message;
+        }
+      } catch (_) {}
+      controller.addError(Exception(errorMessage));
       controller.close();
     }
   });

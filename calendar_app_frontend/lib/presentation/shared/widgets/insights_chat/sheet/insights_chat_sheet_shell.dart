@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/services/insights/insights_api.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 import '../insights_chat_enums.dart';
@@ -35,18 +36,72 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
         : 'Taking longer than expected...';
     final retryText = isEs ? 'Reintentar' : 'Retry';
     final quickSummaryText = isEs ? 'Resumen rapido' : 'Quick summary';
-    final modeLabel = mode == InsightsResponseMode.auto
-        ? l.insightsChatModeAuto
-        : l.insightsChatModeStream;
     final dateRange = runtime.dateRange;
     final helperText = isEs
-        ? 'Contexto activo: ultimos $days dias · modo $modeLabel. Puedes pedir resumenes, tendencias, clientes con mas carga o gastos e ingresos.'
-        : 'Active context: last $days days · $modeLabel mode. Ask for summaries, trends, busiest clients, or expense and revenue breakdowns.';
+        ? 'Contexto activo: últimos $days días. Pregunta solo sobre este negocio: ingresos, gastos, facturas, clientes y tareas de Hexora. Límite: 60 mensajes por hora.'
+        : 'Active context: last $days days. Ask only about this business: income, expenses, invoices, clients, and Hexora tasks. Limit: 60 messages per hour.';
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final dateRangeLabel = dateRange?.label(isEs: isEs);
     final contextTooltip =
         dateRangeLabel == null ? helperText : '$helperText\n$dateRangeLabel';
+
+    Future<void> showActionHistory() async {
+      final history = InsightsApi().loadActionHistory(widget.groupId);
+      String actionLabel(String action) => switch (action) {
+            'event_created' => isEs ? 'Evento creado' : 'Event created',
+            'income_linked' => isEs ? 'Ingreso vinculado' : 'Income linked',
+            'income_unlinked' => isEs ? 'Ingreso desvinculado' : 'Income unlinked',
+            'excel_exported' => isEs ? 'Excel exportado' : 'Excel exported',
+            _ => action,
+          };
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(isEs ? 'Actividad del asistente' : 'Assistant activity'),
+          content: SizedBox(
+            width: 520,
+            height: 360,
+            child: FutureBuilder<List<Map<String, dynamic>>>(
+              future: history,
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return Center(child: snapshot.hasError
+                      ? Text(isEs ? 'No se pudo cargar la actividad.' : 'Could not load activity.')
+                      : const CircularProgressIndicator());
+                }
+                final actions = snapshot.data!;
+                if (actions.isEmpty) {
+                  return Center(child: Text(isEs ? 'Aún no hay acciones registradas.' : 'No actions recorded yet.'));
+                }
+                return ListView.builder(
+                  itemCount: actions.length,
+                  itemBuilder: (context, index) {
+                    final row = actions[index];
+                    final actor = row['userId'];
+                    final name = actor is Map
+                        ? (actor['userName'] ?? actor['name'] ?? actor['email'] ?? '').toString()
+                        : '';
+                    final date = DateTime.tryParse(row['createdAt']?.toString() ?? '')?.toLocal();
+                    final when = date == null ? '' : '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+                    final details = row['details'];
+                    final what = details is Map
+                        ? (details['title'] ?? details['filename'] ?? details['concept'] ?? '').toString()
+                        : '';
+                    return ListTile(
+                      dense: true,
+                      title: Text(actionLabel(row['action']?.toString() ?? '')),
+                      subtitle: Text([name, when, what].where((value) => value.isNotEmpty).join(' · ')),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(isEs ? 'Cerrar' : 'Close'))],
+        ),
+      );
+    }
 
     Future<void> showContextInfo() async {
       InsightsDateRange? draftRange = runtime.dateRange;
@@ -305,6 +360,51 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
       );
     }
 
+    Widget buildActionHistoryButton() => IconButton(
+          tooltip: isEs ? 'Actividad del asistente' : 'Assistant activity',
+          onPressed: showActionHistory,
+          icon: const Icon(Icons.history_rounded, size: 18),
+          constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+          padding: EdgeInsets.zero,
+        );
+
+    Widget buildInteractionModeTabs() => Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
+          child: SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<InsightsInteractionMode>(
+              segments: [
+                ButtonSegment(
+                  value: InsightsInteractionMode.guided,
+                  icon: const Icon(Icons.dashboard_customize_outlined, size: 17),
+                  label: Text(isEs ? 'Respuestas guiadas' : 'Guided answers'),
+                ),
+                ButtonSegment(
+                  value: InsightsInteractionMode.openQuestions,
+                  icon: const Icon(Icons.edit_note_rounded, size: 19),
+                  label: Text(isEs ? 'Preguntas abiertas' : 'Open questions'),
+                ),
+              ],
+              selected: {runtime.interactionMode},
+              onSelectionChanged: sending
+                  ? null
+                  : (selection) =>
+                      runtime.setInteractionMode(selection.first),
+              showSelectedIcon: false,
+              style: ButtonStyle(
+                textStyle: WidgetStatePropertyAll(
+                  t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                ),
+                visualDensity:
+                    const WidgetStatePropertyAll(VisualDensity.compact),
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                ),
+              ),
+            ),
+          ),
+        );
+
     Widget buildDesktopPaneToggleButton({required bool collapsed}) {
       final label = collapsed
           ? (isEs ? 'Mostrar chat' : 'Show chat')
@@ -357,6 +457,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
             : null;
     final showComposer = latestIncomeAmountPromptMessage == null;
     final showEmptyComposer = messages.isEmpty && !sending && showComposer;
+    final openQuestions =
+        runtime.interactionMode == InsightsInteractionMode.openQuestions;
     final desktopUserMessages =
         messages.where((message) => message.isUser).toList(growable: false);
 
@@ -394,7 +496,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                 t: t,
                 isEs: isEs,
               ),
-              if (showEmptyComposer)
+              if (showEmptyComposer && openQuestions)
                 buildChatComposer(
                   context,
                   cs: cs,
@@ -1153,11 +1255,14 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                           const BoxConstraints(minWidth: 32, minHeight: 32),
                       padding: EdgeInsets.zero,
                     ),
+                    buildActionHistoryButton(),
                   ],
                 ),
               ],
             ),
           ),
+
+        buildInteractionModeTabs(),
 
         // ── Toolbar chips ────────────────────────────────────────────
         if (bottomInset == 0)
@@ -1170,6 +1275,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                   buildContextInfoButton(),
                   const SizedBox(width: 6),
                   buildStartOverButton(),
+                  const SizedBox(width: 6),
+                  buildActionHistoryButton(),
                   const SizedBox(width: 6),
                   if (dateRangeLabel != null) ...[
                     ConstrainedBox(
@@ -1217,62 +1324,6 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                         ],
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  ChoiceChip(
-                    avatar: Icon(
-                      Icons.auto_fix_high_rounded,
-                      size: 13,
-                      color: mode == InsightsResponseMode.auto
-                          ? cs.onPrimaryContainer
-                          : cs.onSurfaceVariant,
-                    ),
-                    label: Text(l.insightsChatModeAuto),
-                    selected: mode == InsightsResponseMode.auto,
-                    selectedColor: cs.primaryContainer,
-                    backgroundColor: canvas,
-                    visualDensity: VisualDensity.compact,
-                    labelStyle: t.bodySmall.copyWith(
-                      fontSize: 11,
-                      color: mode == InsightsResponseMode.auto
-                          ? cs.onPrimaryContainer
-                          : cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    side: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.6),
-                    ),
-                    onSelected: sending
-                        ? null
-                        : (_) => runtime.setMode(InsightsResponseMode.auto),
-                  ),
-                  const SizedBox(width: 6),
-                  ChoiceChip(
-                    avatar: Icon(
-                      Icons.stream_rounded,
-                      size: 13,
-                      color: mode == InsightsResponseMode.stream
-                          ? cs.onPrimaryContainer
-                          : cs.onSurfaceVariant,
-                    ),
-                    label: Text(l.insightsChatModeStream),
-                    selected: mode == InsightsResponseMode.stream,
-                    selectedColor: cs.primaryContainer,
-                    backgroundColor: canvas,
-                    visualDensity: VisualDensity.compact,
-                    labelStyle: t.bodySmall.copyWith(
-                      fontSize: 11,
-                      color: mode == InsightsResponseMode.stream
-                          ? cs.onPrimaryContainer
-                          : cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    side: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.6),
-                    ),
-                    onSelected: sending
-                        ? null
-                        : (_) => runtime.setMode(InsightsResponseMode.stream),
                   ),
                 ],
               ),
@@ -1382,7 +1433,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
             t: t,
             isEs: isEs,
           ),
-        if (showComposer)
+        if (showComposer && (!showEmptyComposer || openQuestions))
           buildChatComposer(
             context,
             cs: cs,
@@ -1497,6 +1548,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                               const SizedBox(width: 6),
                                               buildStartOverButton(),
                                               const SizedBox(width: 6),
+                                              buildActionHistoryButton(),
+                                              const SizedBox(width: 6),
                                               if (dateRangeLabel != null) ...[
                                                 ConstrainedBox(
                                                   constraints:
@@ -1576,91 +1629,11 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                                   ),
                                                 ),
                                               ),
-                                              const SizedBox(width: 6),
-                                              ChoiceChip(
-                                                avatar: Icon(
-                                                  Icons.auto_fix_high_rounded,
-                                                  size: 13,
-                                                  color: mode ==
-                                                          InsightsResponseMode
-                                                              .auto
-                                                      ? cs.onPrimaryContainer
-                                                      : cs.onSurfaceVariant,
-                                                ),
-                                                label: Text(
-                                                    l.insightsChatModeAuto),
-                                                selected: mode ==
-                                                    InsightsResponseMode.auto,
-                                                selectedColor:
-                                                    cs.primaryContainer,
-                                                backgroundColor: canvas,
-                                                visualDensity:
-                                                    VisualDensity.compact,
-                                                labelStyle:
-                                                    t.bodySmall.copyWith(
-                                                  fontSize: 11,
-                                                  color: mode ==
-                                                          InsightsResponseMode
-                                                              .auto
-                                                      ? cs.onPrimaryContainer
-                                                      : cs.onSurfaceVariant,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                                side: BorderSide(
-                                                  color: cs.outlineVariant
-                                                      .withValues(alpha: 0.6),
-                                                ),
-                                                onSelected: sending
-                                                    ? null
-                                                    : (_) => runtime.setMode(
-                                                        InsightsResponseMode
-                                                            .auto),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              ChoiceChip(
-                                                avatar: Icon(
-                                                  Icons.stream_rounded,
-                                                  size: 13,
-                                                  color: mode ==
-                                                          InsightsResponseMode
-                                                              .stream
-                                                      ? cs.onPrimaryContainer
-                                                      : cs.onSurfaceVariant,
-                                                ),
-                                                label: Text(
-                                                    l.insightsChatModeStream),
-                                                selected: mode ==
-                                                    InsightsResponseMode
-                                                        .stream,
-                                                selectedColor:
-                                                    cs.primaryContainer,
-                                                backgroundColor: canvas,
-                                                visualDensity:
-                                                    VisualDensity.compact,
-                                                labelStyle:
-                                                    t.bodySmall.copyWith(
-                                                  fontSize: 11,
-                                                  color: mode ==
-                                                          InsightsResponseMode
-                                                              .stream
-                                                      ? cs.onPrimaryContainer
-                                                      : cs.onSurfaceVariant,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                                side: BorderSide(
-                                                  color: cs.outlineVariant
-                                                      .withValues(alpha: 0.6),
-                                                ),
-                                                onSelected: sending
-                                                    ? null
-                                                    : (_) => runtime.setMode(
-                                                        InsightsResponseMode
-                                                            .stream),
-                                              ),
                                             ],
                                           ),
                                         ),
                                       ),
+                                      buildInteractionModeTabs(),
                                       Expanded(
                                           child: buildDesktopMessageList()),
                                       if (latestIncomeAmountPromptMessage !=
@@ -1771,7 +1744,8 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                                           ),
                                         ),
                                       ],
-                                      if (showComposer && !showEmptyComposer)
+                                      if (showComposer &&
+                                          (!showEmptyComposer || openQuestions))
                                         buildChatComposer(
                                           context,
                                           cs: cs,

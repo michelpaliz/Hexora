@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/insights/insights_api.dart';
+import 'package:hexora/services/insights/insights_history_store.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -33,8 +34,13 @@ class InsightsChatRuntime extends ChangeNotifier {
   String _conversationId = _newConversationId();
   bool _resetConversationOnNextSend = false;
   bool _bootstrapped = false;
+  int _historyRevision = 0;
+  Future<void> _historyWrite = Future<void>.value();
+  Future<void> _remoteSave = Future<void>.value();
+  int _loadedSessionVersion = InsightsHistoryStore.sessionVersion;
   late String _historyKey = 'insights_chat_history::anon::$scopeKey';
   InsightsResponseMode _mode = InsightsResponseMode.auto;
+  InsightsInteractionMode _interactionMode = InsightsInteractionMode.guided;
   bool _sending = false;
   String? _error;
   bool _sheetOpen = false;
@@ -57,7 +63,9 @@ class InsightsChatRuntime extends ChangeNotifier {
   }
 
   List<ChatMessage> get messages => List.unmodifiable(_messages);
+  String get conversationId => _conversationId;
   InsightsResponseMode get mode => _mode;
+  InsightsInteractionMode get interactionMode => _interactionMode;
   bool get sending => _sending;
   String? get error => _error;
   bool get isSheetOpen => _sheetOpen;
@@ -77,6 +85,12 @@ class InsightsChatRuntime extends ChangeNotifier {
     _endpointType = mode == InsightsResponseMode.auto
         ? InsightsChatEndpointType.chatAuto
         : InsightsChatEndpointType.chatAutoStream;
+    notifyListeners();
+  }
+
+  void setInteractionMode(InsightsInteractionMode mode) {
+    if (_interactionMode == mode) return;
+    _interactionMode = mode;
     notifyListeners();
   }
 
@@ -151,15 +165,27 @@ class InsightsChatRuntime extends ChangeNotifier {
     return 'insights_chat_history::$userId::$scopeKey';
   }
 
+  String? get _historyGroupId {
+    final separator = scopeKey.lastIndexOf('::');
+    return separator < 0 ? null : scopeKey.substring(separator + 2);
+  }
+
   Future<void> ensureLoaded(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
     final nextHistoryKey = _resolveHistoryKey(context);
-    if (_bootstrapped && _historyKey == nextHistoryKey) return;
+    final sessionVersion = InsightsHistoryStore.sessionVersion;
+    if (_bootstrapped &&
+        _historyKey == nextHistoryKey &&
+        _loadedSessionVersion == sessionVersion) {
+      return;
+    }
     _historyKey = nextHistoryKey;
+    _loadedSessionVersion = sessionVersion;
     _bootstrapped = true;
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_historyKey);
     final next = <ChatMessage>[];
+    DateTime? localUpdatedAt;
     if (raw != null && raw.trim().isNotEmpty) {
       try {
         final decoded = jsonDecode(raw);
@@ -174,6 +200,8 @@ class InsightsChatRuntime extends ChangeNotifier {
           final map = decoded.map(
             (key, value) => MapEntry(key.toString(), value),
           );
+          localUpdatedAt = DateTime.tryParse(
+              map['updatedAt']?.toString() ?? '');
           final persistedConversationId =
               map['conversationId']?.toString().trim() ?? '';
           if (persistedConversationId.isNotEmpty) {
@@ -197,6 +225,40 @@ class InsightsChatRuntime extends ChangeNotifier {
     _messages
       ..clear()
       ..addAll(next);
+    final groupId = _historyGroupId;
+    final loadedRevision = _historyRevision;
+    if (groupId != null && groupId.isNotEmpty) {
+      try {
+        final remote = await _api.loadConversation(
+          groupId: groupId,
+          scopeKey: scopeKey,
+        );
+        if (_loadedSessionVersion == InsightsHistoryStore.sessionVersion &&
+            _historyRevision == loadedRevision &&
+            _historyKey == nextHistoryKey) {
+          final remoteId = remote['conversationId']?.toString().trim() ?? '';
+          final remoteUpdatedAt = DateTime.tryParse(
+              remote['updatedAt']?.toString() ?? '');
+          if (remoteId.isNotEmpty &&
+              (localUpdatedAt == null ||
+                  remoteUpdatedAt == null ||
+                  !localUpdatedAt.isAfter(remoteUpdatedAt))) {
+            _conversationId = remoteId;
+            _messages
+              ..clear()
+              ..addAll((remote['messages'] as List? ?? const [])
+                  .map(ChatMessage.fromJson)
+                  .whereType<ChatMessage>());
+            _resetConversationOnNextSend = false;
+            notifyListeners();
+          } else if (_messages.isNotEmpty) {
+            unawaited(_persistHistory());
+          }
+        }
+      } catch (error) {
+        debugPrint('[insights_history] remote load unavailable: $error');
+      }
+    }
     debugPrint(
       '[insights_history] loaded conversationId=$_conversationId '
       'messages=${_messages.length} resetPending=$_resetConversationOnNextSend '
@@ -206,16 +268,43 @@ class InsightsChatRuntime extends ChangeNotifier {
   }
 
   Future<void> _persistHistory() async {
-    final prefs = await SharedPreferences.getInstance();
+    _historyRevision += 1;
+    final sessionVersion = _loadedSessionVersion;
+    if (sessionVersion != InsightsHistoryStore.sessionVersion) return;
+    final historyKey = _historyKey;
+    final groupId = _historyGroupId;
     final trimmed = _messages.length > _maxPersistedMessages
         ? _messages.sublist(_messages.length - _maxPersistedMessages)
         : List<ChatMessage>.from(_messages);
     final payload = <String, dynamic>{
       'conversationId': _conversationId,
       'resetConversationOnNextSend': _resetConversationOnNextSend,
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
       'messages': trimmed.map((m) => m.toJson()).toList(),
     };
-    await prefs.setString(_historyKey, jsonEncode(payload));
+    _historyWrite = _historyWrite.then((_) async {
+      if (sessionVersion != InsightsHistoryStore.sessionVersion) return;
+      final prefs = await SharedPreferences.getInstance();
+      if (sessionVersion != InsightsHistoryStore.sessionVersion) return;
+      await prefs.setString(historyKey, jsonEncode(payload));
+      if (groupId != null && groupId.isNotEmpty) {
+        _remoteSave = _remoteSave.then((_) async {
+          if (sessionVersion != InsightsHistoryStore.sessionVersion) return;
+          try {
+            await _api.saveConversation(
+              groupId: groupId,
+              scopeKey: scopeKey,
+              conversationId: payload['conversationId'] as String,
+              messages: List<Map<String, dynamic>>.from(payload['messages'] as List),
+            );
+          } catch (error) {
+            debugPrint('[insights_history] remote save unavailable: $error');
+          }
+        });
+        unawaited(_remoteSave);
+      }
+    });
+    await _historyWrite;
   }
 
   Future<void> updateTableRow({
@@ -1102,7 +1191,7 @@ class InsightsChatRuntime extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      _error = e.toString();
+      _error = e.toString().replaceFirst('Exception: ', '').trim();
       notifyListeners();
     } finally {
       _stopSlowTimer();
@@ -1158,6 +1247,7 @@ class InsightsChatRuntime extends ChangeNotifier {
           body: <String, dynamic>{
             'groupId': groupId.trim(),
             'message': message.trim(),
+            'conversationId': _conversationId,
           },
           filename: null,
         ),
@@ -1168,13 +1258,20 @@ class InsightsChatRuntime extends ChangeNotifier {
   Future<InsightsExcelExport> downloadExcelFromAction(
     InsightsExcelExportAction action,
   ) {
-    return _api.downloadInsightsExcelFromAction(_withScope(action));
+    final scoped = _withScope(action);
+    return _api.downloadInsightsExcelFromAction(InsightsExcelExportAction(
+      type: scoped.type,
+      endpoint: scoped.endpoint,
+      method: scoped.method,
+      body: {...scoped.body, 'conversationId': _conversationId},
+      filename: scoped.filename,
+    ));
   }
 
   Future<Map<String, dynamic>> executeJsonAction(
     Map<String, dynamic> action,
   ) {
-    return _api.executeJsonAction(action);
+    return _api.executeJsonAction(action, conversationId: _conversationId);
   }
 
   Future<void> refreshMessageFromSourceAction({

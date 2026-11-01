@@ -203,6 +203,7 @@ mixin InsightsInvoiceDisplayBulkLink on InsightsChatSheetStateBase {
       ];
       final response = await StatementsApi().bulkLinkEntryInvoices(
         links: links,
+        aiConversationId: message.conversationId ?? runtime.conversationId,
       );
       final entries = response['entries'];
       var linked = 0;

@@ -288,6 +288,7 @@ mixin InsightsEventAssistant on InsightsChatSheetStateBase {
       final response = await InsightsApi().confirmChatEvent(
         groupId: widget.groupId,
         eventPayload: cloneJsonMap(payload),
+        conversationId: message.conversationId,
         confirm: true,
       );
       final assistant = cloneJsonMap(eventAssistantForMessage(message) ?? {});
