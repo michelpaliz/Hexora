@@ -6,6 +6,12 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 
 import 'vat_summary_utils.dart';
 
+class VatChartAnimationCoordinator {
+  _VatChartValues? _lastValues;
+
+  void reset() => _lastValues = null;
+}
+
 class VatQuarterSummary extends StatelessWidget {
   final bool loading;
   final String? error;
@@ -13,6 +19,8 @@ class VatQuarterSummary extends StatelessWidget {
   final List<Map<String, dynamic>>? expenseEntries;
   final Map<String, dynamic>? invoiceSummary;
   final Map<String, dynamic>? expenseSummary;
+  final VatChartAnimationCoordinator? chartAnimationCoordinator;
+  final bool isActive;
   final VoidCallback onRetry;
 
   const VatQuarterSummary({
@@ -23,6 +31,8 @@ class VatQuarterSummary extends StatelessWidget {
     this.expenseEntries,
     this.invoiceSummary,
     this.expenseSummary,
+    this.chartAnimationCoordinator,
+    this.isActive = true,
     required this.onRetry,
   });
 
@@ -54,14 +64,20 @@ class VatQuarterSummary extends StatelessWidget {
 
   double _entryBaseValue(Map<String, dynamic> entry) {
     return parseVatNum(
-          entry['baseTotal'] ?? entry['subtotal'] ?? entry['base'],
+          entry['baseTotal'] ??
+              entry['subtotal'] ??
+              entry['taxableBase'] ??
+              entry['base'],
         ) ??
         0;
   }
 
   double _entryTaxValue(Map<String, dynamic> entry) {
     return parseVatNum(
-          entry['vatTotal'] ?? entry['tax'] ?? entry['vat'],
+          entry['vatTotal'] ??
+              entry['taxTotal'] ??
+              entry['tax'] ??
+              entry['vat'],
         ) ??
         0;
   }
@@ -94,7 +110,8 @@ class VatQuarterSummary extends StatelessWidget {
       data?['previousPeriod'],
       data?['previous'],
       data?['comparison'] is Map
-          ? (data!['comparison'] as Map)['previous']
+          ? ((data!['comparison'] as Map)['previousQuarter'] ??
+              (data!['comparison'] as Map)['previous'])
           : null,
     ]) {
       if (candidate is Map) return Map<String, dynamic>.from(candidate);
@@ -102,6 +119,9 @@ class VatQuarterSummary extends StatelessWidget {
     return const <String, dynamic>{};
   }
 
+  /// Only warnings and data-quality notices are surfaced as banners. Purely
+  /// informational insights (quarter-over-quarter comparisons) are already
+  /// shown as helper text under each KPI, so repeating them wastes a row.
   List<Map<String, dynamic>> _insights() {
     final raw = data?['insights'];
     if (raw is! List) return const <Map<String, dynamic>>[];
@@ -109,7 +129,12 @@ class VatQuarterSummary extends StatelessWidget {
         .whereType<Map>()
         .map((item) => Map<String, dynamic>.from(item))
         .where((item) => (item['message'] ?? '').toString().trim().isNotEmpty)
-        .toList(growable: false);
+        .where((item) {
+      final type = (item['type'] ?? '').toString().toLowerCase();
+      return type.contains('warn') ||
+          type.contains('error') ||
+          type.contains('alert');
+    }).toList(growable: false);
   }
 
   Map<String, dynamic> _comparisonData() {
@@ -244,24 +269,38 @@ class VatQuarterSummary extends StatelessWidget {
       data?['salesCount'],
       data?['invoiceCount'],
     ]);
-    final filteredGastosBase = data?['purchaseBase'] != null
-        ? (parseVatNum(data?['purchaseBase']) ?? 0)
-        : (expenseSummary?['subtotal'] is num ||
-                expenseSummary?['subtotal'] != null)
-            ? (parseVatNum(expenseSummary?['subtotal']) ?? 0)
-            : gastos.fold<double>(
-                0,
-                (sum, entry) => sum + _entryBaseValue(entry),
-              );
-    final filteredGastosTax = data?['purchaseVat'] != null
-        ? (parseVatNum(data?['purchaseVat']) ?? 0)
-        : (expenseSummary?['taxTotal'] is num ||
-                expenseSummary?['taxTotal'] != null)
-            ? (parseVatNum(expenseSummary?['taxTotal']) ?? 0)
-            : gastos.fold<double>(
-                0,
-                (sum, entry) => sum + _entryTaxValue(entry),
-              );
+    final expenseEntriesBase = gastos.fold<double>(
+      0,
+      (sum, entry) => sum + _entryBaseValue(entry),
+    );
+    final expenseEntriesTax = gastos.fold<double>(
+      0,
+      (sum, entry) => sum + _entryTaxValue(entry),
+    );
+    final resolvedGastosBase = resolveVatExpenseTotal(
+      fiscalValue: data?['purchaseBase'] ??
+          purchasesMap['totalBase'] ??
+          totals?['gastosBase'] ??
+          totals?['purchaseBase'],
+      expenseSummaryValue: expenseSummary?['subtotal'] ??
+          expenseSummary?['baseTotal'] ??
+          expenseSummary?['taxableBase'] ??
+          expenseSummary?['base'],
+      expenseEntriesValue: expenseEntriesBase,
+    );
+    final resolvedGastosTax = resolveVatExpenseTotal(
+      fiscalValue: data?['purchaseVat'] ??
+          purchasesMap['totalTax'] ??
+          totals?['gastosVat'] ??
+          totals?['purchaseVat'],
+      expenseSummaryValue: expenseSummary?['taxTotal'] ??
+          expenseSummary?['vatTotal'] ??
+          expenseSummary?['tax'] ??
+          expenseSummary?['vat'],
+      expenseEntriesValue: expenseEntriesTax,
+    );
+    final filteredGastosBase = resolvedGastosBase.value;
+    final filteredGastosTax = resolvedGastosTax.value;
     final gastosCount = _readCount([
       data?['totalExpenses'],
       expenseSummary?['count'],
@@ -269,8 +308,11 @@ class VatQuarterSummary extends StatelessWidget {
       totals?['gastosCount'],
       data?['expenseCount'],
     ]);
-    final ivaValue = parseVatNum(data?['netVat']) ??
-        ((parseVatNum(ingresosTax) ?? 0) - filteredGastosTax);
+    final calculatedNetVat =
+        (parseVatNum(ingresosTax) ?? 0) - filteredGastosTax;
+    final ivaValue = resolvedGastosTax.usedExpenseFallback
+        ? calculatedNetVat
+        : (parseVatNum(data?['netVat']) ?? calculatedNetVat);
     final isPositive = ivaValue >= 0;
 
     return LayoutBuilder(
@@ -308,8 +350,12 @@ class VatQuarterSummary extends StatelessWidget {
               previous['ivaValue'] ??
               previous['netTax'],
         );
+        final previousQuarterLabel =
+            (previous['quarter'] ?? comparison['previousQuarterLabel'] ?? '')
+                .toString()
+                .trim();
         return ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
           children: [
             if (error != null) ...[
               _VatInlineNotice(message: error!, tone: _VatNoticeTone.warning),
@@ -320,6 +366,11 @@ class VatQuarterSummary extends StatelessWidget {
               salesTax: salesTaxValue,
               purchaseBase: purchaseBaseValue,
               purchaseTax: purchaseTaxValue,
+              recordedPurchaseTax: expenseEntriesTax,
+              purchaseTaxUsesExpenseFallback:
+                  resolvedGastosTax.usedExpenseFallback,
+              chartAnimationCoordinator: chartAnimationCoordinator,
+              isActive: isActive,
               netVat: ivaValue,
               previousSalesTax: previousSalesTax,
               previousPurchaseTax: previousPurchaseTax,
@@ -331,14 +382,14 @@ class VatQuarterSummary extends StatelessWidget {
               netVatChangePercent:
                   parseVatNum(comparison['netVatChangePercent']),
               comparisonAvailable: comparisonAvailable,
-              previousQuarterLabel:
-                  (comparison['previousQuarter'] ?? '').toString(),
+              previousQuarterLabel: previousQuarterLabel,
               insights: _insights(),
               totalInvoices: ingresosCount,
               totalExpenses: gastosCount,
+              recordedVatExpenseCount: gastos.length,
               isPositive: isPositive,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             if (wide)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,8 +423,16 @@ class VatQuarterSummary extends StatelessWidget {
                       invoiceNumberKeys: showingExpenseEntries
                           ? const ['invoiceNumber', 'invoice', 'number']
                           : const [],
-                      totalBase: gastos.isEmpty ? 0 : filteredGastosBase,
-                      totalTax: gastos.isEmpty ? 0 : filteredGastosTax,
+                      totalBase: gastos.isEmpty
+                          ? 0
+                          : showingExpenseEntries
+                              ? expenseEntriesBase
+                              : filteredGastosBase,
+                      totalTax: gastos.isEmpty
+                          ? 0
+                          : showingExpenseEntries
+                              ? expenseEntriesTax
+                              : filteredGastosTax,
                       accentColor: cs.tertiary,
                       icon: Icons.shopping_bag_outlined,
                       hideZeroTaxEntries: true,
@@ -399,7 +458,7 @@ class VatQuarterSummary extends StatelessWidget {
                 previewCount: 6,
                 previewLabel: 'Top facturas',
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               VatSectionCard(
                 title: l.vatSummaryPurchasesTitle,
                 entries: gastos,
@@ -410,8 +469,16 @@ class VatQuarterSummary extends StatelessWidget {
                 invoiceNumberKeys: showingExpenseEntries
                     ? const ['invoiceNumber', 'invoice', 'number']
                     : const [],
-                totalBase: gastos.isEmpty ? 0 : filteredGastosBase,
-                totalTax: gastos.isEmpty ? 0 : filteredGastosTax,
+                totalBase: gastos.isEmpty
+                    ? 0
+                    : showingExpenseEntries
+                        ? expenseEntriesBase
+                        : filteredGastosBase,
+                totalTax: gastos.isEmpty
+                    ? 0
+                    : showingExpenseEntries
+                        ? expenseEntriesTax
+                        : filteredGastosTax,
                 accentColor: cs.tertiary,
                 icon: Icons.shopping_bag_outlined,
                 hideZeroTaxEntries: true,
@@ -419,90 +486,9 @@ class VatQuarterSummary extends StatelessWidget {
                 previewLabel: 'Top gastos',
               ),
             ],
-            const SizedBox(height: 10),
-            _NetIvaCard(ivaValue: ivaValue, isPositive: isPositive),
           ],
         );
       },
-    );
-  }
-}
-
-class _NetIvaCard extends StatelessWidget {
-  final double ivaValue;
-  final bool isPositive;
-
-  const _NetIvaCard({required this.ivaValue, required this.isPositive});
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final color = isPositive ? cs.primary : cs.error;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-                border: Border.all(color: color.withValues(alpha: 0.4)),
-              ),
-              child: Icon(
-                isPositive ? Icons.south_west : Icons.north_east,
-                color: color,
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l.vatSummaryNetTitle,
-                    style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  Text(
-                    isPositive ? 'A pagar a Hacienda' : 'A devolver',
-                    style: t.bodySmall.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: color.withValues(alpha: 0.4)),
-              ),
-              child: Text(
-                formatVatAmount(ivaValue),
-                style: t.bodySmall.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -549,11 +535,15 @@ class VatSectionCard extends StatefulWidget {
   State<VatSectionCard> createState() => _VatSectionCardState();
 }
 
-class _VatComparisonChartCard extends StatelessWidget {
+class _VatComparisonChartCard extends StatefulWidget {
   final double salesBase;
   final double salesTax;
   final double purchaseBase;
   final double purchaseTax;
+  final double recordedPurchaseTax;
+  final bool purchaseTaxUsesExpenseFallback;
+  final VatChartAnimationCoordinator? chartAnimationCoordinator;
+  final bool isActive;
   final double netVat;
   final double? previousSalesTax;
   final double? previousPurchaseTax;
@@ -566,6 +556,7 @@ class _VatComparisonChartCard extends StatelessWidget {
   final List<Map<String, dynamic>> insights;
   final int? totalInvoices;
   final int? totalExpenses;
+  final int recordedVatExpenseCount;
   final bool isPositive;
 
   const _VatComparisonChartCard({
@@ -573,6 +564,10 @@ class _VatComparisonChartCard extends StatelessWidget {
     required this.salesTax,
     required this.purchaseBase,
     required this.purchaseTax,
+    required this.recordedPurchaseTax,
+    this.purchaseTaxUsesExpenseFallback = false,
+    this.chartAnimationCoordinator,
+    this.isActive = true,
     required this.netVat,
     this.previousSalesTax,
     this.previousPurchaseTax,
@@ -585,18 +580,164 @@ class _VatComparisonChartCard extends StatelessWidget {
     this.insights = const [],
     this.totalInvoices,
     this.totalExpenses,
+    this.recordedVatExpenseCount = 0,
     required this.isPositive,
   });
 
-  String? _deltaLabel(double current, double? previous, double? provided) {
-    if (provided != null) {
-      final sign = provided >= 0 ? '+' : '-';
-      return '$sign${provided.abs().toStringAsFixed(1)}% vs trim. anterior';
+  @override
+  State<_VatComparisonChartCard> createState() =>
+      _VatComparisonChartCardState();
+}
+
+class _VatComparisonChartCardState extends State<_VatComparisonChartCard>
+    with SingleTickerProviderStateMixin {
+  static const _chartAnimationDuration = Duration(milliseconds: 750);
+
+  late final AnimationController _chartAnimationController;
+  late final Animation<double> _chartAnimation;
+  late _VatChartValues _chartFrom;
+  late _VatChartValues _chartTo;
+  bool _chartAnimationStarted = false;
+  bool _reduceMotion = false;
+
+  double get salesBase => widget.salesBase;
+  double get salesTax => widget.salesTax;
+  double get purchaseBase => widget.purchaseBase;
+  double get purchaseTax => widget.purchaseTax;
+  double get recordedPurchaseTax => widget.recordedPurchaseTax;
+  bool get purchaseTaxUsesExpenseFallback =>
+      widget.purchaseTaxUsesExpenseFallback;
+  double get netVat => widget.netVat;
+  double? get previousSalesTax => widget.previousSalesTax;
+  double? get previousPurchaseTax => widget.previousPurchaseTax;
+  double? get previousNetVat => widget.previousNetVat;
+  double? get salesVatChangePercent => widget.salesVatChangePercent;
+  double? get purchaseVatChangePercent => widget.purchaseVatChangePercent;
+  double? get netVatChangePercent => widget.netVatChangePercent;
+  bool? get comparisonAvailable => widget.comparisonAvailable;
+  String get previousQuarterLabel => widget.previousQuarterLabel;
+  List<Map<String, dynamic>> get insights => widget.insights;
+  int? get totalInvoices => widget.totalInvoices;
+  int? get totalExpenses => widget.totalExpenses;
+  int get recordedVatExpenseCount => widget.recordedVatExpenseCount;
+  bool get isPositive => widget.isPositive;
+
+  _VatChartValues get _targetChartValues => _VatChartValues(
+        salesBase: salesBase,
+        salesTax: salesTax,
+        purchaseBase: purchaseBase,
+        purchaseTax: purchaseTax,
+      );
+
+  @override
+  void initState() {
+    super.initState();
+    _chartFrom = const _VatChartValues.zero();
+    _chartTo = _targetChartValues;
+    _chartAnimationController = AnimationController(
+      vsync: this,
+      duration: _chartAnimationDuration,
+    )..addListener(_handleChartAnimationTick);
+    _chartAnimation = CurvedAnimation(
+      parent: _chartAnimationController,
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _handleChartAnimationTick() {
+    if (widget.isActive) {
+      widget.chartAnimationCoordinator?._lastValues = _currentChartValues;
     }
-    if (previous == null || previous.abs() < 0.01) return null;
-    final delta = ((current - previous) / previous.abs()) * 100;
-    final sign = delta >= 0 ? '+' : '-';
-    return '$sign${delta.abs().toStringAsFixed(1)}% vs trim. anterior';
+    if (mounted) setState(() {});
+  }
+
+  _VatChartValues get _currentChartValues => _reduceMotion
+      ? _chartTo
+      : _VatChartValues.lerp(
+          _chartFrom,
+          _chartTo,
+          _chartAnimation.value,
+        );
+
+  void _startChartAnimation({bool useCoordinatorSeed = false}) {
+    if (!widget.isActive) return;
+    if (useCoordinatorSeed) {
+      final previous = widget.chartAnimationCoordinator?._lastValues;
+      if (previous != null) _chartFrom = previous;
+    }
+    widget.chartAnimationCoordinator?._lastValues = _chartFrom;
+    _chartAnimationStarted = true;
+    if (_reduceMotion) {
+      _chartAnimationController.value = 1;
+      widget.chartAnimationCoordinator?._lastValues = _chartTo;
+    } else {
+      _chartAnimationController.forward(from: 0);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (_reduceMotion && widget.isActive) {
+      _chartAnimationController.stop();
+      _chartAnimationController.value = 1;
+      _chartAnimationStarted = true;
+      widget.chartAnimationCoordinator?._lastValues = _chartTo;
+    } else if (!_chartAnimationStarted &&
+        widget.isActive &&
+        TickerMode.of(context)) {
+      _startChartAnimation(useCoordinatorSeed: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _VatComparisonChartCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final next = _targetChartValues;
+    final current = _currentChartValues;
+
+    if (oldWidget.isActive && !widget.isActive) {
+      oldWidget.chartAnimationCoordinator?._lastValues = current;
+      _chartAnimationController.stop();
+      _chartFrom = current;
+      _chartTo = next;
+      _chartAnimationController.value = 0;
+      _chartAnimationStarted = false;
+      return;
+    }
+
+    if (!oldWidget.isActive && widget.isActive) {
+      _chartFrom = widget.chartAnimationCoordinator?._lastValues ?? current;
+      _chartTo = next;
+      _chartAnimationController.value = 0;
+      _startChartAnimation();
+      return;
+    }
+
+    if (_chartTo == next) return;
+
+    _chartFrom = current;
+    _chartTo = next;
+    _chartAnimationController.value = 0;
+    _startChartAnimation();
+  }
+
+  @override
+  void dispose() {
+    _chartAnimationController
+      ..removeListener(_handleChartAnimationTick)
+      ..dispose();
+    super.dispose();
+  }
+
+  String? _deltaLabel(double current, double? previous, double? provided) {
+    return formatVatComparisonLabel(
+      current: current,
+      previous: previous,
+      providedPercentage: provided,
+      previousLabel: previousQuarterLabel,
+    );
   }
 
   void _nudgeToDetails(BuildContext context) {
@@ -618,27 +759,27 @@ class _VatComparisonChartCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    final totalSales = salesBase + salesTax;
-    final totalPurchases = purchaseBase + purchaseTax;
-    final offsetRatio = salesTax.abs() < 0.01
-        ? 0.0
-        : (purchaseTax / salesTax * 100).clamp(0, 999).toDouble();
-    final balanced = netVat.abs() <= (salesTax.abs() * 0.02).clamp(50, 500);
+    final balanced = netVat.abs() < 0.005;
     final insightColor = balanced
         ? cs.primary
         : isPositive
             ? cs.error
             : cs.tertiary;
     final outcomeTitle = balanced
-        ? 'IVA prácticamente equilibrado'
+        ? 'Sin cuota neta estimada'
         : isPositive
             ? 'IVA a pagar'
-            : 'IVA a devolver';
-    final insightText = balanced
-        ? 'Ventas y compras están casi compensadas este trimestre.'
+            : 'IVA a compensar o devolver';
+    final outcomeShort = balanced
+        ? 'Sin cuota'
         : isPositive
-            ? 'Las compras deducibles compensan el ${offsetRatio.toStringAsFixed(0)}% del IVA repercutido.'
-            : 'Las compras deducibles superan el IVA repercutido.';
+            ? 'A pagar'
+            : 'A compensar';
+    final outcomeIcon = balanced
+        ? Icons.check_circle_outline_rounded
+        : isPositive
+            ? Icons.account_balance_outlined
+            : Icons.savings_outlined;
     final hasComparison = comparisonAvailable == true;
     final salesDelta = hasComparison
         ? _deltaLabel(salesTax, previousSalesTax, salesVatChangePercent)
@@ -648,151 +789,143 @@ class _VatComparisonChartCard extends StatelessWidget {
             purchaseTax, previousPurchaseTax, purchaseVatChangePercent)
         : null;
     final netDelta = hasComparison
-        ? _deltaLabel(netVat.abs(), previousNetVat?.abs(), netVatChangePercent)
+        ? _deltaLabel(netVat, previousNetVat, netVatChangePercent)
         : null;
+    final animatedChartValues = _reduceMotion
+        ? _chartTo
+        : _VatChartValues.lerp(
+            _chartFrom,
+            _chartTo,
+            _chartAnimation.value,
+          );
     final chartData = [
       _VatChartDatum(
         label: 'Base imponible',
-        sales: salesBase,
-        purchases: purchaseBase,
+        sales: animatedChartValues.salesBase,
+        purchases: animatedChartValues.purchaseBase,
       ),
       _VatChartDatum(
         label: 'IVA',
-        sales: salesTax,
-        purchases: purchaseTax,
-      ),
-      _VatChartDatum(
-        label: 'Total factura',
-        sales: totalSales,
-        purchases: totalPurchases,
+        sales: animatedChartValues.salesTax,
+        purchases: animatedChartValues.purchaseTax,
       ),
     ];
-
+    final expTotal = totalExpenses ?? 0;
+    final expenseCountLabel = expTotal > 0 && recordedVatExpenseCount < expTotal
+        ? '$recordedVatExpenseCount/$expTotal gastos con IVA registrado'
+        : '$recordedVatExpenseCount gastos con IVA registrado';
+    final countLabel = '${totalInvoices ?? 0} facturas · $expenseCountLabel';
+    final recordedVatLabel = purchaseTaxUsesExpenseFallback
+        ? 'Sumado desde los gastos registrados del trimestre'
+        : (recordedPurchaseTax - purchaseTax).abs() >= 0.005
+            ? 'IVA registrado: ${formatVatAmount(recordedPurchaseTax)}'
+            : null;
+    final axisScaleValues = [
+      salesBase,
+      purchaseBase,
+      salesTax,
+      purchaseTax,
+      _chartFrom.salesBase,
+      _chartFrom.purchaseBase,
+      _chartFrom.salesTax,
+      _chartFrom.purchaseTax,
+    ];
+    final axisInterval = roundedVatAxisInterval(axisScaleValues);
+    final largestChartValue = axisScaleValues.fold<double>(
+      0,
+      (largest, value) => value.abs() > largest ? value.abs() : largest,
+    );
+    final axisMaximum = largestChartValue <= 0
+        ? axisInterval
+        : (largestChartValue / axisInterval).ceil() * axisInterval;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: cs.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Comparativa del trimestre',
-                    style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Ventas repercuten IVA, compras lo compensan. Revisa el neto para decidir el pago.',
-                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                ],
-              ),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _VatMetricChip(
-                    label: 'Ventas IVA',
-                    value: formatVatAmount(salesTax),
-                    helper: salesDelta ?? 'IVA repercutido',
-                    actionLabel: 'Ver facturas emitidas',
-                    color: cs.primary,
-                    prominent: true,
-                    onTap: () => _nudgeToDetails(context),
-                  ),
-                  _VatMetricChip(
-                    label: 'Compras IVA',
-                    value: formatVatAmount(purchaseTax),
-                    helper: purchaseDelta ?? 'IVA deducible',
-                    actionLabel: 'Ver gastos deducibles',
-                    color: cs.tertiary,
-                    onTap: () => _nudgeToDetails(context),
-                  ),
-                  _VatMetricChip(
-                    label: isPositive ? 'Neto a pagar' : 'Neto a devolver',
-                    value: formatVatAmount(netVat),
-                    helper: netDelta ?? 'Resultado fiscal',
-                    actionLabel: 'Ver detalle fiscal',
-                    color: insightColor,
-                    prominent: true,
-                    onTap: () => _nudgeToDetails(context),
-                  ),
-                ],
-              ),
-            ],
+          Text(
+            'Resumen IVA',
+            style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: insightColor.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: insightColor.withValues(alpha: 0.24)),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  isPositive
-                      ? Icons.account_balance_outlined
-                      : Icons.savings_outlined,
-                  size: 16,
-                  color: insightColor,
+          const SizedBox(height: 6),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final metrics = [
+                _VatMetricChip(
+                  label: 'IVA repercutido',
+                  value: formatVatAmount(salesTax),
+                  helper: salesDelta,
+                  actionLabel: 'Ver facturas emitidas',
+                  color: cs.primary,
+                  onTap: () => _nudgeToDetails(context),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$outcomeTitle: ${formatVatAmount(netVat.abs())}',
-                        style: t.bodySmall.copyWith(
-                          color: insightColor,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        insightText,
-                        style: t.bodySmall.copyWith(
-                          color: cs.onSurface,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _MiniInsightPill(
-                  label: 'Reduce pago',
+                _VatMetricChip(
+                  label: 'IVA deducible',
                   value: formatVatAmount(purchaseTax),
+                  secondary: recordedVatLabel,
+                  helper: purchaseDelta,
+                  actionLabel: 'Ver gastos deducibles',
                   color: cs.tertiary,
+                  onTap: () => _nudgeToDetails(context),
                 ),
-              ],
-            ),
+                _VatMetricChip(
+                  label: 'IVA neto estimado',
+                  value: formatVatAmount(netVat),
+                  helper: netDelta,
+                  actionLabel: 'Ver detalle fiscal',
+                  badge: outcomeShort,
+                  badgeIcon: outcomeIcon,
+                  badgeTooltip: outcomeTitle,
+                  color: insightColor,
+                  prominent: true,
+                  onTap: () => _nudgeToDetails(context),
+                ),
+              ];
+              final groupedWidth =
+                  constraints.maxWidth.clamp(0, 780).toDouble();
+              if (constraints.maxWidth >= 700) {
+                return Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    width: groupedWidth,
+                    child: Row(
+                      children: [
+                        for (var index = 0;
+                            index < metrics.length;
+                            index++) ...[
+                          if (index > 0) const SizedBox(width: 8),
+                          Expanded(child: metrics[index]),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              }
+              if (constraints.maxWidth >= 440) {
+                final metricWidth = (constraints.maxWidth - 8) / 2;
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    for (final metric in metrics)
+                      SizedBox(width: metricWidth, child: metric),
+                  ],
+                );
+              }
+              return Column(
+                children: [
+                  for (var index = 0; index < metrics.length; index++) ...[
+                    if (index > 0) const SizedBox(height: 4),
+                    metrics[index],
+                  ],
+                ],
+              );
+            },
           ),
-          if (comparisonAvailable != null) ...[
-            const SizedBox(height: 8),
-            _QuarterComparisonStrip(
-              previousQuarterLabel: previousQuarterLabel,
-              salesChange: salesVatChangePercent,
-              purchaseChange: purchaseVatChangePercent,
-              netChange: netVatChangePercent,
-              comparisonAvailable: comparisonAvailable!,
-            ),
-          ],
           if (insights.isNotEmpty) ...[
             const SizedBox(height: 8),
             Wrap(
@@ -807,103 +940,221 @@ class _VatComparisonChartCard extends StatelessWidget {
               ],
             ),
           ],
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: [
-              _MiniInsightPill(
-                label: 'Base ventas',
-                value: formatVatAmount(salesBase),
-                color: cs.primary,
-              ),
-              _MiniInsightPill(
-                label: 'Base compras',
-                value: formatVatAmount(purchaseBase),
-                color: cs.tertiary,
-              ),
-              _MiniInsightPill(
-                label: 'Facturas',
-                value: '${totalInvoices ?? 0}',
-                color: cs.primary,
-              ),
-              _MiniInsightPill(
-                label: 'Gastos',
-                value: '${totalExpenses ?? 0}',
-                color: cs.tertiary,
-              ),
-            ],
+          const SizedBox(height: 6),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final legend = Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Bases e IVA por origen',
+                    style: t.bodySmall.copyWith(
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  _VatLegendDot(color: cs.primary, label: 'Ventas'),
+                  const SizedBox(width: 8),
+                  _VatLegendDot(color: cs.tertiary, label: 'Compras'),
+                ],
+              );
+              final counts = Text(
+                countLabel,
+                style: t.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 10.5,
+                ),
+              );
+              if (constraints.maxWidth >= 900) {
+                return Row(
+                  children: [legend, const Spacer(), counts],
+                );
+              }
+              return Wrap(
+                spacing: 12,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [legend, counts],
+              );
+            },
           ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 220,
-            child: SfCartesianChart(
-              margin: EdgeInsets.zero,
-              plotAreaBorderWidth: 0,
-              primaryXAxis: CategoryAxis(
-                majorGridLines: const MajorGridLines(width: 0),
-                axisLine: const AxisLine(width: 0),
-                majorTickLines: const MajorTickLines(size: 0),
-                labelStyle: TextStyle(
-                  color: cs.onSurfaceVariant,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+          const SizedBox(height: 2),
+          Semantics(
+            label: 'Bases e IVA por origen. '
+                'Ventas: base ${formatVatAmount(salesBase)}, '
+                'IVA ${formatVatAmount(salesTax)}. '
+                'Compras: base ${formatVatAmount(purchaseBase)}, '
+                'IVA ${formatVatAmount(purchaseTax)}.',
+            child: SizedBox(
+              height: 158,
+              child: SfCartesianChart(
+                margin: EdgeInsets.zero,
+                plotAreaBorderWidth: 0,
+                primaryXAxis: CategoryAxis(
+                  majorGridLines: const MajorGridLines(width: 0),
+                  axisLine: const AxisLine(width: 0),
+                  majorTickLines: const MajorTickLines(size: 0),
+                  labelStyle: TextStyle(
+                    color: cs.onSurfaceVariant,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
+                primaryYAxis: NumericAxis(
+                  minimum: 0,
+                  maximum: axisMaximum,
+                  numberFormat: NumberFormat.compactCurrency(
+                    locale: 'es_ES',
+                    symbol: '€',
+                    decimalDigits: 0,
+                  ),
+                  axisLine: const AxisLine(width: 0),
+                  majorTickLines: const MajorTickLines(size: 0),
+                  interval: axisInterval,
+                  labelStyle: TextStyle(
+                    color: cs.onSurfaceVariant,
+                    fontSize: 11,
+                  ),
+                  majorGridLines: MajorGridLines(
+                    width: 0.6,
+                    color: cs.outlineVariant.withValues(alpha: 0.12),
+                  ),
+                ),
+                legend: const Legend(isVisible: false),
+                // Built by hand so the amount is formatted once: the default
+                // template reuses the axis format and appends the currency
+                // symbol a second time.
+                tooltipBehavior: TooltipBehavior(
+                  enable: true,
+                  builder: (data, point, series, pointIndex, seriesIndex) {
+                    final datum = data as _VatChartDatum;
+                    final isSales = seriesIndex == 0;
+                    final isTax = datum.label == 'IVA';
+                    final amount = isSales
+                        ? (isTax ? salesTax : salesBase)
+                        : (isTax ? purchaseTax : purchaseBase);
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: cs.inverseSurface,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${isSales ? 'Ventas emitidas' : 'Compras deducibles'}'
+                            ' · ${datum.label}',
+                            style: t.bodySmall.copyWith(
+                              color: cs.onInverseSurface,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            formatVatAmount(amount),
+                            style: t.bodySmall.copyWith(
+                              color: cs.onInverseSurface,
+                              fontWeight: FontWeight.w800,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures()
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                series: <CartesianSeries<_VatChartDatum, String>>[
+                  BarSeries<_VatChartDatum, String>(
+                    name: 'Ventas emitidas',
+                    animationDuration: 0,
+                    dataSource: chartData,
+                    xValueMapper: (datum, _) => datum.label,
+                    yValueMapper: (datum, _) => datum.sales,
+                    color: cs.primary,
+                    borderRadius: const BorderRadius.horizontal(
+                      right: Radius.circular(6),
+                    ),
+                    width: 0.32,
+                  ),
+                  BarSeries<_VatChartDatum, String>(
+                    name: 'Compras deducibles',
+                    animationDuration: 0,
+                    dataSource: chartData,
+                    xValueMapper: (datum, _) => datum.label,
+                    yValueMapper: (datum, _) => datum.purchases,
+                    color: cs.tertiary,
+                    borderRadius: const BorderRadius.horizontal(
+                      right: Radius.circular(6),
+                    ),
+                    width: 0.32,
+                  ),
+                ],
               ),
-              primaryYAxis: NumericAxis(
-                numberFormat: NumberFormat.compactCurrency(
-                  locale: 'es_ES',
-                  symbol: '',
-                  decimalDigits: 0,
-                ),
-                axisLine: const AxisLine(width: 0),
-                majorTickLines: const MajorTickLines(size: 0),
-                labelStyle: TextStyle(
-                  color: cs.onSurfaceVariant,
-                  fontSize: 11,
-                ),
-                majorGridLines: MajorGridLines(
-                  width: 1,
-                  color: cs.outlineVariant.withValues(alpha: 0.2),
-                ),
-              ),
-              legend: Legend(
-                isVisible: true,
-                position: LegendPosition.bottom,
-                textStyle: TextStyle(
-                  color: cs.onSurfaceVariant,
-                  fontSize: 11,
-                ),
-              ),
-              tooltipBehavior: TooltipBehavior(enable: true),
-              series: <CartesianSeries<_VatChartDatum, String>>[
-                ColumnSeries<_VatChartDatum, String>(
-                  name: 'Ventas emitidas',
-                  dataSource: chartData,
-                  xValueMapper: (datum, _) => datum.label,
-                  yValueMapper: (datum, _) => datum.sales,
-                  color: cs.primary,
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(8)),
-                  width: 0.34,
-                ),
-                ColumnSeries<_VatChartDatum, String>(
-                  name: 'Compras deducibles',
-                  dataSource: chartData,
-                  xValueMapper: (datum, _) => datum.label,
-                  yValueMapper: (datum, _) => datum.purchases,
-                  color: cs.tertiary,
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(8)),
-                  width: 0.34,
-                ),
-              ],
             ),
           ),
         ],
       ),
     );
   }
+}
+
+class _VatChartValues {
+  const _VatChartValues({
+    required this.salesBase,
+    required this.salesTax,
+    required this.purchaseBase,
+    required this.purchaseTax,
+  });
+
+  const _VatChartValues.zero()
+      : salesBase = 0,
+        salesTax = 0,
+        purchaseBase = 0,
+        purchaseTax = 0;
+
+  final double salesBase;
+  final double salesTax;
+  final double purchaseBase;
+  final double purchaseTax;
+
+  static _VatChartValues lerp(
+    _VatChartValues begin,
+    _VatChartValues end,
+    double t,
+  ) {
+    double value(double a, double b) => a + (b - a) * t;
+    return _VatChartValues(
+      salesBase: value(begin.salesBase, end.salesBase),
+      salesTax: value(begin.salesTax, end.salesTax),
+      purchaseBase: value(begin.purchaseBase, end.purchaseBase),
+      purchaseTax: value(begin.purchaseTax, end.purchaseTax),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is _VatChartValues &&
+        salesBase == other.salesBase &&
+        salesTax == other.salesTax &&
+        purchaseBase == other.purchaseBase &&
+        purchaseTax == other.purchaseTax;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        salesBase,
+        salesTax,
+        purchaseBase,
+        purchaseTax,
+      );
 }
 
 class _VatChartDatum {
@@ -918,11 +1169,47 @@ class _VatChartDatum {
   });
 }
 
+class _VatLegendDot extends StatelessWidget {
+  const _VatLegendDot({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: t.bodySmall.copyWith(
+            color: cs.onSurfaceVariant,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _VatMetricChip extends StatelessWidget {
   final String label;
   final String value;
+  final String? secondary;
   final String? helper;
   final String? actionLabel;
+  final String? badge;
+  final IconData? badgeIcon;
+  final String? badgeTooltip;
   final Color color;
   final bool prominent;
   final VoidCallback? onTap;
@@ -930,8 +1217,12 @@ class _VatMetricChip extends StatelessWidget {
   const _VatMetricChip({
     required this.label,
     required this.value,
+    this.secondary,
     this.helper,
     this.actionLabel,
+    this.badge,
+    this.badgeIcon,
+    this.badgeTooltip,
     required this.color,
     this.prominent = false,
     this.onTap,
@@ -940,55 +1231,100 @@ class _VatMetricChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final tooltipMessage = [
+      actionLabel ?? label,
+      if ((badgeTooltip ?? '').isNotEmpty) badgeTooltip!,
+    ].join(' · ');
     return Tooltip(
-      message: actionLabel ?? label,
+      message: tooltipMessage,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: prominent ? 12 : 10,
-            vertical: prominent ? 9 : 8,
-          ),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: prominent ? 0.12 : 0.075),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: color.withValues(alpha: prominent ? 0.34 : 0.22),
-            ),
-            boxShadow: prominent
-                ? [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.08),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
+          constraints: const BoxConstraints(minWidth: 130),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: t.bodySmall.copyWith(
-                  color: color,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.2,
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      label,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                  // Fiscal outcome sits next to the KPI it qualifies instead
+                  // of in a separate prominent badge.
+                  if ((badge ?? '').isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.09),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (badgeIcon != null) ...[
+                              Icon(badgeIcon, size: 10, color: color),
+                              const SizedBox(width: 3),
+                            ],
+                            Flexible(
+                              child: Text(
+                                badge!,
+                                overflow: TextOverflow.ellipsis,
+                                style: t.bodySmall.copyWith(
+                                  color: color,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 2),
               Text(
                 value,
                 style: t.bodySmall.copyWith(
-                  color: color,
+                  color: prominent ? color : cs.onSurface,
                   fontWeight: FontWeight.w900,
-                  fontSize: prominent ? 13 : 12,
+                  fontSize: prominent ? 17 : 15,
                   letterSpacing: -0.15,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
+              if ((secondary ?? '').isNotEmpty) ...[
+                const SizedBox(height: 1),
+                Text(
+                  secondary!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontSize: 9.5,
+                  ),
+                ),
+              ],
               if ((helper ?? '').isNotEmpty) ...[
                 const SizedBox(height: 1),
                 Text(
@@ -1000,207 +1336,9 @@ class _VatMetricChip extends StatelessWidget {
                   ),
                 ),
               ],
-              if ((actionLabel ?? '').isNotEmpty) ...[
-                const SizedBox(height: 3),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      actionLabel!,
-                      style: t.bodySmall.copyWith(
-                        color: color,
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(width: 3),
-                    Icon(Icons.arrow_downward_rounded, size: 10, color: color),
-                  ],
-                ),
-              ],
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _MiniInsightPill extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-
-  const _MiniInsightPill({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.22)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: t.bodySmall.copyWith(
-              color: color.withValues(alpha: 0.78),
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          Text(
-            value,
-            style: t.bodySmall.copyWith(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuarterComparisonStrip extends StatelessWidget {
-  final String previousQuarterLabel;
-  final double? salesChange;
-  final double? purchaseChange;
-  final double? netChange;
-  final bool comparisonAvailable;
-
-  const _QuarterComparisonStrip({
-    required this.previousQuarterLabel,
-    required this.salesChange,
-    required this.purchaseChange,
-    required this.netChange,
-    required this.comparisonAvailable,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    if (!comparisonAvailable) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.28)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.info_outline_rounded,
-                size: 14, color: cs.onSurfaceVariant),
-            const SizedBox(width: 7),
-            Flexible(
-              child: Text(
-                'No hay datos del trimestre anterior para comparar.',
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-          decoration: BoxDecoration(
-            color: cs.primary.withValues(alpha: 0.07),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: cs.primary.withValues(alpha: 0.16)),
-          ),
-          child: Text(
-            'vs ${previousQuarterLabel.isEmpty ? 'trimestre anterior' : previousQuarterLabel}',
-            style: t.bodySmall.copyWith(
-              color: cs.primary,
-              fontWeight: FontWeight.w900,
-              fontSize: 10,
-            ),
-          ),
-        ),
-        _DeltaChip(label: 'Ventas IVA', value: salesChange),
-        _DeltaChip(label: 'Compras IVA', value: purchaseChange),
-        _DeltaChip(label: 'Neto IVA', value: netChange, netMeaning: true),
-      ],
-    );
-  }
-}
-
-class _DeltaChip extends StatelessWidget {
-  final String label;
-  final double? value;
-  final bool netMeaning;
-
-  const _DeltaChip({
-    required this.label,
-    required this.value,
-    this.netMeaning = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    final hasValue = value != null;
-    final positive = (value ?? 0) >= 0;
-    final color = !hasValue
-        ? cs.onSurfaceVariant
-        : positive
-            ? (netMeaning ? cs.error : cs.tertiary)
-            : (netMeaning ? cs.tertiary : const Color(0xFFD97706));
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            !hasValue
-                ? Icons.remove_rounded
-                : positive
-                    ? Icons.trending_up_rounded
-                    : Icons.trending_down_rounded,
-            size: 13,
-            color: color,
-          ),
-          const SizedBox(width: 5),
-          Text(
-            '$label: ${hasValue ? '${positive ? '+' : '-'}${value!.abs().toStringAsFixed(1)}%' : 'Sin datos'}',
-            style: t.bodySmall.copyWith(
-              color: color,
-              fontWeight: FontWeight.w800,
-              fontSize: 10,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1443,7 +1581,7 @@ class _VatSectionCardState extends State<VatSectionCard> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1451,16 +1589,13 @@ class _VatSectionCardState extends State<VatSectionCard> {
             Row(
               children: [
                 Container(
-                  width: 32,
-                  height: 32,
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
                     color: widget.accentColor.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: widget.accentColor.withValues(alpha: 0.4),
-                    ),
                   ),
-                  child: Icon(widget.icon, size: 17, color: widget.accentColor),
+                  child: Icon(widget.icon, size: 16, color: widget.accentColor),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -1510,20 +1645,7 @@ class _VatSectionCardState extends State<VatSectionCard> {
                 ),
               ],
             ),
-            if (!_showAll &&
-                widget.previewLabel != null &&
-                sortedEntries.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                widget.previewLabel!,
-                style: t.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             if (sortedEntries.isEmpty && !hasTotals)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1592,21 +1714,27 @@ class _VatSectionCardState extends State<VatSectionCard> {
                       baseNum > 0 ? ((taxNum / baseNum) * 100).round() : null;
 
                   return Container(
-                    margin: const EdgeInsets.only(bottom: 6),
+                    margin: EdgeInsets.zero,
                     decoration: BoxDecoration(
                       color: isExpanded
                           ? widget.accentColor.withValues(alpha: 0.04)
                           : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: isExpanded
-                            ? widget.accentColor.withValues(alpha: 0.3)
-                            : cs.outlineVariant.withValues(alpha: 0.35),
-                      ),
+                      borderRadius: isExpanded
+                          ? BorderRadius.circular(8)
+                          : BorderRadius.zero,
+                      border: isExpanded
+                          ? Border.all(
+                              color: widget.accentColor.withValues(alpha: 0.3),
+                            )
+                          : Border(
+                              bottom: BorderSide(
+                                color: cs.outlineVariant.withValues(alpha: 0.3),
+                              ),
+                            ),
                     ),
                     child: InkWell(
                       onTap: () => _toggleExpanded(entryKey),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -1614,7 +1742,7 @@ class _VatSectionCardState extends State<VatSectionCard> {
                           Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
-                              vertical: 8,
+                              vertical: 6,
                             ),
                             child: Row(
                               children: [

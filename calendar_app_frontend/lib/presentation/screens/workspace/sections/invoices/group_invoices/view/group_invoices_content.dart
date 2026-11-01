@@ -222,6 +222,7 @@ class _GroupInvoicesContent extends StatelessWidget {
       return VatSummaryView(
         api: state._vatApi,
         groupId: state.widget.group.id,
+        timezone: state.widget.group.businessHours?.timezone ?? 'Europe/Madrid',
       );
     }
 

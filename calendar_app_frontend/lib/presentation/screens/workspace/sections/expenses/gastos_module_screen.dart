@@ -211,7 +211,11 @@ class _GastosModuleScreenState extends State<GastosModuleScreen> {
         showMenu: false,
       ),
       // 2 – Analítica
-      VatSummaryView(api: _vatApi, groupId: widget.group.id),
+      VatSummaryView(
+        api: _vatApi,
+        groupId: widget.group.id,
+        timezone: widget.group.businessHours?.timezone ?? 'Europe/Madrid',
+      ),
       // 3 – Modelos
       _PlaceholderGrid(
         title: _modelosSection == 'all'

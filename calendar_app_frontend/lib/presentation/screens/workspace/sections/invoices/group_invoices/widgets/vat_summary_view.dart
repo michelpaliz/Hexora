@@ -4,6 +4,7 @@ import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/shared/content_disposition.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/services/vat/vat_summary_api.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/utils/recurrence_time_utils.dart';
 
 import 'vat_summary/vat_summary_header.dart';
 import 'vat_summary/vat_summary_quarter.dart';
@@ -12,11 +13,13 @@ import 'vat_summary/vat_summary_utils.dart';
 class VatSummaryView extends StatefulWidget {
   final VatSummaryApi api;
   final String? groupId;
+  final String timezone;
 
   const VatSummaryView({
     super.key,
     required this.api,
     this.groupId,
+    this.timezone = 'Europe/Madrid',
   });
 
   @override
@@ -28,12 +31,14 @@ class _VatSummaryViewState extends State<VatSummaryView>
   late final TabController _tabs;
   final ExpensesApi _expensesApi = ExpensesApi();
   final InvoicesApi _invoicesApi = InvoicesApi();
-  int _year = DateTime.now().year;
+  late int _year;
   final Map<int, Map<String, dynamic>> _data = {};
   final Map<int, List<Map<String, dynamic>>> _expenseEntries = {};
   final Map<int, Map<String, dynamic>> _invoiceSummaries = {};
   final Map<int, Map<String, dynamic>> _expenseSummaries = {};
   final Map<int, List<Map<String, dynamic>>> _allYearExpenses = {};
+  final VatChartAnimationCoordinator _chartAnimationCoordinator =
+      VatChartAnimationCoordinator();
   final Map<int, String?> _errors = {};
   final Map<int, bool> _loading = {};
   bool _exportingVatAudit = false;
@@ -41,14 +46,31 @@ class _VatSummaryViewState extends State<VatSummaryView>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 4, vsync: this);
+    final now = _companyNow();
+    _year = now.year;
+    final currentQuarter = _quarterFor(now);
+    _tabs = TabController(
+      length: 4,
+      initialIndex: currentQuarter - 1,
+      vsync: this,
+    );
     _tabs.addListener(() {
       if (_tabs.indexIsChanging) return;
       _ensureLoaded(_tabs.index + 1);
       if (mounted) setState(() {});
     });
-    _ensureLoaded(1);
+    _ensureLoaded(currentQuarter);
   }
+
+  DateTime _companyNow() {
+    final configured = widget.timezone.trim();
+    final timezone = configured.isNotEmpty && tryGetLocation(configured) != null
+        ? configured
+        : 'Europe/Madrid';
+    return utcToZoned(DateTime.now().toUtc(), timezone);
+  }
+
+  int _quarterFor(DateTime date) => ((date.month - 1) ~/ 3) + 1;
 
   @override
   void dispose() {
@@ -165,6 +187,7 @@ class _VatSummaryViewState extends State<VatSummaryView>
   void _changeYear(int delta) {
     setState(() {
       _year += delta;
+      _chartAnimationCoordinator.reset();
       _data.clear();
       _expenseEntries.clear();
       _invoiceSummaries.clear();
@@ -173,6 +196,29 @@ class _VatSummaryViewState extends State<VatSummaryView>
       _loading.clear();
     });
     _ensureLoaded(_tabs.index + 1);
+  }
+
+  void _goToCurrentQuarter() {
+    final now = _companyNow();
+    final quarter = _quarterFor(now);
+    final yearChanged = _year != now.year;
+    setState(() {
+      _year = now.year;
+      if (yearChanged) {
+        _chartAnimationCoordinator.reset();
+        _data.clear();
+        _expenseEntries.clear();
+        _invoiceSummaries.clear();
+        _expenseSummaries.clear();
+        _errors.clear();
+        _loading.clear();
+      }
+    });
+    if (_tabs.index != quarter - 1) {
+      _tabs.animateTo(quarter - 1);
+    } else {
+      _ensureLoaded(quarter);
+    }
   }
 
   Future<void> _exportVatAudit() async {
@@ -219,6 +265,9 @@ class _VatSummaryViewState extends State<VatSummaryView>
   @override
   Widget build(BuildContext context) {
     final selectedQuarter = _tabs.index + 1;
+    final now = _companyNow();
+    final isCurrentPeriod =
+        _year == now.year && selectedQuarter == _quarterFor(now);
     final rangeLabel = quarterRangeLabel(
       context,
       year: _year,
@@ -241,6 +290,8 @@ class _VatSummaryViewState extends State<VatSummaryView>
           expenseEntries: _expenseEntries[quarter],
           invoiceSummary: _invoiceSummaries[quarter],
           expenseSummary: _expenseSummaries[quarter],
+          chartAnimationCoordinator: _chartAnimationCoordinator,
+          isActive: quarter == selectedQuarter,
           onRetry: () => _loadQuarter(quarter),
         );
       }),
@@ -259,9 +310,11 @@ class _VatSummaryViewState extends State<VatSummaryView>
               onExportVatAudit: _exportVatAudit,
               onPrevYear: () => _changeYear(-1),
               onNextYear: () => _changeYear(1),
+              onToday: _goToCurrentQuarter,
+              isCurrentPeriod: isCurrentPeriod,
               tabs: _tabs,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Expanded(child: tabView),
           ],
         );
