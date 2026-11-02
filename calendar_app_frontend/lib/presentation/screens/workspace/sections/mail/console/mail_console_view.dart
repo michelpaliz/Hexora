@@ -124,7 +124,7 @@ class _MailConsoleView extends StatelessWidget {
 
     void openFolderSheet() {
       showModalBottomSheet<void>(
-      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
+        sheetAnimationStyle: HexoraMotion.sheetStyle(context),
         context: context,
         isScrollControlled: true,
         shape: const RoundedRectangleBorder(
@@ -188,6 +188,7 @@ class _MailConsoleView extends StatelessWidget {
           onStartReply: state._startReply,
           onReply: state._sendReply,
           onCloseReply: state._closeReplyComposer,
+          onOpenFullReply: state._openFullReply,
           replySubjectController: state._replySubjectCtrl,
           replyController: state._replyCtrl,
           replyFocus: state._replyFocus,
@@ -578,6 +579,7 @@ class _MailConsoleView extends StatelessWidget {
                               onStartReply: state._startReply,
                               onReply: state._sendReply,
                               onCloseReply: state._closeReplyComposer,
+                              onOpenFullReply: state._openFullReply,
                               replySubjectController: state._replySubjectCtrl,
                               replyController: state._replyCtrl,
                               replyFocus: state._replyFocus,

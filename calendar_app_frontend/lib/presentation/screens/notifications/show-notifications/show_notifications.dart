@@ -19,6 +19,7 @@ import 'package:hexora/services/notification/notification_api_client.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/business_chat/business_chat_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/presentation/shared/jobs/ocr_import_job_mapping_store.dart';
 import 'package:hexora/presentation/shared/jobs/ocr_import_jobs_store.dart';
@@ -409,6 +410,25 @@ class _ShowNotificationsState extends State<ShowNotifications>
 
   Future<void> _openNotificationDestination(
       NotificationUser notification) async {
+    final chatId =
+        (notification.args['conversationId'] ?? '').toString().trim();
+    if (chatId.isNotEmpty) {
+      final groupId = (notification.args['groupId'] ?? notification.groupId)
+          .toString()
+          .trim();
+      if (groupId.isEmpty) throw StateError('Missing chat group');
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: const Text('Hexora Chat')),
+          body: BusinessChatScreen(
+            groupId: groupId,
+            currentUserId: widget.user.id,
+            initialConversationId: chatId,
+          ),
+        ),
+      ));
+      return;
+    }
     if (_isReadyDownloadNotification(notification)) {
       await _downloadNotificationFile(notification);
       return;

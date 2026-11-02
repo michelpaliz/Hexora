@@ -23,14 +23,14 @@ abstract class InsightsChatSheetStateBase extends State<InsightsChatSheet> {
   final clientsApi = ClientsApi();
   final servicesApi = ServiceApi();
   final inputCtrl = TextEditingController();
+  final chatComposerFocusNode = FocusNode();
   final scrollCtrl = ScrollController();
   final Map<String, ScrollController> tableScrollControllers = {};
   String? exportingMessageKey;
   String? selectedAssistantMessageKey;
   String? eventActionMessageKey;
   final Map<String, PendingInvoiceLinkEdit> pendingInvoiceLinkEdits = {};
-  final Map<String, Map<String, dynamic>> pendingInsightsInvoiceRowPatches =
-      {};
+  final Map<String, Map<String, dynamic>> pendingInsightsInvoiceRowPatches = {};
   final Map<String, Map<String, dynamic>> invoiceDisplayCache = {};
   final Map<String, InsightsDateRange> tableDateFilters = {};
   final Map<String, InsightsRemoteTableState> remoteTableStates = {};
@@ -97,11 +97,24 @@ abstract class InsightsChatSheetStateBase extends State<InsightsChatSheet> {
   Future<void> retryLast();
   Future<void> quickSummary();
   String? conversationIdForMessage(ChatMessage? message);
-  Future<void> sendMessageAction( String text, { required InsightsSendSource source, ChatMessage? message, String? displayTextOverride, });
-  Future<void> sendMenuChoice( int index, { String? action, String? label, ChatMessage? message, });
+  Future<void> sendMessageAction(
+    String text, {
+    required InsightsSendSource source,
+    ChatMessage? message,
+    String? displayTextOverride,
+  });
+  Future<void> sendMenuChoice(
+    int index, {
+    String? action,
+    String? label,
+    ChatMessage? message,
+  });
   Future<void> sendStarterChoice(InsightsMenuOption option);
   void prefillEventCreationShortcut(bool isEs);
-  Future<void> sendMenuBack( InsightsMenu menu, { ChatMessage? message, });
+  Future<void> sendMenuBack(
+    InsightsMenu menu, {
+    ChatMessage? message,
+  });
   bool isIncomeAmountPromptMessage(ChatMessage message);
   ChatMessage? latestAssistantMessageFrom(List<ChatMessage> messages);
   ChatMessage? latestIncomeAmountPromptMessageFrom(List<ChatMessage> messages);
@@ -109,9 +122,16 @@ abstract class InsightsChatSheetStateBase extends State<InsightsChatSheet> {
   Future<void> submitTypedMessage();
   List<Map<String, dynamic>> linkedIncomeReviewColumns(bool isEs);
   bool messageIsLinkedIncomeReview(ChatMessage message);
-  Map<String, dynamic> normalizeLinkedIncomeReviewRow( Map<String, dynamic> row, );
-  Map<String, dynamic> linkedIncomeReviewPayload( Map<String, dynamic> response, );
-  Future<void> openLinkedIncomeReview({ ChatMessage? sourceMessage, String? displayLabel, });
+  Map<String, dynamic> normalizeLinkedIncomeReviewRow(
+    Map<String, dynamic> row,
+  );
+  Map<String, dynamic> linkedIncomeReviewPayload(
+    Map<String, dynamic> response,
+  );
+  Future<void> openLinkedIncomeReview({
+    ChatMessage? sourceMessage,
+    String? displayLabel,
+  });
   Future<void> refreshLinkedIncomeReview(ChatMessage message);
   bool shouldUseEventPreview(String text);
   bool hasPendingEventClarification(ChatMessage? message);
@@ -126,7 +146,11 @@ abstract class InsightsChatSheetStateBase extends State<InsightsChatSheet> {
   DateTime? eventDate(dynamic value);
   String eventStatusLabel(String status, bool isEs);
   Color eventStatusColor(ColorScheme cs, String status);
-  String formatEventDateTime( BuildContext context, DateTime? date, { required bool allDay, });
+  String formatEventDateTime(
+    BuildContext context,
+    DateTime? date, {
+    required bool allDay,
+  });
   String eventDateRangeLabel(BuildContext context, ChatMessage message);
   String eventDurationLabel(ChatMessage message, bool isEs);
   String eventRecurrenceSummary(ChatMessage message, bool isEs);
@@ -143,22 +167,49 @@ abstract class InsightsChatSheetStateBase extends State<InsightsChatSheet> {
   InsightsRemoteTableState? remoteTableStateFor(ChatMessage message);
   Map<String, dynamic>? effectiveTableForMessage(ChatMessage message);
   Map<String, dynamic>? tableFromDataResponse(Map<String, dynamic> response);
-  Map<String, dynamic>? paginationFromDataResponse( Map<String, dynamic> response, );
-  Map<String, dynamic> tableDataRequestBody({ required Map<String, dynamic> tableQuery, required int page, required int pageSize, InsightsDateRange? filter, });
+  Map<String, dynamic>? paginationFromDataResponse(
+    Map<String, dynamic> response,
+  );
+  Map<String, dynamic> tableDataRequestBody({
+    required Map<String, dynamic> tableQuery,
+    required int page,
+    required int pageSize,
+    InsightsDateRange? filter,
+  });
   int initialRemoteTablePageSize(ChatMessage message);
-  Future<void> loadRemoteTableData( ChatMessage message, { int page = 1, int? pageSize, InsightsDateRange? filter, });
+  Future<void> loadRemoteTableData(
+    ChatMessage message, {
+    int page = 1,
+    int? pageSize,
+    InsightsDateRange? filter,
+  });
   void ensureRemoteTableDataLoaded(ChatMessage message);
   Future<void> clearTableDateFilter(ChatMessage message);
-  Future<void> applyTableDateFilter( ChatMessage message, InsightsDateRange range, );
-  Future<void> changeRemoteTablePage( ChatMessage message, int page, );
+  Future<void> applyTableDateFilter(
+    ChatMessage message,
+    InsightsDateRange range,
+  );
+  Future<void> changeRemoteTablePage(
+    ChatMessage message,
+    int page,
+  );
   Future<void> reloadRemoteTableForMessage(ChatMessage message);
   String invoiceLinkKey(String messageKey, String entryId);
   bool messageSupportsManualInvoiceLink(ChatMessage message);
-  List<Map<String, dynamic>> columnsWithTransactionLinkedState( List<Map<String, dynamic>> columns, { required bool isEs, });
+  List<Map<String, dynamic>> columnsWithTransactionLinkedState(
+    List<Map<String, dynamic>> columns, {
+    required bool isEs,
+  });
   Map<String, dynamic>? rowBankIncomeSearchAction(Map<String, dynamic> row);
   bool rowsHaveBankIncomeSearch(List<Map<String, dynamic>> rows);
-  List<Map<String, dynamic>> columnsWithBankIncomeSearchAction( List<Map<String, dynamic>> columns, { required bool isEs, });
-  List<Map<String, dynamic>> columnsWithUnlinkedIncomeLinkAction( List<Map<String, dynamic>> columns, { required bool isEs, });
+  List<Map<String, dynamic>> columnsWithBankIncomeSearchAction(
+    List<Map<String, dynamic>> columns, {
+    required bool isEs,
+  });
+  List<Map<String, dynamic>> columnsWithUnlinkedIncomeLinkAction(
+    List<Map<String, dynamic>> columns, {
+    required bool isEs,
+  });
   bool messageLooksLikeUnlinkedIncome(ChatMessage message);
   bool rowIsPositiveStatementEntry(Map<String, dynamic> row);
   bool rowCanLinkUnlinkedIncomeInvoice(Map<String, dynamic> row);
@@ -167,116 +218,429 @@ abstract class InsightsChatSheetStateBase extends State<InsightsChatSheet> {
   bool isInvoiceStatusColumn(Map<String, dynamic> column);
   bool rowIsUnlinkedInvoice(Map<String, dynamic> row);
   bool rowHasExistingInvoiceLink(Map<String, dynamic> row);
-  Map<String, dynamic> linkedInvoiceRowPatch({ required Map<String, dynamic> invoiceRow, required Map<String, dynamic> incomeRow, required bool isEs, });
+  Map<String, dynamic> linkedInvoiceRowPatch({
+    required Map<String, dynamic> invoiceRow,
+    required Map<String, dynamic> incomeRow,
+    required bool isEs,
+  });
   List<String> linkedInvoiceIdsFromRow(Map<String, dynamic> row);
   bool linkedRowNeedsInvoiceDisplayHydration(Map<String, dynamic> row);
   String formatEuroAmount(num? amount, String? currency);
   Future<void> ensureInvoiceDisplayCacheLoaded();
-  Future<void> hydrateLinkedInvoiceDisplayFields( ChatMessage message, List<Map<String, dynamic>> rows, bool isEs, );
-  Map<String, dynamic> linkedRowPatchFromBulkResponse( Map<String, dynamic> item, bool isEs, );
-  List<Map<String, dynamic>> bulkLinkableRowsFrom( List<Map<String, dynamic>> rows, );
-  Future<void> linkAllSuggestedInvoices( ChatMessage message, List<Map<String, dynamic>> rows, bool isEs, );
-  String tableCellValue( Map<String, dynamic> row, Map<String, dynamic> column, );
+  Future<void> hydrateLinkedInvoiceDisplayFields(
+    ChatMessage message,
+    List<Map<String, dynamic>> rows,
+    bool isEs,
+  );
+  Map<String, dynamic> linkedRowPatchFromBulkResponse(
+    Map<String, dynamic> item,
+    bool isEs,
+  );
+  List<Map<String, dynamic>> bulkLinkableRowsFrom(
+    List<Map<String, dynamic>> rows,
+  );
+  Future<void> linkAllSuggestedInvoices(
+    ChatMessage message,
+    List<Map<String, dynamic>> rows,
+    bool isEs,
+  );
+  String tableCellValue(
+    Map<String, dynamic> row,
+    Map<String, dynamic> column,
+  );
   String? rowEntryId(Map<String, dynamic> row);
-  Map<String, dynamic> rowWithPendingLink( ChatMessage message, Map<String, dynamic> row, );
-  Map<String, dynamic> statementEntryFromInsightsRow( Map<String, dynamic> row, );
-  PendingInvoiceLinkEdit? linkEditFromStatementEntry( Map<String, dynamic> entry, Map<String, dynamic> row, bool isEs, );
-  Map<String, dynamic> insightsRowPatchFromLinkedEntry( Map<String, dynamic> entry, PendingInvoiceLinkEdit edit, bool isEs, );
-  Future<Map<String, dynamic>> entryWithResolvedInvoiceIds( Map<String, dynamic> entry, Map<String, dynamic> row, );
-  Map<String, dynamic> entryWithResolvedClientId( Map<String, dynamic> entry, List<Map<String, dynamic>> clients, );
-  Future<void> pickInvoiceLinkForRow( ChatMessage message, Map<String, dynamic> row, { bool showSuggestions = false, });
-  Widget buildInvoiceLinkStatusCell( BuildContext context, { required ChatMessage message, required Map<String, dynamic> row, required String value, required ColorScheme cs, required AppTypography t, });
-  Widget buildUnlinkedIncomeLinkActionCell( BuildContext context, { required ChatMessage message, required Map<String, dynamic> row, required ColorScheme cs, required AppTypography t, });
-  Widget buildTransactionLinkedStateCell( Map<String, dynamic> row, { required ColorScheme cs, required AppTypography t, required bool isEs, });
+  Map<String, dynamic> rowWithPendingLink(
+    ChatMessage message,
+    Map<String, dynamic> row,
+  );
+  Map<String, dynamic> statementEntryFromInsightsRow(
+    Map<String, dynamic> row,
+  );
+  PendingInvoiceLinkEdit? linkEditFromStatementEntry(
+    Map<String, dynamic> entry,
+    Map<String, dynamic> row,
+    bool isEs,
+  );
+  Map<String, dynamic> insightsRowPatchFromLinkedEntry(
+    Map<String, dynamic> entry,
+    PendingInvoiceLinkEdit edit,
+    bool isEs,
+  );
+  Future<Map<String, dynamic>> entryWithResolvedInvoiceIds(
+    Map<String, dynamic> entry,
+    Map<String, dynamic> row,
+  );
+  Map<String, dynamic> entryWithResolvedClientId(
+    Map<String, dynamic> entry,
+    List<Map<String, dynamic>> clients,
+  );
+  Future<void> pickInvoiceLinkForRow(
+    ChatMessage message,
+    Map<String, dynamic> row, {
+    bool showSuggestions = false,
+  });
+  Widget buildInvoiceLinkStatusCell(
+    BuildContext context, {
+    required ChatMessage message,
+    required Map<String, dynamic> row,
+    required String value,
+    required ColorScheme cs,
+    required AppTypography t,
+  });
+  Widget buildUnlinkedIncomeLinkActionCell(
+    BuildContext context, {
+    required ChatMessage message,
+    required Map<String, dynamic> row,
+    required ColorScheme cs,
+    required AppTypography t,
+  });
+  Widget buildTransactionLinkedStateCell(
+    Map<String, dynamic> row, {
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool isEs,
+  });
   Map<String, dynamic>? linkInvoiceToEntryAction(Map<String, dynamic> row);
-  Map<String, dynamic>? bankIncomeSearchPayload( Map<String, dynamic>? response, );
-  List<Map<String, dynamic>> bankIncomeCandidateRowsFromResponse( Map<String, dynamic>? response, );
-  List<Map<String, dynamic>> candidateColumnsFromTable( Map<String, dynamic>? table, List<Map<String, dynamic>> rows, );
+  Map<String, dynamic>? bankIncomeSearchPayload(
+    Map<String, dynamic>? response,
+  );
+  List<Map<String, dynamic>> bankIncomeCandidateRowsFromResponse(
+    Map<String, dynamic>? response,
+  );
+  List<Map<String, dynamic>> candidateColumnsFromTable(
+    Map<String, dynamic>? table,
+    List<Map<String, dynamic>> rows,
+  );
   bool isBankIncomeMatchMetadataKey(String key);
-  List<Map<String, dynamic>> bankIncomeCandidateColumnsFromResponse( Map<String, dynamic>? response, List<Map<String, dynamic>> rows, );
-  Map<String, dynamic>? bankIncomeScoringFromResponse( Map<String, dynamic>? response, );
-  Map<String, dynamic>? bankIncomeGroupMatchingFromResponse( Map<String, dynamic>? response, );
-  List<Map<String, dynamic>> bankIncomeMatchedInvoices( Map<String, dynamic> row, );
+  List<Map<String, dynamic>> bankIncomeCandidateColumnsFromResponse(
+    Map<String, dynamic>? response,
+    List<Map<String, dynamic>> rows,
+  );
+  Map<String, dynamic>? bankIncomeScoringFromResponse(
+    Map<String, dynamic>? response,
+  );
+  Map<String, dynamic>? bankIncomeGroupMatchingFromResponse(
+    Map<String, dynamic>? response,
+  );
+  List<Map<String, dynamic>> bankIncomeMatchedInvoices(
+    Map<String, dynamic> row,
+  );
   int bankIncomeMatchedInvoiceCount(Map<String, dynamic> row);
   bool isGroupedBankIncomeCandidate(Map<String, dynamic> row);
-  String bankIncomeInvoiceCountLabel( Map<String, dynamic> row, bool isEs, );
+  String bankIncomeInvoiceCountLabel(
+    Map<String, dynamic> row,
+    bool isEs,
+  );
   bool bankIncomeMatchIsMedium(Map<String, dynamic> row);
-  String? bankIncomeCombinationLabel( Map<String, dynamic> row, bool isEs, );
-  List<Map<String, dynamic>> bankIncomeCombinationOptions( Map<String, dynamic> row, );
+  String? bankIncomeCombinationLabel(
+    Map<String, dynamic> row,
+    bool isEs,
+  );
+  List<Map<String, dynamic>> bankIncomeCombinationOptions(
+    Map<String, dynamic> row,
+  );
   String bankIncomeCombinationId(Map<String, dynamic> option);
   String confidenceFromFormattedScore(dynamic value);
-  Map<String, dynamic> bankIncomeCandidateForCombination( Map<String, dynamic> candidate, Map<String, dynamic>? option, );
+  Map<String, dynamic> bankIncomeCandidateForCombination(
+    Map<String, dynamic> candidate,
+    Map<String, dynamic>? option,
+  );
   bool bankIncomeCandidateHasScore(Map<String, dynamic> row);
   String bankIncomeMatchConfidence(Map<String, dynamic> row);
   bool bankIncomeMatchIsLow(Map<String, dynamic> row);
   String formatBankIncomeMatchNumber(dynamic value);
-  String bankIncomeMatchScoreText( Map<String, dynamic> row, bool isEs, );
-  Color bankIncomeMatchColor( ColorScheme cs, Map<String, dynamic> row, );
+  String bankIncomeMatchScoreText(
+    Map<String, dynamic> row,
+    bool isEs,
+  );
+  Color bankIncomeMatchColor(
+    ColorScheme cs,
+    Map<String, dynamic> row,
+  );
   double bankIncomeCandidateColumnWidth(Map<String, dynamic> column);
   bool isBankIncomeCandidateAmountColumn(Map<String, dynamic> column);
-  String bankIncomeCandidateValue( Map<String, dynamic> row, List<String> keys, );
-  Future<void> showBankIncomeScoringInfo({ required BuildContext sourceContext, required Map<String, dynamic> scoring, Map<String, dynamic>? groupMatching, required bool isEs, });
-  Widget bankIncomeMatchDetailsContent( BuildContext context, { required Map<String, dynamic> row, required bool isEs, });
-  Future<void> showBankIncomeMatchDetails({ required BuildContext sourceContext, required Map<String, dynamic> row, required bool isEs, });
-  Widget buildBankIncomeMatchCell( BuildContext context, { required Map<String, dynamic> row, required bool isEs, bool compact = false, });
-  Widget buildGroupedInvoiceBadge( BuildContext context, { required Map<String, dynamic> row, required bool isEs, required bool expanded, required VoidCallback onPressed, });
-  Widget buildBankIncomeCombinationBadge( BuildContext context, { required Map<String, dynamic> row, required bool isEs, VoidCallback? onPressed, });
-  Future<Map<String, dynamic>?> showBankIncomeCombinationSelector({ required BuildContext sourceContext, required Map<String, dynamic> candidate, required bool isEs, String? selectedCombinationId, });
-  Future<void> previewMatchedInvoice( Map<String, dynamic> invoice, bool isEs, );
-  Widget buildGroupedBankIncomeDetails( BuildContext context, { required Map<String, dynamic> row, required bool isEs, });
-  Future<void> showGroupedBankIncomeDetails({ required BuildContext sourceContext, required Map<String, dynamic> row, required bool isEs, });
-  Future<bool> confirmBankIncomeCandidateLink({ required BuildContext sourceContext, required Map<String, dynamic> row, required bool isEs, required Future<void> Function() onConfirm, });
+  String bankIncomeCandidateValue(
+    Map<String, dynamic> row,
+    List<String> keys,
+  );
+  Future<void> showBankIncomeScoringInfo({
+    required BuildContext sourceContext,
+    required Map<String, dynamic> scoring,
+    Map<String, dynamic>? groupMatching,
+    required bool isEs,
+  });
+  Widget bankIncomeMatchDetailsContent(
+    BuildContext context, {
+    required Map<String, dynamic> row,
+    required bool isEs,
+  });
+  Future<void> showBankIncomeMatchDetails({
+    required BuildContext sourceContext,
+    required Map<String, dynamic> row,
+    required bool isEs,
+  });
+  Widget buildBankIncomeMatchCell(
+    BuildContext context, {
+    required Map<String, dynamic> row,
+    required bool isEs,
+    bool compact = false,
+  });
+  Widget buildGroupedInvoiceBadge(
+    BuildContext context, {
+    required Map<String, dynamic> row,
+    required bool isEs,
+    required bool expanded,
+    required VoidCallback onPressed,
+  });
+  Widget buildBankIncomeCombinationBadge(
+    BuildContext context, {
+    required Map<String, dynamic> row,
+    required bool isEs,
+    VoidCallback? onPressed,
+  });
+  Future<Map<String, dynamic>?> showBankIncomeCombinationSelector({
+    required BuildContext sourceContext,
+    required Map<String, dynamic> candidate,
+    required bool isEs,
+    String? selectedCombinationId,
+  });
+  Future<void> previewMatchedInvoice(
+    Map<String, dynamic> invoice,
+    bool isEs,
+  );
+  Widget buildGroupedBankIncomeDetails(
+    BuildContext context, {
+    required Map<String, dynamic> row,
+    required bool isEs,
+  });
+  Future<void> showGroupedBankIncomeDetails({
+    required BuildContext sourceContext,
+    required Map<String, dynamic> row,
+    required bool isEs,
+  });
+  Future<bool> confirmBankIncomeCandidateLink({
+    required BuildContext sourceContext,
+    required Map<String, dynamic> row,
+    required bool isEs,
+    required Future<void> Function() onConfirm,
+  });
   int highestBankIncomeMatchIndex(List<Map<String, dynamic>> rows);
-  Widget buildTargetInvoiceSummary( BuildContext context, { required Map<String, dynamic> invoiceRow, required bool isEs, });
-  Future<Map<String, dynamic>?> showBankIncomeCandidatesDialog({ required Future<Map<String, dynamic>> responseFuture, required Map<String, dynamic> invoiceRow, required Future<void> Function(Map<String, dynamic> candidate) onLinkCandidate, required bool isEs, });
-  void applyLinkedCandidatePatches({ required ChatMessage message, required Map<String, dynamic> originalInvoiceRow, required Map<String, dynamic> candidate, required Map<String, dynamic> linkAction, required bool isEs, });
-  Future<void> linkBankIncomeCandidate({ required ChatMessage message, required Map<String, dynamic> invoiceRow, required Map<String, dynamic> candidate, required String stateKey, required bool isEs, });
-  Future<void> searchAndLinkBankIncomeForInvoiceRow( ChatMessage message, Map<String, dynamic> row, bool isEs, );
-  Widget buildBankIncomeSearchCell( BuildContext context, { required ChatMessage message, required Map<String, dynamic> row, required ColorScheme cs, required AppTypography t, required bool isEs, });
-  Widget buildUnlinkedInvoiceStatusCell({ required String value, required ColorScheme cs, required AppTypography t, required bool isDark, });
-  Widget buildLinkedInvoiceStatusCell({ required String value, required ColorScheme cs, required AppTypography t, required bool isDark, });
-  List<Map<String, dynamic>> linkedIncomeReviewInvoices( Map<String, dynamic> row, );
-  Map<String, dynamic>? linkedIncomeReviewUnlinkAction( Map<String, dynamic> row, );
-  Color linkedIncomeReviewConfidenceColor( Map<String, dynamic> row, bool isDark, );
-  Widget buildLinkedIncomeReviewScoreCell( Map<String, dynamic> row, { required ColorScheme cs, required AppTypography t, required bool isDark, });
-  Widget buildLinkedIncomeReviewInvoicesCell( Map<String, dynamic> row, { required ColorScheme cs, required AppTypography t, });
-  Widget buildLinkedIncomeReviewReasonsCell( Map<String, dynamic> row, { required ColorScheme cs, required AppTypography t, });
-  Widget buildLinkedIncomeReviewActionsCell( ChatMessage message, Map<String, dynamic> row, { required ColorScheme cs, required AppTypography t, required bool isEs, });
-  Widget buildLinkedIncomeReviewTableCell( ChatMessage message, Map<String, dynamic> row, Map<String, dynamic> column, { required ColorScheme cs, required AppTypography t, required bool isDark, required bool isEs, required TextStyle cellStyle, });
-  Widget buildLinkedIncomeReviewResults( BuildContext context, { required ChatMessage message, required List<Map<String, dynamic>> rows, required ColorScheme cs, required AppTypography t, required bool isDark, required bool isEs, required bool loading, });
-  Future<void> reviewLinkedIncomeRow( ChatMessage message, Map<String, dynamic> row, );
-  Future<void> confirmUnlinkLinkedIncome( ChatMessage message, Map<String, dynamic> row, Map<String, dynamic> unlinkAction, );
-  Widget buildBulkUnlinkLinkedIncomeButton( ChatMessage message, { required bool isEs, required bool compact, });
-  Future<void> confirmBulkUnlinkLinkedIncome( ChatMessage message, List<Map<String, dynamic>> rows, );
+  Widget buildTargetInvoiceSummary(
+    BuildContext context, {
+    required Map<String, dynamic> invoiceRow,
+    required bool isEs,
+  });
+  Future<Map<String, dynamic>?> showBankIncomeCandidatesDialog({
+    required Future<Map<String, dynamic>> responseFuture,
+    required Map<String, dynamic> invoiceRow,
+    required Future<void> Function(Map<String, dynamic> candidate)
+        onLinkCandidate,
+    required bool isEs,
+  });
+  void applyLinkedCandidatePatches({
+    required ChatMessage message,
+    required Map<String, dynamic> originalInvoiceRow,
+    required Map<String, dynamic> candidate,
+    required Map<String, dynamic> linkAction,
+    required bool isEs,
+  });
+  Future<void> linkBankIncomeCandidate({
+    required ChatMessage message,
+    required Map<String, dynamic> invoiceRow,
+    required Map<String, dynamic> candidate,
+    required String stateKey,
+    required bool isEs,
+  });
+  Future<void> searchAndLinkBankIncomeForInvoiceRow(
+    ChatMessage message,
+    Map<String, dynamic> row,
+    bool isEs,
+  );
+  Widget buildBankIncomeSearchCell(
+    BuildContext context, {
+    required ChatMessage message,
+    required Map<String, dynamic> row,
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool isEs,
+  });
+  Widget buildUnlinkedInvoiceStatusCell({
+    required String value,
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool isDark,
+  });
+  Widget buildLinkedInvoiceStatusCell({
+    required String value,
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool isDark,
+  });
+  List<Map<String, dynamic>> linkedIncomeReviewInvoices(
+    Map<String, dynamic> row,
+  );
+  Map<String, dynamic>? linkedIncomeReviewUnlinkAction(
+    Map<String, dynamic> row,
+  );
+  Color linkedIncomeReviewConfidenceColor(
+    Map<String, dynamic> row,
+    bool isDark,
+  );
+  Widget buildLinkedIncomeReviewScoreCell(
+    Map<String, dynamic> row, {
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool isDark,
+  });
+  Widget buildLinkedIncomeReviewInvoicesCell(
+    Map<String, dynamic> row, {
+    required ColorScheme cs,
+    required AppTypography t,
+  });
+  Widget buildLinkedIncomeReviewReasonsCell(
+    Map<String, dynamic> row, {
+    required ColorScheme cs,
+    required AppTypography t,
+  });
+  Widget buildLinkedIncomeReviewActionsCell(
+    ChatMessage message,
+    Map<String, dynamic> row, {
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool isEs,
+  });
+  Widget buildLinkedIncomeReviewTableCell(
+    ChatMessage message,
+    Map<String, dynamic> row,
+    Map<String, dynamic> column, {
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool isDark,
+    required bool isEs,
+    required TextStyle cellStyle,
+  });
+  Widget buildLinkedIncomeReviewResults(
+    BuildContext context, {
+    required ChatMessage message,
+    required List<Map<String, dynamic>> rows,
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool isDark,
+    required bool isEs,
+    required bool loading,
+  });
+  Future<void> reviewLinkedIncomeRow(
+    ChatMessage message,
+    Map<String, dynamic> row,
+  );
+  Future<void> confirmUnlinkLinkedIncome(
+    ChatMessage message,
+    Map<String, dynamic> row,
+    Map<String, dynamic> unlinkAction,
+  );
+  Widget buildBulkUnlinkLinkedIncomeButton(
+    ChatMessage message, {
+    required bool isEs,
+    required bool compact,
+  });
+  Future<void> confirmBulkUnlinkLinkedIncome(
+    ChatMessage message,
+    List<Map<String, dynamic>> rows,
+  );
   String? resolveSelectedAssistantKey(List<ChatMessage> messages);
   ChatMessage? findMessageByKey(List<ChatMessage> messages, String? key);
   String? actionLabelFromRaw(String? raw, {required bool isEs});
-  String? actionLabelFromUserMessage( ChatMessage message, { required bool isEs, });
-  String selectedResponseActionLabel( List<ChatMessage> messages, ChatMessage selectedMessage, { required bool isEs, });
+  String? actionLabelFromUserMessage(
+    ChatMessage message, {
+    required bool isEs,
+  });
+  String selectedResponseActionLabel(
+    List<ChatMessage> messages,
+    ChatMessage selectedMessage, {
+    required bool isEs,
+  });
   void selectAssistantMessage(ChatMessage message);
   Future<void> exportMessageToExcel(ChatMessage message);
   Future<void> confirmClearChat();
-  Widget buildStarterQuestionCard( BuildContext context, { required ColorScheme cs, required AppTypography t, required bool isEs, });
+  Widget buildStarterQuestionCard(
+    BuildContext context, {
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool isEs,
+  });
   bool messageHasStructuredTable(ChatMessage message);
-  bool messageHasIncomeMenu( ChatMessage message, InsightsMenu menu, );
-  List<InsightsMenuOption> menuOptionsWithLinkedIncomeReview( ChatMessage message, InsightsMenu menu, { required bool isEs, });
-  Widget buildMenuActions( BuildContext context, { required ChatMessage message, required ColorScheme cs, required AppTypography t, required bool isEs, bool compact = false, bool selected = false, });
+  bool messageHasIncomeMenu(
+    ChatMessage message,
+    InsightsMenu menu,
+  );
+  List<InsightsMenuOption> menuOptionsWithLinkedIncomeReview(
+    ChatMessage message,
+    InsightsMenu menu, {
+    required bool isEs,
+  });
+  Widget buildMenuActions(
+    BuildContext context, {
+    required ChatMessage message,
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool isEs,
+    bool compact = false,
+    bool selected = false,
+  });
   List<Map<String, dynamic>> tableColumnsFromMessage(ChatMessage message);
   List<Map<String, dynamic>> tableRowsFromMessage(ChatMessage message);
   Map<String, dynamic>? tableSummaryFromMessage(ChatMessage message);
   InsightsDateRange? tableDateFilterFor(ChatMessage message);
   DateTime? parseInsightsTableDate(dynamic value);
   String? tableDateColumnKey(List<Map<String, dynamic>> columns);
-  DateTime? tableRowDate( Map<String, dynamic> row, { String? dateColumnKey, });
-  bool tableRowMatchesDateFilter( Map<String, dynamic> row, InsightsDateRange? filter, String? dateColumnKey, );
-  List<Map<String, dynamic>> filteredTableDataRowsForMessage( ChatMessage message, );
-  num? tableRowAmount( Map<String, dynamic> row, { String? amountColumnKey, });
-  String formatInsightsTableTotal( BuildContext context, num total, { String fallbackCurrency = 'EUR', });
+  DateTime? tableRowDate(
+    Map<String, dynamic> row, {
+    String? dateColumnKey,
+  });
+  bool tableRowMatchesDateFilter(
+    Map<String, dynamic> row,
+    InsightsDateRange? filter,
+    String? dateColumnKey,
+  );
+  List<Map<String, dynamic>> filteredTableDataRowsForMessage(
+    ChatMessage message,
+  );
+  num? tableRowAmount(
+    Map<String, dynamic> row, {
+    String? amountColumnKey,
+  });
+  String formatInsightsTableTotal(
+    BuildContext context,
+    num total, {
+    String fallbackCurrency = 'EUR',
+  });
   String? currencyFromFormattedAmount(String value);
-  Widget compactDateRangePickerShell( BuildContext pickerContext, Widget? child, );
+  Widget compactDateRangePickerShell(
+    BuildContext pickerContext,
+    Widget? child,
+  );
   Future<void> showTableDateFilterDialog(ChatMessage message);
-  Widget buildInsightsTableView( BuildContext context, { required ChatMessage message, required ColorScheme cs, required AppTypography t, });
-  Widget buildIncomeAmountPromptInput( BuildContext context, { required ChatMessage promptMessage, required ColorScheme cs, required AppTypography t, required bool isEs, });
-  Widget buildChatComposer( BuildContext context, { required ColorScheme cs, required AppTypography t, required bool isEs, });
-  Widget buildEventPreviewBubble( BuildContext context, ChatMessage message, );
+  Widget buildInsightsTableView(
+    BuildContext context, {
+    required ChatMessage message,
+    required ColorScheme cs,
+    required AppTypography t,
+  });
+  Widget buildIncomeAmountPromptInput(
+    BuildContext context, {
+    required ChatMessage promptMessage,
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool isEs,
+  });
+  Widget buildChatComposer(
+    BuildContext context, {
+    required ColorScheme cs,
+    required AppTypography t,
+    required bool isEs,
+  });
+  Widget buildEventPreviewBubble(
+    BuildContext context,
+    ChatMessage message,
+  );
 }

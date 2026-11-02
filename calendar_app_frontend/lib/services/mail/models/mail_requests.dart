@@ -29,6 +29,7 @@ class MailOutgoingAttachment {
 
 class MailSendRequest {
   final String? groupId;
+  final String? replyToMessageId;
   final List<String> to;
   final List<String> cc;
   final List<String> bcc;
@@ -49,6 +50,7 @@ class MailSendRequest {
 
   const MailSendRequest({
     this.groupId,
+    this.replyToMessageId,
     required this.to,
     this.cc = const [],
     this.bcc = const [],
@@ -71,6 +73,7 @@ class MailSendRequest {
   Map<String, dynamic> toJson() {
     return {
       if (groupId != null && groupId!.isNotEmpty) 'groupId': groupId,
+      if (replyToMessageId != null) 'replyToMessageId': replyToMessageId,
       'to': to,
       if (cc.isNotEmpty) 'cc': cc,
       if (bcc.isNotEmpty) 'bcc': bcc,

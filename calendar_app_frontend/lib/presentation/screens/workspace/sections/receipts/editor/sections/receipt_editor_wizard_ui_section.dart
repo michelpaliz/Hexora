@@ -1023,6 +1023,7 @@ class _ClientReceiptStatsBoxState extends State<_ClientReceiptStatsBox>
           padding: const EdgeInsets.only(bottom: 4),
           child: _HistoryReceiptItem(
             receipt: r,
+            onAudit: () => _showReceiptAuditHistory(r),
             isPreviewing: _previewingReceipt?.id == r.id,
             onPreview: widget.onPreview == null
                 ? null
@@ -1036,16 +1037,101 @@ class _ClientReceiptStatsBoxState extends State<_ClientReceiptStatsBox>
       },
     );
   }
+
+  Future<void> _showReceiptAuditHistory(Receipt receipt) async {
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isEs ? 'Historial del recibo' : 'Receipt history'),
+        content: FutureBuilder<Map<String, dynamic>>(
+          future: ReceiptsApi().getHistory(receipt.id),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const SizedBox(
+                width: 320,
+                height: 100,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (snapshot.hasError) {
+              return SizedBox(
+                width: 320,
+                child: Text(isEs
+                    ? 'No se pudo cargar el historial.'
+                    : 'Could not load the history.'),
+              );
+            }
+            final raw = snapshot.data?['history'];
+            final entries = raw is List
+                ? raw
+                    .whereType<Map>()
+                    .map((e) => Map<String, dynamic>.from(e))
+                    .toList()
+                : <Map<String, dynamic>>[];
+            if (entries.isEmpty) {
+              return SizedBox(
+                width: 320,
+                child: Text(isEs
+                    ? 'Aún no hay cambios registrados.'
+                    : 'No changes recorded yet.'),
+              );
+            }
+            final dateFormat =
+                DateFormat.yMMMd(Localizations.localeOf(context).toString())
+                    .add_Hm();
+            return SizedBox(
+              width: 420,
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: entries.length,
+                separatorBuilder: (_, __) => const Divider(height: 16),
+                itemBuilder: (_, index) {
+                  final entry = entries[index];
+                  final changedAt =
+                      DateTime.tryParse('${entry['changedAt'] ?? ''}')
+                          ?.toLocal();
+                  final actor = (entry['userName'] ?? '').toString().trim();
+                  final field = (entry['field'] ?? '').toString();
+                  final reason = (entry['reason'] ?? '').toString().trim();
+                  return ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.edit_note_rounded),
+                    title: Text(
+                        field.isEmpty ? (isEs ? 'Cambio' : 'Change') : field),
+                    subtitle: Text([
+                      if (changedAt != null) dateFormat.format(changedAt),
+                      if (actor.isNotEmpty) '${isEs ? 'por' : 'by'} $actor',
+                      if (reason.isNotEmpty) reason,
+                    ].join(' · ')),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(isEs ? 'Cerrar' : 'Close'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _HistoryReceiptItem extends StatelessWidget {
   final Receipt receipt;
   final VoidCallback? onPreview;
+  final VoidCallback? onAudit;
   final bool isPreviewing;
 
   const _HistoryReceiptItem({
     required this.receipt,
     this.onPreview,
+    this.onAudit,
     this.isPreviewing = false,
   });
 
@@ -1121,6 +1207,19 @@ class _HistoryReceiptItem extends StatelessWidget {
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
+          if (onAudit != null) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: onAudit,
+              icon: const Icon(Icons.history_rounded),
+              iconSize: 16,
+              visualDensity: VisualDensity.compact,
+              tooltip: isEs ? 'Ver cambios' : 'View changes',
+              color: cs.onSurfaceVariant,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          ],
         ],
       ),
     );

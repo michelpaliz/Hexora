@@ -11,12 +11,9 @@ import '../statements_formatters.dart';
 import '../statements_shared.dart';
 
 class StatementsAllDataDetails {
-  static Future<void> show(
-    BuildContext context,
-    AppLocalizations l,
-    Map<String, dynamic> entry,
-    StatementsController controller,
-  ) async {
+  static Future<void> show(BuildContext context, AppLocalizations l,
+      Map<String, dynamic> entry, StatementsController controller,
+      {VoidCallback? onShare}) async {
     final batchId =
         (entry['_batchId'] ?? entry['_id'] ?? entry['id'] ?? entry['batchId'])
             ?.toString()
@@ -193,6 +190,13 @@ class StatementsAllDataDetails {
                               ],
                             ),
                           ),
+                          if (onShare != null)
+                            IconButton(
+                              tooltip: 'Compartir en chat',
+                              onPressed: onShare,
+                              icon:
+                                  Icon(Icons.forum_outlined, color: cs.primary),
+                            ),
                           IconButton(
                             tooltip: l.close,
                             onPressed: () => Navigator.of(dialogContext).pop(),

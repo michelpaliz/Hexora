@@ -10,6 +10,7 @@ import '../../statements_controller.dart';
 import '../../statements_formatters.dart';
 import '../../statements_shared.dart';
 import '../statements_all_data_details.dart';
+import '../../shared/bank_transaction_share_dialog.dart';
 import 'statements_mobile_card.dart';
 
 enum _DateRange { all, thisMonth, last30, thisYear }
@@ -104,7 +105,15 @@ class _StatementsMobileViewState extends State<StatementsMobileView> {
   void _showDetails(BuildContext context, Map<String, dynamic> entry) {
     final l = AppLocalizations.of(context)!;
     final s = context.read<StatementsController>();
-    StatementsAllDataDetails.show(context, l, entry, s);
+    StatementsAllDataDetails.show(
+      context,
+      l,
+      entry,
+      s,
+      onShare: s.groupId == null
+          ? null
+          : () => BankTransactionShareDialog.show(context, s.groupId!, entry),
+    );
   }
 
   String _dateLabel(_DateRange r, bool isSpanish) {

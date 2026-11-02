@@ -164,6 +164,14 @@ class ReceiptsApi {
     return _decode<Receipt>(r, (j) => Receipt.fromJson(j));
   }
 
+  Future<Map<String, dynamic>> getHistory(String id) async {
+    final r = await _get(_u('/$id/history'));
+    return _decode<Map<String, dynamic>>(r, (j) {
+      if (j is Map<String, dynamic>) return j;
+      throw Exception('Unexpected receipt history payload');
+    });
+  }
+
   Future<Receipt> update(String id, Map<String, dynamic> payload) async {
     final r = await AuthenticatedHttpClient.patch(
       _u('/$id'),

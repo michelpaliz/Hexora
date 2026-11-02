@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
+import 'package:hexora/models/mail/mail_message.dart';
 import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/models/presupuesto/presupuesto_kind.dart';
 import 'package:hexora/services/auth/token/authenticated_http_client.dart';
@@ -93,6 +94,9 @@ class MailComposeScreen extends StatefulWidget {
     this.invoicesApi,
     this.receiptsApi,
     this.presupuestosApi,
+    this.replyToMessage,
+    this.initialReplyBody,
+    this.initialReplySubject,
     this.onSent,
     this.onReceiptsSent,
     this.onClose,
@@ -104,6 +108,9 @@ class MailComposeScreen extends StatefulWidget {
   final InvoicesApi? invoicesApi;
   final ReceiptsApi? receiptsApi;
   final PresupuestosApi? presupuestosApi;
+  final MailMessage? replyToMessage;
+  final String? initialReplyBody;
+  final String? initialReplySubject;
   final VoidCallback? onSent;
   final ValueChanged<List<Receipt>>? onReceiptsSent;
   final VoidCallback? onClose;
@@ -192,6 +199,39 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   @override
   void initState() {
     super.initState();
+    final reply = widget.replyToMessage;
+    if (reply != null) {
+      final isSent = (reply.folder ?? '').toLowerCase().contains('sent');
+      final rawRecipient = (isSent
+              ? reply.to.firstOrNull?.address
+              : (reply.replyTo?.address ?? reply.from?.address))
+          ?.trim();
+      final recipient = rawRecipient == null
+          ? null
+          : RegExp(
+              r'[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}',
+              caseSensitive: false,
+            ).firstMatch(rawRecipient)?.group(0);
+      if (recipient != null && recipient.isNotEmpty) _toList.add(recipient);
+      final subject = reply.subject.trim();
+      _subjectCtrl.text = subject.isEmpty
+          ? 'Re:'
+          : RegExp(r'^re\s*:', caseSensitive: false).hasMatch(subject)
+              ? subject
+              : 'Re: $subject';
+      if (widget.initialReplySubject?.trim().isNotEmpty == true) {
+        _subjectCtrl.text = widget.initialReplySubject!.trim();
+      }
+      final body = widget.initialReplyBody;
+      if (body != null && body.isNotEmpty) {
+        _quillController.replaceText(
+          0,
+          0,
+          body,
+          TextSelection.collapsed(offset: body.length),
+        );
+      }
+    }
     _toCtrl.addListener(_refreshCanSendState);
     _subjectCtrl.addListener(_refreshCanSendState);
     _quillController.addListener(_refreshCanSendState);
@@ -486,6 +526,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
           'applyDefaultFooter=$_applyDefaultFooter');
       final request = MailSendRequest(
         groupId: groupId,
+        replyToMessageId: widget.replyToMessage?.id,
         to: to,
         cc: cc,
         bcc: bcc,
@@ -535,7 +576,13 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
         _pickerPresupuestosByClient.clear();
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.mailComposeSentToast)),
+        SnackBar(
+          content: Text(
+            widget.replyToMessage == null
+                ? l.mailComposeSentToast
+                : (_isSpanishLocale ? 'Respuesta enviada.' : 'Reply sent.'),
+          ),
+        ),
       );
       _resetForm();
       if (widget.embedded) {

@@ -26,13 +26,44 @@ class MembersVM extends ChangeNotifier {
 
   List<Invitation> _invitations = const [];
   bool _loadingInvites = false;
+  List<String>? _freshAcceptedIds;
+  Map<String, String>? _freshRoles;
+  bool _loadingMeta = false;
 
   MembersCount? get counts => _counts;
-  bool get isLoading => _loadingCounts || _loadingInvites;
+  bool get isLoading => _loadingCounts || _loadingInvites || _loadingMeta;
   List<Invitation> get invitations => _invitations;
 
   Future<void> refreshAll() async {
-    await Future.wait([_loadCounts(), _loadInvites()]);
+    await Future.wait([_loadCounts(), _loadInvites(), _loadMembersMeta()]);
+  }
+
+  Future<void> _loadMembersMeta() async {
+    _loadingMeta = true;
+    notifyListeners();
+    try {
+      final meta =
+          await groupDomain.groupRepository.getGroupMembersMeta(group.id);
+      final ids = (meta['userIds'] as List?)
+          ?.map((value) => value.toString().trim())
+          .where((value) => value.isNotEmpty)
+          .toList();
+      if (ids != null && ids.isNotEmpty) {
+        _freshAcceptedIds = ids;
+      }
+      final rawRoles = meta['userRoles'];
+      if (rawRoles is Map) {
+        _freshRoles = rawRoles.map(
+          (key, value) => MapEntry(key.toString(), value.toString()),
+        );
+      }
+    } catch (_) {
+      // Keep the group snapshot as a safe fallback when the metadata request
+      // is unavailable. The count/invitation requests still render normally.
+    } finally {
+      _loadingMeta = false;
+      notifyListeners();
+    }
   }
 
   Future<void> _loadCounts() async {
@@ -63,8 +94,9 @@ class MembersVM extends ChangeNotifier {
 
   // ---- Mapping helpers ----
   List<MemberRef> get accepted {
-    return group.userIds.map((id) {
-      final role = group.userRoles[id] ?? 'member';
+    final ids = _freshAcceptedIds ?? group.userIds;
+    return ids.map((id) {
+      final role = _freshRoles?[id] ?? group.userRoles[id] ?? 'member';
       return MemberRef(
         username: id,
         role: role,

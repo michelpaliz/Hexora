@@ -19,6 +19,7 @@ class StatementsAllDataTable extends StatelessWidget {
     required this.onToggleAll,
     required this.onToggleRow,
     required this.onShowDetails,
+    this.onShare,
     required this.onSuggest,
     required this.onLinkInvoice,
     required this.onMarkNoProcede,
@@ -47,6 +48,7 @@ class StatementsAllDataTable extends StatelessWidget {
   final ValueChanged<bool> onToggleAll;
   final ValueChanged<String> onToggleRow;
   final ValueChanged<Map<String, dynamic>> onShowDetails;
+  final ValueChanged<Map<String, dynamic>>? onShare;
   final ValueChanged<Map<String, dynamic>> onSuggest;
   final ValueChanged<Map<String, dynamic>> onLinkInvoice;
   final ValueChanged<Map<String, dynamic>> onMarkNoProcede;
@@ -131,6 +133,7 @@ class StatementsAllDataTable extends StatelessWidget {
                 activeEntryId: activeEntryId,
                 onToggleRow: onToggleRow,
                 onShowDetails: onShowDetails,
+                onShare: onShare,
                 onSuggest: onSuggest,
                 onLinkInvoice: onLinkInvoice,
                 onMarkNoProcede: onMarkNoProcede,

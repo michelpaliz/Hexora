@@ -191,13 +191,8 @@ class _AddClientSheetState extends State<AddClientSheet>
       _sectionTab.animateTo(generalHasError ? 0 : (billingHasError ? 2 : 0));
       return;
     }
+    final locationChanged = c.serviceLocationChanged;
     final locationError = c.serviceLocationValidationError();
-    if (locationError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(locationError)),
-      );
-      return;
-    }
 
     final wasEdit = c.isEdit;
     final es = Localizations.localeOf(context).languageCode == 'es';
@@ -212,16 +207,19 @@ class _AddClientSheetState extends State<AddClientSheet>
       c.client = result;
       // The client itself is stored from here on; later steps report their
       // own failure instead of claiming the whole save failed.
-      try {
-        result = await c.saveServiceLocation(result);
-      } catch (e) {
-        if (mounted) {
-          showFailureSnack(context, e,
-              title: es
-                  ? 'Cliente guardado, pero no la ubicación del servicio'
-                  : 'Client saved, but not its service location');
+      String? locationWarning;
+      if (locationChanged && locationError != null) {
+        locationWarning = es
+            ? 'Cliente guardado; ubicación del servicio sin cambios. $locationError'
+            : 'Client saved; service location unchanged. $locationError';
+      } else if (locationChanged) {
+        try {
+          result = await c.saveServiceLocation(result);
+        } catch (_) {
+          locationWarning = es
+              ? 'Cliente guardado, pero no se pudo actualizar la ubicación del servicio.'
+              : 'Client saved, but its service location could not be updated.';
         }
-        return;
       }
       if (_imageBytes != null || _removeImage) {
         setState(() => _uploadingImage = true);
@@ -259,6 +257,11 @@ class _AddClientSheetState extends State<AddClientSheet>
       }
       if (!mounted) return;
       widget.onSaved?.call(result);
+      if (locationWarning != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(locationWarning)),
+        );
+      }
       if (widget.closeOnSave) {
         Navigator.of(context).pop<GroupClient>(result);
       }

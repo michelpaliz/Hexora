@@ -11,6 +11,7 @@ class MailMessage {
   final String? snippet;
   final DateTime? date;
   final MailAddress? from;
+  final MailAddress? replyTo;
   final List<MailAddress> to;
   final List<MailAddress> cc;
   final List<MailAddress> bcc;
@@ -29,6 +30,7 @@ class MailMessage {
     this.snippet,
     this.date,
     this.from,
+    this.replyTo,
     this.to = const [],
     this.cc = const [],
     this.bcc = const [],
@@ -52,6 +54,7 @@ class MailMessage {
     String? snippet,
     DateTime? date,
     MailAddress? from,
+    MailAddress? replyTo,
     List<MailAddress>? to,
     List<MailAddress>? cc,
     List<MailAddress>? bcc,
@@ -70,6 +73,7 @@ class MailMessage {
       snippet: snippet ?? this.snippet,
       date: date ?? this.date,
       from: from ?? this.from,
+      replyTo: replyTo ?? this.replyTo,
       to: to ?? this.to,
       cc: cc ?? this.cc,
       bcc: bcc ?? this.bcc,
@@ -95,9 +99,10 @@ class MailMessage {
         parseBool(json['has_attachments'] ?? json['hasAttachments']) ??
             attachments.isNotEmpty;
 
-    final unread = parseBool(json['unread'] ?? json['is_unread'] ??
-            json['isUnread']) ??
-        !(parseBool(json['read'] ?? json['is_read'] ?? json['isRead']) ?? false);
+    final unread =
+        parseBool(json['unread'] ?? json['is_unread'] ?? json['isUnread']) ??
+            !(parseBool(json['read'] ?? json['is_read'] ?? json['isRead']) ??
+                false);
 
     final from = MailAddress.parse(
         json['from'] ?? json['from_address'] ?? json['fromAddress']);
@@ -117,11 +122,13 @@ class MailMessage {
             json['createdAt'],
       ),
       from: from,
+      replyTo: MailAddress.parse(json['reply_to'] ?? json['replyTo']),
       to: MailAddress.parseList(
           json['to'] ?? json['to_address'] ?? json['toAddress']),
-      cc: MailAddress.parseList(json['cc'] ?? json['cc_address'] ?? json['ccAddress']),
-      bcc:
-          MailAddress.parseList(json['bcc'] ?? json['bcc_address'] ?? json['bccAddress']),
+      cc: MailAddress.parseList(
+          json['cc'] ?? json['cc_address'] ?? json['ccAddress']),
+      bcc: MailAddress.parseList(
+          json['bcc'] ?? json['bcc_address'] ?? json['bccAddress']),
       htmlBody: json['html_body']?.toString() ?? json['htmlBody']?.toString(),
       textBody: json['text_body']?.toString() ?? json['textBody']?.toString(),
       unread: unread,
