@@ -58,6 +58,8 @@ class InvoiceDetailHeader extends StatelessWidget {
       onClose: onClose,
       onExpand: onExpand,
       isExpanded: isExpanded,
+      compact: true,
+      statusInline: true,
     );
   }
 }

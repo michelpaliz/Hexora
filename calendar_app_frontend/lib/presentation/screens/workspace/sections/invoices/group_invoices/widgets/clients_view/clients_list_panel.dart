@@ -1,5 +1,4 @@
 import 'package:hexora/presentation/shared/widgets/hexora_list_row.dart';
-import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/client_filter_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/clients_search_filters.dart';
@@ -84,10 +83,37 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
             .where((c) => c.missingCurrentMonthInvoice == true)
             .toList(growable: false)
         : widget.allClients;
+    final effectiveStatus = widget.hideInactive ? 'active' : _status;
+    final normalizedSearch = widget.searchController.text.trim().toLowerCase();
+    final statusCountSource = countsSource.where((client) {
+      if (normalizedSearch.isNotEmpty) {
+        final haystack = <String>[
+          client.name,
+          client.email ?? '',
+          client.phone ?? '',
+          client.billing?.legalName ?? '',
+        ].join(' ').toLowerCase();
+        if (!haystack.contains(normalizedSearch)) return false;
+      }
+      if ((widget.entityFilter ?? '').trim().isNotEmpty &&
+          (client.effectiveCustomerType ?? '').trim() !=
+              widget.entityFilter!.trim()) {
+        return false;
+      }
+      if ((widget.propertyFilter ?? '').trim().isNotEmpty &&
+          (client.effectivePropertyType ?? '').trim() !=
+              widget.propertyFilter!.trim()) {
+        return false;
+      }
+      return true;
+    }).toList(growable: false);
+    final activeCount =
+        statusCountSource.where((client) => client.isActive != false).length;
+    final inactiveCount = statusCountSource.length - activeCount;
     final visibleClients = widget.filteredClients
         .where((client) =>
-            _status == 'all' ||
-            (_status == 'active'
+            effectiveStatus == 'all' ||
+            (effectiveStatus == 'active'
                 ? client.isActive != false
                 : client.isActive == false))
         .toList(growable: false);
@@ -95,7 +121,7 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
     final hasStructuredFilters =
         (widget.entityFilter ?? '').trim().isNotEmpty ||
             (widget.propertyFilter ?? '').trim().isNotEmpty ||
-            _status != 'all';
+            effectiveStatus != 'all';
 
     return Card(
       color: Colors.transparent,
@@ -104,80 +130,98 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-            child: ClientsSearchFilters(
-              searchController: widget.searchController,
-              onSearchChanged: widget.onSearchChanged,
-              searchHint: l.clientSearchHint,
-              padding: EdgeInsets.zero,
-              clientsForCounts: countsSource,
-              statusValue: widget.hideInactive ? 'active' : _status,
-              onStatusChanged: (value) {
-                setState(() => _status = value);
-                if (value != 'active' && widget.hideInactive) {
-                  widget.onToggleHideInactive();
-                }
-              },
-              activeCountLabel: l.activeClientsSection,
-              inactiveCountLabel: l.statusInactive,
-              // The Todos / Activos / Inactivos segments already cover
-              // hiding inactive clients, so no separate switch here.
-              countInactiveAsFilter: false,
-              clearInactiveOnClear: false,
-              inactiveValueMeansHidden: true,
-              moveSummaryIntoFilters: true,
-              // Keep interactive filters in the panel tree. A MenuAnchor is
-              // removed while its hovered children rebuild on Flutter Web,
-              // which can re-enter MouseTracker and trip its scheduler assert.
-              filtersInMenu: false,
-              // Keep the monthly-invoice toggle beside the status segments;
-              // entity/property selectors use the compact row below.
-              additionalFiltersInFilterBody: false,
-              additionalFilters: ClientMissingInvoiceFilter(
-                  count: hasInvoiceFlagData ? missingInvoiceCount : null,
-                  selected: widget.missingCurrentMonthInvoiceOnly,
-                  onTap: () => widget.onToggleMissingCurrentMonthInvoiceOnly(
-                      !widget.missingCurrentMonthInvoiceOnly)),
-              extraActiveFilterCount:
-                  (widget.missingCurrentMonthInvoiceOnly ? 1 : 0) +
-                      (_status != 'all' ? 1 : 0),
-              onClearFilters: () {
-                setState(() => _status = 'all');
-                widget.onClearFilters();
-              },
-              entityLabel: isEs ? 'Tipo de cliente' : 'Client type',
-              entityOptions: widget.entityOptions,
-              entityFilter: widget.entityFilter,
-              onToggleEntity: widget.onToggleEntityFilter,
-              onClearEntity: widget.onClearEntityFilter,
-              propertyLabel: isEs ? 'Tipo de inmueble' : 'Property type',
-              propertyOptions: widget.propertyOptions,
-              propertyFilter: widget.propertyFilter,
-              onToggleProperty: widget.onTogglePropertyFilter,
-              onClearProperty: widget.onClearPropertyFilter,
-              trailingActions: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ClientsSearchFilters(
+                  searchController: widget.searchController,
+                  onSearchChanged: widget.onSearchChanged,
+                  searchHint: l.clientSearchHint,
+                  clearFiltersLabel: isEs ? 'Restablecer' : 'Reset',
+                  padding: EdgeInsets.zero,
+                  activeCount: activeCount,
+                  inactiveCount: inactiveCount,
+                  activeCountLabel: l.activeClientsSection,
+                  inactiveCountLabel: l.statusInactive,
+                  countInactiveAsFilter: false,
+                  clearInactiveOnClear: false,
+                  moveSummaryIntoFilters: true,
+                  filtersInMenu: true,
+                  filterMenuWidth: 310,
+                  compactClassificationDropdowns: true,
+                  additionalFiltersInFilterBody: true,
+                  searchDesktopHeight: 32,
+                  compactDesktopControls: true,
+                  searchMaxWidth: double.infinity,
+                  topSpacing: 0,
+                  statusContent: _SidebarStatusFilter(
+                    value: effectiveStatus,
+                    active: activeCount,
+                    inactive: inactiveCount,
+                    onChanged: (value) {
+                      setState(() => _status = value);
+                      if (value != 'active' && widget.hideInactive) {
+                        widget.onToggleHideInactive();
+                      }
+                    },
+                  ),
+                  additionalFilters: _SidebarMissingInvoiceFilter(
+                    count: hasInvoiceFlagData ? missingInvoiceCount : null,
+                    selected: widget.missingCurrentMonthInvoiceOnly,
+                    onChanged: (value) =>
+                        widget.onToggleMissingCurrentMonthInvoiceOnly(value),
+                  ),
+                  extraActiveFilterCount:
+                      (widget.missingCurrentMonthInvoiceOnly ? 1 : 0) +
+                          (effectiveStatus != 'all' ? 1 : 0),
+                  onClearFilters: () {
+                    setState(() => _status = 'all');
+                    if (widget.hideInactive) widget.onToggleHideInactive();
+                    widget.onClearFilters();
+                  },
+                  entityLabel: isEs ? 'Tipo de cliente' : 'Client type',
+                  entityOptions: widget.entityOptions,
+                  entityFilter: widget.entityFilter,
+                  onToggleEntity: widget.onToggleEntityFilter,
+                  onClearEntity: widget.onClearEntityFilter,
+                  propertyLabel: isEs ? 'Tipo de inmueble' : 'Property type',
+                  propertyOptions: widget.propertyOptions,
+                  propertyFilter: widget.propertyFilter,
+                  onToggleProperty: widget.onTogglePropertyFilter,
+                  onClearProperty: widget.onClearPropertyFilter,
+                  trailingActions: [
                     if (widget.onRefresh != null)
                       HexoraButton.iconOnly(
+                        key: const ValueKey('client-sidebar-refresh'),
                         onPressed: widget.refreshing ? null : widget.onRefresh,
                         tooltip: l.refreshAction,
                         icon: Icons.refresh_rounded,
                         loading: widget.refreshing,
-                        variant: HexoraButtonVariant.secondary,
-                        size: HexoraButtonSize.large,
+                        variant: HexoraButtonVariant.ghost,
+                        size: HexoraButtonSize.compact,
                       ),
-                    if (widget.onRefresh != null && widget.onAddClient != null)
-                      const SizedBox(width: 4),
                     if (widget.onAddClient != null)
                       HexoraButton.iconOnly(
+                        key: const ValueKey('client-sidebar-add'),
                         onPressed: widget.onAddClient,
                         tooltip: l.addClient,
                         icon: Icons.person_add_outlined,
-                        size: HexoraButtonSize.large,
+                        variant: HexoraButtonVariant.ghost,
+                        size: HexoraButtonSize.compact,
+                        accentColor: cs.primary,
                       ),
                   ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  visibleClients.length == widget.allClients.length
+                      ? '${visibleClients.length} ${isEs ? 'clientes' : 'customers'}  ·  A–Z'
+                      : '${visibleClients.length} ${isEs ? 'de' : 'of'} ${widget.allClients.length}  ·  A–Z',
+                  key: const ValueKey('client-sidebar-list-summary'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.caption.copyWith(color: cs.onSurfaceVariant),
                 ),
               ],
             ),
@@ -284,6 +328,154 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
   }
 }
 
+class _SidebarStatusFilter extends StatelessWidget {
+  const _SidebarStatusFilter({
+    required this.value,
+    required this.active,
+    required this.inactive,
+    required this.onChanged,
+  });
+
+  final String value;
+  final int active;
+  final int inactive;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final options = <(String, String)>[
+      ('all', '${l.all} ${active + inactive}'),
+      ('active', '${l.active} $active'),
+      ('inactive', '${l.inactive} $inactive'),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          isSpanish(context) ? 'Estado' : 'Status',
+          style: textTheme.labelSmall?.copyWith(
+            color: cs.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 2),
+        RadioGroup<String>(
+          groupValue: value,
+          onChanged: (selected) {
+            if (selected != null) onChanged(selected);
+          },
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: Row(
+              children: [
+                for (final option in options)
+                  SizedBox(
+                    width: 92,
+                    height: 30,
+                    child: InkWell(
+                      key: ValueKey('client-sidebar-status-${option.$1}'),
+                      borderRadius: BorderRadius.circular(7),
+                      onTap: () => onChanged(option.$1),
+                      child: Row(
+                        children: [
+                          SizedBox.square(
+                            dimension: 28,
+                            child: Radio<String>(
+                              value: option.$1,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              option.$2,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: textTheme.labelSmall?.copyWith(
+                                color: value == option.$1
+                                    ? cs.primary
+                                    : cs.onSurface,
+                                fontWeight: value == option.$1
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  bool isSpanish(BuildContext context) =>
+      Localizations.localeOf(context).languageCode == 'es';
+}
+
+class _SidebarMissingInvoiceFilter extends StatelessWidget {
+  const _SidebarMissingInvoiceFilter({
+    required this.count,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final int? count;
+  final bool selected;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final label = count == null
+        ? l.clientMissingInvoiceThisMonth
+        : l.clientMissingCountThisMonth(count!);
+    return Semantics(
+      checked: selected,
+      child: InkWell(
+        key: const ValueKey('client-missing-month-invoice-filter'),
+        borderRadius: BorderRadius.circular(7),
+        onTap: () => onChanged(!selected),
+        child: SizedBox(
+          height: 32,
+          child: Row(
+            children: [
+              SizedBox.square(
+                dimension: 30,
+                child: Checkbox(
+                  value: selected,
+                  onChanged: (value) => onChanged(value ?? false),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+              const SizedBox(width: 2),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ClientRow extends StatelessWidget {
   final GroupClient client;
   final bool selected;
@@ -371,10 +563,11 @@ class _ClientRow extends StatelessWidget {
     }
 
     return HexoraListRow(
+      key: ValueKey('client-sidebar-row-${client.id}'),
       selected: selected,
       onTap: onTap,
-      minHeight: 56,
-      verticalPadding: 6,
+      minHeight: 48,
+      verticalPadding: 4,
       child: Row(children: [
         // Neutral avatars: identity comes from the name, not a loud color.
         CircleAvatar(

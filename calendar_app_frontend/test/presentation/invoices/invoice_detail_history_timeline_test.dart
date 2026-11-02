@@ -115,4 +115,33 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('can hide the redundant heading in the history tab',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.forPlatform(
+          Brightness.light,
+          platform: TargetPlatform.windows,
+        ),
+        locale: const Locale('es'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const Scaffold(
+          body: InvoiceDetailHistoryCard(
+            title: 'Cambios',
+            showHeader: false,
+            history: history,
+            localeName: 'es',
+            currency: 'EUR',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cambios'), findsNothing);
+    expect(find.text('Factura modificada'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

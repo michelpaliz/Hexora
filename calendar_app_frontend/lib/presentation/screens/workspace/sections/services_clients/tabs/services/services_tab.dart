@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/service_catalog/service.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/buttons.dart';
 
 import '../../widgets/common_views.dart';
 import '../../widgets/search_filters_header.dart';
@@ -85,6 +86,18 @@ class _ServicesTabState extends State<ServicesTab> {
         hasFilterOptions: false,
         hasActiveFilters: false,
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 2),
+        searchDesktopHeight: 34,
+        topSpacing: 0,
+        trailingActions: [
+          HexoraButton.iconOnly(
+            key: const ValueKey('service-refresh-control'),
+            tooltip: l.refresh,
+            onPressed: loading ? null : onRefresh,
+            icon: Icons.refresh_rounded,
+            variant: HexoraButtonVariant.ghost,
+            size: HexoraButtonSize.standard,
+          ),
+        ],
       ),
       if (items.isEmpty)
         Expanded(

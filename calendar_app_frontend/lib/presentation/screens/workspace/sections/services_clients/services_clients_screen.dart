@@ -402,8 +402,9 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
     if (isMobile) return _buildMobileLayout(context);
 
     // Optional: show counts in tab labels for quick context
-    final clientsTabLabel = '${l.tabClients} · ${_clients.length}';
-    final servicesTabLabel = '${l.tabServices} · ${_services.length}';
+    final clientsTabLabel = '${l.tabClients} ${_clients.length}';
+    final servicesTabLabel = '${l.tabServices} ${_services.length}';
+    final isEs = l.localeName.toLowerCase().startsWith('es');
     final propertyTypeOptions = _clients
         .map((c) => (c.effectivePropertyType ?? '').trim())
         .where((v) => v.isNotEmpty)
@@ -442,7 +443,8 @@ class _ServicesClientsScreenState extends State<ServicesClientsScreen>
                   animation: _tab,
                   builder: (_, __) => HexoraButton(
                     icon: Icons.add_rounded,
-                    label: _tab.index == 0 ? l.addClient : l.addService,
+                    label: isEs ? 'Añadir' : 'Add',
+                    tooltip: _tab.index == 0 ? l.addClient : l.addService,
                     onPressed: _tab.index == 0
                         ? _openAddClientSheet
                         : _openAddServiceSheet,

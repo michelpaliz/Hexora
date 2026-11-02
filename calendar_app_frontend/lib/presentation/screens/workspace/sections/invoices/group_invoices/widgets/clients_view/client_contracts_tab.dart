@@ -99,7 +99,7 @@ class _ClientContractsTabState extends State<ClientContractsTab> {
   }) async {
     try {
       return await showModalBottomSheet<ClientContractFormResult>(
-      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
+        sheetAnimationStyle: HexoraMotion.sheetStyle(context),
         context: context,
         isScrollControlled: true,
         showDragHandle: true,
@@ -357,7 +357,7 @@ class _ClientContractsTabState extends State<ClientContractsTab> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+          padding: EdgeInsets.fromLTRB(12, widget.compact ? 2 : 12, 12, 4),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final compact = constraints.maxWidth < 700;
@@ -400,6 +400,13 @@ class _ClientContractsTabState extends State<ClientContractsTab> {
                   ),
                 ],
               );
+
+              if (widget.compact) {
+                return Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: actions,
+                );
+              }
 
               if (compact) {
                 return Column(

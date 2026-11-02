@@ -90,11 +90,14 @@ class ClientsSearchFilters extends StatelessWidget {
   final bool inactiveValueMeansHidden;
   final bool moveSummaryIntoFilters;
   final double searchDesktopHeight;
+  final bool compactDesktopControls;
   final double searchMaxWidth;
   final double topSpacing;
   final bool summaryInToolbar;
   final bool filtersInMenu;
+  final double filterMenuWidth;
   final bool additionalFiltersInFilterBody;
+  final bool compactClassificationDropdowns;
   final bool compactSummary;
   final List<Widget> trailingActions;
 
@@ -137,11 +140,14 @@ class ClientsSearchFilters extends StatelessWidget {
     this.inactiveValueMeansHidden = false,
     this.moveSummaryIntoFilters = false,
     this.searchDesktopHeight = 40,
+    this.compactDesktopControls = false,
     this.searchMaxWidth = 450,
     this.topSpacing = 6,
     this.summaryInToolbar = false,
     this.filtersInMenu = false,
+    this.filterMenuWidth = 360,
     this.additionalFiltersInFilterBody = false,
+    this.compactClassificationDropdowns = false,
     this.compactSummary = false,
     this.trailingActions = const [],
   });
@@ -274,28 +280,51 @@ class ClientsSearchFilters extends StatelessWidget {
             if (moveSummaryIntoFilters && !summaryInToolbar) ...[
               summary,
               if (hasEntityFilters || hasPropertyFilters)
-                const SizedBox(height: 8),
+                SizedBox(height: compactClassificationDropdowns ? 6 : 8),
             ],
-            Wrap(spacing: 12, runSpacing: 8, children: [
-              if (hasEntityFilters)
-                SizedBox(
-                    width: width,
-                    child: _ClassificationDropdown(
-                        label: entityLabel!,
-                        options: entityOptions,
-                        selected: entityFilter,
-                        onSelect: onToggleEntity!,
-                        onClear: onClearEntity!)),
-              if (hasPropertyFilters)
-                SizedBox(
-                    width: width,
-                    child: _ClassificationDropdown(
-                        label: propertyLabel!,
-                        options: propertyOptions,
-                        selected: propertyFilter,
-                        onSelect: onToggleProperty!,
-                        onClear: onClearProperty!)),
-            ]),
+            Wrap(
+                spacing: 12,
+                runSpacing: compactClassificationDropdowns ? 6 : 8,
+                children: [
+                  if (hasEntityFilters)
+                    SizedBox(
+                      width: width,
+                      child: compactClassificationDropdowns
+                          ? _ClassificationSelect(
+                              label: entityLabel!,
+                              options: entityOptions,
+                              selected: entityFilter,
+                              onSelect: onToggleEntity!,
+                              onClear: onClearEntity!,
+                            )
+                          : _ClassificationDropdown(
+                              label: entityLabel!,
+                              options: entityOptions,
+                              selected: entityFilter,
+                              onSelect: onToggleEntity!,
+                              onClear: onClearEntity!,
+                            ),
+                    ),
+                  if (hasPropertyFilters)
+                    SizedBox(
+                      width: width,
+                      child: compactClassificationDropdowns
+                          ? _ClassificationSelect(
+                              label: propertyLabel!,
+                              options: propertyOptions,
+                              selected: propertyFilter,
+                              onSelect: onToggleProperty!,
+                              onClear: onClearProperty!,
+                            )
+                          : _ClassificationDropdown(
+                              label: propertyLabel!,
+                              options: propertyOptions,
+                              selected: propertyFilter,
+                              onSelect: onToggleProperty!,
+                              onClear: onClearProperty!,
+                            ),
+                    ),
+                ]),
             if (additionalFilters != null && additionalFiltersInFilterBody) ...[
               if (hasEntityFilters || hasPropertyFilters)
                 const SizedBox(height: 6),
@@ -322,11 +351,13 @@ class ClientsSearchFilters extends StatelessWidget {
       activeFilterCount: activeFilterCount,
       padding: padding,
       searchDesktopHeight: searchDesktopHeight,
+      compactDesktopControls: compactDesktopControls,
       searchMaxWidth: searchMaxWidth,
       topSpacing: topSpacing,
       trailingActions: trailingActions,
       autoExpandWhenActive: autoExpandWhenActive,
       filtersInMenu: filtersInMenu,
+      filterMenuWidth: filterMenuWidth,
       toolbarContent: summaryInToolbar ? summary : null,
       persistentContent:
           moveSummaryIntoFilters || summaryInToolbar ? null : summary,
@@ -342,6 +373,93 @@ class ClientsSearchFilters extends StatelessWidget {
           onInactiveChanged!(false);
         }
       },
+    );
+  }
+}
+
+class _ClassificationSelect extends StatelessWidget {
+  const _ClassificationSelect({
+    required this.label,
+    required this.options,
+    required this.selected,
+    required this.onSelect,
+    required this.onClear,
+  });
+
+  final String label;
+  final List<String> options;
+  final String? selected;
+  final ValueChanged<String> onSelect;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context)!;
+    final normalizedSelected = (selected ?? '').trim();
+    final values = sortedClientClassificationOptions(<String>{
+      ...options.where((value) => value.trim().isNotEmpty),
+      if (normalizedSelected.isNotEmpty) normalizedSelected,
+    });
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 3),
+        Container(
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: normalizedSelected.isEmpty
+                  ? cs.outlineVariant.withValues(alpha: .7)
+                  : cs.primary.withValues(alpha: .5),
+            ),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              key: ValueKey('client-filter-select-$label'),
+              value: normalizedSelected,
+              isExpanded: true,
+              isDense: true,
+              borderRadius: BorderRadius.circular(8),
+              dropdownColor: cs.surface,
+              icon: const Icon(Icons.expand_more_rounded, size: 17),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: cs.onSurface,
+                  ),
+              items: [
+                DropdownMenuItem(value: '', child: Text(l.all)),
+                for (final value in values)
+                  DropdownMenuItem(
+                    value: value,
+                    child: Text(
+                      clientClassificationLabel(value),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+              onChanged: (value) {
+                if ((value ?? '').isEmpty) {
+                  onClear();
+                } else {
+                  onSelect(value!);
+                }
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

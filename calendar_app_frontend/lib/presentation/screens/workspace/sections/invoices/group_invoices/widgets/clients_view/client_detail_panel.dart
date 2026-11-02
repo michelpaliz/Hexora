@@ -68,6 +68,8 @@ class ClientDetailPanel extends StatefulWidget {
 class _ClientDetailPanelState extends State<ClientDetailPanel> {
   final ClientContractsApi _contractsApi = ClientContractsApi();
   final ReceiptsApi _receiptsApi = ReceiptsApi();
+  final _ClientInvoiceFilterController _invoiceFilters =
+      _ClientInvoiceFilterController();
   int _contractsCount = 0;
   int _receiptsCount = 0;
   String? _contractsCountClientId;
@@ -105,6 +107,12 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
     super.initState();
     _loadContractsCount();
     _loadReceiptsCount();
+  }
+
+  @override
+  void dispose() {
+    _invoiceFilters.dispose();
+    super.dispose();
   }
 
   @override
@@ -221,6 +229,7 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
               child: Column(
                 children: [
                   Padding(
+                    key: const ValueKey('client-detail-compact-header'),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 6,
@@ -228,8 +237,8 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                     child: Row(children: [
                       ClientPropertyImage(
                         client: widget.selectedClient!,
-                        width: 40,
-                        height: 40,
+                        width: 36,
+                        height: 36,
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -273,8 +282,9 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                     ]),
                   ),
                   Container(
+                    key: const ValueKey('client-detail-tabs-row'),
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    padding: const EdgeInsetsDirectional.only(start: 12),
                     decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(
@@ -282,10 +292,18 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                         ),
                       ),
                     ),
-                    child: _ClientTabs(
-                      invoicesCount: widget.issuedInvoices.length,
-                      contractsCount: _contractsCount,
-                      receiptsCount: _receiptsCount,
+                    child: _ClientTabNavigationRow(
+                      tabs: _ClientTabs(
+                        invoicesCount: widget.issuedInvoices.length,
+                        contractsCount: _contractsCount,
+                        receiptsCount: _receiptsCount,
+                      ),
+                      invoiceActions: _ClientInvoiceToolbar(
+                        controller: _invoiceFilters,
+                        invoices: widget.issuedInvoices,
+                        onDownloadVisibleInvoices:
+                            widget.onDownloadVisibleInvoices,
+                      ),
                     ),
                   ),
                   Expanded(
@@ -300,8 +318,7 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                           fallbackClient: widget.selectedClient!,
                           onTap: widget.onOpenInvoiceDetail,
                           onDelete: null,
-                          onDownloadVisibleInvoices:
-                              widget.onDownloadVisibleInvoices,
+                          filterController: _invoiceFilters,
                         ),
                         ClientReceiptsTab(
                           key:
@@ -315,6 +332,7 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                           key: ValueKey(
                               'contracts-${widget.selectedClient!.id}'),
                           client: widget.selectedClient!,
+                          compact: true,
                           onCountChanged: (count) =>
                               setState(() => _contractsCount = count),
                         ),
@@ -329,6 +347,215 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                 ],
               ),
             ),
+    );
+  }
+}
+
+class _ClientInvoiceFilterController extends ChangeNotifier {
+  bool _disposed = false;
+  DateTime? fromDate;
+  DateTime? toDate;
+  DateQuickRange quickRange = DateQuickRange.none;
+  bool customRangeExpanded = false;
+  bool downloading = false;
+
+  bool get hasFilter => fromDate != null || toDate != null;
+
+  List<Invoice> apply(List<Invoice> invoices) => invoices.where((invoice) {
+        if (!hasFilter) return true;
+        final date =
+            invoice.issueDate ?? invoice.registeredAt ?? invoice.occurrenceDate;
+        if (date == null) return false;
+        if (fromDate != null) {
+          final start =
+              DateTime(fromDate!.year, fromDate!.month, fromDate!.day);
+          if (date.isBefore(start)) return false;
+        }
+        if (toDate != null) {
+          final end = DateTime(
+            toDate!.year,
+            toDate!.month,
+            toDate!.day,
+            23,
+            59,
+            59,
+            999,
+          );
+          if (date.isAfter(end)) return false;
+        }
+        return true;
+      }).toList(growable: false);
+
+  void clear() {
+    fromDate = null;
+    toDate = null;
+    quickRange = DateQuickRange.none;
+    customRangeExpanded = false;
+    notifyListeners();
+  }
+
+  void selectRecentDays(int days) {
+    final now = DateTime.now();
+    toDate = now;
+    fromDate = now.subtract(Duration(days: days - 1));
+    quickRange = DateQuickRange.month;
+    customRangeExpanded = false;
+    notifyListeners();
+  }
+
+  void selectRecentMonths(int months) {
+    final now = DateTime.now();
+    toDate = now;
+    fromDate = DateTime(now.year, now.month - (months - 1), now.day);
+    quickRange = DateQuickRange.quarter;
+    customRangeExpanded = false;
+    notifyListeners();
+  }
+
+  void showCustomRange() {
+    quickRange = DateQuickRange.custom;
+    customRangeExpanded = true;
+    notifyListeners();
+  }
+
+  void updateFrom(DateTime value) {
+    fromDate = value;
+    if (toDate != null && toDate!.isBefore(value)) toDate = value;
+    quickRange = DateQuickRange.custom;
+    notifyListeners();
+  }
+
+  void updateTo(DateTime value) {
+    toDate = value;
+    if (fromDate != null && value.isBefore(fromDate!)) fromDate = value;
+    quickRange = DateQuickRange.custom;
+    notifyListeners();
+  }
+
+  void setDownloading(bool value) {
+    if (_disposed || downloading == value) return;
+    downloading = value;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+}
+
+class _ClientTabNavigationRow extends StatelessWidget {
+  const _ClientTabNavigationRow({
+    required this.tabs,
+    required this.invoiceActions,
+  });
+
+  final Widget tabs;
+  final Widget invoiceActions;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = DefaultTabController.of(context);
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) => Row(
+        children: [
+          Expanded(child: tabs),
+          if (controller.index == 0) invoiceActions,
+        ],
+      ),
+    );
+  }
+}
+
+class _ClientInvoiceToolbar extends StatelessWidget {
+  const _ClientInvoiceToolbar({
+    required this.controller,
+    required this.invoices,
+    required this.onDownloadVisibleInvoices,
+  });
+
+  final _ClientInvoiceFilterController controller;
+  final List<Invoice> invoices;
+  final Future<void> Function(List<Invoice>) onDownloadVisibleInvoices;
+
+  List<Invoice> _filteredInvoices() => controller.apply(invoices);
+
+  Future<void> _downloadVisible() async {
+    final filtered = _filteredInvoices();
+    if (controller.downloading || filtered.isEmpty) return;
+    controller.setDownloading(true);
+    try {
+      await onDownloadVisibleInvoices(filtered);
+    } finally {
+      controller.setDownloading(false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final filtered = _filteredInvoices();
+        return Padding(
+          padding: const EdgeInsetsDirectional.only(end: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ClientPeriodMenu(
+                selected: controller.quickRange,
+                hasFilter: controller.hasFilter,
+                isSpanish: isSpanish,
+                onSelected: (value) {
+                  if (value == null) {
+                    controller.clear();
+                  } else if (value == DateQuickRange.month) {
+                    controller.selectRecentDays(30);
+                  } else if (value == DateQuickRange.quarter) {
+                    controller.selectRecentMonths(3);
+                  } else {
+                    controller.showCustomRange();
+                  }
+                },
+              ),
+              const SizedBox(width: 4),
+              Tooltip(
+                message: filtered.isEmpty
+                    ? l.noInvoicesYet
+                    : isSpanish
+                        ? 'Descargar las facturas visibles (${filtered.length})'
+                        : 'Download visible invoices (${filtered.length})',
+                child: TextButton.icon(
+                  key: const ValueKey('client-invoice-zip-download'),
+                  onPressed: filtered.isEmpty || controller.downloading
+                      ? null
+                      : _downloadVisible,
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(0, 32),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.symmetric(horizontal: 7),
+                    foregroundColor: cs.onSurfaceVariant,
+                  ),
+                  icon: controller.downloading
+                      ? const SizedBox.square(
+                          dimension: 13,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.folder_zip_outlined, size: 14),
+                  label: Text('ZIP (${filtered.length})', style: t.bodySmall),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -426,7 +653,7 @@ class _InvoiceList extends StatefulWidget {
   final GroupClient fallbackClient;
   final ValueChanged<Invoice> onTap;
   final ValueChanged<Invoice>? onDelete;
-  final Future<void> Function(List<Invoice> invoices) onDownloadVisibleInvoices;
+  final _ClientInvoiceFilterController filterController;
 
   const _InvoiceList({
     required this.emptyTitle,
@@ -437,7 +664,7 @@ class _InvoiceList extends StatefulWidget {
     required this.fallbackClient,
     required this.onTap,
     required this.onDelete,
-    required this.onDownloadVisibleInvoices,
+    required this.filterController,
   });
 
   @override
@@ -445,193 +672,48 @@ class _InvoiceList extends StatefulWidget {
 }
 
 class _InvoiceListState extends State<_InvoiceList> {
-  DateTime? _fromDate;
-  DateTime? _toDate;
-  DateQuickRange _quickRange = DateQuickRange.none;
-  bool _filtersExpanded = false;
-  bool _downloadingVisible = false;
-
-  DateTime _startOfDay(DateTime d) => DateTime(d.year, d.month, d.day);
-  DateTime _endOfDay(DateTime d) =>
-      DateTime(d.year, d.month, d.day, 23, 59, 59, 999);
-
   DateTime? _invoiceDate(Invoice inv) =>
       inv.issueDate ?? inv.registeredAt ?? inv.occurrenceDate;
 
-  void _setRangeDays(int days) {
-    final now = DateTime.now();
-    setState(() {
-      _toDate = now;
-      _fromDate = now.subtract(Duration(days: days - 1));
-      _quickRange = DateQuickRange.month;
-      _filtersExpanded = false;
-    });
+  @override
+  void initState() {
+    super.initState();
+    widget.filterController.addListener(_refresh);
   }
 
-  void _setRangeMonths(int months) {
-    final now = DateTime.now();
-    setState(() {
-      _toDate = now;
-      _fromDate = DateTime(now.year, now.month - (months - 1), now.day);
-      _quickRange = DateQuickRange.quarter;
-      _filtersExpanded = false;
-    });
-  }
-
-  Future<void> _pickFromDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _fromDate ?? _toDate ?? now,
-      firstDate: DateTime(now.year - 10),
-      lastDate: DateTime(now.year + 5),
-    );
-    if (picked == null) return;
-    setState(() {
-      _fromDate = picked;
-      if (_toDate != null && _toDate!.isBefore(_fromDate!)) {
-        _toDate = _fromDate;
-      }
-      _quickRange = DateQuickRange.none;
-    });
-  }
-
-  Future<void> _pickToDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _toDate ?? _fromDate ?? now,
-      firstDate: DateTime(now.year - 10),
-      lastDate: DateTime(now.year + 5),
-    );
-    if (picked == null) return;
-    setState(() {
-      _toDate = picked;
-      if (_fromDate != null && _toDate!.isBefore(_fromDate!)) {
-        _fromDate = _toDate;
-      }
-      _quickRange = DateQuickRange.none;
-    });
-  }
-
-  Future<void> _downloadVisible(List<Invoice> invoices) async {
-    if (_downloadingVisible || invoices.isEmpty) return;
-    setState(() => _downloadingVisible = true);
-    try {
-      await widget.onDownloadVisibleInvoices(invoices);
-    } finally {
-      if (mounted) setState(() => _downloadingVisible = false);
+  @override
+  void didUpdateWidget(covariant _InvoiceList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.filterController != widget.filterController) {
+      oldWidget.filterController.removeListener(_refresh);
+      widget.filterController.addListener(_refresh);
     }
   }
 
   @override
+  void dispose() {
+    widget.filterController.removeListener(_refresh);
+    super.dispose();
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
-    final hasFilter = _fromDate != null || _toDate != null;
-    final filtered = widget.invoices.where((inv) {
-      final date = _invoiceDate(inv);
-      if (!hasFilter) return true;
-      if (date == null) return false;
-      if (_fromDate != null && date.isBefore(_startOfDay(_fromDate!))) {
-        return false;
-      }
-      if (_toDate != null && date.isAfter(_endOfDay(_toDate!))) {
-        return false;
-      }
-      return true;
-    }).toList();
+    final filters = widget.filterController;
+    final filtered = filters.apply(widget.invoices);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+      padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DateRangeFilterCard(
-            quickRange: _quickRange,
-            expanded: _filtersExpanded,
-            fromDate: _fromDate,
-            toDate: _toDate,
-            showLabel: false,
-            showCollapsedRange: false,
-            showClearAction: false,
-            quickRangeControls: _ClientPeriodMenu(
-              selected: _quickRange,
-              hasFilter: hasFilter,
-              isSpanish: isSpanish,
-              onSelected: (value) {
-                if (value == null) {
-                  setState(() {
-                    _fromDate = null;
-                    _toDate = null;
-                    _quickRange = DateQuickRange.none;
-                    _filtersExpanded = false;
-                  });
-                } else if (value == DateQuickRange.month) {
-                  _setRangeDays(30);
-                } else if (value == DateQuickRange.quarter) {
-                  _setRangeMonths(3);
-                } else {
-                  setState(() {
-                    _quickRange = DateQuickRange.custom;
-                    _filtersExpanded = true;
-                  });
-                }
-              },
-            ),
-            trailingActions: [
-              Tooltip(
-                message: filtered.isEmpty
-                    ? l.noInvoicesYet
-                    : isSpanish
-                        ? 'Descargar las facturas visibles (${filtered.length})'
-                        : 'Download visible invoices (${filtered.length})',
-                child: TextButton.icon(
-                  onPressed: filtered.isEmpty || _downloadingVisible
-                      ? null
-                      : () => _downloadVisible(filtered),
-                  style: TextButton.styleFrom(
-                      minimumSize: Size(
-                          0, MediaQuery.sizeOf(context).width < 650 ? 48 : 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      foregroundColor: cs.onSurfaceVariant),
-                  icon: _downloadingVisible
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.folder_zip_outlined, size: 14),
-                  label: Text('ZIP (${filtered.length})', style: t.bodySmall),
-                ),
-              ),
-            ],
-            onToggleExpanded: () =>
-                setState(() => _filtersExpanded = !_filtersExpanded),
-            onClear: () => setState(() {
-              _fromDate = null;
-              _toDate = null;
-              _quickRange = DateQuickRange.none;
-              _filtersExpanded = false;
-            }),
-            onPickFrom: _pickFromDate,
-            onPickTo: _pickToDate,
-            onSelectQuickRange: (value) {
-              if (value == DateQuickRange.month) {
-                _setRangeDays(30);
-              } else if (value == DateQuickRange.quarter) {
-                _setRangeMonths(3);
-              } else {
-                setState(() {
-                  _quickRange = DateQuickRange.custom;
-                  _filtersExpanded = true;
-                });
-              }
-            },
-          ),
-          const SizedBox(height: 6),
+          if (filters.customRangeExpanded) ...[
+            _ClientCustomDateRange(controller: filters),
+            const SizedBox(height: 2),
+          ],
           Expanded(
             child: filtered.isEmpty
                 ? Center(
@@ -707,6 +789,90 @@ class _InvoiceListState extends State<_InvoiceList> {
   }
 }
 
+class _ClientCustomDateRange extends StatelessWidget {
+  const _ClientCustomDateRange({required this.controller});
+
+  final _ClientInvoiceFilterController controller;
+
+  Future<void> _pick(BuildContext context, {required bool from}) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: from
+          ? controller.fromDate ?? controller.toDate ?? now
+          : controller.toDate ?? controller.fromDate ?? now,
+      firstDate: DateTime(now.year - 10),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked == null) return;
+    if (from) {
+      controller.updateFrom(picked);
+    } else {
+      controller.updateTo(picked);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    String label(DateTime? value, String fallback) =>
+        value == null ? fallback : DateFormat.yMMMd(l.localeName).format(value);
+
+    return Container(
+      key: const ValueKey('client-custom-date-range'),
+      constraints: const BoxConstraints(minHeight: 34),
+      padding: const EdgeInsetsDirectional.only(start: 4, end: 4),
+      color: cs.surfaceContainerLow.withValues(alpha: .45),
+      child: Row(
+        children: [
+          Icon(Icons.date_range_outlined, size: 15, color: cs.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Flexible(
+            child: TextButton(
+              onPressed: () => _pick(context, from: true),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, 30),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+              ),
+              child: Text(
+                label(controller.fromDate, l.eventStartDateHint),
+                overflow: TextOverflow.ellipsis,
+                style: t.bodySmall,
+              ),
+            ),
+          ),
+          Text('–', style: t.bodySmall.copyWith(color: cs.onSurfaceVariant)),
+          Flexible(
+            child: TextButton(
+              onPressed: () => _pick(context, from: false),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, 30),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+              ),
+              child: Text(
+                label(controller.toDate, l.eventEndDateHint),
+                overflow: TextOverflow.ellipsis,
+                style: t.bodySmall,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: l.clearSelection,
+            onPressed: controller.clear,
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+            icon: const Icon(Icons.close_rounded, size: 16),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ClientPeriodMenu extends StatelessWidget {
   const _ClientPeriodMenu({
     required this.selected,
@@ -724,6 +890,7 @@ class _ClientPeriodMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
+    final narrow = MediaQuery.sizeOf(context).width < 500;
     final label = switch (selected) {
       DateQuickRange.month => isSpanish ? '30 días' : '30 days',
       DateQuickRange.quarter => isSpanish ? '3 meses' : '3 months',
@@ -760,7 +927,8 @@ class _ClientPeriodMenu extends StatelessWidget {
       ],
       child: Container(
         height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        width: narrow ? 32 : null,
+        padding: EdgeInsets.symmetric(horizontal: narrow ? 7 : 10),
         decoration: BoxDecoration(
           color: hasFilter
               ? cs.primary.withValues(alpha: 0.08)
@@ -773,17 +941,20 @@ class _ClientPeriodMenu extends StatelessWidget {
           children: [
             Icon(Icons.date_range_outlined,
                 size: 15, color: hasFilter ? cs.primary : cs.onSurfaceVariant),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: t.bodySmall.copyWith(
-                color: hasFilter ? cs.primary : cs.onSurface,
-                fontWeight: FontWeight.w600,
+            if (!narrow) ...[
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: t.bodySmall.copyWith(
+                  color: hasFilter ? cs.primary : cs.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-            const SizedBox(width: 4),
-            Icon(Icons.expand_more_rounded,
-                size: 15, color: hasFilter ? cs.primary : cs.onSurfaceVariant),
+              const SizedBox(width: 4),
+              Icon(Icons.expand_more_rounded,
+                  size: 15,
+                  color: hasFilter ? cs.primary : cs.onSurfaceVariant),
+            ],
           ],
         ),
       ),
@@ -811,6 +982,6 @@ class _MonthSeparator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HexoraMonthSeparator(label: label);
+    return HexoraMonthSeparator(label: label, flat: true);
   }
 }

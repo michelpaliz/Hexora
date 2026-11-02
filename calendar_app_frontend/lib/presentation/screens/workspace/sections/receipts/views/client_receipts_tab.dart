@@ -135,7 +135,7 @@ class _ClientReceiptsTabState extends State<ClientReceiptsTab> {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
       itemCount: all.length,
       separatorBuilder: (_, __) => const SizedBox.shrink(),
       itemBuilder: (_, i) => ReceiptListItem(

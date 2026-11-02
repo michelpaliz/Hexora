@@ -32,6 +32,7 @@ void main() {
       total: 157.30,
       deliveryStatus: 'sent',
     );
+    var downloadedInvoices = 0;
 
     await tester.pumpWidget(MaterialApp(
       theme: AppTheme.forPlatform(
@@ -56,7 +57,9 @@ void main() {
           onCreateReceipt: () {},
           onOpenInvoiceDetail: (_) {},
           onDeleteInvoice: (_) {},
-          onDownloadVisibleInvoices: (_) async {},
+          onDownloadVisibleInvoices: (invoices) async {
+            downloadedInvoices = invoices.length;
+          },
           onApplyClassification: ({entityType, propertyKind}) async {},
         ),
       ),
@@ -64,12 +67,41 @@ void main() {
     await tester.pump();
 
     expect(
-        tester.getSize(find.byType(ClientPropertyImage)), const Size(40, 40));
+        tester.getSize(find.byType(ClientPropertyImage)), const Size(36, 36));
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('client-detail-compact-header')))
+          .height,
+      lessThanOrEqualTo(56),
+    );
     expect(find.textContaining('Residencial Norte'), findsOneWidget);
     expect(find.textContaining('Comunidad de propietarios'), findsOneWidget);
     expect(find.byKey(const ValueKey('client-document-period-menu')),
         findsOneWidget);
     expect(find.text('ZIP (1)'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('client-invoice-zip-download')));
+    await tester.pump();
+    expect(downloadedInvoices, 1);
+    expect(
+      tester
+          .getRect(find.byKey(const ValueKey('client-document-period-menu')))
+          .center
+          .dy,
+      closeTo(
+        tester
+            .getRect(find.byKey(const ValueKey('client-detail-tabs-row')))
+            .center
+            .dy,
+        2,
+      ),
+    );
+    expect(
+      tester
+          .getSize(find.byKey(
+              const ValueKey('document-month-group-separator-Octubre de 2026')))
+          .height,
+      24,
+    );
     expect(find.text('30 días'), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('client-document-period-menu')));
@@ -78,6 +110,16 @@ void main() {
     expect(find.text('30 días'), findsOneWidget);
     expect(find.text('3 meses'), findsOneWidget);
     expect(find.text('Personalizado'), findsOneWidget);
+
+    await tester.tap(find.text('Personalizado'));
+    await tester.pumpAndSettle();
+    expect(
+        find.byKey(const ValueKey('client-custom-date-range')), findsOneWidget);
+
+    tester.view.physicalSize = const Size(360, 760);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('client-document-period-menu')),
+        findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

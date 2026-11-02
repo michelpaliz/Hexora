@@ -15,6 +15,7 @@ class InvoiceDetailHistoryCard extends StatefulWidget {
     this.loading = false,
     this.error,
     this.onRetry,
+    this.showHeader = true,
   });
 
   final String title;
@@ -24,6 +25,7 @@ class InvoiceDetailHistoryCard extends StatefulWidget {
   final bool loading;
   final String? error;
   final VoidCallback? onRetry;
+  final bool showHeader;
 
   @override
   State<InvoiceDetailHistoryCard> createState() =>
@@ -500,33 +502,44 @@ class _InvoiceDetailHistoryCardState extends State<InvoiceDetailHistoryCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
-          child: Row(
-            children: [
-              Icon(Icons.history_rounded, size: 17, color: cs.onSurfaceVariant),
-              const SizedBox(width: 7),
-              Text(
-                widget.title,
-                style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
-              ),
-              if (widget.loading) ...[
-                const SizedBox(width: 8),
-                const SizedBox(
-                  width: 13,
-                  height: 13,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ] else if (hasEntries) ...[
-                const SizedBox(width: 6),
+        if (widget.showHeader)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
+            child: Row(
+              children: [
+                Icon(Icons.history_rounded,
+                    size: 17, color: cs.onSurfaceVariant),
+                const SizedBox(width: 7),
                 Text(
-                  '${history.length}',
-                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                  widget.title,
+                  style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
                 ),
+                if (widget.loading) ...[
+                  const SizedBox(width: 8),
+                  const SizedBox(
+                    width: 13,
+                    height: 13,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ] else if (hasEntries) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    '${history.length}',
+                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ],
               ],
-            ],
+            ),
+          )
+        else if (widget.loading)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: SizedBox(
+              width: 13,
+              height: 13,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
           ),
-        ),
         if ((widget.error ?? '').isNotEmpty)
           Row(
             children: [

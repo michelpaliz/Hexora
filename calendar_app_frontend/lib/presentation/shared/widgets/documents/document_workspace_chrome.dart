@@ -324,6 +324,8 @@ class HexoraDocumentDetailHeader extends StatelessWidget {
     this.onExpand,
     this.isExpanded = false,
     this.trailingLabel,
+    this.compact = false,
+    this.statusInline = false,
   });
 
   final String title;
@@ -339,6 +341,8 @@ class HexoraDocumentDetailHeader extends StatelessWidget {
   final VoidCallback? onExpand;
   final bool isExpanded;
   final String? trailingLabel;
+  final bool compact;
+  final bool statusInline;
 
   @override
   Widget build(BuildContext context) {
@@ -348,6 +352,35 @@ class HexoraDocumentDetailHeader extends StatelessWidget {
     final subtitle = dateLabel.trim().isEmpty
         ? clientName
         : '$clientName · ${dateLabel.trim()}';
+
+    Widget statusBadge() => Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 6 : 7,
+            vertical: compact ? 2 : 3,
+          ),
+          decoration: BoxDecoration(
+            color: statusColor.withValues(alpha: 0.11),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(statusIcon, size: 11, color: statusColor),
+              const SizedBox(width: 3),
+              Text(
+                statusLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: t.bodySmall.copyWith(
+                  color: statusColor,
+                  fontSize: compact ? 10.5 : 11,
+                  height: 1.1,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        );
 
     Widget actionButton({
       required String tooltip,
@@ -359,8 +392,8 @@ class HexoraDocumentDetailHeader extends StatelessWidget {
           onPressed: onPressed,
           icon: Icon(icon, size: 16),
           style: IconButton.styleFrom(
-            fixedSize: const Size(30, 30),
-            minimumSize: const Size(30, 30),
+            fixedSize: Size.square(compact ? 28 : 30),
+            minimumSize: Size.square(compact ? 28 : 30),
             padding: EdgeInsets.zero,
             foregroundColor: cs.onSurfaceVariant,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -368,9 +401,9 @@ class HexoraDocumentDetailHeader extends StatelessWidget {
         );
 
     return SizedBox(
-      height: 48,
+      height: compact ? 44 : 48,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8),
         child: Row(
           children: [
             actionButton(
@@ -414,6 +447,10 @@ class HexoraDocumentDetailHeader extends StatelessWidget {
                           ),
                         ),
                       ],
+                      if (statusInline) ...[
+                        const SizedBox(width: 6),
+                        Flexible(child: statusBadge()),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 1),
@@ -432,30 +469,10 @@ class HexoraDocumentDetailHeader extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.11),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(statusIcon, size: 11, color: statusColor),
-                  const SizedBox(width: 3),
-                  Text(
-                    statusLabel,
-                    style: t.bodySmall.copyWith(
-                      color: statusColor,
-                      fontSize: 11,
-                      height: 1.1,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            if (!statusInline) ...[
+              const SizedBox(width: 6),
+              statusBadge(),
+            ],
             const SizedBox(width: 4),
             if (onExpand != null)
               actionButton(

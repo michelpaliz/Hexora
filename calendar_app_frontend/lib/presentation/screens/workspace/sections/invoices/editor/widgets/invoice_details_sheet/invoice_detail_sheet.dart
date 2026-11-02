@@ -718,11 +718,11 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
           ),
       ],
       style: IconButton.styleFrom(
-        fixedSize: const Size(32, 32),
-        minimumSize: const Size(32, 32),
+        fixedSize: const Size(28, 28),
+        minimumSize: const Size(28, 28),
         padding: EdgeInsets.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6)),
+        foregroundColor: cs.onSurfaceVariant,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       icon: const Icon(Icons.more_horiz_rounded, size: 19),
@@ -765,11 +765,6 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
                   onSelected: (index) =>
                       setState(() => _inlineTabIndex = index),
                 ),
-                Divider(
-                  height: 1,
-                  color: cs.outlineVariant.withValues(alpha: .45),
-                ),
-
                 // ── PDF Preview ──────────────────────────────────────────────
                 Expanded(
                   child: _buildInlineTabContent(
@@ -826,6 +821,7 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         children: [
           InvoiceDetailHistoryCard(
             title: l.invoiceChangeHistoryTitle,
+            showHeader: false,
             history: _invoiceHistory,
             localeName: l.localeName,
             currency: _invoice.currency ?? 'EUR',
@@ -1943,12 +1939,12 @@ class _InvoiceDetailTabs extends StatelessWidget {
           ];
 
     return SizedBox(
-      height: 34,
+      height: 32,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         scrollDirection: Axis.horizontal,
         itemCount: labels.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 14),
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
           final selected = selectedIndex == index;
           return Semantics(
@@ -1964,7 +1960,7 @@ class _InvoiceDetailTabs extends StatelessWidget {
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      width: 2,
+                      width: 1.5,
                       color: selected ? cs.primary : Colors.transparent,
                     ),
                   ),

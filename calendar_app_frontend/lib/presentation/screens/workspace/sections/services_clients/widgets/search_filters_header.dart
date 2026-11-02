@@ -6,11 +6,16 @@ import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 
 /// Compact visual controls retain larger targets on touch layouts.
-double clientFilterControlHeight(BuildContext context, {double desktop = 36}) {
+double clientFilterControlHeight(
+  BuildContext context, {
+  double desktop = 36,
+  bool compactDesktop = false,
+}) {
   final platform = Theme.of(context).platform;
-  final touch = MediaQuery.sizeOf(context).width < 760 ||
-      platform == TargetPlatform.android ||
-      platform == TargetPlatform.iOS;
+  final mobilePlatform =
+      platform == TargetPlatform.android || platform == TargetPlatform.iOS;
+  final touch = !compactDesktop &&
+      (mobilePlatform || MediaQuery.sizeOf(context).width < 760);
   return math.max(
       touch ? 48 : desktop, MediaQuery.textScalerOf(context).scale(13) + 16);
 }
@@ -31,11 +36,13 @@ class SearchFiltersHeader extends StatefulWidget {
       this.onClearFilters,
       this.padding = const EdgeInsets.fromLTRB(12, 0, 12, 10),
       this.searchDesktopHeight = 40,
+      this.compactDesktopControls = false,
       this.searchMaxWidth = 450,
       this.topSpacing = 6,
       this.showClearAction = true,
       this.autoExpandWhenActive = false,
       this.filtersInMenu = false,
+      this.filterMenuWidth = 360,
       this.toolbarContent,
       this.trailingActions = const []});
   final TextEditingController searchController;
@@ -53,8 +60,10 @@ class SearchFiltersHeader extends StatefulWidget {
   final bool showClearAction;
   final bool autoExpandWhenActive;
   final bool filtersInMenu;
+  final double filterMenuWidth;
   final Widget? toolbarContent;
   final double searchDesktopHeight;
+  final bool compactDesktopControls;
   final double searchMaxWidth;
   final double topSpacing;
   final List<Widget> trailingActions;
@@ -77,6 +86,7 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
     final height = clientFilterControlHeight(
       context,
       desktop: widget.searchDesktopHeight,
+      compactDesktop: widget.compactDesktopControls,
     );
     final hasFilters = widget.hasFilterOptions && widget.filtersContent != null;
     return Padding(
@@ -96,9 +106,13 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                       isDense: true,
                       filled: true,
                       fillColor: cs.surfaceContainerLow,
-                      constraints: BoxConstraints(minHeight: height),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                      constraints: widget.compactDesktopControls
+                          ? BoxConstraints.tightFor(height: height)
+                          : BoxConstraints(minHeight: height),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: widget.compactDesktopControls ? 0 : 8,
+                      ),
                       prefixIcon: const Icon(Icons.search_rounded, size: 16),
                       prefixIconConstraints:
                           BoxConstraints(minWidth: 36, minHeight: height),
@@ -148,6 +162,9 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                   onPressed: onPressed,
                   style: OutlinedButton.styleFrom(
                     minimumSize: Size(32, height),
+                    maximumSize: Size(double.infinity, height),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
                     foregroundColor: widget.hasActiveFilters
                         ? cs.primary
                         : cs.onSurfaceVariant,
@@ -190,9 +207,10 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                 ? MenuAnchor(
                     alignmentOffset: const Offset(0, 6),
                     style: MenuStyle(
-                      padding: const WidgetStatePropertyAll(
-                        EdgeInsets.symmetric(vertical: 6),
-                      ),
+                      padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+                      backgroundColor: WidgetStatePropertyAll(cs.surface),
+                      surfaceTintColor:
+                          const WidgetStatePropertyAll(Colors.transparent),
                       shape: WidgetStatePropertyAll(
                         RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -201,19 +219,20 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                     ),
                     menuChildren: [
                       SizedBox(
-                        width: math.max(
-                          240,
-                          math.min(360, constraints.maxWidth - 16),
+                        key: const ValueKey('client-filter-popover'),
+                        width: math.min(
+                          widget.filterMenuWidth,
+                          math.max(0, constraints.maxWidth - 16),
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+                          padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               widget.filtersContent!,
                               if (widget.hasActiveFilters &&
                                   widget.onClearFilters != null) ...[
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 4),
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: HexoraButton(

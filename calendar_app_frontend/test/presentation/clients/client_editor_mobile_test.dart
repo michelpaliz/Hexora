@@ -44,26 +44,54 @@ void main() {
     tester.view.physicalSize = const Size(1600, 1000);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
+    String? customerType;
+    String? propertyType;
+    var missingInvoice = false;
     await tester.pumpWidget(_app(Align(
         alignment: Alignment.centerLeft,
         child: SizedBox(
             width: 970,
-            child: ClientsTab(
-              items: List.generate(
-                  28,
-                  (i) => GroupClient(
-                      id: '$i',
-                      name: 'Cliente ${i.toString().padLeft(2, '0')}',
-                      email: 'client$i@example.com',
-                      entityType: 'Com. de prop.',
-                      propertyKind: 'Comunidad de propietarios',
-                      isActive: i < 26)),
-              loading: false,
-              error: null,
-              onRefresh: () async {},
-            )))));
+            child: StatefulBuilder(
+                builder: (context, setState) => ClientsTab(
+                      items: List.generate(
+                          28,
+                          (i) => GroupClient(
+                              id: '$i',
+                              name: 'Cliente ${i.toString().padLeft(2, '0')}',
+                              email: 'client$i@example.com',
+                              entityType: 'Com. de prop.',
+                              propertyKind: 'Comunidad de propietarios',
+                              customerType: 'community',
+                              propertyType: 'building',
+                              isActive: i < 26)),
+                      loading: false,
+                      error: null,
+                      onRefresh: () async {},
+                      customerTypeFilter: customerType,
+                      customerTypeOptions: const ['community'],
+                      onCustomerTypeChanged: (value) =>
+                          setState(() => customerType = value),
+                      propertyTypeFilter: propertyType,
+                      propertyTypeOptions: const ['building'],
+                      onPropertyTypeChanged: (value) =>
+                          setState(() => propertyType = value),
+                      missingCurrentMonthInvoiceOnly: missingInvoice,
+                      onToggleMissingCurrentMonthInvoiceOnly: (value) =>
+                          setState(() => missingInvoice = value),
+                    ))))));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
+    final search = find.byType(TextField);
+    final filters =
+        find.byKey(const ValueKey('client-advanced-filters-toggle'));
+    final sort = find.byKey(const ValueKey('client-sort-control'));
+    final refresh = find.byKey(const ValueKey('client-refresh-control'));
+    expect(find.text('Inactivo 2'), findsNothing);
+    expect(
+        tester.getCenter(filters).dy, closeTo(tester.getCenter(search).dy, 1));
+    expect(tester.getCenter(sort).dy, closeTo(tester.getCenter(search).dy, 1));
+    expect(
+        tester.getCenter(refresh).dy, closeTo(tester.getCenter(search).dy, 1));
     expect(find.text('Mostrando 1–25 de 28 clientes'), findsOneWidget);
     await tester.tap(find.byTooltip('Página siguiente'));
     await tester.pumpAndSettle();
@@ -73,9 +101,35 @@ void main() {
     await tester.tap(find.text('10').last);
     await tester.pumpAndSettle();
     expect(find.text('Mostrando 1–10 de 28 clientes'), findsOneWidget);
+    await tester.tap(filters);
+    await tester.pumpAndSettle();
+    final popover = find.byKey(const ValueKey('client-filter-popover'));
+    expect(tester.getSize(popover).width, lessThanOrEqualTo(320));
+    expect(
+      find.byKey(const ValueKey('client-filter-select-Tipo de cliente')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('client-filter-select-Tipo de inmueble')),
+      findsOneWidget,
+    );
+    expect(find.byType(Checkbox), findsOneWidget);
+    expect(find.text('Inactivo 2'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('client-filter-select-Tipo de cliente')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Comunidad de propietarios').last);
+    await tester.pumpAndSettle();
+    expect(customerType, 'community');
+    expect(popover, findsOneWidget);
+    expect(find.text('Filtros (1)'), findsOneWidget);
     await tester.tap(find.text('Inactivo 2'));
     await tester.pumpAndSettle();
-    expect(find.text('Mostrando 1–2 de 2 clientes'), findsOneWidget);
+    expect(find.text('Filtros (2)'), findsOneWidget);
+    expect(find.text('Cliente 26'), findsOneWidget);
+    expect(find.text('Cliente 27'), findsOneWidget);
+    expect(find.text('Cliente 00'), findsNothing);
     expect(tester.takeException(), isNull);
   });
   testWidgets('inline editor keeps save and cancel visible while scrolling',

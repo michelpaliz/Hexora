@@ -153,6 +153,51 @@ void main() {
     expect((previous, next, expanded, closed), (1, 1, 1, 1));
   });
 
+  testWidgets('compact detail header keeps status inline with long client',
+      (tester) async {
+    tester.view.physicalSize = const Size(520, 180);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.forPlatform(
+          Brightness.light,
+          platform: TargetPlatform.windows,
+        ),
+        home: const Scaffold(
+          body: HexoraDocumentDetailHeader(
+            key: ValueKey('compact-detail-header'),
+            title: '400-26',
+            clientName:
+                'Comunidad de propietarios con un nombre especialmente largo',
+            statusLabel: 'Enviada',
+            statusColor: Colors.blue,
+            statusIcon: Icons.check_circle_outline,
+            dateLabel: '29 oct 2026',
+            compact: true,
+            statusInline: true,
+            moreActions: SizedBox(width: 28, height: 28),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('compact-detail-header')))
+          .height,
+      44,
+    );
+    expect(
+      tester.getCenter(find.text('Enviada')).dy,
+      closeTo(tester.getCenter(find.text('400-26')).dy, 2),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('split layout controls are horizontal and preserve modes',
       (tester) async {
     tester.view.physicalSize = const Size(1600, 900);
