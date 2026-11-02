@@ -702,11 +702,16 @@ class StatementsApi {
 
   Future<Map<String, dynamic>> bulkLinkEntryInvoices({
     required List<Map<String, dynamic>> links,
+    String? aiConversationId,
   }) async {
     final uri = _u('/entries/invoices/bulk-link');
     final r = await AuthenticatedHttpClient.post(
       uri,
-      headers: await _headers(),
+      headers: {
+        ...await _headers(),
+        if (aiConversationId != null) 'X-Hexora-Ai-Action': '1',
+        if (aiConversationId != null) 'X-Hexora-Ai-Conversation': aiConversationId,
+      },
       body: jsonEncode(<String, dynamic>{'links': links}),
     );
     return _decode<Map<String, dynamic>>(

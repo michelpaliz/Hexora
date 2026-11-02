@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/presentation/utils/validation/email_validator.dart';
+import 'package:hexora/presentation/utils/address/spain_postal_code_autofill.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -163,8 +164,7 @@ class BillingProfileSheetForm extends StatelessWidget {
         decoration: BoxDecoration(
           color: cs.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(16),
-          border:
-              Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -283,8 +283,8 @@ class BillingProfileSheetForm extends StatelessWidget {
                           url.isEmpty ? l.invoiceLogoEmpty : url,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: t.bodySmall
-                              .copyWith(color: cs.onSurfaceVariant),
+                          style:
+                              t.bodySmall.copyWith(color: cs.onSurfaceVariant),
                         ),
                         const SizedBox(height: 8),
                         Wrap(
@@ -319,8 +319,8 @@ class BillingProfileSheetForm extends StatelessWidget {
                                 onPressed: saving
                                     ? null
                                     : () => controllers.logoUrl.text = '',
-                                icon: const Icon(Icons.delete_outline,
-                                    size: 15),
+                                icon:
+                                    const Icon(Icons.delete_outline, size: 15),
                                 label: Text(
                                   MaterialLocalizations.of(context)
                                       .deleteButtonTooltip,
@@ -414,9 +414,9 @@ class BillingProfileSheetForm extends StatelessWidget {
               final txt = (v ?? '').trim();
               if (txt.isEmpty) return null;
               final uri = Uri.tryParse(txt);
-              final ok = (uri != null &&
-                      (uri.hasScheme || uri.host.isNotEmpty)) ||
-                  txt.contains('.');
+              final ok =
+                  (uri != null && (uri.hasScheme || uri.host.isNotEmpty)) ||
+                      txt.contains('.');
               return ok ? null : l.invalidUrl;
             },
           ),
@@ -429,6 +429,37 @@ class BillingProfileSheetForm extends StatelessWidget {
       return LayoutBuilder(
         builder: (ctx, constraints) {
           final wide = constraints.maxWidth >= 440;
+          final country = controllers.country.text.trim();
+          final isSpain = country.isEmpty || isSpainCountry(country);
+          final postalAutofill = isSpain
+              ? inferSpainPostalAutofill(
+                  postalCode: controllers.postal.text,
+                  currentCountry: country,
+                )
+              : null;
+          final hasPostalInput = controllers.postal.text.trim().isNotEmpty;
+          final isSpanishLocale =
+              Localizations.localeOf(context).languageCode == 'es';
+          final postalHelper = postalAutofill != null
+              ? (isSpanishLocale
+                  ? 'Provincia detectada: ${postalAutofill.province}. Confirma la ciudad antes de guardar.'
+                  : 'Province detected: ${postalAutofill.province}. Confirm the city before saving.')
+              : (isSpain && hasPostalInput
+                  ? (isSpanishLocale
+                      ? 'Usa un código postal español de 5 dígitos.'
+                      : 'Enter a 5-digit Spanish postal code.')
+                  : null);
+          String? postalValidator(String? value) {
+            final raw = value?.trim() ?? '';
+            if (raw.isEmpty) return l.fieldIsRequired;
+            if (isSpain && normalizeSpanishPostalCode(raw) == null) {
+              return isSpanishLocale
+                  ? 'Introduce 5 dígitos (por ejemplo, 03700).'
+                  : 'Enter 5 digits (for example, 03700).';
+            }
+            return null;
+          }
+
           return sectionCard(
             icon: Icons.place_outlined,
             title: l.billingAddress,
@@ -447,7 +478,12 @@ class BillingProfileSheetForm extends StatelessWidget {
                   Expanded(
                     child: field(
                         controller: controllers.city,
-                        label: l.addressCity),
+                        label: l.addressCity,
+                        helper: postalAutofill == null
+                            ? null
+                            : (isSpanishLocale
+                                ? 'El código postal puede abarcar varias localidades; confirma la ciudad.'
+                                : 'A postal code can cover multiple towns; confirm the city.')),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -462,6 +498,12 @@ class BillingProfileSheetForm extends StatelessWidget {
                       controller: controllers.postal,
                       label: l.addressPostalCode,
                       keyboardType: TextInputType.number,
+                      helper: postalHelper,
+                      suffix: postalAutofill == null
+                          ? null
+                          : Icon(Icons.check_circle,
+                              color: Colors.green.shade600),
+                      validator: postalValidator,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -477,14 +519,24 @@ class BillingProfileSheetForm extends StatelessWidget {
                 ]),
               ] else ...[
                 field(
-                    controller: controllers.city, label: l.addressCity),
+                    controller: controllers.city,
+                    label: l.addressCity,
+                    helper: postalAutofill == null
+                        ? null
+                        : (isSpanishLocale
+                            ? 'El código postal puede abarcar varias localidades; confirma la ciudad.'
+                            : 'A postal code can cover multiple towns; confirm the city.')),
                 field(
-                    controller: controllers.province,
-                    label: l.addressProvince),
+                    controller: controllers.province, label: l.addressProvince),
                 field(
                   controller: controllers.postal,
                   label: l.addressPostalCode,
                   keyboardType: TextInputType.number,
+                  helper: postalHelper,
+                  suffix: postalAutofill == null
+                      ? null
+                      : Icon(Icons.check_circle, color: Colors.green.shade600),
+                  validator: postalValidator,
                 ),
                 field(
                   controller: controllers.country,
@@ -548,8 +600,7 @@ class BillingProfileSheetForm extends StatelessWidget {
                                 ? null
                                 : () {
                                     final cur = num.tryParse(
-                                            controllers.vatRate.text
-                                                .trim()) ??
+                                            controllers.vatRate.text.trim()) ??
                                         21;
                                     controllers.vatRate.text =
                                         (cur - 1).clamp(0, 100).toString();
@@ -572,10 +623,9 @@ class BillingProfileSheetForm extends StatelessWidget {
                                 isDense: true,
                                 filled: false,
                                 prefixIcon: Icon(Icons.percent,
-                                    size: 14,
-                                    color: cs.onSurfaceVariant),
-                                contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 13),
+                                    size: 14, color: cs.onSurfaceVariant),
+                                contentPadding:
+                                    const EdgeInsets.symmetric(vertical: 13),
                               ),
                             ),
                           ),
@@ -586,8 +636,7 @@ class BillingProfileSheetForm extends StatelessWidget {
                                 ? null
                                 : () {
                                     final cur = num.tryParse(
-                                            controllers.vatRate.text
-                                                .trim()) ??
+                                            controllers.vatRate.text.trim()) ??
                                         21;
                                     controllers.vatRate.text =
                                         (cur + 1).clamp(0, 100).toString();
@@ -695,8 +744,8 @@ class BillingProfileSheetForm extends StatelessWidget {
                     Expanded(
                       child: Text(
                         l.billingProfileTitle,
-                        style: t.titleLarge
-                            .copyWith(fontWeight: FontWeight.w800),
+                        style:
+                            t.titleLarge.copyWith(fontWeight: FontWeight.w800),
                       ),
                     ),
                   ],
@@ -764,8 +813,7 @@ class BillingProfileSheetForm extends StatelessWidget {
                     SizedBox(
                       height: 38,
                       child: FilledButton.icon(
-                        onPressed:
-                            (!hasChanges || saving) ? null : onSave,
+                        onPressed: (!hasChanges || saving) ? null : onSave,
                         icon: saving
                             ? const SizedBox(
                                 width: 16,
@@ -778,8 +826,7 @@ class BillingProfileSheetForm extends StatelessWidget {
                             : const Icon(Icons.save_outlined, size: 16),
                         label: Text(saving ? l.saving : l.saveChanges),
                         style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20),
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
                         ),
                       ),
                     ),

@@ -427,11 +427,12 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   void _startReply(MailMessage message) {
     if (_sendingReply) return;
     if (_replyDraftMessageId != message.id) {
-      final originalSubject = message.subject.trim();
-      _replySubjectCtrl.text = originalSubject.isEmpty ||
-              RegExp(r'^re\s*:', caseSensitive: false).hasMatch(originalSubject)
-          ? originalSubject
-          : 'Re: $originalSubject';
+      final subject = message.subject.trim();
+      _replySubjectCtrl.text = subject.isEmpty
+          ? 'Re:'
+          : RegExp(r'^re\s*:', caseSensitive: false).hasMatch(subject)
+              ? subject
+              : 'Re: $subject';
       _replyCtrl.clear();
     }
     _replyDraftMessageId = message.id;
@@ -441,10 +442,39 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     });
   }
 
+  void _openFullReply() {
+    if (_sendingReply || _replyTarget == null) return;
+    _replyFocus.unfocus();
+    setState(() => _showCompose = true);
+  }
+
+  void _closeFullReply() {
+    if (_sendingReply) return;
+    setState(() => _showCompose = false);
+  }
+
   void _closeReplyComposer() {
     if (_sendingReply) return;
     _replyFocus.unfocus();
-    setState(() => _replyTarget = null);
+    setState(() {
+      _replyTarget = null;
+      _showCompose = false;
+    });
+  }
+
+  Future<void> _replySent() async {
+    final threadKey = _selectedThreadKey;
+    _closeReplyComposer();
+    _replySubjectCtrl.clear();
+    _replyCtrl.clear();
+    _replyDraftMessageId = null;
+    if (threadKey == null || !mounted) return;
+    try {
+      await context.read<MailDomain>().loadThreadDetail(threadKey);
+    } catch (_) {
+      // The reply was sent; the mailbox can refresh on its next sync.
+    }
+    if (mounted) _loadThreads(refresh: true);
   }
 
   String _replyHtmlFromPlainText(String text) {
@@ -504,6 +534,7 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
     if (!mounted) return;
     setState(() {
       _showCompose = true;
+      _replyTarget = null;
       _showFooterManager = false;
       _showTemplateManager = false;
       _selectedThreadKey = null;

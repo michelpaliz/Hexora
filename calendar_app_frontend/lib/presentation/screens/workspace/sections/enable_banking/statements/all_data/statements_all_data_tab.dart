@@ -16,6 +16,7 @@ import 'statements_all_data_details.dart';
 import 'statements_all_data_skeleton.dart';
 import 'table/statements_all_data_table.dart';
 import 'table/statements_all_data_table_theme.dart';
+import '../shared/bank_transaction_share_dialog.dart';
 
 class StatementsAllDataTab extends StatefulWidget {
   const StatementsAllDataTab({super.key});
@@ -59,6 +60,18 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
 
   @override
   bool get wantKeepAlive => true;
+
+  void _shareEntry(BuildContext context, StatementsController controller,
+      Map<String, dynamic> entry) {
+    final groupId = controller.groupId;
+    if (groupId == null || groupId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona un negocio antes de compartir.')),
+      );
+      return;
+    }
+    BankTransactionShareDialog.show(context, groupId, entry);
+  }
 
   @override
   void reassemble() {
@@ -1795,7 +1808,9 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                           });
                         },
                         onShowDetails: (entry) =>
-                            StatementsAllDataDetails.show(context, l, entry, s),
+                            StatementsAllDataDetails.show(context, l, entry, s,
+                              onShare: () => _shareEntry(context, s, entry)),
+                        onShare: (entry) => _shareEntry(context, s, entry),
                         onSuggest: (entry) async {
                           await StatementsShared.showInvoiceSuggestionsDialog(
                               context, s, entry);

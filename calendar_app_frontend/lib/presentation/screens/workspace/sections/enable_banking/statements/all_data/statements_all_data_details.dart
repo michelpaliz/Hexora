@@ -15,6 +15,7 @@ class StatementsAllDataDetails {
     AppLocalizations l,
     Map<String, dynamic> entry,
     StatementsController controller,
+    {VoidCallback? onShare}
   ) async {
     final batchId =
         (entry['_batchId'] ?? entry['_id'] ?? entry['id'] ?? entry['batchId'])
@@ -193,6 +194,12 @@ class StatementsAllDataDetails {
                               ],
                             ),
                           ),
+                          if (onShare != null)
+                            IconButton(
+                              tooltip: 'Compartir en chat',
+                              onPressed: onShare,
+                              icon: Icon(Icons.forum_outlined, color: cs.primary),
+                            ),
                           IconButton(
                             tooltip: l.close,
                             onPressed: () =>

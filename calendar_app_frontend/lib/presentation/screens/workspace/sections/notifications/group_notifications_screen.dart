@@ -15,6 +15,7 @@ import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/enums/category/broad_category.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/business_chat/business_chat_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/ocr/expense_ocr_reprocess_results_screen.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_payload_helper.dart';
 import 'package:hexora/presentation/utils/errors/group_membership_error_mapper.dart';
@@ -203,12 +204,32 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
   }
 
   Future<void> _openDocument(NotificationUser notification) async {
+    if ((notification.args['conversationId'] ?? '').toString().isNotEmpty) {
+      await _openChat(notification);
+      return;
+    }
     final args = _documentRouteArgs(notification);
     if (args == null) return;
     await Navigator.of(context).pushNamed(
       AppRoutes.groupInvoices,
       arguments: args,
     );
+  }
+
+  Future<void> _openChat(NotificationUser notification) async {
+    final conversationId = (notification.args['conversationId'] ?? '').toString().trim();
+    final groupId = (notification.args['groupId'] ?? notification.groupId).toString().trim();
+    if (conversationId.isEmpty || groupId != widget.group.id) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => Scaffold(
+        appBar: AppBar(title: const Text('Hexora Chat')),
+        body: BusinessChatScreen(
+          groupId: groupId,
+          currentUserId: context.read<UserDomain>().user?.id,
+          initialConversationId: conversationId,
+        ),
+      ),
+    ));
   }
 
   bool _isOcrReprocessNotification(NotificationUser notification) {
@@ -252,7 +273,10 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
         (notification.args['jobId'] ?? '').toString().trim().isNotEmpty;
     final calendar = isEventNotification(notification) ||
         isConcurrentEventNotification(notification);
-    final openLabel = ocr
+    final chat = (notification.args['conversationId'] ?? '').toString().trim().isNotEmpty;
+    final openLabel = chat
+        ? (es ? 'Abrir conversación' : 'Open conversation')
+        : ocr
         ? (es ? 'Ver resultados' : 'View results')
         : documentArgs != null
             ? (es ? 'Ver documento' : 'View document')
@@ -271,7 +295,9 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
         case NotificationDetailAction.open:
           if (!notification.isRead) await _handleMarkRead(notification);
           if (!mounted) return;
-          if (ocr) {
+          if (chat) {
+            await _openChat(notification);
+          } else if (ocr) {
             await _openOcrReprocessResults(notification);
           } else if (documentArgs != null) {
             await _openDocument(notification);

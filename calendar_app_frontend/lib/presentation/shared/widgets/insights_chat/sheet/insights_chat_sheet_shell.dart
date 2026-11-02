@@ -388,8 +388,18 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
               selected: {runtime.interactionMode},
               onSelectionChanged: sending
                   ? null
-                  : (selection) =>
-                      runtime.setInteractionMode(selection.first),
+                  : (selection) {
+                      final nextMode = selection.first;
+                      runtime.setInteractionMode(nextMode);
+                      if (nextMode == InsightsInteractionMode.openQuestions) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) {
+                            FocusScope.of(context)
+                                .requestFocus(chatComposerFocusNode);
+                          }
+                        });
+                      }
+                    },
               showSelectedIcon: false,
               style: ButtonStyle(
                 textStyle: WidgetStatePropertyAll(
@@ -447,18 +457,20 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
     final selectedAssistantMessage =
         findMessageByKey(messages, selectedAssistantKey);
     final latestAssistantMessage = latestAssistantMessageFrom(messages);
-    final latestIncomeAmountPromptMessage =
-        latestIncomeAmountPromptMessageFrom(messages);
+    final openQuestions =
+        runtime.interactionMode == InsightsInteractionMode.openQuestions;
+    final latestIncomeAmountPromptMessage = openQuestions
+        ? null
+        : latestIncomeAmountPromptMessageFrom(messages);
     final latestAssistantMenuMessage =
-        latestIncomeAmountPromptMessage == null &&
+        !openQuestions &&
+                latestIncomeAmountPromptMessage == null &&
                 latestAssistantMessage != null &&
                 messageHasMenu(latestAssistantMessage)
             ? latestAssistantMessage
             : null;
     final showComposer = latestIncomeAmountPromptMessage == null;
     final showEmptyComposer = messages.isEmpty && !sending && showComposer;
-    final openQuestions =
-        runtime.interactionMode == InsightsInteractionMode.openQuestions;
     final desktopUserMessages =
         messages.where((message) => message.isUser).toList(growable: false);
 

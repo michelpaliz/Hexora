@@ -166,13 +166,8 @@ class _AddClientSheetState extends State<AddClientSheet> {
       }
     }
     if (!c.formKey.currentState!.validate()) return;
+    final locationChanged = c.serviceLocationChanged;
     final locationError = c.serviceLocationValidationError();
-    if (locationError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(locationError)),
-      );
-      return;
-    }
 
     setState(() => c.saving = true);
     try {
@@ -180,7 +175,18 @@ class _AddClientSheetState extends State<AddClientSheet> {
       // Retain the new ID so retries after a secondary upload failure update
       // the existing client rather than creating a duplicate.
       c.client = result;
-      result = await c.saveServiceLocation(result);
+      String? locationWarning;
+      if (locationChanged && locationError != null) {
+        locationWarning =
+            'Cliente guardado; ubicación del servicio sin cambios. $locationError';
+      } else if (locationChanged) {
+        try {
+          result = await c.saveServiceLocation(result);
+        } catch (_) {
+          locationWarning =
+              'Cliente guardado, pero no se pudo actualizar la ubicación del servicio.';
+        }
+      }
       if (_imageBytes != null || _removeImage) {
         try {
           result = _imageBytes != null
@@ -210,6 +216,11 @@ class _AddClientSheetState extends State<AddClientSheet> {
       );
       if (!mounted) return;
       widget.onSaved?.call(result);
+      if (locationWarning != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(locationWarning)),
+        );
+      }
       if (widget.closeOnSave) {
         Navigator.of(context).pop<GroupClient>(result);
       }

@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
+import '../insights_chat_enums.dart';
 import '../insights_chat_message.dart';
 import 'insights_chat_sheet_base.dart';
 
@@ -77,13 +78,21 @@ mixin InsightsComposer on InsightsChatSheetStateBase {
           Expanded(
             child: TextField(
               controller: inputCtrl,
+              focusNode: chatComposerFocusNode,
               enabled: !sending,
               minLines: 1,
               maxLines: MediaQuery.viewInsetsOf(context).bottom > 0 ? 2 : 4,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => submitTypedMessage(),
               decoration: InputDecoration(
-                hintText: isEs ? 'Escribe un mensaje…' : 'Write a message…',
+                hintText: runtime.interactionMode ==
+                        InsightsInteractionMode.openQuestions
+                    ? isEs
+                        ? 'Pregunta sobre este negocio…'
+                        : 'Ask about this business…'
+                    : isEs
+                        ? 'Escribe un mensaje…'
+                        : 'Write a message…',
                 hintMaxLines: 1,
                 filled: true,
                 fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.28),

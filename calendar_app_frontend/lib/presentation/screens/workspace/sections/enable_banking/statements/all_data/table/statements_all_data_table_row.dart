@@ -26,6 +26,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
     required this.selectedIds,
     required this.onToggleRow,
     required this.onShowDetails,
+    this.onShare,
     required this.onSuggest,
     required this.onLink,
     required this.onLinkInvoice,
@@ -42,6 +43,7 @@ class StatementsAllDataTableRow extends StatelessWidget {
   final Set<String> selectedIds;
   final ValueChanged<String> onToggleRow;
   final ValueChanged<Map<String, dynamic>> onShowDetails;
+  final ValueChanged<Map<String, dynamic>>? onShare;
   final ValueChanged<Map<String, dynamic>> onSuggest;
   final ValueChanged<Map<String, dynamic>> onLink;
   final ValueChanged<Map<String, dynamic>> onLinkInvoice;
@@ -338,6 +340,13 @@ class StatementsAllDataTableRow extends StatelessWidget {
                 : (isEs ? 'Marcar no procede' : 'Mark not applicable'),
           ),
         ),
+        if (onShare != null)
+          PopupMenuItem(
+            value: 'share_chat',
+            enabled: entryId.isNotEmpty,
+            child: menuLabel(Icons.forum_outlined,
+                isEs ? 'Compartir en chat' : 'Share to chat'),
+          ),
         PopupMenuItem(
           value: 'details',
           child: menuLabel(Icons.info_outline, l.statementsViewDetails),
@@ -364,6 +373,8 @@ class StatementsAllDataTableRow extends StatelessWidget {
         if (entryId.isNotEmpty) onMarkNoProcede(entry);
       } else if (result == 'details') {
         onShowDetails(entry);
+      } else if (result == 'share_chat' && entryId.isNotEmpty) {
+        onShare?.call(entry);
       }
     }
 

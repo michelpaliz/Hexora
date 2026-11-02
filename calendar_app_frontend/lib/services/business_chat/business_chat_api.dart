@@ -18,6 +18,8 @@ class BusinessChatMessage {
     this.editedAt,
     this.isDeleted = false,
     this.attachment,
+    this.bankTransaction,
+    this.replyTo,
   });
 
   final String id;
@@ -29,6 +31,8 @@ class BusinessChatMessage {
   final DateTime? editedAt;
   final bool isDeleted;
   final Map<String, dynamic>? attachment;
+  final Map<String, dynamic>? bankTransaction;
+  final Map<String, dynamic>? replyTo;
 
   factory BusinessChatMessage.fromJson(Map<String, dynamic> json) =>
       BusinessChatMessage(
@@ -43,6 +47,12 @@ class BusinessChatMessage {
         isDeleted: json['isDeleted'] == true,
         attachment: json['attachment'] is Map
             ? Map<String, dynamic>.from(json['attachment'])
+            : null,
+        bankTransaction: json['bankTransaction'] is Map
+            ? Map<String, dynamic>.from(json['bankTransaction'])
+            : null,
+        replyTo: json['replyTo'] is Map
+            ? Map<String, dynamic>.from(json['replyTo'])
             : null,
       );
 }
@@ -68,10 +78,10 @@ class BusinessChatMember {
         name: (json['name'] ?? '').toString(),
         isOnline: json['isOnline'] == true,
         photoUrl: json['photoUrl']?.toString(),
-        lastActiveAt: DateTime.tryParse((json['lastActiveAt'] ?? '').toString()),
+        lastActiveAt:
+            DateTime.tryParse((json['lastActiveAt'] ?? '').toString()),
       );
 }
-
 
 class BusinessChatConversation {
   const BusinessChatConversation(
@@ -81,7 +91,12 @@ class BusinessChatConversation {
       this.lastMessage,
       this.issue,
       this.unreadCount = 0,
-      this.participantIds = const []});
+      this.participantIds = const [],
+      this.moderatorIds = const [],
+      this.canManageParticipants = false,
+      this.canModerateMessages = false,
+      this.muted = false,
+      this.canShareBankTransaction = false});
   final String id;
   final String type;
   final String title;
@@ -89,6 +104,11 @@ class BusinessChatConversation {
   final Map<String, dynamic>? issue;
   final int unreadCount;
   final List<String> participantIds;
+  final List<String> moderatorIds;
+  final bool canManageParticipants;
+  final bool canModerateMessages;
+  final bool muted;
+  final bool canShareBankTransaction;
 
   factory BusinessChatConversation.fromJson(Map<String, dynamic> json) =>
       BusinessChatConversation(
@@ -106,6 +126,13 @@ class BusinessChatConversation {
         participantIds: (json['participantIds'] as List<dynamic>? ?? const [])
             .map((id) => id.toString())
             .toList(),
+        moderatorIds: (json['moderatorIds'] as List<dynamic>? ?? const [])
+            .map((id) => id.toString())
+            .toList(),
+        canManageParticipants: json['canManageParticipants'] == true,
+        canModerateMessages: json['canModerateMessages'] == true,
+        muted: json['muted'] == true,
+        canShareBankTransaction: json['canShareBankTransaction'] == true,
       );
 
   BusinessChatConversation copyWith({int? unreadCount}) =>
@@ -116,7 +143,19 @@ class BusinessChatConversation {
           lastMessage: lastMessage,
           issue: issue,
           participantIds: participantIds,
+          moderatorIds: moderatorIds,
+          canManageParticipants: canManageParticipants,
+          canModerateMessages: canModerateMessages,
+          muted: muted,
+          canShareBankTransaction: canShareBankTransaction,
           unreadCount: unreadCount ?? this.unreadCount);
+}
+
+class BusinessChatMessagePage {
+  const BusinessChatMessagePage(this.messages, this.hasMore, this.nextCursor);
+  final List<BusinessChatMessage> messages;
+  final bool hasMore;
+  final String? nextCursor;
 }
 
 class BusinessChatApi {
@@ -139,49 +178,120 @@ class BusinessChatApi {
   }
 
   Future<List<BusinessChatMember>> memberPresence(String groupId) async {
-    final response = await AuthenticatedHttpClient.get(_uri(groupId, '/members'));
+    final response =
+        await AuthenticatedHttpClient.get(_uri(groupId, '/members'));
     if (response.statusCode != 200) {
       throw BackendApiException.fromResponse(response);
     }
     final data = Map<String, dynamic>.from(jsonDecode(response.body));
     return (data['members'] as List<dynamic>? ?? const [])
         .whereType<Map>()
-        .map((item) => BusinessChatMember.fromJson(Map<String, dynamic>.from(item)))
+        .map((item) =>
+            BusinessChatMember.fromJson(Map<String, dynamic>.from(item)))
         .toList();
   }
 
-  Future<List<BusinessChatMessage>> messages(
-      String groupId, String conversationId) async {
+  Future<BusinessChatMessagePage> messages(
+      String groupId, String conversationId,
+      {String? before}) async {
     final response = await AuthenticatedHttpClient.get(
-        _uri(groupId, '/conversations/$conversationId/messages'));
+        _uri(groupId, '/conversations/$conversationId/messages').replace(
+      queryParameters: before == null ? null : {'before': before},
+    ));
     if (response.statusCode != 200)
       throw BackendApiException.fromResponse(response);
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    return (decoded['messages'] as List<dynamic>? ?? const [])
+    final messages = (decoded['messages'] as List<dynamic>? ?? const [])
+        .whereType<Map>()
+        .map((item) =>
+            BusinessChatMessage.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+    return BusinessChatMessagePage(messages, decoded['hasMore'] == true,
+        decoded['nextCursor']?.toString());
+  }
+
+  Future<List<BusinessChatMessage>> searchMessages(
+      String groupId, String conversationId, String query) async {
+    final response = await AuthenticatedHttpClient.get(
+      _uri(groupId, '/conversations/$conversationId/messages/search')
+          .replace(queryParameters: {'q': query}),
+    );
+    if (response.statusCode != 200) {
+      throw BackendApiException.fromResponse(response);
+    }
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return (data['messages'] as List<dynamic>? ?? const [])
         .whereType<Map>()
         .map((item) =>
             BusinessChatMessage.fromJson(Map<String, dynamic>.from(item)))
         .toList();
   }
 
+  Future<void> setMuted(
+      String groupId, String conversationId, bool muted) async {
+    final response = await AuthenticatedHttpClient.patch(
+        _uri(groupId, '/conversations/$conversationId/mute'),
+        body: jsonEncode({'muted': muted}));
+    if (response.statusCode != 200)
+      throw BackendApiException.fromResponse(response);
+  }
+
+  Future<void> setTeamModerator(String groupId, String conversationId,
+      String userId, bool enabled) async {
+    final response = await AuthenticatedHttpClient.patch(
+        _uri(groupId, '/conversations/$conversationId/moderators/$userId'),
+        body: jsonEncode({'enabled': enabled}));
+    if (response.statusCode != 200)
+      throw BackendApiException.fromResponse(response);
+  }
+
   Future<BusinessChatMessage> send(
-      String groupId, String conversationId, String body) async {
+      String groupId, String conversationId, String body,
+      {String? replyToMessageId}) async {
     final response = await AuthenticatedHttpClient.post(
         _uri(groupId, '/conversations/$conversationId/messages'),
-        body: jsonEncode({'body': body}));
+        body: jsonEncode({
+          'body': body,
+          if (replyToMessageId != null) 'replyToMessageId': replyToMessageId
+        }));
     if (response.statusCode != 201)
       throw BackendApiException.fromResponse(response);
     return BusinessChatMessage.fromJson(
         Map<String, dynamic>.from(jsonDecode(response.body)));
   }
 
-  Future<BusinessChatMessage> sendAttachment(String groupId,
-      String conversationId, PlatformFile file, String body) async {
+  Future<BusinessChatMessage> shareBankTransaction(String groupId,
+      String conversationId, String entryId, String body) async {
+    final response = await AuthenticatedHttpClient.post(
+        _uri(groupId,
+            '/conversations/$conversationId/messages/bank-transaction'),
+        body: jsonEncode({'entryId': entryId, 'body': body}));
+    if (response.statusCode != 201)
+      throw BackendApiException.fromResponse(response);
+    return BusinessChatMessage.fromJson(
+        Map<String, dynamic>.from(jsonDecode(response.body)));
+  }
+
+  Future<Map<String, dynamic>> bankTransaction(
+      String groupId, String entryId) async {
+    final response = await AuthenticatedHttpClient.get(
+        _uri(groupId, '/bank-transactions/$entryId'));
+    if (response.statusCode != 200)
+      throw BackendApiException.fromResponse(response);
+    return Map<String, dynamic>.from(jsonDecode(response.body)['entry'] as Map);
+  }
+
+  Future<BusinessChatMessage> sendAttachment(
+      String groupId, String conversationId, PlatformFile file, String body,
+      {String? replyToMessageId}) async {
     if (file.bytes == null) throw StateError('File data is unavailable');
     final response = await AuthenticatedHttpClient.sendMultipart((headers) {
       final request = http.MultipartRequest(
           'POST', _uri(groupId, '/conversations/$conversationId/attachments'));
       request.fields['body'] = body;
+      if (replyToMessageId != null) {
+        request.fields['replyToMessageId'] = replyToMessageId;
+      }
       final extension = file.extension?.toLowerCase() ?? '';
       final mime = {
         'jpg': 'image/jpeg',

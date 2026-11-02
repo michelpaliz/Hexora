@@ -27,6 +27,7 @@ class _MobileConversation extends StatelessWidget {
               replyFocus: pane.replyFocus,
               onReply: _asyncCallback(() => pane.onReply(target)),
               onClose: pane.onCloseReply,
+              onOpenFullReply: pane.onOpenFullReply,
               sendingReply: pane.sendingReply,
               replyToLabel: l.mailConversationReplyTo(recipient),
             ),

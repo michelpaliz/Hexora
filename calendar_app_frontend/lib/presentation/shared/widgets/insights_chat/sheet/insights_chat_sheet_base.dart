@@ -23,6 +23,7 @@ abstract class InsightsChatSheetStateBase extends State<InsightsChatSheet> {
   final clientsApi = ClientsApi();
   final servicesApi = ServiceApi();
   final inputCtrl = TextEditingController();
+  final chatComposerFocusNode = FocusNode();
   final scrollCtrl = ScrollController();
   final Map<String, ScrollController> tableScrollControllers = {};
   String? exportingMessageKey;

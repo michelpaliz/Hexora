@@ -93,6 +93,10 @@ class _MailConsoleView extends StatelessWidget {
 
     void mobileBack() {
       if (state._sendingReply) return;
+      if (state._showCompose && state._replyTarget != null) {
+        state._closeFullReply();
+        return;
+      }
       if (state._replyTarget != null) {
         state._closeReplyComposer();
         return;
@@ -106,7 +110,13 @@ class _MailConsoleView extends StatelessWidget {
     }
 
     String appBarTitle() {
-      if (state._showCompose) return l.mailComposeTitle;
+      if (state._showCompose) {
+        return state._replyTarget == null
+            ? l.mailComposeTitle
+            : (l.localeName.toLowerCase().startsWith('es')
+                ? 'Responder'
+                : 'Reply');
+      }
       if (state._showFooterManager) return l.mailFooterCreateCta;
       if (state._showTemplateManager) return 'Templates';
       if (state._selectedThreadKey != null) {
@@ -146,9 +156,16 @@ class _MailConsoleView extends StatelessWidget {
       if (state._showCompose) {
         return MailComposeScreen(
           groupId: state._currentGroupId(),
+          replyToMessage: state._replyTarget,
+          initialReplyBody:
+              state._replyTarget == null ? null : state._replyCtrl.text,
+          initialReplySubject:
+              state._replyTarget == null ? null : state._replySubjectCtrl.text,
           embedded: true,
           onClose: mobileBack,
-          onSent: mobileBack,
+          onSent: state._replyTarget == null
+              ? mobileBack
+              : _asyncCallback(state._replySent),
         );
       }
       if (state._showFooterManager) {
@@ -187,6 +204,7 @@ class _MailConsoleView extends StatelessWidget {
           onStartReply: state._startReply,
           onReply: state._sendReply,
           onCloseReply: state._closeReplyComposer,
+          onOpenFullReply: state._openFullReply,
           replySubjectController: state._replySubjectCtrl,
           replyController: state._replyCtrl,
           replyFocus: state._replyFocus,
@@ -475,9 +493,19 @@ class _MailConsoleView extends StatelessWidget {
       return state._showCompose
           ? MailComposeScreen(
               groupId: state._currentGroupId(),
+              replyToMessage: state._replyTarget,
+              initialReplyBody:
+                  state._replyTarget == null ? null : state._replyCtrl.text,
+              initialReplySubject: state._replyTarget == null
+                  ? null
+                  : state._replySubjectCtrl.text,
               embedded: true,
-              onClose: () => state.update(() => state._showCompose = false),
-              onSent: () => state.update(() => state._showCompose = false),
+              onClose: state._replyTarget == null
+                  ? () => state.update(() => state._showCompose = false)
+                  : state._closeFullReply,
+              onSent: state._replyTarget == null
+                  ? () => state.update(() => state._showCompose = false)
+                  : _asyncCallback(state._replySent),
             )
           : state._showFooterManager
               ? _FooterManagerPanel(state: state)
@@ -514,6 +542,7 @@ class _MailConsoleView extends StatelessWidget {
                               onStartReply: state._startReply,
                               onReply: state._sendReply,
                               onCloseReply: state._closeReplyComposer,
+                              onOpenFullReply: state._openFullReply,
                               replySubjectController: state._replySubjectCtrl,
                               replyController: state._replyCtrl,
                               replyFocus: state._replyFocus,
@@ -544,7 +573,11 @@ class _MailConsoleView extends StatelessWidget {
                   state._showCompose
               ? FolderSectionCard(
                   label: state._showCompose
-                      ? l.mailComposeTitle
+                      ? (state._replyTarget == null
+                          ? l.mailComposeTitle
+                          : (l.localeName.toLowerCase().startsWith('es')
+                              ? 'Responder'
+                              : 'Reply'))
                       : state._showFooterManager
                           ? l.mailFooterCreateCta
                           : 'Templates',

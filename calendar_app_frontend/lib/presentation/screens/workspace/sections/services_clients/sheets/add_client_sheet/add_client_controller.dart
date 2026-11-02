@@ -18,6 +18,7 @@ class AddClientController {
     this.client,
   }) {
     _initFromClient();
+    _savedServiceLocationValues = _serviceLocationValues;
   }
 
   final ClientsApi api;
@@ -61,10 +62,27 @@ class AddClientController {
   bool billingExpanded = false;
   bool serviceLocationExpanded = false;
   bool serviceLocationEnabled = true;
+  late List<Object> _savedServiceLocationValues;
   bool saving = false;
   final Map<String, bool> _touched = {};
 
   bool get isEdit => client != null;
+
+  List<Object> get _serviceLocationValues => [
+        serviceLatitude.text.trim(),
+        serviceLongitude.text.trim(),
+        serviceRadius.text.trim(),
+        serviceLocationLabel.text.trim(),
+        serviceLocationEnabled,
+      ];
+
+  bool get serviceLocationChanged {
+    final current = _serviceLocationValues;
+    for (var index = 0; index < current.length; index++) {
+      if (current[index] != _savedServiceLocationValues[index]) return true;
+    }
+    return false;
+  }
 
   void _initFromClient() {
     final c = client;
@@ -363,6 +381,7 @@ class AddClientController {
   }
 
   String? serviceLocationValidationError() {
+    if (!serviceLocationChanged) return null;
     final latitude = double.tryParse(serviceLatitude.text.trim());
     final longitude = double.tryParse(serviceLongitude.text.trim());
     final radius = double.tryParse(serviceRadius.text.trim());
@@ -375,14 +394,17 @@ class AddClientController {
     if (longitude == null || longitude < -180 || longitude > 180) {
       return 'La longitud debe estar entre -180 y 180.';
     }
-    if (radius == null || radius < 10 || radius > 1000) {
-      return 'El radio debe estar entre 10 y 1.000 metros.';
+    if (latitude == 0 && longitude == 0) {
+      return 'La ubicación 0,0 no es un punto de servicio válido.';
+    }
+    if (radius == null || radius < 25 || radius > 500) {
+      return 'El radio debe estar entre 25 y 500 metros.';
     }
     return null;
   }
 
   Future<GroupClient> saveServiceLocation(GroupClient saved) async {
-    if (client == null) return saved;
+    if (client == null || !serviceLocationChanged) return saved;
     final latitude = double.tryParse(serviceLatitude.text.trim());
     final longitude = double.tryParse(serviceLongitude.text.trim());
     final radius = double.tryParse(serviceRadius.text.trim());
@@ -401,6 +423,7 @@ class AddClientController {
         isEnabled: serviceLocationEnabled,
       ),
     );
+    _savedServiceLocationValues = _serviceLocationValues;
     return saved.copyWith(serviceLocation: location);
   }
 }

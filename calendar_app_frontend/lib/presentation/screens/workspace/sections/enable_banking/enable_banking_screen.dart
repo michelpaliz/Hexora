@@ -12,6 +12,7 @@ import 'enable_banking_left_nav.dart';
 import 'enable_banking_link_store.dart';
 import 'statements/all_data/mobile/statements_mobile_view.dart';
 import 'statements/all_data/statements_all_data_tab.dart';
+import 'statements/all_data/statements_all_data_details.dart';
 import 'statements/analytics/mobile/statements_analytics_mobile.dart';
 import 'statements/analytics/statements_analytics_copy.dart';
 import 'statements/analytics/statements_analytics_controller.dart';
@@ -27,10 +28,14 @@ class EnableBankingScreen extends StatelessWidget {
     super.key,
     this.group,
     this.embedded = false,
+    this.initialEntry,
+    this.initialReviewLink = false,
   });
 
   final Group? group;
   final bool embedded;
+  final Map<String, dynamic>? initialEntry;
+  final bool initialReviewLink;
 
   static EnableBankingScreen fromRoute(BuildContext context) {
     final group = ModalRoute.of(context)?.settings.arguments as Group?;
@@ -50,7 +55,8 @@ class EnableBankingScreen extends StatelessWidget {
           create: (_) => StatementsAnalyticsController(groupId: group?.id),
         ),
       ],
-      child: _EnableBankingView(group: group, embedded: embedded),
+      child: _EnableBankingView(group: group, embedded: embedded,
+          initialEntry: initialEntry, initialReviewLink: initialReviewLink),
     );
   }
 }
@@ -59,10 +65,14 @@ class _EnableBankingView extends StatefulWidget {
   const _EnableBankingView({
     required this.group,
     required this.embedded,
+    required this.initialEntry,
+    required this.initialReviewLink,
   });
 
   final Group? group;
   final bool embedded;
+  final Map<String, dynamic>? initialEntry;
+  final bool initialReviewLink;
 
   @override
   State<_EnableBankingView> createState() => _EnableBankingViewState();
@@ -166,6 +176,26 @@ class _EnableBankingViewState extends State<_EnableBankingView>
     super.didChangeDependencies();
     if (_didInit) return;
     _didInit = true;
+
+    if (widget.initialEntry != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (widget.initialReviewLink) {
+          final entry = widget.initialEntry!;
+          final amount = num.tryParse(entry['amount']?.toString() ?? '') ?? 0;
+          StatementsShared.showInvoiceLinkDialog(context,
+            context.read<StatementsController>(), entry,
+            expenseOnly: amount < 0);
+          return;
+        }
+        StatementsAllDataDetails.show(
+          context,
+          AppLocalizations.of(context)!,
+          widget.initialEntry!,
+          context.read<StatementsController>(),
+        );
+      });
+    }
 
     if (!context.mounted) return;
     Future<void>(() async {

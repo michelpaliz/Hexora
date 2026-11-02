@@ -10,6 +10,7 @@ class _ConversationPane extends StatefulWidget {
     required this.onStartReply,
     required this.onReply,
     required this.onCloseReply,
+    required this.onOpenFullReply,
     required this.replySubjectController,
     required this.replyController,
     required this.replyFocus,
@@ -24,6 +25,7 @@ class _ConversationPane extends StatefulWidget {
   final ValueChanged<MailMessage> onStartReply;
   final Future<void> Function(MailMessage) onReply;
   final VoidCallback onCloseReply;
+  final VoidCallback onOpenFullReply;
   final TextEditingController replySubjectController;
   final TextEditingController replyController;
   final FocusNode replyFocus;
@@ -155,6 +157,7 @@ class _ConversationPaneState extends State<_ConversationPane> {
                   onReply:
                       _asyncCallback(() => widget.onReply(widget.replyTarget!)),
                   onClose: widget.onCloseReply,
+                  onOpenFullReply: widget.onOpenFullReply,
                   sendingReply: widget.sendingReply,
                   replyToLabel: l.mailConversationReplyTo(
                     replyRecipientDisplay(widget.replyTarget!),
@@ -932,6 +935,7 @@ class _ReplyComposer extends StatelessWidget {
     required this.replyFocus,
     required this.onReply,
     required this.onClose,
+    required this.onOpenFullReply,
     required this.sendingReply,
     required this.replyToLabel,
   });
@@ -941,6 +945,7 @@ class _ReplyComposer extends StatelessWidget {
   final FocusNode replyFocus;
   final VoidCallback onReply;
   final VoidCallback onClose;
+  final VoidCallback onOpenFullReply;
   final bool sendingReply;
   final String replyToLabel;
 
@@ -1069,37 +1074,47 @@ class _ReplyComposer extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: replyController,
-                  builder: (context, value, _) => FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
+              Wrap(
+                alignment: WrapAlignment.end,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                children: [
+                  TextButton.icon(
+                    onPressed: sendingReply ? null : onOpenFullReply,
+                    icon: const Icon(Icons.open_in_full_rounded, size: 16),
+                    label: const Text('Abrir editor completo'),
+                  ),
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: replyController,
+                    builder: (context, value, _) => FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        textStyle: t.bodySmall.copyWith(fontSize: 14),
+                        visualDensity: VisualDensity.compact,
                       ),
-                      textStyle: t.bodySmall.copyWith(fontSize: 14),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    onPressed: sendingReply || value.text.trim().isEmpty
-                        ? null
-                        : onReply,
-                    icon: sendingReply
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.send_rounded, size: 16),
-                    label: Text(
-                      sendingReply
-                          ? AppLocalizations.of(context)!
-                              .mailConsoleReplySending
-                          : AppLocalizations.of(context)!.mailConsoleReplySend,
+                      onPressed: sendingReply || value.text.trim().isEmpty
+                          ? null
+                          : onReply,
+                      icon: sendingReply
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.send_rounded, size: 16),
+                      label: Text(
+                        sendingReply
+                            ? AppLocalizations.of(context)!
+                                .mailConsoleReplySending
+                            : AppLocalizations.of(context)!
+                                .mailConsoleReplySend,
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ],
           ),

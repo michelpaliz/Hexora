@@ -1135,6 +1135,43 @@ class _BillingProfileInlineEditorState
     }
 
     Widget addressSection(bool wide) {
+      final country = _country.text.trim();
+      final isSpain = country.isEmpty || isSpainCountry(country);
+      final postalAutofill = isSpain
+          ? inferSpainPostalAutofill(
+              postalCode: _postal.text,
+              currentCountry: country,
+            )
+          : null;
+      final hasPostalInput = _postal.text.trim().isNotEmpty;
+      final isSpanishLocale =
+          Localizations.localeOf(context).languageCode == 'es';
+      final postalHelper = postalAutofill != null
+          ? (isSpanishLocale
+              ? 'Provincia detectada: ${postalAutofill.province}. Confirma la ciudad antes de guardar.'
+              : 'Province detected: ${postalAutofill.province}. Confirm the city before saving.')
+          : (isSpain && hasPostalInput
+              ? (isSpanishLocale
+                  ? 'Usa un código postal español de 5 dígitos.'
+                  : 'Enter a 5-digit Spanish postal code.')
+              : null);
+      String? postalValidator(String? value) {
+        final raw = value?.trim() ?? '';
+        if (raw.isEmpty) return l.fieldIsRequired;
+        if (isSpain && normalizeSpanishPostalCode(raw) == null) {
+          return isSpanishLocale
+              ? 'Introduce 5 dígitos (por ejemplo, 03700).'
+              : 'Enter 5 digits (for example, 03700).';
+        }
+        return null;
+      }
+
+      final cityHelper = postalAutofill == null
+          ? null
+          : (isSpanishLocale
+              ? 'El código postal puede abarcar varias localidades; confirma la ciudad.'
+              : 'A postal code can cover multiple towns; confirm the city.');
+
       return sectionCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1161,6 +1198,7 @@ class _BillingProfileInlineEditorState
                     child: textField(
                       controller: _city,
                       label: l.addressCity,
+                      helper: cityHelper,
                       validator: (v) => (v == null || v.trim().isEmpty)
                           ? l.fieldIsRequired
                           : null,
@@ -1182,6 +1220,7 @@ class _BillingProfileInlineEditorState
               textField(
                 controller: _city,
                 label: l.addressCity,
+                helper: cityHelper,
                 validator: (v) =>
                     (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null,
               ),
@@ -1202,9 +1241,12 @@ class _BillingProfileInlineEditorState
                       controller: _postal,
                       label: l.addressPostalCode,
                       keyboardType: TextInputType.number,
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? l.fieldIsRequired
-                          : null,
+                      helper: postalHelper,
+                      suffix: postalAutofill == null
+                          ? null
+                          : Icon(Icons.check_circle,
+                              color: Colors.green.shade600),
+                      validator: postalValidator,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1224,8 +1266,11 @@ class _BillingProfileInlineEditorState
                 controller: _postal,
                 label: l.addressPostalCode,
                 keyboardType: TextInputType.number,
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? l.fieldIsRequired : null,
+                helper: postalHelper,
+                suffix: postalAutofill == null
+                    ? null
+                    : Icon(Icons.check_circle, color: Colors.green.shade600),
+                validator: postalValidator,
               ),
               const SizedBox(height: 10),
               textField(
@@ -1284,8 +1329,7 @@ class _BillingProfileInlineEditorState
                         onPressed: _saving
                             ? null
                             : () {
-                                final current =
-                                    _parsedVatRate() ?? 21;
+                                final current = _parsedVatRate() ?? 21;
                                 final next = (current - 1).clamp(0, 100);
                                 _vatRate.text = next.toString();
                               },
@@ -1301,7 +1345,10 @@ class _BillingProfileInlineEditorState
                           helper: l.billingTaxRateHelper,
                           validator: (_) {
                             final vat = _parsedVatRate();
-                            return vat == null || !vat.isFinite || vat < 0 || vat > 100
+                            return vat == null ||
+                                    !vat.isFinite ||
+                                    vat < 0 ||
+                                    vat > 100
                                 ? 'Introduce un IVA entre 0 y 100'
                                 : null;
                           },
@@ -1311,8 +1358,7 @@ class _BillingProfileInlineEditorState
                         onPressed: _saving
                             ? null
                             : () {
-                                final current =
-                                    _parsedVatRate() ?? 21;
+                                final current = _parsedVatRate() ?? 21;
                                 final next = (current + 1).clamp(0, 100);
                                 _vatRate.text = next.toString();
                               },

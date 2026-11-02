@@ -42,8 +42,10 @@ Widget _composeRecipientsCard(
                                     color: cs.onSurface,
                                     fontWeight: FontWeight.w600)),
                         const SizedBox(height: 10),
-                        recipientMode,
-                        const SizedBox(height: 12),
+                        if (state.widget.replyToMessage == null) ...[
+                          recipientMode,
+                          const SizedBox(height: 12),
+                        ],
                         recipientInput,
                       ])
                 : Row(
@@ -65,7 +67,7 @@ Widget _composeRecipientsCard(
                       Expanded(child: recipientInput),
                       const SizedBox(width: 6),
                       // Compact mode toggle
-                      recipientMode,
+                      if (state.widget.replyToMessage == null) recipientMode,
                     ],
                   ),
           ),

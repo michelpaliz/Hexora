@@ -101,6 +101,7 @@ class _InsightsChatSheetState extends InsightsChatSheetStateBase
     runtime.removeListener(onRuntimeChanged);
     runtime.setSheetOpen(false, notify: false);
     inputCtrl.dispose();
+    chatComposerFocusNode.dispose();
     scrollCtrl.dispose();
     for (final controller in tableScrollControllers.values) {
       controller.dispose();

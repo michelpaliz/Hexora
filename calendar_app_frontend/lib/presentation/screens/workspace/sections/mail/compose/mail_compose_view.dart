@@ -20,7 +20,14 @@ class _MailComposeView extends StatelessWidget {
     final hasSubject = state._subjectCtrl.text.trim().isNotEmpty;
     final hasMessage =
         state._quillController.document.toPlainText().trim().isNotEmpty;
-    final sendLabel = state._isSpanishLocale ? 'Enviar correo' : 'Send email';
+    final replyTarget = state.widget.replyToMessage;
+    final isReply = replyTarget != null;
+    final composeTitle = isReply
+        ? (state._isSpanishLocale ? 'Responder' : 'Reply')
+        : l.mailComposeTitle;
+    final sendLabel = isReply
+        ? (state._isSpanishLocale ? 'Enviar respuesta' : 'Send reply')
+        : (state._isSpanishLocale ? 'Enviar correo' : 'Send email');
     final disabledSendHint = !hasRecipient
         ? (state._isSpanishLocale
             ? 'Selecciona un destinatario para enviar.'
@@ -69,7 +76,7 @@ class _MailComposeView extends StatelessWidget {
             controller: state._toCtrl,
             values: state._toList,
             hint: l.mailComposeToHint,
-            enabled: !state._sending,
+            enabled: !state._sending && (!isReply || state._toList.isEmpty),
             decoration: inputDecoration.copyWith(
               filled: false,
               border: InputBorder.none,
@@ -92,7 +99,7 @@ class _MailComposeView extends StatelessWidget {
           );
     final recipientMode = _RecipientModeToggle(
       clientMode: state._useClientMode,
-      enabled: !state._sending,
+      enabled: !state._sending && !isReply,
       emailLabel: 'Email',
       clientLabel: 'Cliente',
       recentLabel: state._isSpanishLocale ? 'Recientes' : 'Recent',
@@ -110,6 +117,45 @@ class _MailComposeView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (replyTarget != null) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Expanded(child: Text(
+                      state._isSpanishLocale ? 'Respondiendo al correo de' : 'Replying to',
+                      style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                    )),
+                    IconButton(
+                      tooltip: state._isSpanishLocale ? 'Cancelar respuesta' : 'Cancel reply',
+                      onPressed: state._sending ? null : state.widget.onClose,
+                      icon: const Icon(Icons.close, size: 18),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ]),
+                  Text((replyTarget.folder ?? '').toLowerCase().contains('sent')
+                          ? replyTarget.to.map((address) => address.display).join(', ')
+                          : (replyTarget.replyTo?.display ?? replyTarget.fromAddress),
+                      style: t.bodySmall.copyWith(fontWeight: FontWeight.w600)),
+                  if (replyTarget.subject.trim().isNotEmpty)
+                    Text(replyTarget.subject,
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  if ((replyTarget.snippet ?? '').trim().isNotEmpty)
+                    Text(replyTarget.snippet!,
+                        maxLines: 2, overflow: TextOverflow.ellipsis,
+                        style: t.bodySmall.copyWith(color: cs.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           if (state.widget.embedded && !compact) ...[
             const SizedBox(height: 2),
             Divider(color: cs.outlineVariant.withValues(alpha: 0.4)),
@@ -171,7 +217,7 @@ class _MailComposeView extends StatelessWidget {
       ]);
       if (state.widget.embedded) return mobileBody;
       return Scaffold(
-        appBar: AppBar(title: Text(l.mailComposeTitle)),
+        appBar: AppBar(title: Text(composeTitle)),
         body: SafeArea(top: false, bottom: false, child: mobileBody),
       );
     }
@@ -179,7 +225,7 @@ class _MailComposeView extends StatelessWidget {
     if (state.widget.embedded) {
       if (isWideEmbedded) {
         return FolderSectionCard(
-          label: l.mailComposeTitle,
+          label: composeTitle,
           leftTabOffset: 0,
           child: Column(
             children: [
@@ -213,7 +259,7 @@ class _MailComposeView extends StatelessWidget {
         children: [
           Expanded(
             child: FolderSectionCard(
-              label: l.mailComposeTitle,
+              label: composeTitle,
               leftTabOffset: 0,
               child: Column(
                 children: [
@@ -235,12 +281,12 @@ class _MailComposeView extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.mailComposeTitle),
+        title: Text(composeTitle),
       ),
       body: Padding(
         padding: const EdgeInsets.all(12),
         child: FolderSectionCard(
-          label: l.mailComposeTitle,
+          label: composeTitle,
           leftTabOffset: 0,
           child: content,
         ),
