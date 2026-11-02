@@ -104,8 +104,12 @@ bool _usesStackedDocumentLayout(
     textScaler.scale(13) > 18;
 
 _DocumentColumnLayout _documentColumnLayout(
-    double width, Set<HexoraFinancialColumn> requested, double actionsWidth,
-    [bool includeDelivery = false]) {
+  double width,
+  Set<HexoraFinancialColumn> requested,
+  double actionsWidth, [
+  bool includeDelivery = false,
+  bool preferWideClient = false,
+]) {
   final expanded = width >= _expandedTableWidth;
   final columns = expanded
       ? Set<HexoraFinancialColumn>.of(requested)
@@ -131,18 +135,26 @@ _DocumentColumnLayout _documentColumnLayout(
     );
   }
 
-  final invoice = width * .09;
-  final status = width * .10;
-  final payment =
-      columns.contains(HexoraFinancialColumn.payment) ? width * .10 : 0.0;
-  final date = columns.contains(HexoraFinancialColumn.date) ? width * .10 : 0.0;
-  final concept =
-      columns.contains(HexoraFinancialColumn.concept) ? width * .14 : 0.0;
-  final base =
-      columns.contains(HexoraFinancialColumn.taxableBase) ? width * .11 : 0.0;
-  final vat = columns.contains(HexoraFinancialColumn.vat) ? width * .08 : 0.0;
-  final total =
-      columns.contains(HexoraFinancialColumn.total) ? width * .11 : 0.0;
+  final invoice = width * (preferWideClient ? .08 : .09);
+  final status = width * (preferWideClient ? .08 : .10);
+  final payment = columns.contains(HexoraFinancialColumn.payment)
+      ? width * (preferWideClient ? .08 : .10)
+      : 0.0;
+  final date = columns.contains(HexoraFinancialColumn.date)
+      ? width * (preferWideClient ? .09 : .10)
+      : 0.0;
+  final concept = columns.contains(HexoraFinancialColumn.concept)
+      ? width * (preferWideClient ? .12 : .14)
+      : 0.0;
+  final base = columns.contains(HexoraFinancialColumn.taxableBase)
+      ? width * (preferWideClient ? .10 : .11)
+      : 0.0;
+  final vat = columns.contains(HexoraFinancialColumn.vat)
+      ? width * (preferWideClient ? .07 : .08)
+      : 0.0;
+  final total = columns.contains(HexoraFinancialColumn.total)
+      ? width * (preferWideClient ? .10 : .11)
+      : 0.0;
   final delivery = includeDelivery ? 96.0 : 0.0;
   final totalActionGap =
       columns.contains(HexoraFinancialColumn.total) ? _totalActionGap : 0.0;
@@ -161,9 +173,10 @@ _DocumentColumnLayout _documentColumnLayout(
   // Never force the client column beyond the remaining row width. Near the
   // expanded breakpoint the preferred minimum can be a few pixels wider than
   // the available space, which makes the complete row overflow.
+  final clientMaxWidth = preferWideClient ? 420.0 : _clientMaxWidth;
   final client = availableClient >= _clientMinWidth
-      ? availableClient.clamp(_clientMinWidth, _clientMaxWidth).toDouble()
-      : availableClient.clamp(0.0, _clientMaxWidth).toDouble();
+      ? availableClient.clamp(_clientMinWidth, clientMaxWidth).toDouble()
+      : availableClient.clamp(0.0, clientMaxWidth).toDouble();
   final spacer =
       (availableClient - client).clamp(0, double.infinity).toDouble();
   return _DocumentColumnLayout(
@@ -225,6 +238,7 @@ class CompactDocumentTableHeader extends StatelessWidget {
     this.hideActionsInSplitView = false,
     this.showDeliveryColumn = false,
     this.invoiceColumnOrder = false,
+    this.preferWideClient = false,
     this.headerBuilder,
   });
 
@@ -239,6 +253,7 @@ class CompactDocumentTableHeader extends StatelessWidget {
   final bool hideActionsInSplitView;
   final bool showDeliveryColumn;
   final bool invoiceColumnOrder;
+  final bool preferWideClient;
   final Widget Function(
     BuildContext context,
     CompactDocumentColumn column,
@@ -271,8 +286,13 @@ class CompactDocumentTableHeader extends StatelessWidget {
     return LayoutBuilder(builder: (context, constraints) {
       if (constraints.maxWidth < 560) return const SizedBox.shrink();
       final contentWidth = constraints.maxWidth - 24;
-      final layout = _documentColumnLayout(contentWidth,
-          visibleFinancialColumns, effectiveActionsWidth, showDeliveryColumn);
+      final layout = _documentColumnLayout(
+        contentWidth,
+        visibleFinancialColumns,
+        effectiveActionsWidth,
+        showDeliveryColumn,
+        preferWideClient,
+      );
       // The header and its rows must cross the responsive breakpoint
       // together. Otherwise labels remain visible while row values move into
       // the stacked summary, making Estado/Envio/Fecha look empty.
@@ -444,6 +464,207 @@ class CompactDocumentTableHeader extends StatelessWidget {
   }
 }
 
+/// Financial footer that uses the exact same responsive column geometry as
+/// [CompactDocumentTableHeader] and [CompactDocumentRow].
+///
+/// When the document table switches to its compact/stacked presentation, the
+/// caller-provided [compactFallback] is shown instead of forcing desktop
+/// columns into the available width.
+class CompactDocumentFinancialFooter extends StatelessWidget {
+  const CompactDocumentFinancialFooter({
+    super.key,
+    required this.countLabel,
+    required this.taxableBaseValue,
+    required this.vatValue,
+    required this.totalValue,
+    required this.visibleFinancialColumns,
+    required this.compactFallback,
+    this.actionsWidth = _compactActionSlot * 4,
+    this.previewActionInFullView = true,
+    this.hideActionsInSplitView = false,
+    this.showDeliveryColumn = false,
+    this.invoiceColumnOrder = false,
+    this.preferWideClient = false,
+    this.loading = false,
+    this.trailing,
+  });
+
+  final String countLabel;
+  final String taxableBaseValue;
+  final String vatValue;
+  final String totalValue;
+  final Set<HexoraFinancialColumn> visibleFinancialColumns;
+  final Widget compactFallback;
+  final double actionsWidth;
+  final bool previewActionInFullView;
+  final bool hideActionsInSplitView;
+  final bool showDeliveryColumn;
+  final bool invoiceColumnOrder;
+  final bool preferWideClient;
+  final bool loading;
+  final Widget? trailing;
+
+  Widget _moneyCell(
+    BuildContext context, {
+    required Key key,
+    required String semanticsLabel,
+    required String value,
+    required double width,
+    bool emphasized = false,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      key: key,
+      width: width,
+      child: Semantics(
+        label: '$semanticsLabel: $value',
+        child: Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: Text(
+            loading ? '—' : value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.end,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontFamily: HexoraTypography.fontFamily,
+                  fontSize: emphasized ? 13.5 : 12.5,
+                  fontWeight: emphasized ? FontWeight.w800 : FontWeight.w600,
+                  color: emphasized ? cs.primary : cs.onSurface,
+                  fontFeatures: HexoraTypography.numericFeatures,
+                ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final split =
+        DocumentWorkspaceScope.maybeOf(context)?.mode == DocumentViewMode.split;
+    final hideActions = split && hideActionsInSplitView;
+    final effectiveActionsWidth = hideActions
+        ? 0.0
+        : split && previewActionInFullView
+            ? actionsWidth - _compactActionSlot - _actionGap
+            : actionsWidth;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final contentWidth = constraints.maxWidth - 24;
+        final layout = _documentColumnLayout(
+          contentWidth,
+          visibleFinancialColumns,
+          effectiveActionsWidth,
+          showDeliveryColumn,
+          preferWideClient,
+        );
+        final stacked = _usesStackedDocumentLayout(
+          layout,
+          contentWidth,
+          MediaQuery.textScalerOf(context),
+        );
+        if (!layout.expanded || stacked) return compactFallback;
+
+        return Container(
+          key: const ValueKey('aligned-document-financial-footer'),
+          height: 50,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerLow.withValues(alpha: 0.82),
+            border: Border(
+              top: BorderSide(
+                color: cs.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: layout.invoice,
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        countLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontFamily: HexoraTypography.fontFamily,
+                              fontSize: 11.5,
+                              color: cs.onSurfaceVariant,
+                            ),
+                      ),
+                    ),
+                    if (loading) ...[
+                      const SizedBox(width: 6),
+                      const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (invoiceColumnOrder &&
+                  layout.columns.contains(HexoraFinancialColumn.date))
+                SizedBox(width: layout.date),
+              SizedBox(width: layout.client),
+              SizedBox(width: layout.spacer),
+              SizedBox(width: layout.status),
+              if (showDeliveryColumn) SizedBox(width: layout.delivery),
+              if (layout.columns.contains(HexoraFinancialColumn.payment))
+                SizedBox(width: layout.payment),
+              if (!invoiceColumnOrder &&
+                  layout.columns.contains(HexoraFinancialColumn.date))
+                SizedBox(width: layout.date),
+              if (layout.columns.contains(HexoraFinancialColumn.concept))
+                SizedBox(width: layout.concept),
+              if (layout.columns.contains(HexoraFinancialColumn.taxableBase))
+                _moneyCell(
+                  context,
+                  key: const ValueKey('invoice-footer-taxable-base'),
+                  semanticsLabel: 'Base imponible',
+                  value: taxableBaseValue,
+                  width: layout.base,
+                ),
+              if (layout.columns.contains(HexoraFinancialColumn.vat))
+                _moneyCell(
+                  context,
+                  key: const ValueKey('invoice-footer-vat'),
+                  semanticsLabel: 'IVA',
+                  value: vatValue,
+                  width: layout.vat,
+                ),
+              if (layout.columns.contains(HexoraFinancialColumn.total))
+                _moneyCell(
+                  context,
+                  key: const ValueKey('invoice-footer-total'),
+                  semanticsLabel: 'Total facturado',
+                  value: totalValue,
+                  width: layout.total,
+                  emphasized: true,
+                ),
+              if (!hideActions && layout.totalActionGap > 0)
+                SizedBox(width: layout.totalActionGap),
+              if (!hideActions)
+                SizedBox(
+                  width: layout.actions,
+                  child: Align(
+                    alignment: AlignmentDirectional.center,
+                    child: trailing ?? const SizedBox.shrink(),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class CompactDocumentRow extends StatelessWidget {
   const CompactDocumentRow(
       {super.key,
@@ -471,6 +692,7 @@ class CompactDocumentRow extends StatelessWidget {
       this.concept,
       this.showDeliveryColumn = false,
       this.invoiceColumnOrder = false,
+      this.preferWideClient = false,
       this.compactSplitLayout = false,
       this.hideActionsInSplitView = false,
       this.compactTitle,
@@ -506,6 +728,7 @@ class CompactDocumentRow extends StatelessWidget {
   final Widget? concept;
   final bool showDeliveryColumn;
   final bool invoiceColumnOrder;
+  final bool preferWideClient;
   final bool compactSplitLayout;
   final bool hideActionsInSplitView;
   final String? compactTitle;
@@ -570,10 +793,12 @@ class CompactDocumentRow extends StatelessWidget {
           separatorWidth: separatorWidth,
           child: LayoutBuilder(builder: (context, constraints) {
             final layout = _documentColumnLayout(
-                constraints.maxWidth,
-                visibleFinancialColumns,
-                actionsColumnWidth,
-                showDeliveryColumn);
+              constraints.maxWidth,
+              visibleFinancialColumns,
+              actionsColumnWidth,
+              showDeliveryColumn,
+              preferWideClient,
+            );
             final columns = layout.columns;
             // A desktop viewport can still contain a narrow list pane (for
             // example while the recurrence editor is open). Base the row

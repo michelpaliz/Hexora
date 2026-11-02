@@ -22,6 +22,7 @@ class RecurringSeriesListView extends StatefulWidget {
   final ValueChanged<String?> onClientFilter;
   final ValueChanged<bool> onDueSoon;
   final VoidCallback onRefresh;
+  final bool refreshing;
   final VoidCallback onCreate;
   final ValueChanged<Map<String, dynamic>> onOpenSeries;
   final ValueChanged<Map<String, dynamic>> onPreviewSeries;
@@ -44,6 +45,7 @@ class RecurringSeriesListView extends StatefulWidget {
     required this.onClientFilter,
     required this.onDueSoon,
     required this.onRefresh,
+    this.refreshing = false,
     required this.onCreate,
     required this.onOpenSeries,
     required this.onPreviewSeries,
@@ -356,6 +358,10 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
           _showInactiveClients = false;
         });
       },
+      onRefresh: widget.onRefresh,
+      refreshing: widget.refreshing,
+      onCreate: widget.onCreate,
+      canManage: widget.canManage,
     );
 
     Widget buildListPane() => Column(

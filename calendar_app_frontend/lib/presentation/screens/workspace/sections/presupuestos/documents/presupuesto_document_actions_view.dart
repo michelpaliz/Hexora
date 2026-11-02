@@ -930,91 +930,41 @@ class _PresupuestoDocumentActionsViewState
   }
 
   Widget _filterToolbar(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 900;
-        final leftGroup = Wrap(
-          spacing: HexoraTableTokens.gap,
-          runSpacing: HexoraTableTokens.gap,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            if (_selected.isNotEmpty) _bulkDeleteButton(context),
-            _statusFilters(context),
-          ],
-        );
-        final rightGroup = wide
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: HexoraTableTokens.searchWidth,
-                    child: _searchField(context),
-                  ),
-                  const SizedBox(width: HexoraTableTokens.gap),
-                  _sortButton(context),
-                  const SizedBox(width: HexoraTableTokens.gap),
-                  HexoraColumnVisibilityMenu(
-                    moduleKey: 'presupuestos',
-                    availableColumns: _availableFinancialColumns,
-                    visibleColumns: _visibleFinancialColumns,
-                    onChanged: (value) =>
-                        setState(() => _visibleFinancialColumns = value),
-                  ),
-                  const SizedBox(width: HexoraTableTokens.gap),
-                  _refreshButton(context),
-                  if (widget.onCreate != null) ...[
-                    const SizedBox(width: HexoraTableTokens.gap),
-                    _createButton(context),
-                  ],
-                ],
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _searchField(context),
-                  const SizedBox(height: HexoraTableTokens.gap),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _sortButton(context),
-                        const SizedBox(width: HexoraTableTokens.gap),
-                        HexoraColumnVisibilityMenu(
-                          moduleKey: 'presupuestos',
-                          availableColumns: _availableFinancialColumns,
-                          visibleColumns: _visibleFinancialColumns,
-                          onChanged: (value) =>
-                              setState(() => _visibleFinancialColumns = value),
-                        ),
-                        const SizedBox(width: HexoraTableTokens.gap),
-                        _refreshButton(context),
-                        if (widget.onCreate != null) ...[
-                          const SizedBox(width: HexoraTableTokens.gap),
-                          _createButton(context),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              );
-        if (wide) {
-          return Row(
-            children: [
-              Expanded(child: leftGroup),
-              const SizedBox(width: 12),
-              rightGroup,
-            ],
-          );
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            leftGroup,
-            const SizedBox(height: HexoraTableTokens.gap),
-            rightGroup,
-          ],
+    return HexoraDocumentToolbar(
+      statusTabs: _statusFilters(context),
+      searchHint: 'Buscar propuestas...',
+      searchValue: _search.text,
+      onSearchChanged: (value) {
+        if (_search.text == value) return;
+        _search.value = TextEditingValue(
+          text: value,
+          selection: TextSelection.collapsed(offset: value.length),
         );
       },
+      actions: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_selected.isNotEmpty) ...[
+            _bulkDeleteButton(context),
+            const SizedBox(width: HexoraTableTokens.gap),
+          ],
+          _sortButton(context),
+          const SizedBox(width: HexoraTableTokens.gap),
+          HexoraColumnVisibilityMenu(
+            moduleKey: 'presupuestos',
+            availableColumns: _availableFinancialColumns,
+            visibleColumns: _visibleFinancialColumns,
+            onChanged: (value) =>
+                setState(() => _visibleFinancialColumns = value),
+          ),
+          const SizedBox(width: HexoraTableTokens.gap),
+          _refreshButton(context),
+          if (widget.onCreate != null) ...[
+            const SizedBox(width: HexoraTableTokens.gap),
+            _createButton(context),
+          ],
+        ],
+      ),
     );
   }
 
@@ -1051,46 +1001,6 @@ class _PresupuestoDocumentActionsViewState
         icon: Icons.add_rounded,
         label: 'Nueva propuesta',
       );
-
-  Widget _searchField(BuildContext context) {
-    final theme = Theme.of(context);
-    return TextField(
-      controller: _search,
-      style: theme.textTheme.bodySmall,
-      decoration: InputDecoration(
-        hintText: 'Buscar propuestas...',
-        prefixIcon: const Icon(Icons.search_rounded, size: 19),
-        suffixIcon: _search.text.isEmpty
-            ? null
-            : IconButton(
-                tooltip: 'Limpiar búsqueda',
-                onPressed: _search.clear,
-                icon: const Icon(Icons.close_rounded, size: 18),
-              ),
-        isDense: true,
-        filled: true,
-        fillColor: theme.colorScheme.surfaceContainerLowest,
-        contentPadding: const EdgeInsets.symmetric(
-            horizontal: HexoraTableTokens.cellPadding,
-            vertical: HexoraTableTokens.rowPadding),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(HexoraDimensions.radius),
-          borderSide: BorderSide(
-              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(HexoraDimensions.radius),
-          borderSide: BorderSide(
-              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(HexoraDimensions.radius),
-          borderSide: BorderSide(
-              color: theme.colorScheme.primary.withValues(alpha: 0.5)),
-        ),
-      ),
-    );
-  }
 
   Widget _sortButton(BuildContext context) {
     final theme = Theme.of(context);

@@ -12,6 +12,7 @@ import 'package:hexora/presentation/shared/widgets/documents/document_editor_com
 import 'package:hexora/presentation/shared/widgets/documents/document_client_step.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
+import 'package:hexora/presentation/shared/widgets/motion/hexora_step_transition.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/theme/typography/typography_extension.dart';

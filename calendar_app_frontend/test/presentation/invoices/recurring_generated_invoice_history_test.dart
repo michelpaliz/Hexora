@@ -34,6 +34,7 @@ void main() {
         total: 1548.03,
       );
       var downloads = 0;
+      var reloads = 0;
 
       await tester.pumpWidget(MaterialApp(
         theme:
@@ -46,7 +47,7 @@ void main() {
             loading: false,
             error: null,
             invoices: const [invoice],
-            onReload: () {},
+            onReload: () => reloads++,
             hasRequested: true,
             count: 1,
             onOpenInvoice: (_) {},
@@ -64,7 +65,13 @@ void main() {
       expect(find.text('PDFs generados'), findsOneWidget);
       expect(find.text('Facturas'), findsOneWidget);
       expect(find.text('Recientes'), findsOneWidget);
-      expect(find.byTooltip('Actualizar'), findsOneWidget);
+      final refresh = find.byKey(
+        const ValueKey('generated-invoices-refresh'),
+      );
+      expect(find.byTooltip('Actualizar facturas generadas'), findsOneWidget);
+      expect(tester.getSize(refresh), const Size.square(38));
+      await tester.tap(refresh);
+      expect(reloads, 1);
       expect(tester.getSize(row).height, inInclusiveRange(60, 68));
       expect(find.byType(HexoraStatusBadge), findsOneWidget);
       expect(find.text('Emitida'), findsOneWidget);

@@ -133,6 +133,7 @@ class _GroupInvoicesContent extends StatelessWidget {
         onSelectReceipt: (r) =>
             state._updateView(() => state._selectedReceipt = r),
         onCreateReceipt: state._openCreateReceipt,
+        onRefresh: state._refreshInvoiceListsOnly,
         onEditReceipt: state._openEditReceipt,
         onIssueReceipt: state._issueReceipt,
         onMarkReceiptSent: state._markReceiptSent,
@@ -308,15 +309,6 @@ class _GroupInvoicesContent extends StatelessWidget {
         group: state.widget.group,
         embedded: true,
         initialSeriesId: state._recurringSeriesToOpen,
-        onActionsReady: (actions) {
-          final prev = state._recurringActions;
-          final same = (prev == null && actions == null) ||
-              (prev != null &&
-                  actions != null &&
-                  prev.canManage == actions.canManage);
-          if (same || !state.mounted) return;
-          state._updateView(() => state._recurringActions = actions);
-        },
         onSeriesOpened: () =>
             state._updateView(() => state._recurringSeriesToOpen = null),
       );
@@ -327,15 +319,6 @@ class _GroupInvoicesContent extends StatelessWidget {
         group: state.widget.group,
         embedded: true,
         initialSeriesId: state._recurringSeriesToOpen,
-        onActionsReady: (actions) {
-          final prev = state._recurringReceiptsActions;
-          final same = (prev == null && actions == null) ||
-              (prev != null &&
-                  actions != null &&
-                  prev.canManage == actions.canManage);
-          if (same || !state.mounted) return;
-          state._updateView(() => state._recurringReceiptsActions = actions);
-        },
         onSeriesOpened: () =>
             state._updateView(() => state._recurringSeriesToOpen = null),
       );

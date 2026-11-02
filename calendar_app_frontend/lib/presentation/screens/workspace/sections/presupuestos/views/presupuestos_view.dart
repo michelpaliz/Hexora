@@ -139,6 +139,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   List<Map<String, dynamic>> _budgets = const [];
   String? _selectedBudgetId;
   int _budgetsTabIndex = 1;
+  String _budgetSearchQuery = '';
   String _budgetNumberFilter = '';
   Set<String> _budgetClientFilters = {};
   Set<String> _budgetStatusFilters = {};
@@ -890,7 +891,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
 
     if (!isCreate) {
       return ListView(
-          padding: const EdgeInsets.all(26),
+          padding: EdgeInsets.zero,
           children: [_buildBudgetsListLayout(context)]);
     }
     if (_loadingEditableBudget) {
@@ -2216,6 +2217,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       };
 
   bool get _hasBudgetFilters =>
+      _budgetSearchQuery.isNotEmpty ||
       _budgetNumberFilter.isNotEmpty ||
       _budgetClientFilters.isNotEmpty ||
       _budgetStatusFilters.isNotEmpty ||
@@ -2226,6 +2228,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       _budgetTotalRange.active;
 
   void _clearBudgetFilters() => setState(() {
+        _budgetSearchQuery = '';
         _budgetNumberFilter = '';
         _budgetClientFilters = {};
         _budgetStatusFilters = {};
@@ -2440,13 +2443,23 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         : DateTime(_budgetToDate!.year, _budgetToDate!.month,
             _budgetToDate!.day, 23, 59, 59);
     final result = source.where((item) {
+      final client = _budgetClientName(item, l).trim().toLowerCase();
+      final query = _budgetSearchQuery.trim().toLowerCase();
+      if (query.isNotEmpty) {
+        final searchable = [
+          _budgetNumber(item),
+          client,
+          _budgetStatusLabel(_normalizedBudgetStatus(item)),
+          _budgetTotal(item).toString(),
+        ].join(' ').toLowerCase();
+        if (!searchable.contains(query)) return false;
+      }
       if (_budgetNumberFilter.isNotEmpty &&
           !_budgetNumber(item)
               .toLowerCase()
               .contains(_budgetNumberFilter.toLowerCase())) {
         return false;
       }
-      final client = _budgetClientName(item, l).trim().toLowerCase();
       if (_budgetClientFilters.isNotEmpty &&
           !_budgetClientFilters.contains(client)) {
         return false;
@@ -2856,68 +2869,71 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
               padding: const EdgeInsets.all(8),
               child: Column(
                 children: [
-                  Row(
-                    children: [
-                      const DocumentLayoutSelector(
-                        key: ValueKey('budget-layout-selector'),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: HexoraDocumentStatusTabs(
-                          selectedIndex: _budgetsTabIndex,
-                          onSelected: (index) =>
-                              setState(() => _budgetsTabIndex = index),
-                          tabs: [
-                            HexoraDocumentStatusTab(
-                              label: _isSpanishLocale ? 'Borradores' : 'Drafts',
-                              count: filteredDrafts.length,
-                              icon: Icons.edit_note_outlined,
-                            ),
-                            HexoraDocumentStatusTab(
-                              label: _isSpanishLocale
-                                  ? 'Presupuestos'
-                                  : 'Proposals',
-                              count: filteredIssuedBudgets.length,
-                              icon: Icons.task_alt_outlined,
-                            ),
-                          ],
+                  HexoraDocumentToolbar(
+                    statusTabs: HexoraDocumentStatusTabs(
+                      selectedIndex: _budgetsTabIndex,
+                      onSelected: (index) =>
+                          setState(() => _budgetsTabIndex = index),
+                      tabs: [
+                        HexoraDocumentStatusTab(
+                          label: _isSpanishLocale ? 'Borradores' : 'Drafts',
+                          count: filteredDrafts.length,
+                          icon: Icons.edit_note_outlined,
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      if (_hasBudgetFilters)
-                        TextButton.icon(
-                          onPressed: _clearBudgetFilters,
-                          icon: const Icon(Icons.filter_alt_off_outlined,
-                              size: 15),
-                          label: Text(_isSpanishLocale
-                              ? 'Limpiar filtros'
-                              : 'Clear filters'),
+                        HexoraDocumentStatusTab(
+                          label:
+                              _isSpanishLocale ? 'Presupuestos' : 'Proposals',
+                          count: filteredIssuedBudgets.length,
+                          icon: Icons.task_alt_outlined,
                         ),
-                      HexoraColumnVisibilityMenu(
-                        moduleKey: 'presupuestos',
-                        availableColumns: _budgetAvailableColumns,
-                        visibleColumns: _budgetVisibleColumns,
-                        onChanged: (value) =>
-                            setState(() => _budgetVisibleColumns = value),
-                      ),
-                      const SizedBox(width: 4),
-                      toolbarIconButton(
-                        tooltip: l.refreshAction,
-                        onPressed: _loadingBudgets ? null : _loadBudgets,
-                        busy: _loadingBudgets,
-                        icon: Icons.refresh_rounded,
-                      ),
-                      toolbarIconButton(
-                        tooltip: '${l.download} ZIP',
-                        onPressed: (_loadingBudgets ||
-                                _downloadingBudgetsZip ||
-                                _budgets.isEmpty)
-                            ? null
-                            : _downloadBudgetsZip,
-                        busy: _downloadingBudgetsZip,
-                        icon: Icons.folder_zip_outlined,
-                      ),
-                    ],
+                      ],
+                    ),
+                    viewSwitcher: const DocumentLayoutSelector(
+                      key: ValueKey('budget-layout-selector'),
+                      embedded: true,
+                    ),
+                    searchHint: _isSpanishLocale
+                        ? 'Buscar presupuestos o clientes...'
+                        : 'Search proposals or clients...',
+                    searchValue: _budgetSearchQuery,
+                    onSearchChanged: (value) =>
+                        setState(() => _budgetSearchQuery = value),
+                    actions: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_hasBudgetFilters)
+                          toolbarIconButton(
+                            tooltip: _isSpanishLocale
+                                ? 'Limpiar filtros'
+                                : 'Clear filters',
+                            onPressed: _clearBudgetFilters,
+                            icon: Icons.filter_alt_off_outlined,
+                          ),
+                        HexoraColumnVisibilityMenu(
+                          moduleKey: 'presupuestos',
+                          availableColumns: _budgetAvailableColumns,
+                          visibleColumns: _budgetVisibleColumns,
+                          onChanged: (value) =>
+                              setState(() => _budgetVisibleColumns = value),
+                        ),
+                        toolbarIconButton(
+                          tooltip: l.refreshAction,
+                          onPressed: _loadingBudgets ? null : _loadBudgets,
+                          busy: _loadingBudgets,
+                          icon: Icons.refresh_rounded,
+                        ),
+                        toolbarIconButton(
+                          tooltip: '${l.download} ZIP',
+                          onPressed: (_loadingBudgets ||
+                                  _downloadingBudgetsZip ||
+                                  _budgets.isEmpty)
+                              ? null
+                              : _downloadBudgetsZip,
+                          busy: _downloadingBudgetsZip,
+                          icon: Icons.folder_zip_outlined,
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 6),
                   if (!_loadingBudgets &&

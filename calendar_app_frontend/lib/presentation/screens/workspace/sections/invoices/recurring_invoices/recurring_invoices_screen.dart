@@ -58,6 +58,7 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
 
   _RecurringView _view = _RecurringView.list;
   bool _loading = true;
+  bool _refreshingSeries = false;
   String? _error;
 
   String _statusFilter = 'active';
@@ -188,6 +189,8 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
   }
 
   Future<void> _refreshSeries() async {
+    if (_refreshingSeries) return;
+    setState(() => _refreshingSeries = true);
     try {
       final items = await _api.list(groupId: widget.group.id);
       if (!mounted) return;
@@ -198,6 +201,8 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
       }
     } catch (_) {
       // ignore; list stays
+    } finally {
+      if (mounted) setState(() => _refreshingSeries = false);
     }
   }
 
@@ -258,6 +263,7 @@ class _RecurringInvoicesScreenState extends State<RecurringInvoicesScreen> {
         onClientFilter: (v) => setState(() => _clientFilter = v),
         onDueSoon: (v) => setState(() => _dueSoonOnly = v),
         onRefresh: _refreshSeries,
+        refreshing: _refreshingSeries,
         onCreate: canManage ? _openCreate : () {},
         onOpenSeries: _openSeries,
         onPreviewSeries: (series) => previewSeries(context, series, _api),

@@ -195,13 +195,18 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
             : 'Address, city, and postal code are optional and only used for this receipt.',
         onChanged: () => setState(_markDraftDirty),
       ),
-      existingLabel: isEs ? 'Cliente existente' : 'Existing client',
-      manualLabel: isEs ? 'Cliente manual' : 'Manual client',
+      existingLabel: isEs ? 'Existente' : 'Existing',
+      manualLabel: isEs ? 'Manual' : 'Manual',
       selectClientLabel: l.receiptSelectClientLabel,
       emptySelectionLabel: isEs
           ? 'Selecciona un cliente para continuar'
           : 'Select a client to continue',
       clientSearchController: _clientSearchCtrl,
+      desktopListWidth: 420,
+      showSelectionHeading: false,
+      modeSelectorAlignment: AlignmentDirectional.centerStart,
+      adaptivePreview: true,
+      compactSelectionMaxWidth: 620,
       flat: true,
     );
   }

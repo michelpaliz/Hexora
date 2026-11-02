@@ -19,8 +19,9 @@ extension _InvoiceListLayout on _InvoicesTabListState {
         _baseRange.active ||
         _vatRange.active ||
         _totalRange.active ||
+        _mismatchOnly ||
         hasFilter;
-    final filtered = sourceInvoices.where((inv) {
+    final filteredByTable = sourceInvoices.where((inv) {
       if (invoiceQuery.isNotEmpty &&
           !inv.invoiceNumber.toLowerCase().contains(invoiceQuery)) {
         return false;
@@ -71,6 +72,9 @@ extension _InvoiceListLayout on _InvoicesTabListState {
       }
       return true;
     }).toList();
+    final mismatchInvoices =
+        filteredByTable.where(_hasFinancialMismatch).toList(growable: false);
+    final filtered = _mismatchOnly ? mismatchInvoices : filteredByTable;
     final visible = [...filtered];
     if (_columnSort != null) {
       int compareNullableNum(num? a, num? b) {
@@ -116,19 +120,6 @@ extension _InvoiceListLayout on _InvoicesTabListState {
         return _compareInvoiceFallback(a, b);
       });
     }
-    Invoice? firstMismatch;
-    for (final invoice in visible) {
-      final subtotal = invoice.subtotal;
-      final tax = invoice.taxTotal;
-      final total = invoice.total;
-      if (subtotal != null &&
-          tax != null &&
-          total != null &&
-          (subtotal + tax - total).abs() > 0.02) {
-        firstMismatch = invoice;
-        break;
-      }
-    }
     // [sourceInvoices] is the complete module dataset, so this uses the same
     // normalized criteria as the rows and never falls back to page totals.
     final usesLocalSummary = _unlinkedOnly ||
@@ -140,7 +131,8 @@ extension _InvoiceListLayout on _InvoicesTabListState {
         _selectedPaymentStatuses.isNotEmpty ||
         _baseRange.active ||
         _vatRange.active ||
-        _totalRange.active;
+        _totalRange.active ||
+        _mismatchOnly;
     final summaryTotals =
         usesLocalSummary ? _summaryFromInvoices(visible) : _summaryTotals;
 
@@ -358,18 +350,6 @@ extension _InvoiceListLayout on _InvoicesTabListState {
               if (widget.showSummaryTotals) {
                 return _InvoiceSummaryTotalsBar(
                   count: visible.length,
-                  totalCount: sourceInvoices.length,
-                  summary: summaryTotals,
-                  loading: _unlinkedOnly
-                      ? _unlinkedLoading
-                      : usesLocalSummary
-                          ? false
-                          : _summaryLoading,
-                  error: _unlinkedOnly
-                      ? _unlinkedError
-                      : usesLocalSummary
-                          ? null
-                          : _summaryError,
                   visibleColumns: _visibleFinancialColumns,
                   onColumnsChanged: _setVisibleFinancialColumns,
                   unlinkedOnly: _unlinkedOnly,
@@ -386,9 +366,6 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                   },
                   leading: widget.toolbarLeading,
                   toolbarOptions: widget.toolbarOptions,
-                  onMismatchTap: firstMismatch == null
-                      ? null
-                      : () => widget.onTap(firstMismatch!),
                   downloadingFiltered: _downloadingFiltered,
                   onDownloadFiltered: widget.onDownloadFiltered == null
                       ? null
@@ -530,6 +507,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
             visibleFinancialColumns: _visibleFinancialColumns,
             showDeliveryColumn: true,
             invoiceColumnOrder: true,
+            preferWideClient: true,
             hideActionsInSplitView: true,
             // Preview and overflow use two compact 32px slots with a 4px gap.
             // Keep the header reservation identical to each row.
@@ -597,6 +575,8 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                         final hasMonthWarning = _hasInvoiceMonthWarning(inv);
                         final chronologyConflict =
                             invoiceChronologyConflict(inv, widget.invoices);
+                        final financialMismatchTooltip =
+                            _financialMismatchTooltip(inv, l);
                         return Padding(
                           key: ValueKey(inv.id),
                           padding: EdgeInsets.zero,
@@ -626,6 +606,8 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                                         chronologyConflict,
                                         l,
                                       ),
+                                financialMismatchTooltip:
+                                    financialMismatchTooltip,
                                 onInspectRecurrence: hasUnknownClientError &&
                                         (inv.recurringSeriesId
                                                 ?.trim()
@@ -660,6 +642,31 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                     );
                   }),
           ),
+          if (widget.showSummaryTotals) ...[
+            const SizedBox(height: 4),
+            _InvoiceFinancialSummaryBar(
+              count: visible.length,
+              totalCount: sourceInvoices.length,
+              filtered: usesLocalSummary || hasFilter,
+              visibleColumns: _visibleFinancialColumns,
+              summary: summaryTotals,
+              loading: _unlinkedOnly
+                  ? _unlinkedLoading
+                  : usesLocalSummary
+                      ? false
+                      : _summaryLoading,
+              error: _unlinkedOnly
+                  ? _unlinkedError
+                  : usesLocalSummary
+                      ? null
+                      : _summaryError,
+              mismatchCount: mismatchInvoices.length,
+              mismatchFilterActive: _mismatchOnly,
+              onMismatchTap: mismatchInvoices.isEmpty && !_mismatchOnly
+                  ? null
+                  : _toggleMismatchOnly,
+            ),
+          ],
         ],
       ),
     );

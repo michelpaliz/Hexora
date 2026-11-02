@@ -31,6 +31,7 @@ class InvoiceListItem extends StatefulWidget {
   final String? monthWarningLabel;
   final String? monthWarningTooltip;
   final String? dateWarningTooltip;
+  final String? financialMismatchTooltip;
   final bool selected;
   final bool mobile;
   final Set<HexoraFinancialColumn> visibleFinancialColumns;
@@ -56,6 +57,7 @@ class InvoiceListItem extends StatefulWidget {
     this.monthWarningLabel,
     this.monthWarningTooltip,
     this.dateWarningTooltip,
+    this.financialMismatchTooltip,
     this.selected = false,
     this.mobile = false,
     this.showClient = true,
@@ -475,6 +477,8 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       if (warning) warningText(widget.warningLabel),
       if (monthWarning)
         warningText(widget.monthWarningTooltip ?? widget.monthWarningLabel),
+      if ((widget.financialMismatchTooltip ?? '').trim().isNotEmpty)
+        widget.financialMismatchTooltip!.trim(),
     ].join('\n');
     return CompactDocumentRow(
       title: numberLabel,
@@ -504,6 +508,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       vat: _taxTotal,
       visibleFinancialColumns: widget.visibleFinancialColumns,
       invoiceColumnOrder: true,
+      preferWideClient: true,
       selected: widget.selected,
       onTap: widget.onTap,
       previewLabel: isEs ? 'Vista previa' : 'Preview',

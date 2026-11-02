@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/presentation/shared/widgets/client_search_select.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_client_step.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
 
@@ -31,21 +32,51 @@ void main() {
 
     await tester.pumpWidget(app(_ClientStepHarness(clients: clients)));
     expect(find.text('Alqueria'), findsOneWidget);
+    final selector =
+        find.byKey(const ValueKey('document-client-mode-selector'));
+    final existingMode =
+        find.byKey(const ValueKey('document-client-mode-existing'));
+    final manualMode =
+        find.byKey(const ValueKey('document-client-mode-manual'));
+    expect(tester.getSize(selector).width, 380);
+    expect(tester.getCenter(selector).dx, closeTo(600, 1));
+    expect(tester.getSize(existingMode).width,
+        closeTo(tester.getSize(manualMode).width, .01));
 
-    await tester.tap(find.text('Alqueria'));
+    await tester.tap(find.text('Alqueria').last);
     await tester.pump();
     expect(find.text('DETAIL-client-1'), findsOneWidget);
 
-    await tester.tap(find.text('Cliente manual').last);
+    await tester.tap(manualMode);
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).at(0), 'Cliente temporal');
-    await tester.enterText(find.byType(TextField).at(1), 'Calle Mar 1');
+    expect(
+      tester
+          .widget<AnimatedOpacity>(
+            find.byKey(const ValueKey('existing-client-panel-opacity')),
+          )
+          .opacity,
+      0,
+    );
+    expect(
+      tester
+          .widget<AnimatedOpacity>(
+            find.byKey(const ValueKey('manual-client-panel-opacity')),
+          )
+          .opacity,
+      1,
+    );
+    final manualFields = find.descendant(
+      of: find.byKey(const ValueKey('manual-client-panel')),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(manualFields.at(0), 'Cliente temporal');
+    await tester.enterText(manualFields.at(1), 'Calle Mar 1');
 
-    await tester.tap(find.text('Cliente existente').last);
+    await tester.tap(existingMode);
     await tester.pumpAndSettle();
     expect(find.text('DETAIL-client-1'), findsOneWidget);
 
-    await tester.tap(find.text('Cliente manual').last);
+    await tester.tap(manualMode);
     await tester.pumpAndSettle();
     expect(find.text('Cliente temporal'), findsOneWidget);
     expect(find.text('Calle Mar 1'), findsOneWidget);
@@ -151,6 +182,38 @@ void main() {
     expect(find.text('Cliente diferente'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('supports compact desktop master-detail configuration',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(app(_AdaptiveClientStepHarness(clients: clients)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Selecciona cliente'), findsNothing);
+    expect(find.text('2 clientes'), findsOneWidget);
+    expect(
+      tester.getSize(find.byType(ClientSearchSelect)).width,
+      closeTo(620, .01),
+    );
+    final emptyMessage = find.text('Selecciona un cliente para ver sus datos.');
+    expect(emptyMessage, findsNothing);
+
+    await tester.enterText(find.byType(TextField).first, 'Alqueria');
+    await tester.tap(find.text('Alqueria').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('DETAIL-client-1'), findsOneWidget);
+    expect(
+      tester.getSize(find.byType(ClientSearchSelect)).width,
+      closeTo(420, .01),
+    );
+    expect(find.text('Alqueria'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _ClientStepHarness extends StatefulWidget {
@@ -196,5 +259,49 @@ class _ClientStepHarnessState extends State<_ClientStepHarness> {
           postalCodeController: postal,
           onChanged: () => setState(() {}),
         ),
+      );
+}
+
+class _AdaptiveClientStepHarness extends StatefulWidget {
+  const _AdaptiveClientStepHarness({required this.clients});
+
+  final List<GroupClient> clients;
+
+  @override
+  State<_AdaptiveClientStepHarness> createState() =>
+      _AdaptiveClientStepHarnessState();
+}
+
+class _AdaptiveClientStepHarnessState
+    extends State<_AdaptiveClientStepHarness> {
+  final manualName = TextEditingController();
+  DocumentClientMode mode = DocumentClientMode.existing;
+  String? selectedId;
+
+  @override
+  void dispose() {
+    manualName.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => DocumentClientStep(
+        clients: widget.clients,
+        selectedClientId: selectedId,
+        onClientChanged: (value) => setState(() => selectedId = value),
+        mode: mode,
+        onModeChanged: (value) => setState(() => mode = value),
+        selectedDetails: selectedId == null ? null : Text('DETAIL-$selectedId'),
+        manual: DocumentManualClientConfig(
+          nameController: manualName,
+          onChanged: () {},
+        ),
+        showSelectionHeading: false,
+        modeSelectorAlignment: AlignmentDirectional.centerStart,
+        desktopListWidth: 420,
+        adaptivePreview: true,
+        compactSelectionMaxWidth: 620,
+        emptySelectionLabel: 'Selecciona un cliente para ver sus datos.',
+        flat: true,
       );
 }

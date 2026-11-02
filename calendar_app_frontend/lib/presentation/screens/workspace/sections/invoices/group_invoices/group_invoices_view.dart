@@ -115,52 +115,6 @@ class _GroupInvoicesView extends StatelessWidget {
               exportingInvoiceRegister: state._exportingInvoiceRegister,
             )
           : null;
-      final recurringActions =
-          activeMenu == 'recurring' && state._recurringActions != null
-              ? <Widget>[
-                  Tooltip(
-                    message: l.recurringInvoicesRefreshCta,
-                    child: IconButton(
-                      onPressed: state._recurringActions!.onRefresh,
-                      style: compactIconButtonStyle,
-                      icon: const Icon(Icons.refresh_rounded, size: 18),
-                    ),
-                  ),
-                  Tooltip(
-                    message: l.recurringInvoicesCreateCta,
-                    child: FilledButton(
-                      onPressed: state._recurringActions!.canManage
-                          ? state._recurringActions!.onCreate
-                          : null,
-                      style: compactPrimaryButtonStyle,
-                      child: const Icon(Icons.add_rounded, size: 18),
-                    ),
-                  ),
-                ]
-              : null;
-      final recurringReceiptsActions = activeMenu == 'recurring_receipts' &&
-              state._recurringReceiptsActions != null
-          ? <Widget>[
-              Tooltip(
-                message: l.recurringInvoicesRefreshCta,
-                child: IconButton(
-                  onPressed: state._recurringReceiptsActions!.onRefresh,
-                  style: compactIconButtonStyle,
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                ),
-              ),
-              Tooltip(
-                message: 'Crear recurrencia de recibo',
-                child: FilledButton(
-                  onPressed: state._recurringReceiptsActions!.canManage
-                      ? state._recurringReceiptsActions!.onCreate
-                      : null,
-                  style: compactPrimaryButtonStyle,
-                  child: const Icon(Icons.add_rounded, size: 18),
-                ),
-              ),
-            ]
-          : null;
       final expenseListActions = activeMenu == 'expenses_list'
           ? <Widget>[
               Tooltip(
@@ -169,26 +123,6 @@ class _GroupInvoicesView extends StatelessWidget {
                   onPressed: state._refreshExpensesListOnly,
                   style: compactIconButtonStyle,
                   icon: const Icon(Icons.refresh_rounded, size: 18),
-                ),
-              ),
-            ]
-          : null;
-      final receiptActions = activeMenu == 'receipts'
-          ? <Widget>[
-              Tooltip(
-                message: l.refreshAction,
-                child: IconButton(
-                  onPressed: state._refreshInvoiceListsOnly,
-                  style: compactIconButtonStyle,
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                ),
-              ),
-              Tooltip(
-                message: l.createReceiptCta,
-                child: FilledButton(
-                  onPressed: state._openCreateReceipt,
-                  style: compactPrimaryButtonStyle,
-                  child: const Icon(Icons.add_rounded, size: 18),
                 ),
               ),
             ]
@@ -247,12 +181,8 @@ class _GroupInvoicesView extends StatelessWidget {
               : activeMenu == 'client_invoice_stats'
                   ? const []
                   : null;
-      final folderActions = classificationActions ??
-          expenseListActions ??
-          receiptActions ??
-          clientsActions ??
-          recurringReceiptsActions ??
-          recurringActions;
+      final folderActions =
+          classificationActions ?? expenseListActions ?? clientsActions;
       final invoiceToolbarTabs = showInvoiceActions
           ? _InvoiceToolbarTabs(
               draftsCount: state._drafts.length,
@@ -262,31 +192,7 @@ class _GroupInvoicesView extends StatelessWidget {
               onInvoices: () => state._changeInvoicesMenu('invoices_issued'),
             )
           : null;
-      final receiptToolbarTabs = activeMenu == 'receipts'
-          ? HexoraDocumentStatusTabs(
-              tabs: [
-                HexoraDocumentStatusTab(
-                  label: Localizations.localeOf(context).languageCode == 'es'
-                      ? 'Borradores'
-                      : 'Drafts',
-                  count: state._receiptDrafts.length,
-                  icon: Icons.drafts_outlined,
-                ),
-                HexoraDocumentStatusTab(
-                  label: Localizations.localeOf(context).languageCode == 'es'
-                      ? 'Recibos'
-                      : 'Receipts',
-                  count: state._receipts.length,
-                  icon: Icons.receipt_long_outlined,
-                ),
-              ],
-              selectedIndex: state._receiptListTabIndex,
-              onSelected: (index) => state._updateView(
-                () => state._receiptListTabIndex = index,
-              ),
-            )
-          : null;
-      final documentToolbarTabs = invoiceToolbarTabs ?? receiptToolbarTabs;
+      final documentToolbarTabs = invoiceToolbarTabs;
       final invoiceToolbarLeading =
           showInvoiceActions ? invoiceToolbarTabs : null;
 
@@ -527,117 +433,22 @@ class _InvoiceToolbarTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final isEs = Localizations.localeOf(context).languageCode == 'es';
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Both labelled segments need about 330px. Below that threshold the
-        // icon/count variant avoids a RenderFlex overflow in split layouts.
-        final showLabels = constraints.maxWidth >= 330;
-        return Container(
-          height: 34,
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _tabSegment(
-                context,
-                icon: Icons.drafts_outlined,
-                label: showLabels ? (isEs ? 'Borradores' : 'Drafts') : null,
-                count: draftsCount,
-                selected: draftsSelected,
-                onTap: onDrafts,
-              ),
-              const SizedBox(width: 1),
-              _tabSegment(
-                context,
-                icon: Icons.receipt_long_outlined,
-                label: showLabels ? (isEs ? 'Facturas' : 'Invoices') : null,
-                count: invoicesCount,
-                selected: !draftsSelected,
-                onTap: onInvoices,
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _tabSegment(
-    BuildContext context, {
-    required IconData icon,
-    String? label,
-    required int count,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        height: 30,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: selected ? cs.surface : Colors.transparent,
-          borderRadius: BorderRadius.circular(7),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: cs.shadow.withValues(alpha: 0.06),
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
-                  ),
-                ]
-              : null,
+    return HexoraDocumentStatusTabs(
+      tabs: [
+        HexoraDocumentStatusTab(
+          label: isEs ? 'Borradores' : 'Drafts',
+          count: draftsCount,
+          icon: Icons.drafts_outlined,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 14,
-              color: selected ? cs.primary : cs.onSurfaceVariant,
-            ),
-            if (label != null) ...[
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                  color: selected ? cs.primary : cs.onSurfaceVariant,
-                ),
-              ),
-            ],
-            const SizedBox(width: 5),
-            Container(
-              constraints: const BoxConstraints(minWidth: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-              decoration: BoxDecoration(
-                color: selected
-                    ? cs.primary.withValues(alpha: 0.1)
-                    : cs.surfaceContainerHighest.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                '$count',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w700,
-                  color: selected ? cs.primary : cs.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ],
+        HexoraDocumentStatusTab(
+          label: isEs ? 'Facturas' : 'Invoices',
+          count: invoicesCount,
+          icon: Icons.receipt_long_outlined,
         ),
-      ),
+      ],
+      selectedIndex: draftsSelected ? 0 : 1,
+      onSelected: (index) => index == 0 ? onDrafts() : onInvoices(),
     );
   }
 }

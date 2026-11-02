@@ -56,6 +56,11 @@ class DocumentClientStep extends StatelessWidget {
     this.twoColumnBreakpoint = 980,
     this.clientSearchController,
     this.flat = false,
+    this.desktopListWidth,
+    this.showSelectionHeading = true,
+    this.modeSelectorAlignment = Alignment.center,
+    this.adaptivePreview = false,
+    this.compactSelectionMaxWidth = 620,
   });
 
   final List<GroupClient> clients;
@@ -74,14 +79,26 @@ class DocumentClientStep extends StatelessWidget {
   final double twoColumnBreakpoint;
   final TextEditingController? clientSearchController;
   final bool flat;
+  final double? desktopListWidth;
+  final bool showSelectionHeading;
+  final AlignmentGeometry modeSelectorAlignment;
+  final bool adaptivePreview;
+  final double compactSelectionMaxWidth;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final canUseManual = allowManual && manual != null;
-        final duration =
-            HexoraMotion.duration(context, HexoraMotion.navigation);
+        final manualMode = mode == DocumentClientMode.manual && canUseManual;
+        final hasSelection = selectedClientId != null;
+        final useCompactLayout =
+            adaptivePreview && (manualMode || !hasSelection);
+        final layoutWidth = useCompactLayout
+            ? compactSelectionMaxWidth
+                .clamp(0.0, constraints.maxWidth)
+                .toDouble()
+            : constraints.maxWidth;
 
         Widget existingContent() {
           final wide = constraints.maxWidth >= twoColumnBreakpoint;
@@ -96,112 +113,142 @@ class DocumentClientStep extends StatelessWidget {
             searchController: clientSearchController,
             flat: flat,
           );
-          final details = _ClientDetailsPanel(
-            hasSelection: selectedClientId != null,
-            emptyLabel: emptySelectionLabel,
-            flat: flat,
-            child: selectedDetails,
+          // Fade just the preview when the selection changes, so the list on
+          // the left stays rock-steady during row changes.
+          final detailsBody = _AnimatedClientDetails(
+            selectionKey: selectedClientId ?? '__empty__',
+            fadeDuration: HexoraMotion.duration(context, HexoraMotion.standard),
+            child: _ClientDetailsPanel(
+              hasSelection: selectedClientId != null,
+              emptyLabel: emptySelectionLabel,
+              flat: flat,
+              child: selectedDetails,
+            ),
           );
 
           if (wide) {
+            final showPreview = !adaptivePreview || hasSelection;
+            final requestedListWidth = showPreview ? desktopListWidth : null;
+            final availableListWidth = showPreview
+                ? (layoutWidth * .48).clamp(0.0, layoutWidth).toDouble()
+                : layoutWidth;
+            final resolvedListWidth = requestedListWidth == null
+                ? availableListWidth
+                : requestedListWidth.clamp(0.0, availableListWidth).toDouble();
             return Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(flex: 3, child: list),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: VerticalDivider(
-                    width: 1,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .outlineVariant
-                        .withValues(alpha: .45),
+                SizedBox(width: resolvedListWidth, child: list),
+                if (showPreview) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: VerticalDivider(
+                      width: 1,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outlineVariant
+                          .withValues(alpha: .45),
+                    ),
                   ),
-                ),
-                Expanded(flex: 2, child: details),
+                  Expanded(
+                    flex: 3,
+                    child: _PreviewEntrance(child: detailsBody),
+                  ),
+                ],
               ],
             );
           }
 
+          // Mobile / narrow: the list takes the whole screen. Once a client
+          // is picked, the preview folds in as a compact expandable section
+          // below the list so it can be dismissed to see more rows.
           if (selectedClientId == null) return list;
           final availableHeight =
               constraints.maxHeight.isFinite ? constraints.maxHeight : 700.0;
           final listSlot = (availableHeight * .62).clamp(280.0, 460.0);
-          final detailsSlot = (availableHeight * .45).clamp(240.0, 360.0);
           return SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(height: listSlot, child: list),
                 const SizedBox(height: 10),
-                SizedBox(height: detailsSlot, child: details),
+                _CompactPreviewSection(
+                  emptyLabel: emptySelectionLabel,
+                  child: detailsBody,
+                ),
               ],
             ),
           );
         }
 
-        final manualMode = mode == DocumentClientMode.manual && canUseManual;
-        final modeContent = manualMode
-            ? _ManualClientPanel(config: manual!, enabled: enabled)
-            : existingContent();
         final title = manualMode ? manualLabel : selectClientLabel;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _ClientModeHeader(
-              title: title,
-              count: manualMode ? null : clients.length,
-              selector: canUseManual
-                  ? _ModeSelector(
-                      mode: mode,
-                      onChanged: onModeChanged,
-                      enabled: enabled,
-                      existingLabel: existingLabel,
-                      manualLabel: manualLabel,
-                    )
-                  : null,
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: AnimatedSize(
-                duration: duration,
-                curve: HexoraMotion.emphasized,
-                alignment: Alignment.topCenter,
-                child: AnimatedSwitcher(
-                  duration: duration,
-                  switchInCurve: HexoraMotion.emphasized,
-                  switchOutCurve: HexoraMotion.emphasized,
-                  layoutBuilder: (currentChild, previousChildren) => ClipRect(
-                    child: Stack(
-                      alignment: Alignment.topCenter,
-                      children: [
-                        ...previousChildren,
-                        if (currentChild != null) currentChild
-                      ],
-                    ),
-                  ),
-                  transitionBuilder: (child, animation) {
-                    final slide = Tween<Offset>(
-                      begin: const Offset(.025, 0),
-                      end: Offset.zero,
-                    ).animate(animation);
-                    return FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(position: slide, child: child),
-                    );
-                  },
-                  child: KeyedSubtree(
-                    key: ValueKey(
-                        manualMode ? 'manual-client' : 'existing-client'),
-                    child: modeContent,
-                  ),
+        return Align(
+          alignment: AlignmentDirectional.topStart,
+          child: SizedBox(
+            width: layoutWidth,
+            height:
+                constraints.maxHeight.isFinite ? constraints.maxHeight : null,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _ClientModeHeader(
+                  title: title,
+                  count: manualMode ? null : clients.length,
+                  showHeading: showSelectionHeading,
+                  selectorAlignment: modeSelectorAlignment,
+                  selector: canUseManual
+                      ? _ModeSelector(
+                          mode: mode,
+                          onChanged: onModeChanged,
+                          enabled: enabled,
+                          existingLabel: existingLabel,
+                          manualLabel: manualLabel,
+                        )
+                      : null,
                 ),
-              ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: canUseManual
+                      ? _ClientModeTransition(
+                          mode: mode,
+                          existing: existingContent(),
+                          manual: _ManualClientPanel(
+                            config: manual!,
+                            enabled: enabled,
+                            flat: flat,
+                          ),
+                        )
+                      : existingContent(),
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
+    );
+  }
+}
+
+class _PreviewEntrance extends StatelessWidget {
+  const _PreviewEntrance({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: HexoraMotion.duration(context, HexoraMotion.standard),
+      curve: HexoraMotion.enter,
+      child: child,
+      builder: (context, value, child) => Opacity(
+        opacity: value,
+        child: Transform.translate(
+          offset: Offset(10 * (1 - value), 0),
+          child: child,
+        ),
+      ),
     );
   }
 }
@@ -211,16 +258,24 @@ class _ClientModeHeader extends StatelessWidget {
     required this.title,
     required this.count,
     required this.selector,
+    required this.showHeading,
+    required this.selectorAlignment,
   });
 
   final String title;
   final int? count;
   final Widget? selector;
+  final bool showHeading;
+  final AlignmentGeometry selectorAlignment;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
+    final isSpanish = Localizations.localeOf(context)
+        .languageCode
+        .toLowerCase()
+        .startsWith('es');
     final heading = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -251,23 +306,38 @@ class _ClientModeHeader extends StatelessWidget {
         ],
       ],
     );
-    if (selector == null) return heading;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 600) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [heading, const SizedBox(height: 7), selector!],
+    final secondaryCount = count == null
+        ? null
+        : Text(
+            '$count ${isSpanish ? 'clientes' : 'clients'}',
+            key: const ValueKey('document-client-count'),
+            style: textTheme.bodySmall?.copyWith(
+              fontSize: 11,
+              color: cs.onSurfaceVariant,
+            ),
           );
-        }
-        return Row(
-          children: [
-            Expanded(child: heading),
-            const SizedBox(width: 10),
-            selector!
-          ],
-        );
-      },
+    if (selector == null) {
+      return showHeading ? heading : secondaryCount ?? const SizedBox.shrink();
+    }
+    if (!showHeading) {
+      return Wrap(
+        alignment: WrapAlignment.start,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 10,
+        runSpacing: 6,
+        children: [
+          Align(alignment: selectorAlignment, child: selector!),
+          if (secondaryCount != null) secondaryCount,
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        heading,
+        const SizedBox(height: 7),
+        Align(alignment: selectorAlignment, child: selector!),
+      ],
     );
   }
 }
@@ -288,33 +358,304 @@ class _ModeSelector extends StatelessWidget {
   final String manualLabel;
 
   @override
-  Widget build(BuildContext context) => SegmentedButton<DocumentClientMode>(
-        showSelectedIcon: false,
-        style: const ButtonStyle(
-          visualDensity: VisualDensity.compact,
-          padding: WidgetStatePropertyAll(
-            EdgeInsets.symmetric(horizontal: 10),
-          ),
-          textStyle: WidgetStatePropertyAll(
-            TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final duration = HexoraMotion.duration(context, HexoraMotion.standard);
+    // Soft blue indicator — subtle in both themes, keeps text readable without
+    // relying on primaryContainer's heavier tint.
+    final indicatorColor = cs.primary.withValues(alpha: isDark ? .22 : .12);
+
+    Widget option({
+      required DocumentClientMode value,
+      required IconData icon,
+      required String label,
+    }) {
+      final selected = mode == value;
+      final foreground = selected
+          ? cs.primary
+          : cs.onSurfaceVariant;
+      return Expanded(
+        child: Semantics(
+          button: true,
+          selected: selected,
+          enabled: enabled,
+          child: InkWell(
+            key: ValueKey('document-client-mode-${value.name}'),
+            onTap: enabled ? () => onChanged(value) : null,
+            borderRadius: BorderRadius.circular(8),
+            // Subtle hover / focus / pressed washes — the indicator still
+            // signals the selected segment, these only hint at interactivity.
+            overlayColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.pressed)) {
+                return cs.primary.withValues(alpha: isDark ? .14 : .09);
+              }
+              if (states.contains(WidgetState.hovered)) {
+                return cs.primary.withValues(alpha: isDark ? .09 : .06);
+              }
+              if (states.contains(WidgetState.focused)) {
+                return cs.primary.withValues(alpha: isDark ? .12 : .08);
+              }
+              return null;
+            }),
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 15, color: foreground),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                        color: foreground,
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
-        segments: [
-          ButtonSegment(
-            value: DocumentClientMode.existing,
-            icon: const Icon(Icons.group_outlined, size: 16),
-            label: Text(existingLabel),
-          ),
-          ButtonSegment(
-            value: DocumentClientMode.manual,
-            icon: const Icon(Icons.edit_outlined, size: 16),
-            label: Text(manualLabel),
-          ),
-        ],
-        selected: {mode},
-        onSelectionChanged:
-            enabled ? (selection) => onChanged(selection.first) : null,
       );
+    }
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 320, minWidth: 240),
+      child: SizedBox(
+        key: const ValueKey('document-client-mode-selector'),
+        width: 300,
+        height: 36,
+        child: Material(
+          color: cs.surfaceContainerLow,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(
+              color: cs.outlineVariant.withValues(alpha: .9),
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              AnimatedAlign(
+                duration: duration,
+                curve: HexoraMotion.emphasized,
+                alignment: mode == DocumentClientMode.existing
+                    ? Alignment.centerLeft
+                    : Alignment.centerRight,
+                child: FractionallySizedBox(
+                  widthFactor: .5,
+                  heightFactor: 1,
+                  child: Padding(
+                    padding: const EdgeInsets.all(3),
+                    child: DecoratedBox(
+                      key: const ValueKey('document-client-mode-indicator'),
+                      decoration: BoxDecoration(
+                        color: indicatorColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  option(
+                    value: DocumentClientMode.existing,
+                    icon: Icons.group_outlined,
+                    label: existingLabel,
+                  ),
+                  option(
+                    value: DocumentClientMode.manual,
+                    icon: Icons.edit_outlined,
+                    label: manualLabel,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Keeps both client modes mounted so controllers, search state, focus and
+/// scroll positions survive mode switches. Only the visible content moves.
+class _ClientModeTransition extends StatelessWidget {
+  const _ClientModeTransition({
+    required this.mode,
+    required this.existing,
+    required this.manual,
+  });
+
+  final DocumentClientMode mode;
+  final Widget existing;
+  final Widget manual;
+
+  @override
+  Widget build(BuildContext context) {
+    final duration = HexoraMotion.duration(context, HexoraMotion.standard);
+    final existingActive = mode == DocumentClientMode.existing;
+
+    Widget panel({
+      required Key key,
+      required Key opacityKey,
+      required bool active,
+      required Offset hiddenOffset,
+      required Widget child,
+    }) =>
+        Positioned.fill(
+          key: key,
+          child: IgnorePointer(
+            ignoring: !active,
+            child: ExcludeSemantics(
+              excluding: !active,
+              child: AnimatedOpacity(
+                key: opacityKey,
+                duration: duration,
+                curve: HexoraMotion.emphasized,
+                opacity: active ? 1 : 0,
+                child: AnimatedSlide(
+                  duration: duration,
+                  curve: HexoraMotion.emphasized,
+                  offset: active ? Offset.zero : hiddenOffset,
+                  child: TickerMode(
+                    enabled: active,
+                    child: Focus(
+                      canRequestFocus: active,
+                      descendantsAreFocusable: active,
+                      child: child,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+    final existingPanel = panel(
+      key: const ValueKey('existing-client-panel'),
+      opacityKey: const ValueKey('existing-client-panel-opacity'),
+      active: existingActive,
+      hiddenOffset: const Offset(-.02, 0),
+      child: existing,
+    );
+    final manualPanel = panel(
+      key: const ValueKey('manual-client-panel'),
+      opacityKey: const ValueKey('manual-client-panel-opacity'),
+      active: !existingActive,
+      hiddenOffset: const Offset(.02, 0),
+      child: manual,
+    );
+
+    return ClipRect(
+      child: Stack(
+        fit: StackFit.expand,
+        children: existingActive
+            ? [manualPanel, existingPanel]
+            : [existingPanel, manualPanel],
+      ),
+    );
+  }
+}
+
+/// Fades the client preview in when the selection changes, while leaving
+/// the list to the left unaffected. Honours reduced-motion.
+class _AnimatedClientDetails extends StatelessWidget {
+  const _AnimatedClientDetails({
+    required this.selectionKey,
+    required this.fadeDuration,
+    required this.child,
+  });
+
+  final String selectionKey;
+  final Duration fadeDuration;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: fadeDuration,
+      switchInCurve: HexoraMotion.enter,
+      switchOutCurve: HexoraMotion.exit,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(.015, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(
+            parent: animation,
+            curve: HexoraMotion.enter,
+            reverseCurve: HexoraMotion.exit,
+          )),
+          transformHitTests: false,
+          child: child,
+        ),
+      ),
+      // Replace just when the selection changes, not on every rebuild.
+      child: KeyedSubtree(key: ValueKey(selectionKey), child: child),
+    );
+  }
+}
+
+/// Compact expandable preview used on mobile. Keeps vertical space tight
+/// but still allows seeing the full details on demand.
+class _CompactPreviewSection extends StatelessWidget {
+  const _CompactPreviewSection({
+    required this.emptyLabel,
+    required this.child,
+  });
+
+  final String emptyLabel;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isSpanish = Localizations.localeOf(context)
+        .languageCode
+        .toLowerCase()
+        .startsWith('es');
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .4)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Theme(
+        // ExpansionTile paints the divider by default; drop it to avoid a
+        // doubled border above/below the preview body.
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: true,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          dense: true,
+          visualDensity: VisualDensity.compact,
+          leading: Icon(
+            Icons.person_outline_rounded,
+            size: 18,
+            color: cs.primary,
+          ),
+          title: Text(
+            isSpanish ? 'Vista del cliente' : 'Client preview',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          children: [child],
+        ),
+      ),
+    );
+  }
 }
 
 class _ExistingClientPanel extends StatelessWidget {
@@ -347,13 +688,17 @@ class _ExistingClientPanel extends StatelessWidget {
             ignoring: !enabled,
             child: Padding(
               padding: EdgeInsets.fromLTRB(flat ? 0 : 10, 0, flat ? 0 : 10, 10),
+              // compact + compactToolbar give us ~50 px rows, the
+              // `_CompactClientIdentity` title (name + one secondary line)
+              // and a full-width search input flush with the list.
               child: ClientSearchSelect(
                 clients: clients,
                 selectedClientId: selectedClientId,
                 onClientChanged: onClientChanged,
                 useDefaultPropertyKind: false,
                 showAdvancedFilters: false,
-                compact: false,
+                compact: true,
+                compactToolbar: true,
                 flatRows: flat,
                 searchDesktopHeight: 42,
                 searchController: searchController,
@@ -393,27 +738,16 @@ class _ClientDetailsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final content = hasSelection && child != null
-        ? Align(alignment: Alignment.topCenter, child: child)
-        : Center(
+        ? Align(alignment: AlignmentDirectional.topStart, child: child)
+        : Align(
+            alignment: AlignmentDirectional.topStart,
             child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.person_search_outlined,
-                    size: 24,
-                    color: cs.onSurfaceVariant.withValues(alpha: .5),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    emptyLabel,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                  ),
-                ],
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+              child: Text(
+                emptyLabel,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
               ),
             ),
           );
@@ -435,10 +769,12 @@ class _ManualClientPanel extends StatelessWidget {
   const _ManualClientPanel({
     required this.config,
     required this.enabled,
+    required this.flat,
   });
 
   final DocumentManualClientConfig config;
   final bool enabled;
+  final bool flat;
 
   InputDecoration _decoration(
     BuildContext context,
@@ -504,67 +840,73 @@ class _ManualClientPanel extends StatelessWidget {
           Icons.markunread_mailbox_outlined,
         ),
     ];
+    final form = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _field(
+          context,
+          config.nameController,
+          config.nameLabel,
+          Icons.person_outline_rounded,
+          errorText: config.nameErrorText,
+        ),
+        if (optional.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          LayoutBuilder(builder: (context, constraints) {
+            if (constraints.maxWidth < 700) {
+              return Column(
+                children: [
+                  for (var i = 0; i < optional.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 10),
+                    optional[i],
+                  ],
+                ],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < optional.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 10),
+                  Expanded(child: optional[i]),
+                ],
+              ],
+            );
+          }),
+        ],
+        if ((config.helperText ?? '').trim().isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            config.helperText!,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 11,
+                ),
+          ),
+        ],
+      ],
+    );
     return SingleChildScrollView(
       child: Align(
         alignment: Alignment.topLeft,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 760),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: cs.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: .38),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _field(
-                  context,
-                  config.nameController,
-                  config.nameLabel,
-                  Icons.person_outline_rounded,
-                  errorText: config.nameErrorText,
-                ),
-                if (optional.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  LayoutBuilder(builder: (context, constraints) {
-                    if (constraints.maxWidth < 700) {
-                      return Column(
-                        children: [
-                          for (var i = 0; i < optional.length; i++) ...[
-                            if (i > 0) const SizedBox(height: 10),
-                            optional[i],
-                          ],
-                        ],
-                      );
-                    }
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (var i = 0; i < optional.length; i++) ...[
-                          if (i > 0) const SizedBox(width: 10),
-                          Expanded(child: optional[i]),
-                        ],
-                      ],
-                    );
-                  }),
-                ],
-                if ((config.helperText ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    config.helperText!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontSize: 11,
-                        ),
+          child: flat
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: form,
+                )
+              : Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: cs.outlineVariant.withValues(alpha: .38),
+                    ),
                   ),
-                ],
-              ],
-            ),
-          ),
+                  child: form,
+                ),
         ),
       ),
     );

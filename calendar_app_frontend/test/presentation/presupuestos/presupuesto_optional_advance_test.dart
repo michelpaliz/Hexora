@@ -182,12 +182,12 @@ void main() {
   testWidgets('new quotations default to today and show an amount placeholder',
       (tester) async {
     await _pumpEditor(tester, _Api(null), createNew: true);
-    await tester.tap(find.text('Cliente manual'));
+    await tester.tap(find.text('Manual'));
     await tester.pumpAndSettle();
     await tester.enterText(
         find
             .descendant(
-                of: find.byKey(const ValueKey('manual')),
+                of: find.byKey(const ValueKey('manual-client-panel')),
                 matching: find.byType(TextField))
             .first,
         'Cliente nuevo');

@@ -411,11 +411,19 @@ class _RecurringDetailGeneratedTabState
           sortMenu,
           const SizedBox(width: 6),
           HexoraButton.iconOnly(
+            key: const ValueKey('generated-invoices-refresh'),
             onPressed: widget.loading ? null : widget.onReload,
             icon: Icons.refresh_rounded,
-            tooltip: l.recurringInvoicesRefreshCta,
+            tooltip: widget.receiptsMode
+                ? (isEs
+                    ? 'Actualizar recibos generados'
+                    : 'Refresh generated receipts')
+                : (isEs
+                    ? 'Actualizar facturas generadas'
+                    : 'Refresh generated invoices'),
             variant: HexoraButtonVariant.secondary,
-            size: HexoraButtonSize.standard,
+            size: HexoraButtonSize.large,
+            loading: widget.loading,
           ),
         ],
       ),

@@ -1,6 +1,8 @@
 import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:hexora/presentation/shared/widgets/documents/compact_document_row.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_workspace_chrome.dart';
+import 'package:hexora/presentation/shared/widgets/financial/hexora_compact_financial_summary.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'dart:typed_data';
 
@@ -79,6 +81,8 @@ class _GroupedReceiptList extends StatefulWidget {
   final List<GroupClient> clients;
   final String unknownClientLabel;
   final EdgeInsetsGeometry padding;
+  final Widget? toolbarLeading;
+  final Widget? toolbarActions;
   final Widget Function(
     Receipt,
     GroupClient,
@@ -91,6 +95,8 @@ class _GroupedReceiptList extends StatefulWidget {
     required this.unknownClientLabel,
     required this.padding,
     required this.itemBuilder,
+    this.toolbarLeading,
+    this.toolbarActions,
   });
 
   @override
@@ -104,6 +110,7 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
     HexoraFinancialColumn.total,
   };
   Set<HexoraFinancialColumn> _visible = Set.of(_available);
+  String _globalQuery = '';
   String _numberQuery = '';
   Set<String> _clients = {};
   Set<String> _statuses = {};
@@ -158,6 +165,7 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
       };
 
   bool get _hasFilters =>
+      _globalQuery.isNotEmpty ||
       _numberQuery.isNotEmpty ||
       _clients.isNotEmpty ||
       _statuses.isNotEmpty ||
@@ -173,6 +181,7 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
       });
 
   void _clearAll() => setState(() {
+        _globalQuery = '';
         _numberQuery = '';
         _clients = {};
         _statuses = {};
@@ -378,6 +387,7 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
   @override
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context).toString();
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
     final start = _fromDate == null
         ? null
         : DateTime(_fromDate!.year, _fromDate!.month, _fromDate!.day);
@@ -386,11 +396,22 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
         : DateTime(_toDate!.year, _toDate!.month, _toDate!.day, 23, 59, 59);
     final filtered = widget.receipts.where((receipt) {
       final number = (receipt.receiptNumber ?? '').toLowerCase();
+      final clientName = _clientName(receipt);
+      final query = _globalQuery.trim().toLowerCase();
+      if (query.isNotEmpty) {
+        final searchable = [
+          number,
+          clientName,
+          _statusLabel(_status(receipt)),
+          _total(receipt).toString(),
+        ].join(' ').toLowerCase();
+        if (!searchable.contains(query)) return false;
+      }
       if (_numberQuery.isNotEmpty &&
           !number.contains(_numberQuery.toLowerCase())) {
         return false;
       }
-      if (_clients.isNotEmpty && !_clients.contains(_clientName(receipt))) {
+      if (_clients.isNotEmpty && !_clients.contains(clientName)) {
         return false;
       }
       if (_statuses.isNotEmpty && !_statuses.contains(_status(receipt))) {
@@ -458,64 +479,190 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
       items.addAll(rows);
     }
 
-    return ListView.builder(
-      padding: widget.padding,
-      itemCount: items.length + 1,
-      itemBuilder: (_, i) {
-        if (i == 0) {
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(children: [
-                  const DocumentLayoutSelector(
-                    key: ValueKey('receipt-layout-selector'),
+    final filteredBase = filtered.fold<num>(
+      0,
+      (sum, receipt) => sum + (receipt.subtotal ?? _total(receipt)),
+    );
+    final filteredTotal = filtered.fold<num>(
+      0,
+      (sum, receipt) => sum + _total(receipt),
+    );
+    final money = NumberFormat.currency(
+      locale: locale,
+      symbol: '€',
+      decimalDigits: 2,
+    );
+    final countLabel = _hasFilters
+        ? 'Filtrados ${filtered.length} de ${widget.receipts.length}'
+        : '${filtered.length} recibos';
+    final baseValue = money.format(filteredBase);
+    final totalValue = money.format(filteredTotal);
+    final cs = Theme.of(context).colorScheme;
+    final compactFooter = Container(
+      key: const ValueKey('receipt-sticky-financial-summary'),
+      height: 50,
+      padding: const EdgeInsetsDirectional.only(start: 12, end: 8),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow.withValues(alpha: 0.82),
+        border: Border(
+          top: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 132,
+            child: Text(
+              countLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
                   ),
-                  const SizedBox(width: 8),
-                  Text('${filtered.length} recibos'),
-                  const Spacer(),
-                  if (_hasFilters)
-                    TextButton.icon(
-                      onPressed: _clearAll,
-                      icon: const Icon(Icons.filter_alt_off_outlined, size: 15),
-                      label: const Text('Limpiar filtros'),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: HexoraCompactFinancialSummary(
+              dense: true,
+              inline: true,
+              metrics: [
+                HexoraFinancialMetric(
+                  label: 'Base imponible',
+                  value: baseValue,
+                  inlineWidth: 124,
+                ),
+                HexoraFinancialMetric(
+                  label: 'Total recibos',
+                  value: totalValue,
+                  emphasized: true,
+                  inlineWidth: 132,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return Column(
+      children: [
+        Expanded(
+          child: ListView.builder(
+            padding: widget.padding,
+            itemCount: items.length + 1,
+            itemBuilder: (_, i) {
+              if (i == 0) {
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: HexoraDocumentToolbar(
+                        statusTabs:
+                            widget.toolbarLeading ?? const SizedBox.shrink(),
+                        viewSwitcher: const DocumentLayoutSelector(
+                          key: ValueKey('receipt-layout-selector'),
+                          embedded: true,
+                        ),
+                        searchHint: isEs
+                            ? 'Buscar recibos o clientes...'
+                            : 'Search receipts or clients...',
+                        searchValue: _globalQuery,
+                        onSearchChanged: (value) =>
+                            setState(() => _globalQuery = value),
+                        actions: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_hasFilters)
+                              IconButton(
+                                tooltip:
+                                    isEs ? 'Limpiar filtros' : 'Clear filters',
+                                onPressed: _clearAll,
+                                icon: const Icon(
+                                  Icons.filter_alt_off_outlined,
+                                  size: 17,
+                                ),
+                                constraints: const BoxConstraints.tightFor(
+                                  width: 36,
+                                  height: 36,
+                                ),
+                              ),
+                            HexoraColumnVisibilityMenu(
+                              moduleKey: 'recibos',
+                              availableColumns: _available,
+                              visibleColumns: _visible,
+                              onChanged: (value) =>
+                                  setState(() => _visible = value),
+                            ),
+                            if (widget.toolbarActions != null) ...[
+                              const SizedBox(width: 3),
+                              widget.toolbarActions!,
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
-                  HexoraColumnVisibilityMenu(
-                    moduleKey: 'recibos',
-                    availableColumns: _available,
-                    visibleColumns: _visible,
-                    onChanged: (value) => setState(() => _visible = value),
-                  ),
-                ]),
-              ),
-              CompactDocumentTableHeader(
-                identityLabel: 'Recibo',
-                visibleFinancialColumns: _visible,
-                actionsWidth: 128,
-                headerBuilder: _header,
-              ),
-            ],
-          );
-        }
-        final item = items[i - 1];
-        if (item is String) return _MonthDivider(label: item, first: i == 0);
-        final r = item as Receipt;
-        final client = _receiptClientFor(
-          r,
-          widget.clients,
-          widget.unknownClientLabel,
-        );
-        return Padding(
-          padding: EdgeInsets.only(
-              bottom: MediaQuery.sizeOf(context).width < 650 ? 8 : 0),
-          child: widget.itemBuilder(r, client, _visible),
-        );
-      },
+                    CompactDocumentTableHeader(
+                      identityLabel: 'Recibo',
+                      visibleFinancialColumns: _visible,
+                      actionsWidth: 128,
+                      headerBuilder: _header,
+                    ),
+                  ],
+                );
+              }
+              final item = items[i - 1];
+              if (item is String) {
+                return _MonthDivider(label: item, first: i == 0);
+              }
+              final r = item as Receipt;
+              final client = _receiptClientFor(
+                r,
+                widget.clients,
+                widget.unknownClientLabel,
+              );
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.sizeOf(context).width < 650 ? 8 : 0,
+                ),
+                child: widget.itemBuilder(r, client, _visible),
+              );
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+          child: CompactDocumentFinancialFooter(
+            key: const ValueKey('receipt-aligned-financial-summary'),
+            countLabel: countLabel,
+            taxableBaseValue: baseValue,
+            vatValue: '—',
+            totalValue: totalValue,
+            visibleFinancialColumns: _visible,
+            actionsWidth: 128,
+            compactFallback: compactFooter,
+          ),
+        ),
+      ],
     );
   }
 }
 
 class _IssuedReceiptsTab extends StatefulWidget {
+  final List<Receipt> receipts;
+  final List<GroupClient> clients;
+  final String unknownClientLabel;
+  final String? selectedId;
+  final ValueChanged<Receipt> onSelect;
+  final Future<void> Function(Receipt) onPreview;
+  final ValueChanged<Receipt> onDownload;
+  final ValueChanged<Receipt> onMarkSent;
+  final ValueChanged<Receipt> onMarkUnsent;
+  final Widget? toolbarLeading;
+  final Widget? toolbarActions;
+
   const _IssuedReceiptsTab({
     required this.receipts,
     required this.clients,
@@ -526,17 +673,9 @@ class _IssuedReceiptsTab extends StatefulWidget {
     required this.onDownload,
     required this.onMarkSent,
     required this.onMarkUnsent,
+    this.toolbarLeading,
+    this.toolbarActions,
   });
-
-  final List<Receipt> receipts;
-  final List<GroupClient> clients;
-  final String unknownClientLabel;
-  final String? selectedId;
-  final ValueChanged<Receipt> onSelect;
-  final Future<void> Function(Receipt) onPreview;
-  final ValueChanged<Receipt> onDownload;
-  final ValueChanged<Receipt> onMarkSent;
-  final ValueChanged<Receipt> onMarkUnsent;
 
   @override
   State<_IssuedReceiptsTab> createState() => _IssuedReceiptsTabState();
@@ -550,6 +689,8 @@ class _IssuedReceiptsTabState extends State<_IssuedReceiptsTab> {
       clients: widget.clients,
       unknownClientLabel: widget.unknownClientLabel,
       padding: const EdgeInsets.all(10),
+      toolbarLeading: widget.toolbarLeading,
+      toolbarActions: widget.toolbarActions,
       itemBuilder: (receipt, client, visibleColumns) => ReceiptListItem(
         receipt: receipt,
         client: client,
@@ -577,6 +718,7 @@ class GroupReceiptsView extends StatelessWidget {
   final ValueChanged<Receipt> onSelectReceipt;
 
   final VoidCallback onCreateReceipt;
+  final VoidCallback? onRefresh;
   final ValueChanged<Receipt> onEditReceipt;
   final ValueChanged<Receipt> onIssueReceipt;
   final ValueChanged<Receipt> onMarkReceiptSent;
@@ -602,6 +744,7 @@ class GroupReceiptsView extends StatelessWidget {
     required this.selectedReceipt,
     required this.onSelectReceipt,
     required this.onCreateReceipt,
+    this.onRefresh,
     required this.onEditReceipt,
     required this.onIssueReceipt,
     required this.onMarkReceiptSent,
@@ -631,6 +774,52 @@ class GroupReceiptsView extends StatelessWidget {
     final selectedIndex = selectedReceipt == null
         ? -1
         : activeReceipts.indexWhere((item) => item.id == selectedReceipt!.id);
+    final compactToolbarTabs = showHeaderTabs
+        ? null
+        : HexoraDocumentStatusTabs(
+            tabs: [
+              HexoraDocumentStatusTab(
+                label: isEs ? 'Borradores' : 'Drafts',
+                count: drafts.length,
+                icon: Icons.drafts_outlined,
+              ),
+              HexoraDocumentStatusTab(
+                label: isEs ? 'Recibos' : 'Receipts',
+                count: receipts.length,
+                icon: Icons.receipt_long_outlined,
+              ),
+            ],
+            selectedIndex: initialTabIndex,
+            onSelected: (index) => onTabChanged?.call(index),
+          );
+    final compactToolbarActions = showHeaderTabs
+        ? null
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (onRefresh != null)
+                IconButton(
+                  tooltip: l.refreshAction,
+                  onPressed: onRefresh,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  constraints:
+                      const BoxConstraints.tightFor(width: 36, height: 36),
+                ),
+              Tooltip(
+                message: l.createReceiptCta,
+                child: IconButton.filled(
+                  onPressed: onCreateReceipt,
+                  icon: const Icon(
+                    Icons.add_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                  constraints:
+                      const BoxConstraints.tightFor(width: 36, height: 36),
+                ),
+              ),
+            ],
+          );
 
     return Padding(
       padding: const EdgeInsets.all(5),
@@ -790,6 +979,8 @@ class GroupReceiptsView extends StatelessWidget {
                         clients: clients,
                         unknownClientLabel: l.unknownClient,
                         padding: const EdgeInsets.all(10),
+                        toolbarLeading: compactToolbarTabs,
+                        toolbarActions: compactToolbarActions,
                         itemBuilder: (r, client, visibleColumns) =>
                             ReceiptListItem(
                           receipt: r,
@@ -814,6 +1005,8 @@ class GroupReceiptsView extends StatelessWidget {
                         onDownload: onDownloadPdf,
                         onMarkSent: onMarkReceiptSent,
                         onMarkUnsent: onMarkReceiptUnsent,
+                        toolbarLeading: compactToolbarTabs,
+                        toolbarActions: compactToolbarActions,
                       ),
                     ],
                   ),

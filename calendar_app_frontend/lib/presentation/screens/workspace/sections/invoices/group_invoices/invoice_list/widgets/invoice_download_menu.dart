@@ -228,8 +228,8 @@ class InvoiceToolbarOptionsMenu extends StatelessWidget {
                     controller.isOpen ? controller.close() : controller.open(),
                 icon: const Icon(Icons.more_horiz_rounded, size: 18),
                 style: IconButton.styleFrom(
-                  fixedSize: const Size(34, 34),
-                  minimumSize: const Size(34, 34),
+                  fixedSize: const Size(36, 36),
+                  minimumSize: const Size(36, 36),
                   padding: EdgeInsets.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   foregroundColor:
@@ -257,7 +257,7 @@ class InvoiceToolbarOptionsMenu extends StatelessWidget {
                 icon: const Icon(Icons.tune_rounded, size: 17),
                 label: Text(isEs ? 'Opciones' : 'Options'),
                 style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(0, 34),
+                  minimumSize: const Size(0, 36),
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   visualDensity: VisualDensity.compact,

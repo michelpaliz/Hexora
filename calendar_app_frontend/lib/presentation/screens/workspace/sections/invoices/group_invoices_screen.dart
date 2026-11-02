@@ -188,8 +188,6 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   Invoice? _selectedInvoice;
   Receipt? _selectedReceipt;
   String? _recurringSeriesToOpen;
-  RecurringInvoicesActions? _recurringActions;
-  RecurringReceiptsActions? _recurringReceiptsActions;
   String _menuBeforeInvoiceEditor = 'clients';
   String _menuBeforeReceiptEditor = 'receipts';
   String? _invoiceEditorClientId;

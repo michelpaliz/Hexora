@@ -437,7 +437,7 @@ class DocumentLayoutSelector extends StatelessWidget {
     final isEs =
         Localizations.localeOf(context).languageCode.toLowerCase() == 'es';
     return SizedBox(
-      height: 34,
+      height: 36,
       child: Align(
         alignment: AlignmentDirectional.centerStart,
         child: Container(

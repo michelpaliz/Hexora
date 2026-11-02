@@ -48,6 +48,73 @@ void main() {
     expect(selected, 1);
   });
 
+  testWidgets('shared document toolbar keeps search and actions responsive',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 300);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    var query = '';
+
+    Widget app() => MaterialApp(
+          theme: AppTheme.forPlatform(
+            Brightness.light,
+            platform: TargetPlatform.windows,
+          ),
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) => HexoraDocumentToolbar(
+                statusTabs: HexoraDocumentStatusTabs(
+                  selectedIndex: 0,
+                  onSelected: (_) {},
+                  tabs: const [
+                    HexoraDocumentStatusTab(
+                      label: 'Borradores',
+                      count: 2,
+                      icon: Icons.drafts_outlined,
+                    ),
+                    HexoraDocumentStatusTab(
+                      label: 'Facturas',
+                      count: 10,
+                      icon: Icons.receipt_long_outlined,
+                    ),
+                  ],
+                ),
+                viewSwitcher: const SizedBox(
+                  key: ValueKey('test-view-switcher'),
+                  width: 64,
+                  height: 36,
+                ),
+                searchHint: 'Buscar documentos...',
+                searchValue: query,
+                onSearchChanged: (value) => setState(() => query = value),
+                actions: const SizedBox(
+                  key: ValueKey('test-options'),
+                  width: 96,
+                  height: 36,
+                ),
+              ),
+            ),
+          ),
+        );
+
+    await tester.pumpWidget(app());
+    await tester.enterText(find.byType(TextField), 'Cliente Norte');
+    await tester.pump();
+    expect(query, 'Cliente Norte');
+    expect(
+        tester.getSize(find.byType(TextField)).width, lessThanOrEqualTo(320));
+    expect(
+      tester.getCenter(find.byKey(const ValueKey('test-options'))).dy,
+      closeTo(tester.getCenter(find.text('Borradores')).dy, 1),
+    );
+
+    tester.view.physicalSize = const Size(520, 300);
+    await tester.pumpAndSettle();
+    expect(find.text('Cliente Norte'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('detail header exposes navigation, expand and close actions',
       (tester) async {
     var previous = 0;

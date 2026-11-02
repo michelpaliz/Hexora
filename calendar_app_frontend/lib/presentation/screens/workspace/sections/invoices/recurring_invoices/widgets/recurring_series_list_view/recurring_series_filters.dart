@@ -30,6 +30,10 @@ class RecurringSeriesFilters extends StatelessWidget {
     required this.sortByClientName,
     required this.onSortByClientNameChanged,
     required this.onClearFilters,
+    required this.onRefresh,
+    this.refreshing = false,
+    required this.onCreate,
+    required this.canManage,
     this.allStatusLabel,
   });
 
@@ -55,6 +59,10 @@ class RecurringSeriesFilters extends StatelessWidget {
   final bool sortByClientName;
   final ValueChanged<bool> onSortByClientNameChanged;
   final VoidCallback onClearFilters;
+  final VoidCallback onRefresh;
+  final bool refreshing;
+  final VoidCallback onCreate;
+  final bool canManage;
   final String? allStatusLabel;
 
   @override
@@ -148,7 +156,7 @@ class RecurringSeriesFilters extends StatelessWidget {
     );
 
     final sortLabel = sortByClientName
-        ? (isEs ? 'Cliente A-Z' : 'Client A-Z')
+        ? 'A-Z'
         : (isEs ? 'Próxima creación' : 'Next creation');
     final sortMenu = MenuAnchor(
       menuChildren: [
@@ -194,39 +202,94 @@ class RecurringSeriesFilters extends StatelessWidget {
             variant: HexoraButtonVariant.ghost,
             size: HexoraButtonSize.large,
           );
+    final refresh = HexoraButton.iconOnly(
+      key: const ValueKey('recurring-series-refresh'),
+      onPressed: refreshing ? null : onRefresh,
+      icon: Icons.refresh_rounded,
+      tooltip: isEs ? 'Actualizar recurrencias' : 'Refresh recurrences',
+      variant: HexoraButtonVariant.secondary,
+      size: HexoraButtonSize.large,
+      loading: refreshing,
+    );
+    final create = HexoraButton.iconOnly(
+      key: const ValueKey('recurring-series-create'),
+      onPressed: canManage ? onCreate : null,
+      icon: Icons.add_rounded,
+      tooltip: l.recurringInvoicesCreateCta,
+      size: HexoraButtonSize.large,
+    );
+    Widget divider() => SizedBox(
+          height: 24,
+          child: VerticalDivider(
+            width: 1,
+            thickness: 1,
+            color: cs.outlineVariant.withValues(alpha: .65),
+          ),
+        );
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 540) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              search,
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                crossAxisAlignment: WrapCrossAlignment.center,
+        final compact = constraints.maxWidth < 720;
+        final content = compact
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  filtersMenu,
-                  sortMenu,
-                  if (compactClear != null) compactClear,
+                  search,
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      refresh,
+                      const SizedBox(width: 6),
+                      filtersMenu,
+                      const SizedBox(width: 6),
+                      Expanded(child: sortMenu),
+                      if (compactClear != null) ...[
+                        const SizedBox(width: 2),
+                        compactClear,
+                      ],
+                      const SizedBox(width: 6),
+                      create,
+                    ],
+                  ),
                 ],
-              ),
-            ],
-          );
-        }
-        final searchWidth = (constraints.maxWidth * .42).clamp(260.0, 320.0);
-        return Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            SizedBox(width: searchWidth, child: search),
-            filtersMenu,
-            sortMenu,
-            if (clear != null)
-              constraints.maxWidth < 650 ? compactClear! : clear,
-          ],
+              )
+            : Row(
+                children: [
+                  refresh,
+                  const SizedBox(width: 10),
+                  divider(),
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    width: (constraints.maxWidth * .42).clamp(260.0, 480.0),
+                    child: search,
+                  ),
+                  const SizedBox(width: 8),
+                  filtersMenu,
+                  const SizedBox(width: 10),
+                  divider(),
+                  const SizedBox(width: 10),
+                  sortMenu,
+                  if (clear != null) ...[
+                    const SizedBox(width: 2),
+                    constraints.maxWidth < 880 ? compactClear! : clear,
+                  ],
+                  const Spacer(),
+                  create,
+                ],
+              );
+
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: .55),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(5),
+            child: content,
+          ),
         );
       },
     );

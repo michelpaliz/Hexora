@@ -154,9 +154,6 @@ extension _GroupInvoicesBudgetsViewStepContentSection
                 orElse: () => null,
               );
       return DocumentClientStep(
-        key: ValueKey(
-          _clientSource == _ClientSource.manual ? 'manual' : 'existing',
-        ),
         clients: widget.clients,
         selectedClientId: _selectedClientId,
         onClientChanged: (value) {
@@ -200,14 +197,18 @@ extension _GroupInvoicesBudgetsViewStepContentSection
           }),
         ),
         enabled: _isDraftEditable,
-        existingLabel:
-            _isSpanishLocale ? 'Cliente existente' : 'Existing client',
-        manualLabel: _isSpanishLocale ? 'Cliente manual' : 'Manual client',
+        existingLabel: _isSpanishLocale ? 'Existente' : 'Existing',
+        manualLabel: _isSpanishLocale ? 'Manual' : 'Manual',
         selectClientLabel:
             _isSpanishLocale ? 'Selecciona cliente' : 'Select client',
         emptySelectionLabel: _isSpanishLocale
             ? 'Selecciona un cliente para continuar'
             : 'Select a client to continue',
+        desktopListWidth: 420,
+        showSelectionHeading: false,
+        modeSelectorAlignment: AlignmentDirectional.centerStart,
+        adaptivePreview: true,
+        compactSelectionMaxWidth: 620,
         flat: true,
       );
     }
@@ -1001,8 +1002,44 @@ extension _GroupInvoicesBudgetsViewStepContentSection
     GroupClient selectedClient,
   ) {
     final t = AppTypography.of(context);
+    final billing = selectedClient.billing;
+    final billingName = (billing?.legalName ?? '').trim();
+    final taxId = (billing?.taxId ?? '').trim();
+    final billingEmail = (billing?.email ?? '').trim();
+    final email = billingEmail.isNotEmpty
+        ? billingEmail
+        : (selectedClient.email ?? '').trim();
+    final address = <String>[
+      (billing?.addressStreet ?? '').trim(),
+      (billing?.addressPostalCode ?? '').trim(),
+      (billing?.addressCity ?? '').trim(),
+      (billing?.addressProvince ?? '').trim(),
+    ].where((value) => value.isNotEmpty).join(', ');
+    final classification = <String>[
+      (selectedClient.entityType ?? '').trim(),
+      (selectedClient.propertyKind ?? '').trim(),
+    ].where((value) => value.isNotEmpty).join(' · ');
+
+    Widget metadataLine(IconData icon, String value) => Padding(
+          padding: const EdgeInsets.only(top: 5),
+          child: Row(
+            children: [
+              Icon(icon, size: 14, color: cs.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ),
+            ],
+          ),
+        );
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1040,18 +1077,9 @@ extension _GroupInvoicesBudgetsViewStepContentSection
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if ((selectedClient.email ?? '').trim().isNotEmpty)
+                    if (email.isNotEmpty)
                       Text(
-                        selectedClient.email!.trim(),
-                        style: t.bodySmall.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    if ((selectedClient.propertyKind ?? '').trim().isNotEmpty)
-                      Text(
-                        selectedClient.propertyKind!.trim(),
+                        email,
                         style: t.bodySmall.copyWith(
                           color: cs.onSurfaceVariant,
                         ),
@@ -1063,7 +1091,16 @@ extension _GroupInvoicesBudgetsViewStepContentSection
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          if (billingName.isNotEmpty &&
+              billingName.toLowerCase() !=
+                  selectedClient.name.trim().toLowerCase())
+            metadataLine(Icons.business_outlined, billingName),
+          if (taxId.isNotEmpty) metadataLine(Icons.badge_outlined, taxId),
+          if (classification.isNotEmpty)
+            metadataLine(Icons.category_outlined, classification),
+          if (address.isNotEmpty)
+            metadataLine(Icons.location_on_outlined, address),
+          const SizedBox(height: 10),
           SizedBox(
             height: 164,
             child: _BudgetClientStatsBox(

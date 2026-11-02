@@ -574,7 +574,7 @@ class HexoraColumnVisibilityMenu extends StatelessWidget {
             ),
       ],
       child: Container(
-        height: 34,
+        height: 36,
         padding: const EdgeInsets.symmetric(horizontal: 9),
         decoration: BoxDecoration(
           color: cs.surface,

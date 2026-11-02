@@ -93,6 +93,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   _InvoiceAmountRange _totalRange = const _InvoiceAmountRange();
   _InvoiceColumnSort? _columnSort;
   InvoiceSortDir _columnSortDir = InvoiceSortDir.asc;
+  bool _mismatchOnly = false;
   int _summaryRequestGeneration = 0;
   static const _availableFinancialColumns = {
     HexoraFinancialColumn.date,
@@ -518,10 +519,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
       subtotal += invoiceSubtotal;
       taxTotal += invoiceTax;
       total += invoiceTotal;
-      if (invoice.subtotal != null &&
-          invoice.taxTotal != null &&
-          invoice.total != null &&
-          (invoiceSubtotal + invoiceTax - invoiceTotal).abs() > 0.02) {
+      if (_hasFinancialMismatch(invoice)) {
         mismatchCount++;
       }
     }
@@ -533,6 +531,44 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
       'mismatchCount': mismatchCount,
     };
   }
+
+  bool _hasFinancialMismatch(Invoice invoice) {
+    final subtotal = invoice.subtotal;
+    final tax = invoice.taxTotal;
+    final total = invoice.total;
+    return subtotal != null &&
+        tax != null &&
+        total != null &&
+        (subtotal + tax - total).abs() > 0.02;
+  }
+
+  String? _financialMismatchTooltip(
+    Invoice invoice,
+    AppLocalizations l,
+  ) {
+    if (!_hasFinancialMismatch(invoice)) return null;
+    final subtotal = invoice.subtotal!;
+    final tax = invoice.taxTotal!;
+    final total = invoice.total!;
+    final difference = total - (subtotal + tax);
+    final money = NumberFormat.currency(
+      locale: l.localeName,
+      symbol: '€',
+      decimalDigits: 2,
+    );
+    final isSpanish = l.localeName.toLowerCase().startsWith('es');
+    return isSpanish
+        ? 'Base + IVA no coincide con el total. '
+            'Base: ${money.format(subtotal)} · IVA: ${money.format(tax)} · '
+            'Total: ${money.format(total)} · Diferencia: ${money.format(difference)}'
+        : 'Taxable base + VAT does not match the total. '
+            'Base: ${money.format(subtotal)} · VAT: ${money.format(tax)} · '
+            'Total: ${money.format(total)} · Difference: ${money.format(difference)}';
+  }
+
+  void _toggleMismatchOnly() => setState(() {
+        _mismatchOnly = !_mismatchOnly;
+      });
 
   String _normalizedClientName(Invoice invoice, AppLocalizations l) =>
       _invoiceFallbackClientName(invoice, l).trim().toLowerCase();
@@ -589,6 +625,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
       _baseRange = const _InvoiceAmountRange();
       _vatRange = const _InvoiceAmountRange();
       _totalRange = const _InvoiceAmountRange();
+      _mismatchOnly = false;
       _fromDate = null;
       _toDate = null;
       _quickRange = DateQuickRange.none;

@@ -16,6 +16,8 @@ void main() {
       final search = TextEditingController();
       addTearDown(search.dispose);
       var status = 'Activas';
+      var refreshes = 0;
+      var creates = 0;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -49,6 +51,9 @@ void main() {
                 sortByClientName: true,
                 onSortByClientNameChanged: (_) {},
                 onClearFilters: () => setState(() => status = 'Todos'),
+                onRefresh: () => refreshes++,
+                onCreate: () => creates++,
+                canManage: true,
               ),
             ),
           ),
@@ -60,7 +65,7 @@ void main() {
           find.byKey(const ValueKey('recurring-series-search'));
       final filterFinder =
           find.byKey(const ValueKey('recurring-series-filters-button'));
-      expect(tester.getSize(searchFinder).width, 320);
+      expect(tester.getSize(searchFinder).width, 480);
       expect(tester.getSize(searchFinder).height, 38);
       expect(tester.getCenter(filterFinder).dy,
           closeTo(tester.getCenter(searchFinder).dy, 1));
@@ -69,6 +74,32 @@ void main() {
         find.byKey(const ValueKey('recurring-series-clear-filters')),
         findsOneWidget,
       );
+      final refreshFinder =
+          find.byKey(const ValueKey('recurring-series-refresh'));
+      final createFinder =
+          find.byKey(const ValueKey('recurring-series-create'));
+      expect(refreshFinder, findsOneWidget);
+      expect(createFinder, findsOneWidget);
+      expect(find.byTooltip('Actualizar recurrencias'), findsOneWidget);
+      expect(tester.getSize(refreshFinder), const Size.square(38));
+      expect(tester.getSize(createFinder), const Size.square(38));
+      expect(
+        tester.getCenter(createFinder).dy,
+        closeTo(tester.getCenter(refreshFinder).dy, 1),
+      );
+      expect(tester.getCenter(createFinder).dx,
+          greaterThan(tester.getCenter(refreshFinder).dx));
+      expect(tester.getCenter(refreshFinder).dx,
+          lessThan(tester.getCenter(searchFinder).dx));
+      expect(
+        tester.getCenter(createFinder).dy,
+        closeTo(tester.getCenter(searchFinder).dy, 1),
+      );
+
+      await tester.tap(refreshFinder);
+      await tester.tap(createFinder);
+      expect(refreshes, 1);
+      expect(creates, 1);
 
       await tester.tap(filterFinder);
       await tester.pumpAndSettle();

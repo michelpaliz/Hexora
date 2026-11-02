@@ -845,8 +845,8 @@ class _InvoiceEditorView extends StatelessWidget {
                       headerBar,
                       const SizedBox(height: 6),
                       Expanded(
-                        child: TabBarView(
-                          controller: state._tabController,
+                        child: HexoraStepTransition.indexed(
+                          currentStep: currentEditorStep,
                           children: [
                             _buildInvoiceClientStep(context, state, l, t, cs),
                             SingleChildScrollView(
@@ -989,117 +989,183 @@ class _InvoiceEditorView extends StatelessWidget {
 
     Widget? selectedDetails;
     if (selectedClient != null) {
-      selectedDetails = Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: cs.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      selectedClient.name.trim().isEmpty
-                          ? '?'
-                          : selectedClient.name.trim()[0].toUpperCase(),
-                      style: t.bodyMedium.copyWith(
-                        color: cs.primary,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+      final billing = selectedClient.billing;
+      final billingEmail = (billing?.email ?? '').trim();
+      final billingPhone = (billing?.phone ?? '').trim();
+      final email = billingEmail.isNotEmpty
+          ? billingEmail
+          : (selectedClient.email ?? '').trim();
+      final phone = billingPhone.isNotEmpty
+          ? billingPhone
+          : (selectedClient.phone ?? '').trim();
+      final billingName = (billing?.legalName ?? '').trim();
+      final taxId = (billing?.taxId ?? '').trim();
+      final address = <String>[
+        (billing?.addressStreet ?? '').trim(),
+        (billing?.addressPostalCode ?? '').trim(),
+        (billing?.addressCity ?? '').trim(),
+        (billing?.addressProvince ?? '').trim(),
+      ].where((value) => value.isNotEmpty).join(', ');
+      final classification = <String>[
+        (selectedClient.entityType ?? '').trim(),
+        (selectedClient.propertyKind ?? '').trim(),
+      ].where((value) => value.isNotEmpty).join(' · ');
+
+      Widget metadataLine(IconData icon, String value) => Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              children: [
+                Icon(icon, size: 14, color: cs.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          selectedClient.name,
-                          style: t.bodyMedium.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: cs.onSurface,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if ((selectedClient.email ?? '').trim().isNotEmpty)
-                          Text(
-                            selectedClient.email!.trim(),
-                            style: t.bodySmall.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        if ((selectedClient.phone ?? '').trim().isNotEmpty)
-                          Text(
-                            selectedClient.phone!.trim(),
-                            style: t.bodySmall.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _InvoiceClientStatsBox(
-                issuedCount: state._c.issuedThisMonthCount,
-                draftCount: state._c.clientDraftCount,
-                loading: state._c.loadingClientStats,
-                pastInvoices: state._c.clientPastInvoices,
-                onPreview: (invoice) async {
-                  final bytes = await state._c.fetchHistoricalPdf(invoice.id);
-                  final fileName = invoice.isDraft
-                      ? 'invoice-draft-${invoice.id}.pdf'
-                      : 'invoice-${invoice.invoiceNumber}.pdf';
-                  await pdf_launcher.launchPdfPreview(
-                    bytes,
-                    fileName: fileName,
-                  );
-                },
-              ),
-              if (state._c.editingIssued) ...[
-                const SizedBox(height: 10),
-                HexoraButton(
-                  onPressed: () => _editIssuedBillingDetails(context, state),
-                  icon: Icons.badge_outlined,
-                  label:
-                      isEs ? 'Editar datos fiscales' : 'Edit billing details',
-                  variant: HexoraButtonVariant.secondary,
                 ),
               ],
-            ],
+            ),
+          );
+
+      selectedDetails = ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 580),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: cs.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        selectedClient.name.trim().isEmpty
+                            ? '?'
+                            : selectedClient.name.trim()[0].toUpperCase(),
+                        style: t.bodyMedium.copyWith(
+                          color: cs.primary,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            selectedClient.name,
+                            style: t.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: cs.onSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (email.isNotEmpty)
+                            Text(
+                              email,
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          if (phone.isNotEmpty)
+                            Text(
+                              phone,
+                              style: t.bodySmall.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (billingName.isNotEmpty &&
+                    billingName.toLowerCase() !=
+                        selectedClient.name.trim().toLowerCase())
+                  metadataLine(Icons.business_outlined, billingName),
+                if (taxId.isNotEmpty) metadataLine(Icons.badge_outlined, taxId),
+                if (classification.isNotEmpty)
+                  metadataLine(Icons.category_outlined, classification),
+                if (address.isNotEmpty)
+                  metadataLine(Icons.location_on_outlined, address),
+                const SizedBox(height: 10),
+                _InvoiceClientStatsBox(
+                  issuedCount: state._c.issuedThisMonthCount,
+                  draftCount: state._c.clientDraftCount,
+                  loading: state._c.loadingClientStats,
+                  pastInvoices: state._c.clientPastInvoices,
+                  onPreview: (invoice) async {
+                    final bytes = await state._c.fetchHistoricalPdf(invoice.id);
+                    final fileName = invoice.isDraft
+                        ? 'invoice-draft-${invoice.id}.pdf'
+                        : 'invoice-${invoice.invoiceNumber}.pdf';
+                    await pdf_launcher.launchPdfPreview(
+                      bytes,
+                      fileName: fileName,
+                    );
+                  },
+                ),
+                if (state._c.editingIssued) ...[
+                  const SizedBox(height: 10),
+                  HexoraButton(
+                    onPressed: () => _editIssuedBillingDetails(context, state),
+                    icon: Icons.badge_outlined,
+                    label:
+                        isEs ? 'Editar datos fiscales' : 'Edit billing details',
+                    variant: HexoraButtonVariant.secondary,
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       );
     }
 
-    return DocumentClientStep(
-      clients: state.widget.clients,
-      selectedClientId: state._c.clientId,
-      onClientChanged: state._c.setClientId,
-      mode: DocumentClientMode.existing,
-      onModeChanged: (_) {},
-      selectedDetails: selectedDetails,
-      allowManual: false,
-      existingLabel: isEs ? 'Cliente existente' : 'Existing client',
-      selectClientLabel: l.receiptSelectClientLabel,
-      emptySelectionLabel: isEs
-          ? 'Selecciona un cliente para continuar'
-          : 'Select a client to continue',
-      twoColumnBreakpoint: 900,
-      flat: true,
+    return LayoutBuilder(
+      builder: (context, constraints) => Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(
+          width: constraints.maxWidth.clamp(0.0, 1280.0).toDouble(),
+          height: constraints.maxHeight,
+          child: DocumentClientStep(
+            clients: state.widget.clients,
+            selectedClientId: state._c.clientId,
+            onClientChanged: state._c.setClientId,
+            mode: DocumentClientMode.existing,
+            onModeChanged: (_) {},
+            selectedDetails: selectedDetails,
+            allowManual: false,
+            existingLabel: isEs ? 'Existente' : 'Existing',
+            selectClientLabel: l.receiptSelectClientLabel,
+            emptySelectionLabel: isEs
+                ? 'Selecciona un cliente para ver sus datos.'
+                : 'Select a client to view their details.',
+            twoColumnBreakpoint: 900,
+            desktopListWidth: 420,
+            showSelectionHeading: false,
+            modeSelectorAlignment: AlignmentDirectional.centerStart,
+            adaptivePreview: true,
+            compactSelectionMaxWidth: 620,
+            flat: true,
+          ),
+        ),
+      ),
     );
   }
 

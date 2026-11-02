@@ -38,6 +38,56 @@ void main() {
         Duration.zero);
   });
 
+  testWidgets('indexed step transition preserves page state and direction',
+      (tester) async {
+    var step = 0;
+    late StateSetter update;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              update = setState;
+              return Column(
+                children: [
+                  Expanded(
+                    child: HexoraStepTransition.indexed(
+                      currentStep: step,
+                      children: const [
+                        _StatefulStep(label: 'Cliente'),
+                        _StatefulStep(label: 'Detalles'),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Cliente 0'));
+    await tester.pump();
+    expect(find.text('Cliente 1'), findsOneWidget);
+
+    update(() => step = 1);
+    await tester.pump(const Duration(milliseconds: 120));
+    expect(find.byType(AnimatedSlide), findsNWidgets(2));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Detalles 0'));
+    await tester.pump();
+
+    update(() => step = 0);
+    await tester.pumpAndSettle();
+    expect(find.text('Cliente 1'), findsOneWidget);
+
+    update(() => step = 1);
+    await tester.pumpAndSettle();
+    expect(find.text('Detalles 1'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('shared dialog opens and dismisses without replacing page state',
       (tester) async {
     var pageValue = 0;
@@ -78,4 +128,25 @@ void main() {
     expect(find.text('Motion dialog'), findsNothing);
     expect(find.text('Value 1'), findsOneWidget);
   });
+}
+
+class _StatefulStep extends StatefulWidget {
+  const _StatefulStep({required this.label});
+
+  final String label;
+
+  @override
+  State<_StatefulStep> createState() => _StatefulStepState();
+}
+
+class _StatefulStepState extends State<_StatefulStep> {
+  var count = 0;
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: TextButton(
+          onPressed: () => setState(() => count++),
+          child: Text('${widget.label} $count'),
+        ),
+      );
 }

@@ -281,7 +281,13 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                   : '';
               final unsent = widget.unsentDocumentCounts[client.id];
               final hasUnsent = (unsent?.total ?? 0) > 0;
-              final alias = (client.pdfAlias ?? '').trim();
+              final rawAlias = (client.pdfAlias ?? '').trim();
+              // The alias is only useful when it tells us something the name
+              // doesn't; otherwise it is a visible duplicate of the title.
+              final alias =
+                  rawAlias.toLowerCase() == client.name.trim().toLowerCase()
+                      ? ''
+                      : rawAlias;
               final propertyType = _propertyTypeValue(client);
               final meta = <String>[
                 if (alias.isNotEmpty) alias,
@@ -293,7 +299,9 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
               return ConstrainedBox(
                 key: ValueKey('client-select-row-${client.id}'),
                 constraints: BoxConstraints(
-                  minHeight: widget.compactToolbar ? 50 : 56,
+                  // 48 px keeps rows inside the compact target without
+                  // clipping the two-line secondary in warning states.
+                  minHeight: widget.compactToolbar ? 48 : 56,
                 ),
                 child: ListItemCard(
                   flat: widget.flatRows,
@@ -633,8 +641,12 @@ class _CompactClientIdentity extends StatelessWidget {
       ),
     );
     final warning = (emailWarning ?? '').trim();
-    final secondaryValue = alias.isNotEmpty ? alias : email;
-    final secondaryWidget = warning.isNotEmpty
+    // Prefer alias when it adds information beyond the name; otherwise show
+    // the saved email. Never surface a secondary that is literally the name.
+    final cleanAlias =
+        alias.trim().toLowerCase() == name.trim().toLowerCase() ? '' : alias;
+    final secondaryValue = cleanAlias.isNotEmpty ? cleanAlias : email;
+    final secondaryWidget = warning.isNotEmpty && cleanAlias.isEmpty
         ? Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -690,7 +702,7 @@ class _CompactClientIdentity extends StatelessWidget {
           children: [
             Flexible(child: nameWidget),
             const SizedBox(width: 10),
-            if (warning.isNotEmpty)
+            if (warning.isNotEmpty && cleanAlias.isEmpty)
               secondaryWidget
             else
               Flexible(child: secondaryWidget),

@@ -211,12 +211,10 @@ void main() {
     // Rows may grow to retain the 48px action targets plus cell padding.
     expect(tester.getSize(rows.first).height,
         inInclusiveRange(HexoraTableTokens.rowMinHeight, 60));
-    final download = find
-        .byWidgetPredicate((w) => w is IconButton && w.tooltip == 'Descargar')
-        .first;
-    expect(tester.getSize(download).height,
+    final moreActions = find.byTooltip('Más acciones').first;
+    expect(tester.getSize(moreActions).height,
         greaterThanOrEqualTo(HexoraDimensions.touchTarget));
-    expect(tester.getSize(download).width,
+    expect(tester.getSize(moreActions).width,
         greaterThanOrEqualTo(HexoraDimensions.touchTarget));
     expect(find.text('Mostrando 1–10 de 12 propuestas'), findsOneWidget);
     await tester.ensureVisible(find.byTooltip('Página siguiente'));

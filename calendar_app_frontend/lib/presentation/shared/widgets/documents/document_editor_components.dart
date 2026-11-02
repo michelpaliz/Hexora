@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 
 /// Presentation-only step definition shared by document editors.
 ///
@@ -38,6 +39,7 @@ class HexoraDocumentStepper extends StatelessWidget {
     if (steps.isEmpty) return const SizedBox.shrink();
     final cs = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final duration = HexoraMotion.duration(context, HexoraMotion.fast);
 
     Widget stepItem(int index) {
       final step = steps[index];
@@ -61,7 +63,8 @@ class HexoraDocumentStepper extends StatelessWidget {
             onTap: step.enabled ? () => onStepTapped(index) : null,
             borderRadius: BorderRadius.circular(9),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
+              duration: duration,
+              curve: HexoraMotion.enter,
               constraints: const BoxConstraints(minHeight: 36),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               decoration: BoxDecoration(
@@ -123,7 +126,8 @@ class HexoraDocumentStepper extends StatelessWidget {
 
     Widget connector(int index) => Expanded(
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
+            duration: duration,
+            curve: HexoraMotion.enter,
             height: 2,
             constraints: const BoxConstraints(minWidth: 12, maxWidth: 72),
             margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -165,7 +169,10 @@ class HexoraDocumentStepper extends StatelessWidget {
       if (compact) {
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          child: row,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: Center(child: row),
+          ),
         );
       }
       return Center(

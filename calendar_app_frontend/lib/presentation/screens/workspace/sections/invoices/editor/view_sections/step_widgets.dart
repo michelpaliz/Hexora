@@ -158,11 +158,23 @@ class _InvoiceFlowTopBar extends StatelessWidget {
                 )
               : Row(
                   children: [
-                    leading,
-                    if (showBack) const SizedBox(width: 16),
-                    Expanded(child: stepper),
-                    const SizedBox(width: 16),
-                    contextChips,
+                    Expanded(
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Center(child: stepper),
+                          if (showBack)
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: leading,
+                            ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: contextChips,
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
         );
