@@ -445,6 +445,7 @@ extension _GroupInvoicesBudgetsViewFlowSection
       clientSnapshot:
           (payload['clientSnapshot'] as Map?)?.cast<String, dynamic>(),
       totals: (payload['totals'] as Map?)?.cast<String, dynamic>(),
+      advancePercent: payload['advancePercent'] as num?,
       reason: _issuedEditReasonCtrl.text.trim(),
     );
     _applyEditableBudgetPayload(updated, resetWizard: false);

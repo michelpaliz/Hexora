@@ -350,6 +350,7 @@ class PresupuestosApi {
     Map<String, dynamic>? clientSnapshot,
     Map<String, dynamic>? issuerSnapshot,
     Map<String, dynamic>? totals,
+    num? advancePercent,
     required String reason,
   }) async {
     final payload = <String, dynamic>{
@@ -373,6 +374,7 @@ class PresupuestosApi {
       if (clientSnapshot != null) 'clientSnapshot': clientSnapshot,
       if (issuerSnapshot != null) 'issuerSnapshot': issuerSnapshot,
       if (totals != null) 'totals': totals,
+      if (advancePercent != null) 'advancePercent': advancePercent,
       'reason': reason.trim(),
     };
     final r = await AuthenticatedHttpClient.patch(
