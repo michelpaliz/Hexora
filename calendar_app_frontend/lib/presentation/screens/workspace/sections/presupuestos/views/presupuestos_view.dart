@@ -2926,6 +2926,23 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                 ],
               ),
             ),
+            if (!_isDraftBudget(selected) &&
+                widget.onEditDraftBudget != null) ...[
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.tonalIcon(
+                  onPressed: () => widget.onEditDraftBudget!.call(budgetId),
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  label: Text(
+                    _isSpanishLocale
+                        ? 'Modificar presupuesto emitido'
+                        : 'Edit issued presupuesto',
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
             const Divider(height: 1),
             if (_loadingDetailPreview)
               const Expanded(
