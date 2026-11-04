@@ -10,15 +10,15 @@ extension _TemplateEditorControls on _PresupuestoTemplateEditorScreenState {
   }) {
     final theme = Theme.of(context);
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 10),
       elevation: 0,
       color: _editorCardBg(theme),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-        side: BorderSide(color: _editorBorder(theme)),
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: _editorBorder(theme, alpha: 0.55)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -26,16 +26,8 @@ extension _TemplateEditorControls on _PresupuestoTemplateEditorScreenState {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (icon != null) ...[
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(icon, color: theme.colorScheme.primary),
-                  ),
-                  const SizedBox(width: 12),
+                  Icon(icon, color: theme.colorScheme.primary, size: 20),
+                  const SizedBox(width: 8),
                 ],
                 Expanded(
                   child: Column(
@@ -43,14 +35,16 @@ extension _TemplateEditorControls on _PresupuestoTemplateEditorScreenState {
                     children: [
                       Text(
                         title,
-                        style: theme.textTheme.titleMedium?.copyWith(
+                        style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       if (subtitle != null) ...[
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
                           subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                             height: 1.35,
@@ -63,7 +57,7 @@ extension _TemplateEditorControls on _PresupuestoTemplateEditorScreenState {
                 if (trailing != null) trailing,
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             child,
           ],
         ),

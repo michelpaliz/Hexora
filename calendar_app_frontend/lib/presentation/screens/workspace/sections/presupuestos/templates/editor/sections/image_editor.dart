@@ -4,7 +4,6 @@ extension _TemplateImageEditor on _PresupuestoTemplateEditorScreenState {
   Widget _buildImagesCard() {
     return _card(
       title: 'Imagenes',
-      subtitle: 'Sube fotos que apareceran en el PDF del presupuesto.',
       icon: Icons.collections_outlined,
       child: Wrap(
         spacing: 12,

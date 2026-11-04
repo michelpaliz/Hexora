@@ -4,95 +4,82 @@ extension _TemplateSelection on _PresupuestoTemplateEditorScreenState {
   Widget _buildDefaultTemplatesCard() {
     final theme = Theme.of(context);
     final templateCount = _defaultTemplates.length;
-    return _card(
-      title: 'Plantillas recomendadas',
-      subtitle: 'Empieza con una estructura preparada y adaptala a tu negocio.',
-      icon: Icons.auto_awesome_motion_rounded,
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.primary.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: theme.colorScheme.primary.withValues(alpha: 0.14),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.check_circle_outline_rounded,
-              size: 16,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              '$templateCount ${templateCount == 1 ? 'disponible' : 'disponibles'}',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-      ),
-      child: _loadErrorMessage != null
-          ? Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: theme.colorScheme.error.withValues(alpha: 0.35),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Plantillas recomendadas',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
+              ),
+              Text(
+                '$templateCount ${templateCount == 1 ? 'disponible' : 'disponibles'}',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          if (_loadErrorMessage != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
                   Expanded(child: Text(_loadErrorMessage!)),
-                  const SizedBox(width: 12),
-                  OutlinedButton.icon(
+                  TextButton.icon(
                     onPressed: _load,
-                    icon: const Icon(Icons.refresh_rounded),
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
                     label: const Text('Reintentar'),
                   ),
                 ],
               ),
             )
-          : _defaultTemplates.isEmpty
-              ? Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: _editorInsetBg(theme),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: _editorBorder(theme)),
-                  ),
-                  child: const Text(
-                    'No hay tipos de presupuesto disponibles. Vuelve a intentarlo mas tarde.',
-                  ),
-                )
-              : LayoutBuilder(
-                  builder: (context, constraints) {
-                    final columns = _defaultTemplates.length > 1 &&
-                            constraints.maxWidth >= 920
-                        ? 2
-                        : 1;
-                    const spacing = 12.0;
-                    final itemWidth =
-                        (constraints.maxWidth - (spacing * (columns - 1))) /
-                            columns;
-                    return Wrap(
-                      spacing: spacing,
-                      runSpacing: spacing,
-                      children: [
-                        for (final template in _defaultTemplates)
-                          SizedBox(
-                            width: itemWidth,
-                            child: _defaultTemplateQueueItem(theme, template),
-                          ),
-                      ],
-                    );
-                  },
+          else if (_defaultTemplates.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Text(
+                'No hay tipos de presupuesto disponibles. Vuelve a intentarlo mas tarde.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
+              ),
+            )
+          else
+            DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: _editorBorder(theme, alpha: 0.5),
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                children: [
+                  for (var i = 0; i < _defaultTemplates.length; i++) ...[
+                    _defaultTemplateQueueItem(theme, _defaultTemplates[i]),
+                    if (i < _defaultTemplates.length - 1)
+                      Divider(
+                        height: 1,
+                        color: _editorBorder(theme, alpha: 0.45),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -106,213 +93,97 @@ extension _TemplateSelection on _PresupuestoTemplateEditorScreenState {
     final selected = key != null && key == _selectedDefaultKey;
     final cs = theme.colorScheme;
 
-    Widget templateInfo() {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      constraints: const BoxConstraints(minHeight: 58),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: selected ? cs.primary.withValues(alpha: 0.055) : null,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Row(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: cs.primaryContainer.withValues(alpha: 0.68),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              Icons.description_outlined,
-              color: cs.primary,
-              size: 22,
-            ),
+          Icon(
+            selected ? Icons.description_rounded : Icons.description_outlined,
+            color: selected ? cs.primary : cs.onSurfaceVariant,
+            size: 21,
           ),
-          const SizedBox(width: 13),
+          const SizedBox(width: 9),
           Expanded(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   _string(template['name']) ?? 'Plantilla predeterminada',
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall?.copyWith(
+                  style: theme.textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w800,
-                    height: 1.25,
                   ),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 2),
                 Text(
                   _string(template['description']) ??
                       'Plantilla preparada para empezar rapidamente.',
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: cs.onSurfaceVariant,
-                    height: 1.4,
                   ),
                 ),
-                if ((_string(template['category']) ?? '').isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    _string(template['category'])!,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 9),
-                if (template['editable'] != false)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.edit_note_rounded,
-                        size: 16,
-                        color: cs.primary,
-                      ),
-                      const SizedBox(width: 5),
-                      Flexible(
-                        child: Text(
-                          'Totalmente editable',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: cs.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
               ],
             ),
           ),
-        ],
-      );
-    }
-
-    Widget templateActions({
-      required bool expanded,
-      bool stacked = false,
-    }) {
-      final previewButton = OutlinedButton.icon(
-        onPressed: previewing || creating || key == null
-            ? null
-            : () => _previewDefaultTemplate(template),
-        icon: previewing
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.visibility_outlined, size: 19),
-        label: Text(previewing ? 'Abriendo...' : 'Vista previa'),
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(138, 44),
-          side: BorderSide(color: _editorBorder(theme)),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-      final useButton = FilledButton.icon(
-        onPressed: creating || previewing || key == null || selected
-            ? null
-            : () => _useDefaultTemplate(template),
-        icon: creating
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : Icon(
-                selected ? Icons.check_rounded : Icons.add_rounded,
-                size: 19,
-              ),
-        label: Text(
-          creating
-              ? 'Preparando...'
-              : selected
-                  ? 'Seleccionada'
-                  : 'Usar plantilla',
-        ),
-        style: FilledButton.styleFrom(
-          minimumSize: const Size(148, 44),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-      if (stacked) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            previewButton,
-            const SizedBox(height: 8),
-            useButton,
-          ],
-        );
-      }
-      if (!expanded) {
-        return Row(
-          children: [
-            Expanded(child: previewButton),
-            const SizedBox(width: 8),
-            Expanded(child: useButton),
-          ],
-        );
-      }
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          previewButton,
           const SizedBox(width: 8),
-          useButton,
-        ],
-      );
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final horizontal = constraints.maxWidth >= 700;
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: _isDark(theme)
-                ? const Color(0xFF132A3E)
-                : cs.primaryContainer.withValues(alpha: 0.16),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: selected
-                  ? cs.primary
-                  : _isDark(theme)
-                      ? const Color(0xFF3F7596).withValues(alpha: 0.46)
-                      : cs.primary.withValues(alpha: 0.18),
-              width: selected ? 2 : 1,
+          Tooltip(
+            message: 'Vista previa',
+            child: IconButton(
+              onPressed: previewing || creating || key == null
+                  ? null
+                  : () => _previewDefaultTemplate(template),
+              icon: previewing
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.visibility_outlined, size: 19),
+              visualDensity: VisualDensity.compact,
             ),
           ),
-          child: horizontal
-              ? Row(
-                  children: [
-                    Expanded(child: templateInfo()),
-                    const SizedBox(width: 24),
-                    templateActions(expanded: true),
-                  ],
-                )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    templateInfo(),
-                    const SizedBox(height: 14),
-                    Divider(
-                      height: 1,
-                      color: _editorBorder(theme, alpha: 0.7),
-                    ),
-                    const SizedBox(height: 14),
-                    templateActions(
-                      expanded: false,
-                      stacked: constraints.maxWidth < 480,
-                    ),
-                  ],
-                ),
-        );
-      },
+          const SizedBox(width: 4),
+          FilledButton.icon(
+            onPressed: creating || previewing || key == null || selected
+                ? null
+                : () => _useDefaultTemplate(template),
+            icon: creating
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    selected ? Icons.check_rounded : Icons.add_rounded,
+                    size: 17,
+                  ),
+            label: Text(
+              creating
+                  ? 'Preparando...'
+                  : selected
+                      ? 'Seleccionada'
+                      : 'Usar plantilla',
+            ),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(0, 34),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              visualDensity: VisualDensity.compact,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -328,7 +199,6 @@ extension _TemplateSelection on _PresupuestoTemplateEditorScreenState {
         _deletingTemplateId == selectedSavedTemplateId;
     return _card(
       title: 'Plantilla base',
-      subtitle: 'Opcional: parte de una plantilla guardada o crea una nueva.',
       icon: Icons.account_tree_outlined,
       trailing: widget.templateOnly
           ? TextButton.icon(

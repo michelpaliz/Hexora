@@ -28,6 +28,8 @@ class _PresupuestoTemplateEditorScreenState
   final _previewHorizontalScrollController = ScrollController();
   final Map<String, TextEditingController> _variables = {};
   final List<_TemplateSectionState> _sections = [];
+  final Map<String, bool> _sectionExpansionState = <String, bool>{};
+  String? _hoveredSectionKey;
   final List<_TemplateImageState> _images = [];
   final Set<String> _libraryImageBusySlots = <String>{};
   late final PresupuestoDocumentDraftFlow _documentFlow;
@@ -1656,9 +1658,6 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   Widget _buildImagesCard() => _TemplateImageEditor(this)._buildImagesCard();
-
-  Widget _buildDocumentActionsCard() =>
-      _TemplateDocumentPreview(this)._buildDocumentActionsCard();
 
   Widget _card({
     required String title,

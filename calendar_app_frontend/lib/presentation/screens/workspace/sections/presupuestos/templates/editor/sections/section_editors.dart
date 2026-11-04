@@ -2,30 +2,31 @@ part of '../../presupuesto_template_editor_screen.dart';
 
 extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
   Widget _buildSectionsCard() {
+    final theme = Theme.of(context);
     return _card(
       title: 'Secciones',
-      subtitle:
-          'Anade bloques al PDF, por ejemplo alcance, incluidos o condiciones.',
       icon: Icons.view_agenda_outlined,
       trailing: TextButton.icon(
         onPressed: _addSection,
-        icon: const Icon(Icons.add_rounded),
+        icon: const Icon(Icons.add_rounded, size: 18),
         label: const Text('Anadir seccion'),
+        style: TextButton.styleFrom(
+          minimumSize: const Size(0, 34),
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          visualDensity: VisualDensity.compact,
+        ),
       ),
       child: _sections.isEmpty
           ? Container(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(8),
                 color: _editorInsetBg(Theme.of(context)),
-                border: Border.all(
-                  color: _editorBorder(Theme.of(context)),
-                ),
               ),
               child: Row(
                 children: [
                   const Icon(Icons.notes_rounded),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Anade una seccion para explicar el servicio, lo incluido o las condiciones.',
@@ -35,25 +36,48 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
                 ],
               ),
             )
-          : ReorderableListView.builder(
-              shrinkWrap: true,
-              primary: false,
-              physics: const NeverScrollableScrollPhysics(),
-              buildDefaultDragHandles: false,
-              padding: EdgeInsets.zero,
-              itemCount: _sections.length,
-              onReorder: (oldIndex, newIndex) {
-                if (_sections[oldIndex].isPinned) return;
-                _updateEditorState(() {
-                  if (newIndex > oldIndex) newIndex -= 1;
-                  // Free sections can't be dropped below the pinned ones.
-                  final limit = _firstPinnedSectionIndex - 1;
-                  if (newIndex > limit) newIndex = limit;
-                  final section = _sections.removeAt(oldIndex);
-                  _sections.insert(newIndex, section);
-                });
-              },
-              itemBuilder: (context, i) => _sectionTile(_sections[i], i),
+          : DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: _editorBorder(theme, alpha: 0.55),
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(9),
+                child: ReorderableListView.builder(
+                  shrinkWrap: true,
+                  primary: false,
+                  physics: const NeverScrollableScrollPhysics(),
+                  buildDefaultDragHandles: false,
+                  padding: EdgeInsets.zero,
+                  itemCount: _sections.length,
+                  proxyDecorator: (child, index, animation) => AnimatedBuilder(
+                    animation: animation,
+                    child: child,
+                    builder: (context, child) => Material(
+                      elevation: 1.5 * animation.value,
+                      color: theme.colorScheme.surface,
+                      shadowColor:
+                          theme.colorScheme.shadow.withValues(alpha: 0.12),
+                      child: child,
+                    ),
+                  ),
+                  onReorder: (oldIndex, newIndex) {
+                    if (_sections[oldIndex].isPinned) return;
+                    _updateEditorState(() {
+                      if (newIndex > oldIndex) newIndex -= 1;
+                      // Free sections can't be dropped below the pinned ones.
+                      final limit = _firstPinnedSectionIndex - 1;
+                      if (newIndex > limit) newIndex = limit;
+                      final section = _sections.removeAt(oldIndex);
+                      _sections.insert(newIndex, section);
+                    });
+                  },
+                  itemBuilder: (context, i) => _sectionTile(_sections[i], i),
+                ),
+              ),
             ),
     );
   }
@@ -65,183 +89,209 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
             .where((controller) => controller.text.trim().isNotEmpty)
             .length +
         (section.generatedFrequency ? 2 : 0);
-    return Card(
+    final expanded = _sectionExpansionState[section.key] ?? index == 0;
+    final hovered = _hoveredSectionKey == section.key;
+    final muted = cs.onSurfaceVariant;
+    return MouseRegion(
       key: ValueKey('section_card_${section.key}'),
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 0,
-      color: _editorPanelBg(theme),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: _editorBorder(theme)),
-      ),
-      child: ExpansionTile(
-        expansionAnimationStyle: HexoraMotion.expansionStyle(context),
-        initiallyExpanded: index == 0,
-        title: Text(
-          section.title.text.trim().isEmpty
-              ? 'Seccion ${index + 1}'
-              : section.title.text,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        subtitle: Text(
-          section.isOptional
-              ? section.enabled
-                  ? '$itemsCount elementos · Incluida en el PDF'
-                  : 'Opcional · No se incluirá en el PDF'
-              : section.enabled
-                  ? '$itemsCount items activos'
-                  : 'Seccion desactivada',
-        ),
-        leading: section.isPinned
-            ? Tooltip(
-                message: section.pinnedRank == 2
-                    ? 'Posición fija: siempre la última sección'
-                    : 'Posición fija: siempre antes del anexo',
-                child: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: _editorSoftAccentBg(theme),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(
-                    Icons.lock_outline_rounded,
-                    size: 18,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              )
-            : ReorderableDragStartListener(
-                index: index,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.grab,
-                  child: Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: section.enabled
-                          ? cs.primary.withValues(alpha: 0.12)
-                          : _editorSoftAccentBg(theme),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      Icons.drag_indicator_rounded,
-                      color: section.enabled
-                          ? cs.primary
-                          : theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
+      onEnter: (_) => setState(() => _hoveredSectionKey = section.key),
+      onExit: (_) {
+        if (_hoveredSectionKey == section.key) {
+          setState(() => _hoveredSectionKey = null);
+        }
+      },
+      child: Column(
+        children: [
+          AnimatedContainer(
+            duration: HexoraMotion.duration(context, HexoraMotion.fast),
+            curve: HexoraMotion.enter,
+            decoration: BoxDecoration(
+              color: expanded
+                  ? cs.primary.withValues(alpha: 0.045)
+                  : hovered
+                      ? (_isDark(theme)
+                          ? cs.onSurface.withValues(alpha: 0.035)
+                          : const Color(0xFFF8FAFC))
+                      : Colors.transparent,
+              border: Border(
+                left: BorderSide(
+                  color: expanded ? cs.primary : Colors.transparent,
+                  width: 3,
                 ),
               ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (section.isOptional)
-              Tooltip(
-                message: section.enabled
-                    ? 'Quitar del presupuesto'
-                    : 'Incluir en el presupuesto',
-                child: Switch(
-                  key: ValueKey('section_enabled_${section.key}'),
-                  value: section.enabled,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  onChanged: (value) =>
-                      _updateEditorState(() => section.enabled = value),
-                ),
-              )
-            else
-              IconButton(
-                tooltip: section.enabled ? 'Desactivar' : 'Activar',
-                onPressed: () => _updateEditorState(
-                    () => section.enabled = !section.enabled),
-                icon: Icon(
-                  section.enabled
-                      ? Icons.toggle_on_rounded
-                      : Icons.toggle_off_outlined,
+            ),
+            child: ExpansionTile(
+              dense: true,
+              visualDensity: const VisualDensity(vertical: -2),
+              expansionAnimationStyle: HexoraMotion.expansionStyle(context),
+              initiallyExpanded: expanded,
+              onExpansionChanged: (value) => setState(
+                () => _sectionExpansionState[section.key] = value,
+              ),
+              shape: const Border(),
+              collapsedShape: const Border(),
+              backgroundColor: Colors.transparent,
+              collapsedBackgroundColor: Colors.transparent,
+              tilePadding: const EdgeInsets.only(left: 8, right: 4),
+              minTileHeight: 48,
+              title: Text(
+                section.title.text.trim().isEmpty
+                    ? 'Seccion ${index + 1}'
+                    : section.title.text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-            PopupMenuButton<String>(
-              tooltip: 'Más acciones',
-              icon: const Icon(Icons.more_vert_rounded),
-              onSelected: (value) {
-                switch (value) {
-                  case 'duplicate':
-                    _duplicateSection(index);
-                  case 'up':
-                    _moveSection(index, -1);
-                  case 'down':
-                    _moveSection(index, 1);
-                  case 'delete':
-                    _removeSection(index);
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'duplicate',
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    leading: Icon(Icons.copy_all_outlined),
-                    title: Text('Duplicar sección'),
-                  ),
+              subtitle: Text(
+                section.enabled
+                    ? '$itemsCount ${itemsCount == 1 ? 'elemento' : 'elementos'} · Incluida en el PDF'
+                    : '$itemsCount ${itemsCount == 1 ? 'elemento' : 'elementos'} · No incluida en el PDF',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: muted,
+                  fontSize: 11.5,
                 ),
-                PopupMenuItem(
-                  value: 'up',
-                  enabled: index != 0 && !section.isPinned,
-                  child: const ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    leading: Icon(Icons.arrow_upward_rounded),
-                    title: Text('Mover arriba'),
+              ),
+              leading: section.isPinned
+                  ? Tooltip(
+                      message: section.pinnedRank == 2
+                          ? 'Posición fija: siempre la última sección'
+                          : 'Posición fija: siempre antes del anexo',
+                      child: SizedBox.square(
+                        dimension: 32,
+                        child: Icon(
+                          Icons.lock_outline_rounded,
+                          size: 17,
+                          color: muted,
+                        ),
+                      ),
+                    )
+                  : ReorderableDragStartListener(
+                      index: index,
+                      child: _SectionDragHandle(colorScheme: cs),
+                    ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Semantics(
+                    label: section.enabled
+                        ? 'Sección incluida en el PDF'
+                        : 'Sección no incluida en el PDF',
+                    toggled: section.enabled,
+                    child: Tooltip(
+                      message: section.enabled
+                          ? 'Incluida en el PDF. Pulsa para ocultarla'
+                          : 'No incluida en el PDF. Pulsa para mostrarla',
+                      child: Switch(
+                        key: ValueKey('section_enabled_${section.key}'),
+                        value: section.enabled,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        onChanged: (value) => _updateEditorState(
+                          () => section.enabled = value,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                PopupMenuItem(
-                  value: 'down',
-                  enabled:
-                      !section.isPinned && index + 1 < _firstPinnedSectionIndex,
-                  child: const ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    leading: Icon(Icons.arrow_downward_rounded),
-                    title: Text('Mover abajo'),
+                  PopupMenuButton<String>(
+                    tooltip: 'Más acciones',
+                    icon: const Icon(Icons.more_vert_rounded, size: 20),
+                    padding: EdgeInsets.zero,
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'duplicate':
+                          _duplicateSection(index);
+                        case 'up':
+                          _moveSection(index, -1);
+                        case 'down':
+                          _moveSection(index, 1);
+                        case 'delete':
+                          _removeSection(index);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'duplicate',
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          leading: Icon(Icons.copy_all_outlined),
+                          title: Text('Duplicar sección'),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'up',
+                        enabled: index != 0 && !section.isPinned,
+                        child: const ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          leading: Icon(Icons.arrow_upward_rounded),
+                          title: Text('Mover arriba'),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'down',
+                        enabled: !section.isPinned &&
+                            index + 1 < _firstPinnedSectionIndex,
+                        child: const ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          leading: Icon(Icons.arrow_downward_rounded),
+                          title: Text('Mover abajo'),
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          leading: Icon(
+                            Icons.delete_outline_rounded,
+                            color: cs.error,
+                          ),
+                          title: Text(
+                            'Eliminar',
+                            style: TextStyle(color: cs.error),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
+                ],
+              ),
+              childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+              children: [
+                _field(
+                  section.title,
+                  'Titulo',
+                  maxLines: 2,
+                  hint: 'Ej. Alcance del servicio',
+                  markdown: true,
                 ),
-                const PopupMenuDivider(),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    leading:
-                        Icon(Icons.delete_outline_rounded, color: cs.error),
-                    title: Text('Eliminar', style: TextStyle(color: cs.error)),
-                  ),
+                _field(
+                  section.body,
+                  'Texto',
+                  maxLines: 6,
+                  minLines: 4,
+                  hint: 'Explica esta parte del presupuesto con claridad.',
+                  markdown: true,
                 ),
+                _sectionItemsEditor(section),
+                if (section.table != null) _sectionTableEditor(section.table!),
               ],
             ),
-          ],
-        ),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        children: [
-          _field(
-            section.title,
-            'Titulo',
-            maxLines: 2,
-            hint: 'Ej. Alcance del servicio',
-            markdown: true,
           ),
-          _field(
-            section.body,
-            'Texto',
-            maxLines: 6,
-            minLines: 4,
-            hint: 'Explica esta parte del presupuesto con claridad.',
-            markdown: true,
-          ),
-          _sectionItemsEditor(section),
-          if (section.table != null) _sectionTableEditor(section.table!),
+          if (index < _sections.length - 1)
+            Divider(
+              height: 1,
+              indent: 12,
+              endIndent: 12,
+              color: _editorBorder(theme, alpha: 0.5),
+            ),
         ],
       ),
     );
@@ -586,6 +636,48 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SectionDragHandle extends StatefulWidget {
+  const _SectionDragHandle({required this.colorScheme});
+
+  final ColorScheme colorScheme;
+
+  @override
+  State<_SectionDragHandle> createState() => _SectionDragHandleState();
+}
+
+class _SectionDragHandleState extends State<_SectionDragHandle> {
+  bool _hovered = false;
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = _hovered || _pressed;
+    return MouseRegion(
+      cursor: _pressed ? SystemMouseCursors.grabbing : SystemMouseCursors.grab,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Listener(
+        onPointerDown: (_) => setState(() => _pressed = true),
+        onPointerUp: (_) => setState(() => _pressed = false),
+        onPointerCancel: (_) => setState(() => _pressed = false),
+        child: Tooltip(
+          message: 'Arrastrar para reordenar',
+          child: SizedBox.square(
+            dimension: 32,
+            child: Icon(
+              Icons.drag_indicator_rounded,
+              size: 18,
+              color: active
+                  ? widget.colorScheme.primary
+                  : widget.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+            ),
+          ),
+        ),
       ),
     );
   }

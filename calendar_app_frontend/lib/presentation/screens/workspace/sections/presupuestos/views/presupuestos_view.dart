@@ -19,6 +19,7 @@ import 'package:hexora/presentation/screens/workspace/sections/presupuestos/util
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/conversion/presupuesto_advance_final_flow.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/documents/presupuesto_document_workspace.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/json_import_service.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/prompt_clipboard_helper.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
@@ -50,7 +51,16 @@ enum BudgetSortBy { date, number }
 
 enum BudgetSortDir { asc, desc }
 
-enum _BudgetColumnSort { number, client, status, date, base, vat, total }
+enum _BudgetColumnSort {
+  number,
+  client,
+  status,
+  delivery,
+  date,
+  base,
+  vat,
+  total,
+}
 
 class _BudgetRange {
   const _BudgetRange({this.min, this.max});
@@ -143,6 +153,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   String _budgetNumberFilter = '';
   Set<String> _budgetClientFilters = {};
   Set<String> _budgetStatusFilters = {};
+  Set<String> _budgetDeliveryFilters = {};
   DateTime? _budgetFromDate;
   DateTime? _budgetToDate;
   _BudgetRange _budgetBaseRange = const _BudgetRange();
@@ -152,6 +163,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   bool _budgetSortAscending = false;
   static const _budgetAvailableColumns = {
     HexoraFinancialColumn.date,
+    HexoraFinancialColumn.concept,
     HexoraFinancialColumn.taxableBase,
     HexoraFinancialColumn.vat,
     HexoraFinancialColumn.total,
@@ -204,6 +216,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   List<int>? _previewPdfBytes;
   String? _previewForId;
   bool _loadingDetailPreview = false;
+  int _detailPreviewRequestSerial = 0;
   String? _detailPreviewError;
   List<int>? _detailPreviewPdfBytes;
   String? _detailPreviewForId;
@@ -543,6 +556,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   }
 
   void _releaseDetailPreviewSurface() {
+    _detailPreviewRequestSerial++;
     _loadingDetailPreview = false;
     _detailPreviewError = null;
     _detailPreviewPdfBytes = null;
@@ -713,7 +727,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   void initState() {
     super.initState();
     HexoraColumnVisibilityStore.load(
-      'presupuestos',
+      'presupuestos_description_v1',
       _budgetAvailableColumns,
     ).then((value) {
       if (mounted) setState(() => _budgetVisibleColumns = value);
@@ -1208,16 +1222,78 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   }
 
   num? _budgetBaseAmount(Map<String, dynamic> item) {
+    final calculated = _budgetLineFinancials(item);
+    if (calculated != null) return calculated.base;
+    final totals = item['totals'];
     final candidates = <dynamic>[
       item['subtotal'],
       item['baseAmount'],
       item['taxableBase'],
+      if (totals is Map) totals['subtotal'],
+      if (totals is Map) totals['base'],
+      if (totals is Map) totals['taxableBase'],
     ];
     for (final value in candidates) {
       if (value is num) return value;
       final parsed =
           num.tryParse((value ?? '').toString().trim().replaceAll(',', '.'));
       if (parsed != null) return parsed;
+    }
+    return null;
+  }
+
+  ({num base, num vat})? _budgetLineFinancials(
+    Map<String, dynamic> item,
+  ) {
+    num? parseNum(dynamic value) {
+      if (value is num) return value;
+      final text = value?.toString().trim() ?? '';
+      if (text.isEmpty) return null;
+      return num.tryParse(text.replaceAll(',', '.'));
+    }
+
+    for (final rawGroup in <dynamic>[item['lines'], item['blocks']]) {
+      if (rawGroup is! List || rawGroup.isEmpty) continue;
+      num baseTotal = 0;
+      num vatTotal = 0;
+      var hasFinancialValues = false;
+      for (final raw in rawGroup.whereType<Map>()) {
+        if (raw['isBillable'] == false) continue;
+        final quantity = parseNum(raw['quantity'] ?? raw['qty']) ?? 1;
+        final unitPrice = parseNum(
+          raw['unitPrice'] ?? raw['price'] ?? raw['unit_price'],
+        );
+        final discount = (parseNum(
+                  raw['discountRate'] ?? raw['discountPercent'],
+                ) ??
+                0)
+            .clamp(0, 100);
+        final taxRate = parseNum(
+              raw['taxRate'] ?? raw['tax'] ?? raw['vat'] ?? raw['iva'],
+            ) ??
+            0;
+        final explicitBase = parseNum(raw['lineSubtotal']);
+        final explicitVat = parseNum(raw['lineTax']);
+        final explicitTotal = parseNum(raw['lineTotal'] ?? raw['total']);
+
+        num? base = explicitBase;
+        if (base == null && unitPrice != null) {
+          base = quantity * unitPrice * (1 - discount / 100);
+        } else if (base == null && explicitTotal != null) {
+          base = taxRate == 0
+              ? explicitTotal
+              : explicitTotal / (1 + taxRate / 100);
+        }
+        if (base == null) continue;
+        final vat = explicitVat ??
+            (explicitTotal != null
+                ? explicitTotal - base
+                : base * taxRate / 100);
+        baseTotal += base;
+        vatTotal += vat;
+        hasFinancialValues = true;
+      }
+      if (hasFinancialValues) return (base: baseTotal, vat: vatTotal);
     }
     return null;
   }
@@ -1295,6 +1371,39 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     return l.unknownClient;
   }
 
+  String _budgetDescription(Map<String, dynamic> item) {
+    String clean(dynamic value) => (value ?? '').toString().trim();
+    for (final key in const ['description', 'concept', 'subject', 'title']) {
+      final value = clean(item[key]);
+      if (value.isNotEmpty) return value;
+    }
+    for (final key in const ['lines', 'blocks', 'items']) {
+      final rows = item[key];
+      if (rows is! List) continue;
+      final descriptions = <String>[];
+      for (final raw in rows.whereType<Map>()) {
+        final row = Map<String, dynamic>.from(raw);
+        for (final field in const [
+          'conceptTitle',
+          'description',
+          'title',
+          'concept',
+          'name',
+          'text',
+        ]) {
+          final value = clean(row[field]);
+          if (value.isNotEmpty && !descriptions.contains(value)) {
+            descriptions.add(value);
+            break;
+          }
+        }
+        if (descriptions.length == 2) break;
+      }
+      if (descriptions.isNotEmpty) return descriptions.join(' · ');
+    }
+    return '-';
+  }
+
   List<String> _missingClientBillingFieldsForBudget(Map<String, dynamic> item) {
     final clientId = (item['clientId'] ?? '').toString().trim();
     if (clientId.isEmpty) return const <String>[];
@@ -1332,11 +1441,14 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
           fallback;
     }
 
+    final totals = item['totals'];
     final candidates = <dynamic>[
       item['total'],
       item['grandTotal'],
       item['amountTotal'],
-      item['subtotal'],
+      if (totals is Map) totals['total'],
+      if (totals is Map) totals['grandTotal'],
+      if (totals is Map) totals['amount'],
     ];
     for (final value in candidates) {
       if (value is num) return value;
@@ -1344,6 +1456,9 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
           num.tryParse((value ?? '').toString().replaceAll(',', '.'));
       if (parsed != null) return parsed;
     }
+
+    final calculated = _budgetLineFinancials(item);
+    if (calculated != null) return calculated.base + calculated.vat;
 
     final lines = item['lines'];
     if (lines is List && lines.isNotEmpty) {
@@ -1390,7 +1505,9 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       if (sum > 0) return sum;
     }
 
-    return 0;
+    final subtotal = parseNum(item['subtotal']);
+    final taxTotal = parseNum(item['taxTotal']);
+    return subtotal + taxTotal;
   }
 
   // ignore: unused_element
@@ -2189,7 +2306,15 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   }
 
   num _budgetVatAmount(Map<String, dynamic> item) {
-    final direct = item['taxTotal'] ?? item['tax'] ?? item['iva'];
+    final calculated = _budgetLineFinancials(item);
+    if (calculated != null) return calculated.vat;
+    final totals = item['totals'];
+    final direct = item['taxTotal'] ??
+        item['tax'] ??
+        item['iva'] ??
+        (totals is Map
+            ? totals['taxTotal'] ?? totals['tax'] ?? totals['iva']
+            : null);
     if (direct is num) return direct;
     final parsed = num.tryParse((direct ?? '').toString().replaceAll(',', '.'));
     if (parsed != null) return parsed;
@@ -2221,6 +2346,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       _budgetNumberFilter.isNotEmpty ||
       _budgetClientFilters.isNotEmpty ||
       _budgetStatusFilters.isNotEmpty ||
+      _budgetDeliveryFilters.isNotEmpty ||
       _budgetFromDate != null ||
       _budgetToDate != null ||
       _budgetBaseRange.active ||
@@ -2232,6 +2358,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         _budgetNumberFilter = '';
         _budgetClientFilters = {};
         _budgetStatusFilters = {};
+        _budgetDeliveryFilters = {};
         _budgetFromDate = null;
         _budgetToDate = null;
         _budgetBaseRange = const _BudgetRange();
@@ -2271,6 +2398,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         CompactDocumentColumn.identity => _BudgetColumnSort.number,
         CompactDocumentColumn.client => _BudgetColumnSort.client,
         CompactDocumentColumn.status => _BudgetColumnSort.status,
+        CompactDocumentColumn.delivery => _BudgetColumnSort.delivery,
         CompactDocumentColumn.date => _BudgetColumnSort.date,
         CompactDocumentColumn.taxableBase => _BudgetColumnSort.base,
         CompactDocumentColumn.vat => _BudgetColumnSort.vat,
@@ -2281,7 +2409,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         CompactDocumentColumn.identity => _budgetNumberFilter.isNotEmpty,
         CompactDocumentColumn.client => _budgetClientFilters.isNotEmpty,
         CompactDocumentColumn.status => _budgetStatusFilters.isNotEmpty,
-        CompactDocumentColumn.delivery => false,
+        CompactDocumentColumn.delivery => _budgetDeliveryFilters.isNotEmpty,
         CompactDocumentColumn.date =>
           _budgetFromDate != null || _budgetToDate != null,
         CompactDocumentColumn.taxableBase => _budgetBaseRange.active,
@@ -2299,7 +2427,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
           case CompactDocumentColumn.status:
             _budgetStatusFilters = {};
           case CompactDocumentColumn.delivery:
-            break;
+            _budgetDeliveryFilters = {};
           case CompactDocumentColumn.date:
             _budgetFromDate = null;
             _budgetToDate = null;
@@ -2337,6 +2465,11 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       ..sort();
     final statuses =
         _budgets.map(_normalizedBudgetStatus).toSet().toList(growable: false);
+    final deliveryStatuses = _budgets
+        .map((item) =>
+            normalizedDeliveryStatus(item['deliveryStatus']?.toString()))
+        .toSet()
+        .toList(growable: false);
     Widget filter = const SizedBox.shrink();
     if (column == CompactDocumentColumn.identity) {
       filter = TextFormField(
@@ -2369,6 +2502,13 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         selected: _budgetStatusFilters,
         labelFor: _budgetStatusLabel,
         onChanged: (value) => setState(() => _budgetStatusFilters = value),
+      );
+    } else if (column == CompactDocumentColumn.delivery) {
+      filter = HexoraMultiSelectFilter(
+        values: deliveryStatuses,
+        selected: _budgetDeliveryFilters,
+        labelFor: (value) => deliveryStatusLabel(value),
+        onChanged: (value) => setState(() => _budgetDeliveryFilters = value),
       );
     } else if (column == CompactDocumentColumn.date) {
       filter = Wrap(spacing: 6, runSpacing: 6, children: [
@@ -2449,7 +2589,9 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         final searchable = [
           _budgetNumber(item),
           client,
+          _budgetDescription(item),
           _budgetStatusLabel(_normalizedBudgetStatus(item)),
+          deliveryStatusLabel(item['deliveryStatus']?.toString()),
           _budgetTotal(item).toString(),
         ].join(' ').toLowerCase();
         if (!searchable.contains(query)) return false;
@@ -2466,6 +2608,12 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       }
       if (_budgetStatusFilters.isNotEmpty &&
           !_budgetStatusFilters.contains(_normalizedBudgetStatus(item))) {
+        return false;
+      }
+      if (_budgetDeliveryFilters.isNotEmpty &&
+          !_budgetDeliveryFilters.contains(
+            normalizedDeliveryStatus(item['deliveryStatus']?.toString()),
+          )) {
         return false;
       }
       final date = _budgetDate(item);
@@ -2499,6 +2647,11 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
               .compareTo(_budgetClientName(b, l).toLowerCase()),
           _BudgetColumnSort.status =>
             _normalizedBudgetStatus(a).compareTo(_normalizedBudgetStatus(b)),
+          _BudgetColumnSort.delivery => normalizedDeliveryStatus(
+              a['deliveryStatus']?.toString(),
+            ).compareTo(
+              normalizedDeliveryStatus(b['deliveryStatus']?.toString()),
+            ),
           _BudgetColumnSort.date => (_budgetDate(a) ?? DateTime(9999))
               .compareTo(_budgetDate(b) ?? DateTime(9999)),
           _BudgetColumnSort.base =>
@@ -2530,10 +2683,9 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     final filteredIssuedBudgets = _filteredBudgets(issuedBudgets, l);
     final activeList =
         _budgetsTabIndex == 0 ? filteredDrafts : filteredIssuedBudgets;
-    // Same width on every row so totals align whether or not a row is a draft.
-    // Every document has one compact primary action; secondary actions stay
-    // in overflow so the column remains stable across statuses.
-    final primaryActionWidth = activeList.isEmpty ? 0.0 : 84.0;
+    // Only drafts need the labelled Emitir action. Issued rows use the shared
+    // compact preview icon, avoiding a duplicate eye + Ver control.
+    final primaryActionWidth = activeList.any(_isDraftBudget) ? 84.0 : 0.0;
     final selected = activeList.cast<Map<String, dynamic>?>().firstWhere(
           (e) =>
               _budgetId(e ?? const {}).trim() ==
@@ -2595,6 +2747,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       };
       final number = _budgetNumber(item).trim();
       final hasNumber = number.isNotEmpty && number != '-';
+      final description = _budgetDescription(item);
       void selectBudget() {
         setState(() => _selectedBudgetId = id);
         _loadDetailPreviewPdf(id);
@@ -2604,6 +2757,15 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         icon: Icons.request_quote_outlined,
         title: hasNumber ? number : statusLabel,
         metadata: _budgetClientName(item, l),
+        concept: Tooltip(
+          message: description,
+          child: Text(
+            description,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
         amount: totalLabel,
         date: date,
         taxableBase: _budgetBaseAmount(item),
@@ -2614,6 +2776,13 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         previewLabel: _isSpanishLocale ? 'Vista previa' : 'Preview',
         status: HexoraStatusBadge.document(context,
             status: documentStatus, label: statusLabel),
+        showDeliveryColumn: true,
+        delivery: DeliveryStatusBadge(
+          status: item['deliveryStatus']?.toString(),
+          channel: item['deliveryChannel']?.toString(),
+          sentAt: DateTime.tryParse(item['sentAt']?.toString() ?? ''),
+          deliveryError: item['deliveryError']?.toString(),
+        ),
         primaryActionWidth: primaryActionWidth,
         primaryAction: isDraft
             ? Tooltip(
@@ -2633,14 +2802,17 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                   variant: HexoraButtonVariant.primary,
                 ),
               )
-            : HexoraButton(
-                onPressed: selectBudget,
-                icon: Icons.visibility_outlined,
-                label: _isSpanishLocale ? 'Ver' : 'View',
-                size: HexoraButtonSize.compact,
-                variant: HexoraButtonVariant.ghost,
-              ),
-        quickActionSlots: 0,
+            : null,
+        quickActionSlots: 1,
+        quickActions: [
+          CompactDocumentQuickAction(
+            icon: Icons.visibility_outlined,
+            tooltip: _isSpanishLocale ? 'Vista previa' : 'Preview',
+            onPressed: selectBudget,
+            busy: selectedRow && _loadingDetailPreview,
+            opensPreviewDrawer: true,
+          ),
+        ],
         actions: [
           if (isDraft && widget.onEditDraftBudget != null)
             CompactDocumentAction(
@@ -2910,11 +3082,14 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                             icon: Icons.filter_alt_off_outlined,
                           ),
                         HexoraColumnVisibilityMenu(
-                          moduleKey: 'presupuestos',
+                          moduleKey: 'presupuestos_description_v1',
                           availableColumns: _budgetAvailableColumns,
                           visibleColumns: _budgetVisibleColumns,
                           onChanged: (value) =>
                               setState(() => _budgetVisibleColumns = value),
+                          columnLabels: const {
+                            HexoraFinancialColumn.concept: 'Descripción',
+                          },
                         ),
                         toolbarIconButton(
                           tooltip: l.refreshAction,
@@ -2941,9 +3116,13 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                       activeList.isNotEmpty)
                     CompactDocumentTableHeader(
                       identityLabel: 'Presupuesto',
+                      conceptLabel: 'Descripción',
                       visibleFinancialColumns: _budgetVisibleColumns,
-                      actionsWidth: primaryActionWidth + 36,
-                      previewActionInFullView: false,
+                      // Labelled action + preview + overflow, using the same
+                      // compact slots as invoice and receipt rows.
+                      actionsWidth: primaryActionWidth + 80,
+                      previewActionInFullView: true,
+                      showDeliveryColumn: true,
                       headerBuilder: _budgetHeader,
                     ),
                   Expanded(

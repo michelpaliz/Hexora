@@ -246,7 +246,7 @@ extension _GroupInvoicesBudgetsViewFlowSection
       return;
     }
     if (_detailPreviewForId == id && _detailPreviewPdfBytes != null) return;
-    if (_loadingDetailPreview) return;
+    final requestSerial = ++_detailPreviewRequestSerial;
     setState(() {
       _loadingDetailPreview = true;
       _detailPreviewError = null;
@@ -255,19 +255,19 @@ extension _GroupInvoicesBudgetsViewFlowSection
     try {
       final r = await _presupuestosApi.previewPdf(id);
       final bytes = InvoiceEditorPdf.validatePdf(r);
-      if (!mounted) return;
+      if (!mounted || requestSerial != _detailPreviewRequestSerial) return;
       setState(() {
         _detailPreviewPdfBytes = bytes;
         _detailPreviewForId = id;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || requestSerial != _detailPreviewRequestSerial) return;
       setState(() {
         _detailPreviewError =
             e.toString().replaceFirst('Exception: ', '').trim();
       });
     } finally {
-      if (mounted) {
+      if (mounted && requestSerial == _detailPreviewRequestSerial) {
         setState(() => _loadingDetailPreview = false);
       }
     }

@@ -14,15 +14,12 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
                 final activeStep = steps.isEmpty
                     ? 0
                     : _activeStep.clamp(0, steps.length - 1).toInt();
-                final previewColumn = <Widget>[
-                  _buildLivePreviewCard(),
-                  if (!widget.templateOnly) _buildDocumentActionsCard(),
-                ];
+                final previewColumn = <Widget>[_buildLivePreviewCard()];
                 final leftPane = ListView(
                   padding: EdgeInsets.zero,
                   children: [
                     _buildHero(theme),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 4),
                     _buildStepSelector(steps, activeStep),
                     if (steps.isNotEmpty) ...steps[activeStep].children,
                     if (!wide) ...previewColumn,
@@ -33,7 +30,7 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(flex: 7, child: leftPane),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 12),
                           Expanded(
                             flex: 5,
                             child: ListView(
@@ -50,9 +47,9 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
                     constraints: BoxConstraints(maxWidth: wide ? 1800 : 1480),
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(
-                        wide ? 24 : 12,
-                        wide ? 16 : 12,
-                        wide ? 24 : 12,
+                        wide ? 20 : 12,
+                        wide ? 10 : 8,
+                        wide ? 20 : 12,
                         0,
                       ),
                       child: Column(children: [
@@ -94,21 +91,11 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
   Widget _buildStepSelector(List<_EditorStep> steps, int activeStep) {
     final theme = Theme.of(context);
     if (steps.isEmpty) return const SizedBox.shrink();
-    final step = steps[activeStep];
     return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildStepper(theme, steps, activeStep),
-          const SizedBox(height: 12),
-          Text(
-            step.subtitle,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Semantics(
+        label: steps[activeStep].subtitle,
+        child: _buildStepper(theme, steps, activeStep),
       ),
     );
   }
@@ -130,6 +117,7 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
       currentStep: activeStep,
       onStepTapped: (index) => _updateEditorState(() => _activeStep = index),
       itemKeyBuilder: (_, step) => ValueKey('editor_step_${step.label}'),
+      compactConnectors: true,
     );
   }
 
@@ -154,10 +142,10 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
       children: [
         Icon(
           Icons.cloud_done_outlined,
-          size: 18,
+          size: 16,
           color: theme.colorScheme.primary,
         ),
-        const SizedBox(width: 9),
+        const SizedBox(width: 6),
         Flexible(
           child: Text(
             footerText,
@@ -230,10 +218,10 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
             softWrap: false,
           ),
           style: FilledButton.styleFrom(
-            minimumSize: const Size(0, 46),
-            padding: const EdgeInsets.symmetric(horizontal: 22),
+            minimumSize: const Size(0, 36),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(10),
             ),
             textStyle: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w800,
@@ -247,125 +235,57 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
         if (createFromTemplateButton != null) createFromTemplateButton,
       ],
       primary: primaryButton(compact: true),
+      compact: true,
     );
   }
 
   Widget _buildHero(ThemeData theme) {
     final title = widget.templateOnly ? 'Plantilla PDF' : 'Presupuesto PDF';
-    final subtitle = widget.templateOnly
-        ? 'Crea una base simple para generar presupuestos con cliente, precio, secciones e imagenes.'
-        : 'Crea un presupuesto borrador con cliente, precio, secciones e imagenes.';
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          colors: _isDark(theme)
-              ? const [Color(0xFF173653), Color(0xFF101A28)]
-              : [
-                  theme.colorScheme.primary.withValues(alpha: 0.12),
-                  theme.colorScheme.surfaceContainerHighest.withValues(
-                    alpha: 0.92,
-                  ),
-                ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return Row(
+      children: [
+        Icon(
+          widget.templateOnly
+              ? Icons.auto_awesome_motion_outlined
+              : Icons.description_outlined,
+          size: 20,
+          color: theme.colorScheme.primary,
         ),
-        border: Border.all(
-          color: _editorBorder(theme, alpha: 0.82),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  widget.templateOnly
-                      ? Icons.auto_awesome_motion_rounded
-                      : Icons.description_outlined,
-                  color: theme.colorScheme.onPrimary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        height: 1.1,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w800,
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (_selectedDefaultTemplate != null)
-                _heroChip(
-                  theme,
-                  icon: Icons.account_tree_outlined,
-                  label: _string(_selectedDefaultTemplate!['name']) ??
-                      'Tipo seleccionado',
-                ),
-              _heroChip(
-                theme,
-                icon: Icons.person_outline_rounded,
-                label: _variableValue('CLIENTE').isEmpty
-                    ? 'Cliente'
-                    : _variableValue('CLIENTE'),
-              ),
-              _heroChip(
-                theme,
-                icon: Icons.euro_rounded,
-                label: _primaryPriceValue().isEmpty
-                    ? 'Precio'
-                    : _primaryPriceValue(),
-              ),
-              _heroChip(
-                theme,
-                icon: Icons.segment_rounded,
-                label: '${_sections.length} secciones',
-              ),
-              if (_images.isNotEmpty)
-                _heroChip(
-                  theme,
-                  icon: Icons.photo_library_outlined,
-                  label:
-                      '${_images.where((img) => img.url.trim().isNotEmpty).length}/${_images.length} imagenes',
-                ),
-            ],
+        ),
+        const SizedBox(width: 10),
+        if (_selectedDefaultTemplate != null)
+          Flexible(
+            child: _heroChip(
+              theme,
+              icon: Icons.account_tree_outlined,
+              label: _string(_selectedDefaultTemplate!['name']) ??
+                  'Tipo seleccionado',
+            ),
+          ),
+        const Spacer(),
+        Text(
+          '${_sections.length} secciones',
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        if (_images.isNotEmpty) ...[
+          const SizedBox(width: 8),
+          Text(
+            '${_images.where((image) => image.url.trim().isNotEmpty).length}/${_images.length} imagenes',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
-      ),
+      ],
     );
   }
 
@@ -375,25 +295,24 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
     required String label,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: _isDark(theme)
-            ? const Color(0xFF0B1624).withValues(alpha: 0.86)
-            : theme.colorScheme.surface.withValues(alpha: 0.78),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _editorBorder(theme, alpha: 0.8),
-        ),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 15, color: theme.colorScheme.primary),
           const SizedBox(width: 6),
-          Text(
-            label,
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w700,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],

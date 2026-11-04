@@ -209,7 +209,6 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
         priceKey == null ? null : _buildVariableInput(priceDefinition!);
     return _card(
       title: 'Datos del presupuesto',
-      subtitle: 'Nombre, cliente e importe.',
       icon: Icons.edit_note_rounded,
       child: Column(
         children: [
