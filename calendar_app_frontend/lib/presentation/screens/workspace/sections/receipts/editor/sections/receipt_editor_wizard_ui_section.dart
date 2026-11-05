@@ -187,12 +187,12 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
         cityController: _clientCityCtrl,
         postalCodeController: _clientPostalCodeCtrl,
         nameLabel: isEs ? 'Nombre del cliente' : 'Client name',
-        addressLabel: isEs ? 'Dirección' : 'Address',
+        addressLabel: isEs ? 'Dirección *' : 'Address *',
         cityLabel: isEs ? 'Ciudad' : 'City',
-        postalCodeLabel: isEs ? 'CP' : 'Postal code',
+        postalCodeLabel: isEs ? 'CP *' : 'Postal code *',
         helperText: isEs
-            ? 'La dirección, ciudad y CP son opcionales y solo se usan en este recibo.'
-            : 'Address, city, and postal code are optional and only used for this receipt.',
+            ? 'La dirección y el CP son obligatorios y solo se usan en este recibo.'
+            : 'Address and postal code are required and only used for this receipt.',
         onChanged: () => setState(_markDraftDirty),
       ),
       existingLabel: isEs ? 'Existente' : 'Existing',

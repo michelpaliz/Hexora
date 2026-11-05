@@ -151,7 +151,9 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
       return null;
     }
     if (!allowEmptyLines && !_validateReceiptLineValues()) return null;
-    if (_savingDraft) return _draftReceipt;
+    // Ignore re-entrant saves so a rapid second click cannot close the editor
+    // using stale draft data while the current request is still in flight.
+    if (_savingDraft) return null;
 
     setState(() => _savingDraft = true);
     try {
@@ -160,7 +162,7 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
         groupId: widget.group.id,
         clientId: _useManualClient ? '' : _clientId!,
         clientName: _useManualClient ? _clientNameCtrl.text.trim() : null,
-        clientSnapshot: _manualClientSnapshot,
+        clientSnapshot: _receiptClientSnapshot,
         status: 'draft',
         issueDate: _issueDate,
         notes: _notesCtrl.text.trim(),

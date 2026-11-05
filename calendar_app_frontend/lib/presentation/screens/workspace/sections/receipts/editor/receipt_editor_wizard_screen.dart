@@ -228,23 +228,53 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
   }
 
   bool get _hasClient => _useManualClient
-      ? _clientNameCtrl.text.trim().isNotEmpty
+      ? _clientNameCtrl.text.trim().isNotEmpty &&
+          _clientAddressCtrl.text.trim().isNotEmpty &&
+          _clientPostalCodeCtrl.text.trim().isNotEmpty
       : _clientId != null && _clientId!.trim().isNotEmpty;
   bool get _hasLines => _lines.any((line) => line.hasAnyValue);
 
-  ClientBilling? get _manualClientSnapshot {
-    if (!_useManualClient) return null;
+  ClientBilling? get _receiptClientSnapshot {
     String? optionalText(TextEditingController controller) {
       final value = controller.text.trim();
       return value.isEmpty ? null : value;
     }
 
+    if (_useManualClient) {
+      return ClientBilling(
+        legalName: optionalText(_clientNameCtrl),
+        addressStreet: optionalText(_clientAddressCtrl),
+        addressCity: optionalText(_clientCityCtrl),
+        addressPostalCode: optionalText(_clientPostalCodeCtrl),
+        documentType: 'receipt',
+      );
+    }
+
+    final client = _selectedClient;
+    if (client == null) return null;
+    final billing = client.billing;
+    String? clean(String? value) {
+      final trimmed = value?.trim() ?? '';
+      return trimmed.isEmpty ? null : trimmed;
+    }
+
+    // Persist the exact client data used to render this receipt. Relying only
+    // on clientId leaves the PDF renderer without address fields on backends
+    // that do not populate the complete client record during preview.
     return ClientBilling(
-      legalName: optionalText(_clientNameCtrl),
-      addressStreet: optionalText(_clientAddressCtrl),
-      addressCity: optionalText(_clientCityCtrl),
-      addressPostalCode: optionalText(_clientPostalCodeCtrl),
+      legalName: clean(billing?.legalName) ?? clean(client.name),
+      taxId: clean(billing?.taxId),
+      addressStreet: clean(billing?.addressStreet),
+      addressExtra: clean(billing?.addressExtra),
+      addressCity: clean(billing?.addressCity),
+      addressProvince: clean(billing?.addressProvince),
+      addressPostalCode: clean(billing?.addressPostalCode),
+      addressCountry: clean(billing?.addressCountry),
+      email: clean(billing?.email) ?? clean(client.email),
+      phone: clean(billing?.phone) ?? clean(client.phone),
+      isComplete: billing?.isComplete,
       documentType: 'receipt',
+      updatedAt: billing?.updatedAt,
     );
   }
 

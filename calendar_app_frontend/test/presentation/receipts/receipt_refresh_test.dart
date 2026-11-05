@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/invoice/client_billing.dart';
 import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/services/auth/token/i_token_store.dart';
 import 'package:hexora/services/auth/token/token_service.dart';
@@ -63,6 +64,48 @@ void main() {
         }).total,
         302);
     expect(Receipt.fromJson({}).total, isNull);
+  });
+  test('linked receipt payload preserves the complete client snapshot', () {
+    const snapshot = ClientBilling(
+      legalName: 'Marco Bundi',
+      taxId: 'X1234567A',
+      addressStreet: 'Calle Mayor 12',
+      addressCity: 'Dénia',
+      addressPostalCode: '03700',
+      email: 'marco@example.com',
+      phone: '600000000',
+      documentType: 'receipt',
+    );
+    const receipt = Receipt(
+      id: '',
+      groupId: 'group',
+      clientId: 'client',
+      clientSnapshot: snapshot,
+    );
+
+    final payload = receipt.toCreatePayload();
+
+    expect(payload['clientId'], 'client');
+    expect(payload['clientSnapshot'], snapshot.toJson());
+  });
+  test('manual receipt payload preserves address when created and edited', () {
+    const snapshot = ClientBilling(
+      legalName: 'Marco Bundi',
+      addressStreet: 'Calle Mayor 12',
+      addressCity: 'Denia',
+      addressPostalCode: '03700',
+      documentType: 'receipt',
+    );
+    const receipt = Receipt(
+      id: 'receipt',
+      groupId: 'group',
+      clientId: '',
+      clientName: 'Marco Bundi',
+      clientSnapshot: snapshot,
+    );
+
+    expect(receipt.toCreatePayload()['clientSnapshot'], snapshot.toJson());
+    expect(receipt.toUpdatePayload()['clientSnapshot'], snapshot.toJson());
   });
   testWidgets('returning from receipt edit refreshes list and selected detail',
       (tester) async {
