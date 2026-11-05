@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
+import 'package:hexora/models/invoice/client_billing.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/models/receipt/receipt_line.dart';
@@ -57,6 +58,9 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
   final _receiptsApi = ReceiptsApi();
   final _notesCtrl = TextEditingController();
   final _clientNameCtrl = TextEditingController();
+  final _clientStreetCtrl = TextEditingController();
+  final _clientCityCtrl = TextEditingController();
+  final _clientPostalCtrl = TextEditingController();
   final List<ReceiptLineDraft> _lines = [];
 
   String? _clientId;
@@ -167,6 +171,12 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
     _clientNameCtrl.text = receipt.clientName ?? '';
     _useManualClient = (_clientId == null || _clientId!.trim().isEmpty) &&
         _clientNameCtrl.text.trim().isNotEmpty;
+    _clientStreetCtrl.text =
+        _useManualClient ? receipt.clientSnapshot?.addressStreet ?? '' : '';
+    _clientCityCtrl.text =
+        _useManualClient ? receipt.clientSnapshot?.addressCity ?? '' : '';
+    _clientPostalCtrl.text =
+        _useManualClient ? receipt.clientSnapshot?.addressPostalCode ?? '' : '';
     _issueDate = receipt.issueDate ?? DateTime.now();
     _draftReceipt = receipt;
     _notesCtrl.text = receipt.notes ?? '';
@@ -232,6 +242,9 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
   void dispose() {
     _notesCtrl.dispose();
     _clientNameCtrl.dispose();
+    _clientStreetCtrl.dispose();
+    _clientCityCtrl.dispose();
+    _clientPostalCtrl.dispose();
     for (final line in _lines) {
       line.dispose();
     }
@@ -239,7 +252,9 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
   }
 
   bool get _hasClient => _useManualClient
-      ? _clientNameCtrl.text.trim().isNotEmpty
+      ? _clientNameCtrl.text.trim().isNotEmpty &&
+          _clientStreetCtrl.text.trim().isNotEmpty &&
+          _clientPostalCtrl.text.trim().isNotEmpty
       : _clientId != null && _clientId!.trim().isNotEmpty;
   String get _resolvedClientName {
     if (_useManualClient) return _clientNameCtrl.text.trim();

@@ -233,6 +233,9 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
               _clientPastReceipts = [];
             } else {
               _clientNameCtrl.clear();
+              _clientStreetCtrl.clear();
+              _clientCityCtrl.clear();
+              _clientPostalCtrl.clear();
             }
             _markDraftDirty();
           });
@@ -292,6 +295,9 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
                       _useManualClient = false;
                       _clientId = value;
                       _clientNameCtrl.clear();
+                      _clientStreetCtrl.clear();
+                      _clientCityCtrl.clear();
+                      _clientPostalCtrl.clear();
                       _markDraftDirty();
                     });
                     _loadClientReceiptStats(value);
@@ -349,11 +355,45 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
                 setState(() => _markDraftDirty());
               },
             ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _clientStreetCtrl,
+              decoration: InputDecoration(
+                labelText: isEs ? 'Dirección *' : 'Address *',
+                prefixIcon: const Icon(Icons.home_outlined),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              onChanged: (_) => setState(_markDraftDirty),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _clientCityCtrl,
+              decoration: InputDecoration(
+                labelText: isEs ? 'Ciudad' : 'City',
+                prefixIcon: const Icon(Icons.location_city_outlined),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              onChanged: (_) => setState(_markDraftDirty),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _clientPostalCtrl,
+              decoration: InputDecoration(
+                labelText: isEs ? 'Código postal (C.P.) *' : 'Postal code *',
+                prefixIcon: const Icon(Icons.markunread_mailbox_outlined),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              onChanged: (_) => setState(_markDraftDirty),
+            ),
             const Spacer(),
             FilledButton.icon(
-              onPressed: _clientNameCtrl.text.trim().isEmpty
-                  ? null
-                  : () => _tryGoToStep(1),
+              onPressed: !_hasClient ? null : () => _tryGoToStep(1),
               icon: const Icon(Icons.arrow_forward_rounded, size: 18),
               label: Text(
                 isEs

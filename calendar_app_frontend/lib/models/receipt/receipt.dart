@@ -137,6 +137,15 @@ class Receipt {
           'clientName': clientName!.trim()
         else
           'clientId': clientId,
+        if (clientName != null &&
+            clientName!.trim().isNotEmpty &&
+            clientSnapshot != null)
+          'clientSnapshot': {
+            'addressStreet': clientSnapshot!.addressStreet?.trim() ?? '',
+            'addressCity': clientSnapshot!.addressCity?.trim() ?? '',
+            'addressPostalCode':
+                clientSnapshot!.addressPostalCode?.trim() ?? '',
+          },
         if (status != null) 'status': status,
         if (issueDate != null)
           'issueDate': issueDate!.toUtc().toIso8601String(),
@@ -148,6 +157,13 @@ class Receipt {
         if (clientName != null && clientName!.trim().isNotEmpty) ...{
           'clientId': null,
           'clientName': clientName!.trim(),
+          if (clientSnapshot != null)
+            'clientSnapshot': {
+              'addressStreet': clientSnapshot!.addressStreet?.trim() ?? '',
+              'addressCity': clientSnapshot!.addressCity?.trim() ?? '',
+              'addressPostalCode':
+                  clientSnapshot!.addressPostalCode?.trim() ?? '',
+            },
         } else
           'clientId': clientId,
         if (status != null) 'status': status,

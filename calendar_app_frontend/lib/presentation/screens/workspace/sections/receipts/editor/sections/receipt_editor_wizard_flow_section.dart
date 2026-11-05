@@ -86,7 +86,27 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
       showInfoSnack(context, l.fieldIsRequired);
       return false;
     }
-    if (_step == 0 && !_hasClient) {
+    if (_useManualClient &&
+        _clientNameCtrl.text.trim().isNotEmpty &&
+        _clientStreetCtrl.text.trim().isEmpty) {
+      showInfoSnack(
+          context,
+          Localizations.localeOf(context).languageCode == 'es'
+              ? 'La dirección del cliente es obligatoria.'
+              : 'Client address is required.');
+      return false;
+    }
+    if (_useManualClient &&
+        _clientNameCtrl.text.trim().isNotEmpty &&
+        _clientPostalCtrl.text.trim().isEmpty) {
+      showInfoSnack(
+          context,
+          Localizations.localeOf(context).languageCode == 'es'
+              ? 'El código postal del cliente es obligatorio.'
+              : 'Client postal code is required.');
+      return false;
+    }
+    if (!_hasClient) {
       showInfoSnack(context, l.receiptClientRequired);
       return false;
     }
@@ -236,7 +256,7 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
       return null;
     }
     if (!allowEmptyLines && !_validateReceiptLineValues()) return null;
-    if (_savingDraft) return _draftReceipt;
+    if (_savingDraft) return null;
 
     setState(() => _savingDraft = true);
     try {
@@ -245,6 +265,13 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
         groupId: widget.group.id,
         clientId: _useManualClient ? '' : _clientId!,
         clientName: _useManualClient ? _clientNameCtrl.text.trim() : null,
+        clientSnapshot: _useManualClient
+            ? ClientBilling(
+                addressStreet: _clientStreetCtrl.text.trim(),
+                addressCity: _clientCityCtrl.text.trim(),
+                addressPostalCode: _clientPostalCtrl.text.trim(),
+              )
+            : null,
         status: 'draft',
         issueDate: _issueDate,
         notes: _notesCtrl.text.trim(),
@@ -324,10 +351,11 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
     }
   }
 
-  Future<void> _preparePreviewStep() async {
+  Future<bool> _preparePreviewStep() async {
     final draft = await _saveDraft(showSavedSnack: false);
-    if (draft == null || !mounted) return;
+    if (draft == null || !mounted) return false;
     await _loadDraftPreview(receiptId: draft.id);
+    return mounted;
   }
 
   Future<void> _tryGoToStep(int targetStep) async {
@@ -344,8 +372,7 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
     if (targetStep > _step + 1) return;
     if (!_validateCurrentStep()) return;
     if (targetStep == 2) {
-      await _preparePreviewStep();
-      if (!mounted) return;
+      if (!await _preparePreviewStep()) return;
     }
     setState(() {
       if (targetStep != 2) {
