@@ -1969,6 +1969,7 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
       providersError: _providersError,
       loading: _loadingProviders,
       onSelectProvider: selectProvider,
+      onRetry: loadProviders,
     );
     final linesEditor = ExpenseLinesEditor(
       lines: _lines,

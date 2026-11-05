@@ -33,6 +33,9 @@ class _ClientsApi extends ClientsApi {
       {String? groupId,
       String? search,
       bool? active,
+      String? customerType,
+      String? propertyRelationship,
+      String? propertyType,
       bool includeCurrentMonthInvoiceFlag = false,
       bool? missingCurrentMonthInvoice}) async {
     requestedGroup = groupId;

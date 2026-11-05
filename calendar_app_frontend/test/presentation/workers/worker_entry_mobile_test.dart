@@ -50,6 +50,7 @@ void main() {
               ActionsSection(
                   l: AppLocalizations.of(context)!,
                   saving: false,
+                  onCancel: () {},
                   onSave: () => saved = true),
             ]),
           ));

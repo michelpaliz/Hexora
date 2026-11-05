@@ -253,6 +253,275 @@ num? presupuestoDocumentAmount(Map<String, dynamic> document) {
   return zeroFallback;
 }
 
+({num? taxableBase, num? vat, num? total}) presupuestoDocumentFinancials(
+  Map<String, dynamic> document,
+) {
+  final total = presupuestoDocumentAmount(document);
+  final sources = <Map<String, dynamic>>[
+    document,
+    ...<Map<String, dynamic>?>[
+      _nested(document, 'documentContent'),
+      _nested(document, 'templateContent'),
+      _nested(document, 'content'),
+    ].whereType<Map<String, dynamic>>(),
+  ];
+
+  num? firstValue(Iterable<Object?> values) {
+    for (final value in values) {
+      final parsed = _localizedNumber(value);
+      if (parsed != null) return parsed;
+    }
+    return null;
+  }
+
+  final directBase = firstValue([
+    for (final source in sources) ...[
+      source['taxableBase'],
+      source['baseAmount'],
+      source['subtotal'],
+      _nested(source, 'totals')?['taxableBase'],
+      _nested(source, 'totals')?['base'],
+      _nested(source, 'totals')?['subtotal'],
+    ],
+  ]);
+  final directVat = firstValue([
+    for (final source in sources) ...[
+      source['taxTotal'],
+      source['vatTotal'],
+      source['ivaTotal'],
+      _nested(source, 'totals')?['taxTotal'],
+      _nested(source, 'totals')?['vatTotal'],
+      _nested(source, 'totals')?['ivaTotal'],
+      _nested(source, 'totals')?['iva'],
+    ],
+  ]);
+  final hasEmptyFinancialPlaceholders = total != null &&
+      total != 0 &&
+      (directBase ?? 0) == 0 &&
+      (directVat ?? 0) == 0;
+  if (!hasEmptyFinancialPlaceholders &&
+      (directBase != null || directVat != null)) {
+    return (
+      taxableBase: directBase ??
+          (total != null && directVat != null ? total - directVat : null),
+      vat: directVat ??
+          (total != null && directBase != null ? total - directBase : null),
+      total: total,
+    );
+  }
+
+  for (final source in sources) {
+    for (final key in const ['lines', 'blocks']) {
+      final rows = source[key];
+      if (rows is! List || rows.isEmpty) continue;
+      num base = 0;
+      num vat = 0;
+      var found = false;
+      for (final raw in rows.whereType<Map>()) {
+        if (raw['isBillable'] == false) continue;
+        final quantity = _localizedNumber(raw['quantity'] ?? raw['qty']) ?? 1;
+        final unitPrice = _localizedNumber(
+          raw['unitPrice'] ?? raw['price'] ?? raw['unit_price'],
+        );
+        final discount = (_localizedNumber(
+                  raw['discountRate'] ?? raw['discountPercent'],
+                ) ??
+                0)
+            .clamp(0, 100);
+        final taxRate = _localizedNumber(
+              raw['taxRate'] ?? raw['vatRate'] ?? raw['tax'] ?? raw['iva'],
+            ) ??
+            0;
+        final explicitBase = _localizedNumber(
+          raw['lineSubtotal'] ?? raw['taxableBase'] ?? raw['baseAmount'],
+        );
+        final explicitVat = _localizedNumber(
+          raw['lineTax'] ?? raw['taxAmount'] ?? raw['vatAmount'],
+        );
+        final explicitTotal =
+            _localizedNumber(raw['lineTotal'] ?? raw['total']);
+        num? lineBase = explicitBase;
+        if (lineBase == null && unitPrice != null) {
+          lineBase = quantity * unitPrice * (1 - discount / 100);
+        } else if (lineBase == null && explicitTotal != null) {
+          lineBase = taxRate == 0
+              ? explicitTotal
+              : explicitTotal / (1 + taxRate / 100);
+        }
+        if (lineBase == null) continue;
+        base += lineBase;
+        vat += explicitVat ??
+            (explicitTotal != null
+                ? explicitTotal - lineBase
+                : lineBase * taxRate / 100);
+        found = true;
+      }
+      if (!found) continue;
+      final discountAmount = _localizedNumber(
+        source['discountAmount'] ??
+            source['discount'] ??
+            _nested(source, 'totals')?['discountAmount'],
+      );
+      final discountPercent = _localizedNumber(
+        source['discountPercent'] ??
+            source['discountRate'] ??
+            _nested(source, 'totals')?['discountPercent'],
+      );
+      final effectiveDiscount = discountAmount != null
+          ? discountAmount.clamp(0, base)
+          : discountPercent != null
+              ? (base * discountPercent.clamp(0, 100) / 100)
+              : 0;
+      if (effectiveDiscount > 0 && base > 0) {
+        final ratio = (base - effectiveDiscount) / base;
+        base -= effectiveDiscount;
+        vat *= ratio;
+      }
+      final calculatedTotal = base + vat;
+      if (total != null && (calculatedTotal - total).abs() > 0.01) {
+        return (taxableBase: null, vat: null, total: total);
+      }
+      return (taxableBase: base, vat: vat, total: total ?? calculatedTotal);
+    }
+  }
+  return (taxableBase: null, vat: null, total: total);
+}
+
+List<String> presupuestoDocumentConcepts(Map<String, dynamic> document) {
+  final title = presupuestoDocumentTitle(document).trim().toLowerCase();
+  final client = presupuestoDocumentClientName(document).trim().toLowerCase();
+  final concepts = <String>[];
+  final ignored = <String>{
+    '',
+    title,
+    client,
+    'presupuesto',
+    'propuesta',
+    'condiciones',
+    'condiciones de pago',
+    'anexo',
+    'imagenes',
+    'imágenes',
+  };
+
+  void add(Object? raw) {
+    final value = raw?.toString().trim() ?? '';
+    final normalized = value.toLowerCase();
+    if (value.length < 3 || ignored.contains(normalized)) return;
+    if (!concepts.any((item) => item.toLowerCase() == normalized)) {
+      concepts.add(value);
+    }
+  }
+
+  void addRow(Map row) {
+    for (final key in const [
+      'conceptTitle',
+      'serviceDescription',
+      'description',
+      'concept',
+      'name',
+      'text',
+    ]) {
+      final value = row[key];
+      if (value != null && value.toString().trim().isNotEmpty) {
+        add(value);
+        break;
+      }
+    }
+  }
+
+  final sources = <Map<String, dynamic>>[
+    document,
+    ...<Map<String, dynamic>?>[
+      _nested(document, 'documentContent'),
+      _nested(document, 'templateContent'),
+      _nested(document, 'content'),
+    ].whereType<Map<String, dynamic>>(),
+  ];
+  for (final source in sources) {
+    for (final key in const [
+      'concept',
+      'serviceDescription',
+      'serviceName',
+      'serviceType',
+      'description',
+    ]) {
+      add(source[key]);
+    }
+    final variables = source['variables'];
+    if (variables is Map) {
+      for (final key in const [
+        'CONCEPTO',
+        'SERVICIO',
+        'SERVICIO_MANTENIMIENTO',
+        'DESCRIPCION_SERVICIO',
+        'TIPO_SERVICIO',
+      ]) {
+        add(variables[key]);
+      }
+    }
+    for (final key in const ['lines', 'blocks', 'items']) {
+      final rows = source[key];
+      if (rows is List) {
+        for (final raw in rows) {
+          if (raw is Map) {
+            addRow(raw);
+          } else {
+            add(raw);
+          }
+        }
+      }
+    }
+    final sections = source['sections'];
+    if (sections is List) {
+      for (final rawSection in sections.whereType<Map>()) {
+        add(rawSection['serviceDescription']);
+        add(rawSection['description']);
+        add(rawSection['title']);
+        final items = rawSection['items'];
+        if (items is List) {
+          for (final item in items) {
+            item is Map ? addRow(item) : add(item);
+          }
+        }
+      }
+    }
+  }
+  if (concepts.isEmpty) {
+    final fallback = _presupuestoServiceConcept(document);
+    if (fallback != null) concepts.add(fallback);
+  }
+  return concepts;
+}
+
+String? _presupuestoServiceConcept(Map<String, dynamic> document) {
+  final title = presupuestoDocumentTitle(document).toLowerCase();
+  final templateKey = (document['templateKey'] ??
+          _nested(document, 'documentContent')?['templateKey'] ??
+          _nested(document, 'templateContent')?['templateKey'])
+      ?.toString()
+      .toLowerCase();
+  final searchable = '$title ${templateKey ?? ''}'
+      .replaceAll('á', 'a')
+      .replaceAll('é', 'e')
+      .replaceAll('í', 'i')
+      .replaceAll('ó', 'o')
+      .replaceAll('ú', 'u');
+  final hasGarden = searchable.contains('jardin') ||
+      searchable.contains('garden') ||
+      searchable.contains('paisaj');
+  final hasPool = searchable.contains('piscina') || searchable.contains('pool');
+  if (hasGarden && hasPool) return 'Jardines y piscinas';
+  if (hasGarden) return 'Jardines';
+  if (hasPool) return 'Piscinas';
+  if (searchable.contains('escalera') ||
+      searchable.contains('zonas comunes') ||
+      searchable.contains('stair_cleaning')) {
+    return 'Limpieza de escaleras y zonas comunes';
+  }
+  return null;
+}
+
 num? _cleaningScheduleAmount(Map<String, dynamic> document) {
   for (final source in <Map<String, dynamic>>[
     document,

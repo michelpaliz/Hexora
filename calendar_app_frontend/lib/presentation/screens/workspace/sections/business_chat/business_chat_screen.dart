@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/screens/workspace/sections/telegram/components/telegram_client_document_picker_dialog.dart';
+import 'package:hexora/presentation/screens/workspace/sections/telegram/components/telegram_worker_document_picker_dialog.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/services/auth/token/token_service.dart';
 import 'package:hexora/services/business_chat/business_chat_api.dart';
 import 'package:hexora/services/business_chat/business_chat_drafts.dart';
@@ -16,6 +19,7 @@ import 'business_chat_search_dialog.dart';
 import 'package:intl/intl.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:url_launcher/url_launcher.dart';
+import 'business_chat_expense_picker.dart';
 
 class BusinessChatScreen extends StatefulWidget {
   const BusinessChatScreen(
@@ -35,6 +39,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
   final _api = BusinessChatApi();
   final _draftStore = BusinessChatDrafts();
   final _composer = TextEditingController();
+  final _composerFocus = FocusNode();
   final _conversationSearch = TextEditingController();
   final _scroll = ScrollController();
   final _drafts = <String, String>{};
@@ -163,6 +168,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     _socketDebounce?.cancel();
     _socket?.dispose();
     _composer.dispose();
+    _composerFocus.dispose();
     _conversationSearch.dispose();
     _scroll.dispose();
     super.dispose();
@@ -558,12 +564,13 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     }
   }
 
-  Future<void> _attach() async {
+  Future<void> _attach({bool imagesOnly = false}) async {
     final conversation = _selected;
     if (_sending || conversation == null) return;
     final picked = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
+        type: imagesOnly ? FileType.image : FileType.custom,
+        allowedExtensions:
+            imagesOnly ? null : ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
         withData: true);
     if (picked == null || picked.files.isEmpty || !mounted) return;
     final file = picked.files.single;
@@ -597,6 +604,243 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     } finally {
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  Future<void> _shareClientDocuments(Set<String> documentKinds) async {
+    final conversation = _selected;
+    if (_sending || conversation == null) return;
+    final selected = await showTelegramClientDocumentPickerDialog(
+      context,
+      groupId: widget.groupId,
+      allowedDocumentKinds: documentKinds,
+    );
+    if (!mounted || selected == null || selected.isEmpty) return;
+
+    setState(() => _sending = true);
+    try {
+      for (final (index, document) in selected.indexed) {
+        await _api.sendAttachment(
+          widget.groupId,
+          conversation.id,
+          PlatformFile(
+            name: document.fileName,
+            size: document.bytes.length,
+            bytes: document.bytes,
+          ),
+          index == 0 ? _composer.text.trim() : '',
+          replyToMessageId: index == 0 ? _replyingTo?.id : null,
+          businessRecord: {
+            'type': document.documentKind,
+            'id': document.documentId,
+            'clientId': document.clientId,
+            'label': document.documentLabel,
+          },
+        );
+      }
+      if (!mounted) return;
+      _composer.clear();
+      _drafts.remove(conversation.id);
+      _saveDraft(conversation.id);
+      setState(() => _replyingTo = null);
+      await _loadMessages(conversation);
+      _scrollToEnd();
+      _refresh(silent: true);
+    } catch (error) {
+      if (mounted) _showError(error);
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _shareWorkerHours() async {
+    final conversation = _selected;
+    if (_sending || conversation == null) return;
+    final document = await showTelegramWorkerDocumentPickerDialog(
+      context,
+      groupId: widget.groupId,
+    );
+    if (!mounted || document == null) return;
+    setState(() => _sending = true);
+    try {
+      await _api.sendAttachment(
+        widget.groupId,
+        conversation.id,
+        PlatformFile(
+          name: document.fileName,
+          size: document.bytes.length,
+          bytes: document.bytes,
+        ),
+        _composer.text.trim(),
+        replyToMessageId: _replyingTo?.id,
+        businessRecord: {
+          'type': 'timesheet',
+          'id': document.workerId,
+          'workerId': document.workerId,
+          'label': document.documentLabel,
+        },
+      );
+      if (!mounted) return;
+      _composer.clear();
+      _drafts.remove(conversation.id);
+      _saveDraft(conversation.id);
+      setState(() => _replyingTo = null);
+      await _loadMessages(conversation);
+      _scrollToEnd();
+      _refresh(silent: true);
+    } catch (error) {
+      if (mounted) _showError(error);
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _shareExpense() async {
+    final conversation = _selected;
+    if (_sending || conversation == null) return;
+    final expense = await showBusinessChatExpensePicker(
+      context,
+      groupId: widget.groupId,
+    );
+    if (!mounted || expense == null) return;
+    setState(() => _sending = true);
+    try {
+      await _api.sendAttachment(
+        widget.groupId,
+        conversation.id,
+        PlatformFile(
+          name: expense.fileName,
+          size: expense.bytes.length,
+          bytes: expense.bytes,
+        ),
+        _composer.text.trim(),
+        replyToMessageId: _replyingTo?.id,
+        businessRecord: {
+          'type': 'expense',
+          'id': expense.id,
+          'label': expense.label,
+        },
+      );
+      if (!mounted) return;
+      _composer.clear();
+      _drafts.remove(conversation.id);
+      _saveDraft(conversation.id);
+      setState(() => _replyingTo = null);
+      await _loadMessages(conversation);
+      _scrollToEnd();
+      _refresh(silent: true);
+    } catch (error) {
+      if (mounted) _showError(error);
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _configureChannelActions(
+      BusinessChatConversation conversation) async {
+    var type = conversation.channelType;
+    final selected = <BusinessChatComposerAction>{
+      ...conversation.composerActions
+    };
+    final result = await showDialog<
+        ({
+          BusinessChatChannelType type,
+          Set<BusinessChatComposerAction> actions
+        })>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(_es ? 'Acciones del canal' : 'Channel actions'),
+          content: SizedBox(
+            width: 420,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              DropdownButtonFormField<BusinessChatChannelType>(
+                initialValue: type,
+                decoration: InputDecoration(
+                    labelText: _es ? 'Tipo de canal' : 'Channel type'),
+                items: BusinessChatChannelType.values
+                    .map((value) => DropdownMenuItem(
+                          value: value,
+                          child: Text(value.name),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) setDialogState(() => type = value);
+                },
+              ),
+              const SizedBox(height: 8),
+              for (final action in BusinessChatComposerAction.values)
+                CheckboxListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  value: action == BusinessChatComposerAction.attachFile ||
+                      selected.contains(action),
+                  enabled: action != BusinessChatComposerAction.attachFile,
+                  title: Text(_composerActionLabel(action)),
+                  onChanged: (checked) => setDialogState(() {
+                    if (checked == true) {
+                      selected.add(action);
+                    } else {
+                      selected.remove(action);
+                    }
+                  }),
+                ),
+            ]),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(_es ? 'Cancelar' : 'Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                selected.add(BusinessChatComposerAction.attachFile);
+                Navigator.pop(dialogContext, (type: type, actions: selected));
+              },
+              child: Text(_es ? 'Guardar' : 'Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || result == null) return;
+    try {
+      await _api.updateChannelConfiguration(
+        widget.groupId,
+        conversation.id,
+        channelType: result.type,
+        allowedActions: result.actions,
+      );
+      await _refresh(silent: true);
+    } catch (error) {
+      if (mounted) _showError(error);
+    }
+  }
+
+  String _composerActionLabel(BusinessChatComposerAction action) =>
+      switch (action) {
+        BusinessChatComposerAction.attachFile =>
+          _es ? 'Adjuntar archivos' : 'Attach files',
+        BusinessChatComposerAction.image => _es ? 'Imágenes' : 'Images',
+        BusinessChatComposerAction.link => _es ? 'Enlaces' : 'Links',
+        BusinessChatComposerAction.invoice => _es ? 'Facturas' : 'Invoices',
+        BusinessChatComposerAction.receipt => _es ? 'Recibos' : 'Receipts',
+        BusinessChatComposerAction.expense => _es ? 'Gastos' : 'Expenses',
+        BusinessChatComposerAction.quote => _es ? 'Presupuestos' : 'Quotes',
+        BusinessChatComposerAction.timesheet =>
+          _es ? 'Horas de trabajadores' : 'Worker hours',
+        BusinessChatComposerAction.bankTransaction =>
+          _es ? 'Movimientos bancarios' : 'Bank transactions',
+      };
+
+  void _insertLink() {
+    final current = _composer.text;
+    final separator = current.isEmpty || current.endsWith(' ') ? '' : ' ';
+    final next = '$current${separator}https://';
+    _composer.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: next.length),
+    );
+    _composerFocus.requestFocus();
   }
 
   Future<void> _openAttachment(BusinessChatMessage message) async {
@@ -992,6 +1236,14 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                           ])),
                         ])),
                     actions: [
+                      if (conversation.type == 'team' && _canCreateTeam)
+                        TextButton.icon(
+                            onPressed: () async {
+                              Navigator.pop(dialogContext);
+                              await _configureChannelActions(conversation);
+                            },
+                            icon: const Icon(Icons.tune, size: 18),
+                            label: Text(_es ? 'Acciones' : 'Actions')),
                       if (conversation.type == 'team' && _canCreateTeam)
                         TextButton(
                             onPressed: () async {
@@ -1404,6 +1656,176 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     return date == null
         ? ''
         : DateFormat('dd/MM/yyyy HH:mm').format(date.toLocal());
+  }
+
+  Widget _composerAction({
+    required IconData icon,
+    required String label,
+    required String tooltip,
+    required VoidCallback? onPressed,
+  }) =>
+      HexoraButton(
+        onPressed: onPressed,
+        icon: icon,
+        label: label,
+        tooltip: tooltip,
+        variant: HexoraButtonVariant.ghost,
+        size: HexoraButtonSize.compact,
+      );
+
+  Widget _businessRecordCard(BusinessChatMessage message) {
+    final record = message.businessRecord!;
+    final type = (record['type'] ?? '').toString();
+    final label = (record['label'] ?? '').toString().trim();
+    final icon = switch (type) {
+      'invoice' => Icons.receipt_long_outlined,
+      'receipt' => Icons.receipt_outlined,
+      'presupuesto' || 'quote' => Icons.request_quote_outlined,
+      'expense' => Icons.payments_outlined,
+      'timesheet' => Icons.schedule_outlined,
+      _ => Icons.description_outlined,
+    };
+    final typeLabel = switch (type) {
+      'invoice' => _es ? 'Factura' : 'Invoice',
+      'receipt' => _es ? 'Recibo' : 'Receipt',
+      'presupuesto' || 'quote' => _es ? 'Presupuesto' : 'Quote',
+      'expense' => _es ? 'Gasto' : 'Expense',
+      'timesheet' => _es ? 'Horas de trabajador' : 'Worker hours',
+      _ => _es ? 'Documento' : 'Document',
+    };
+    return Card.outlined(
+      margin: const EdgeInsets.only(top: 6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap:
+            message.attachment == null ? null : () => _openAttachment(message),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(children: [
+            Icon(icon, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(typeLabel,
+                      style: Theme.of(context).textTheme.labelSmall),
+                  Text(
+                    label.isEmpty ? typeLabel : label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            if (message.attachment != null)
+              const Icon(Icons.open_in_new, size: 17),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildComposerActions() {
+    final conversation = _selected;
+    if (conversation == null) return const [];
+    final actions = conversation.composerActions;
+    final enabled = !_sending;
+    final widgets = <Widget>[
+      _composerAction(
+        icon: Icons.attach_file,
+        label: _es ? 'Archivo' : 'File',
+        tooltip: _es ? 'Adjuntar archivo' : 'Attach file',
+        onPressed: enabled ? () => _attach() : null,
+      ),
+    ];
+    if (actions.contains(BusinessChatComposerAction.image)) {
+      widgets.add(_composerAction(
+        icon: Icons.image_outlined,
+        label: _es ? 'Imagen' : 'Image',
+        tooltip: _es ? 'Adjuntar imagen' : 'Attach image',
+        onPressed: enabled ? () => _attach(imagesOnly: true) : null,
+      ));
+    }
+    if (actions.contains(BusinessChatComposerAction.invoice) ||
+        actions.contains(BusinessChatComposerAction.receipt)) {
+      final hasInvoices = actions.contains(BusinessChatComposerAction.invoice);
+      final hasReceipts = actions.contains(BusinessChatComposerAction.receipt);
+      final kinds = <String>{
+        if (hasInvoices) ClientDocumentKinds.invoice,
+        if (hasReceipts) ClientDocumentKinds.receipt,
+      };
+      widgets.add(_composerAction(
+        icon:
+            hasInvoices ? Icons.receipt_long_outlined : Icons.receipt_outlined,
+        label: hasInvoices && hasReceipts
+            ? (_es ? 'Facturas y recibos' : 'Invoices & receipts')
+            : hasInvoices
+                ? (_es ? 'Facturas' : 'Invoices')
+                : (_es ? 'Recibos' : 'Receipts'),
+        tooltip: hasInvoices && hasReceipts
+            ? (_es
+                ? 'Compartir una factura o un recibo existente'
+                : 'Share an existing invoice or receipt')
+            : hasInvoices
+                ? (_es
+                    ? 'Compartir una factura existente'
+                    : 'Share an existing invoice')
+                : (_es
+                    ? 'Compartir un recibo existente'
+                    : 'Share an existing receipt'),
+        onPressed: enabled ? () => _shareClientDocuments(kinds) : null,
+      ));
+    }
+    if (actions.contains(BusinessChatComposerAction.quote)) {
+      widgets.add(_composerAction(
+        icon: Icons.request_quote_outlined,
+        label: _es ? 'Presupuesto' : 'Quote',
+        tooltip: _es
+            ? 'Compartir un presupuesto existente'
+            : 'Share an existing quote',
+        onPressed: enabled
+            ? () => _shareClientDocuments({ClientDocumentKinds.quote})
+            : null,
+      ));
+    }
+    if (actions.contains(BusinessChatComposerAction.expense)) {
+      widgets.add(_composerAction(
+        icon: Icons.payments_outlined,
+        label: _es ? 'Gasto' : 'Expense',
+        tooltip:
+            _es ? 'Compartir un gasto existente' : 'Share an existing expense',
+        onPressed: enabled ? _shareExpense : null,
+      ));
+    }
+    if (actions.contains(BusinessChatComposerAction.timesheet)) {
+      widgets.add(_composerAction(
+        icon: Icons.schedule_outlined,
+        label: _es ? 'Horas' : 'Hours',
+        tooltip:
+            _es ? 'Compartir horas de un trabajador' : 'Share worker hours',
+        onPressed: enabled ? _shareWorkerHours : null,
+      ));
+    }
+    if (actions.contains(BusinessChatComposerAction.link)) {
+      widgets.add(_composerAction(
+        icon: Icons.link,
+        label: _es ? 'Enlace' : 'Link',
+        tooltip: _es ? 'Insertar enlace' : 'Insert link',
+        onPressed: enabled ? _insertLink : null,
+      ));
+    }
+    if (_canShareBankTransactions && conversation.canShareBankTransaction) {
+      widgets.add(_composerAction(
+        icon: Icons.account_balance_outlined,
+        label: _es ? 'Movimiento' : 'Transaction',
+        tooltip:
+            _es ? 'Compartir movimiento bancario' : 'Share bank transaction',
+        onPressed: enabled ? _shareBankTransactionFromChat : null,
+      ));
+    }
+    return widgets;
   }
 
   @override
@@ -1945,15 +2367,22 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                                               sharedAt: message
                                                                   .createdAt,
                                                             ),
+                                                          if (!message
+                                                                  .isDeleted &&
+                                                              message.businessRecord !=
+                                                                  null)
+                                                            _businessRecordCard(
+                                                                message),
                                                           if (!message.isDeleted &&
                                                               message.attachment !=
+                                                                  null &&
+                                                              message.businessRecord ==
                                                                   null)
                                                             TextButton.icon(
                                                                 onPressed: () =>
                                                                     _openAttachment(
                                                                         message),
-                                                                icon: Icon((message.attachment!['mimeType'] ??
-                                                                            '')
+                                                                icon: Icon((message.attachment!['mimeType'] ?? '')
                                                                         .toString()
                                                                         .startsWith(
                                                                             'image/')
@@ -1962,9 +2391,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                                                     : Icons
                                                                         .attach_file),
                                                                 label: Text((message.attachment!['fileName'] ??
-                                                                        (_es
-                                                                            ? 'Adjunto'
-                                                                            : 'Attachment'))
+                                                                        (_es ? 'Adjunto' : 'Attachment'))
                                                                     .toString())),
                                                           Align(
                                                               alignment: Alignment
@@ -2009,18 +2436,25 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                               ),
                             ),
                           ),
+                        if (_selected != null)
+                          Builder(builder: (context) {
+                            final actions = _buildComposerActions();
+                            return SizedBox(
+                              height: 38,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: actions.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 2),
+                                itemBuilder: (_, index) => actions[index],
+                              ),
+                            );
+                          }),
                         Row(children: [
-                          IconButton(
-                              onPressed: _sending || _selected == null
-                                  ? null
-                                  : _attach,
-                              tooltip: _es
-                                  ? 'Adjuntar foto o PDF'
-                                  : 'Attach photo or PDF',
-                              icon: const Icon(Icons.attach_file)),
                           Expanded(
                               child: TextField(
                                   controller: _composer,
+                                  focusNode: _composerFocus,
                                   enabled: _selected != null && !_sending,
                                   maxLength: 2000,
                                   minLines: 1,
@@ -2043,36 +2477,6 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                           strokeWidth: 2))
                                   : const Icon(Icons.send))
                         ]),
-                        if (_selected != null)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 48, top: 4),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Wrap(
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 8,
-                                children: [
-                                  if (_canShareBankTransactions)
-                                    TextButton.icon(
-                                      onPressed: _shareBankTransactionFromChat,
-                                      icon: const Icon(
-                                          Icons.account_balance_outlined,
-                                          size: 17),
-                                      label: Text(_es
-                                          ? 'Compartir movimiento bancario'
-                                          : 'Share bank transaction'),
-                                    ),
-                                  Text(
-                                    _es
-                                        ? 'Adjuntos: JPG, PNG, WebP o PDF · máximo 10 MB'
-                                        : 'Attachments: JPG, PNG, WebP, or PDF · max 10 MB',
-                                    style:
-                                        Theme.of(context).textTheme.labelSmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
                       ]))),
             ])),
         ]);

@@ -30,6 +30,7 @@ class _PresupuestoTemplateEditorScreenState
   final List<_TemplateSectionState> _sections = [];
   final Map<String, bool> _sectionExpansionState = <String, bool>{};
   String? _hoveredSectionKey;
+  String? _hoveredDefaultTemplateKey;
   final List<_TemplateImageState> _images = [];
   final Set<String> _libraryImageBusySlots = <String>{};
   late final PresupuestoDocumentDraftFlow _documentFlow;
@@ -184,7 +185,10 @@ class _PresupuestoTemplateEditorScreenState
         _hydrate(source);
       }
       if (widget.templateOnly && widget.createNewTemplate) {
-        _newTemplate();
+        _templateId = null;
+        _selectedDefaultKey = null;
+        _selectedDefaultTemplate = null;
+        _hydrate(_newTemplateSource());
       } else if (widget.createDocumentDraft) {
         _templateId = null;
         _hydrate(_newDocumentSource());
@@ -212,11 +216,21 @@ class _PresupuestoTemplateEditorScreenState
     return null;
   }
 
-  void _selectTemplate(String? id) {
+  Future<void> _selectTemplate(String? id) async {
     final template = _templateById(id);
     if (template == null) return;
+    final currentId = _templateId?.trim();
+    if (currentId != id &&
+        !await _confirmTemplateReplacement(
+          nextName: _string(template['name']) ?? 'la plantilla seleccionada',
+        )) {
+      return;
+    }
+    if (!mounted) return;
     setState(() {
       _templateId = id;
+      _selectedDefaultKey = null;
+      _selectedDefaultTemplate = null;
       _hydrate(template);
     });
   }
@@ -225,16 +239,41 @@ class _PresupuestoTemplateEditorScreenState
     final key = _string(template['key']);
     if (key == null || key.isEmpty || _creatingDefaultKey != null) return;
 
-    if (!widget.templateOnly) {
-      if (_selectedDefaultKey != null &&
-          _selectedDefaultKey != key &&
-          _hasTemplateEdits()) {
-        final replace = await showHexoraDialog<bool>(
+    if (_selectedDefaultKey != key &&
+        !await _confirmTemplateReplacement(
+          nextName: _string(template['name']) ?? 'la plantilla seleccionada',
+        )) {
+      return;
+    }
+    if (!mounted) return;
+
+    final content = _templateContent(template);
+    final sharedVariables = <String, String>{};
+    final currentClient = _variables['CLIENTE']?.text;
+    if (_selectedDefaultKey != null &&
+        currentClient != null &&
+        _readVariableFieldDefinitions(content['variableFields'])
+            .containsKey('CLIENTE')) {
+      sharedVariables['CLIENTE'] = currentClient;
+    }
+    setState(() {
+      _selectedDefaultKey = key;
+      _selectedDefaultTemplate = Map<String, dynamic>.from(template);
+      _variableSchemaKey = 'default:$key';
+      _templateId = null;
+      _hydrate(content, preservedVariables: sharedVariables);
+      _activeStep = 0;
+    });
+  }
+
+  Future<bool> _confirmTemplateReplacement({required String nextName}) async {
+    if (!_hasTemplateEdits()) return true;
+    return await showHexoraDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
-            title: const Text('Cambiar tipo de presupuesto'),
-            content: const Text(
-              'Los cambios actuales se reemplazaran por el contenido de la nueva plantilla.',
+            title: const Text('Cambiar plantilla'),
+            content: Text(
+              'Los cambios sin guardar se reemplazarán por el contenido de "$nextName".',
             ),
             actions: [
               TextButton(
@@ -247,63 +286,8 @@ class _PresupuestoTemplateEditorScreenState
               ),
             ],
           ),
-        );
-        if (replace != true || !mounted) return;
-      }
-
-      final content = _templateContent(template);
-      final sharedVariables = <String, String>{};
-      final currentClient = _variables['CLIENTE']?.text;
-      if (_selectedDefaultKey != null &&
-          currentClient != null &&
-          _readVariableFieldDefinitions(content['variableFields'])
-              .containsKey('CLIENTE')) {
-        sharedVariables['CLIENTE'] = currentClient;
-      }
-      setState(() {
-        _selectedDefaultKey = key;
-        _selectedDefaultTemplate = Map<String, dynamic>.from(template);
-        _variableSchemaKey = 'default:$key';
-        _templateId = null;
-        _hydrate(content, preservedVariables: sharedVariables);
-        _activeStep = 0;
-        _selectedTemplateSnapshot =
-            jsonEncode(_payload(includeTemplateId: false));
-      });
-      return;
-    }
-
-    setState(() => _creatingDefaultKey = key);
-    try {
-      final created = await widget.api.createTemplateFromDefault(
-        key: key,
-        groupId: widget.groupId,
-      );
-      final createdTemplate = _asMap(created['template']) ?? created;
-      final id =
-          _string(createdTemplate['_id']) ?? _string(createdTemplate['id']);
-      setState(() {
-        if (id != null && id.isNotEmpty) _templateId = id;
-        _variableSchemaKey = 'template:${id ?? key}';
-        _templates = [
-          createdTemplate,
-          ..._templates.where((item) {
-            final existingId = _string(item['_id']) ?? _string(item['id']);
-            return existingId != id;
-          }),
-        ];
-        _hydrate(createdTemplate);
-      });
-      if (mounted) showSuccessSnack(context, 'Plantilla creada.');
-    } on PresupuestosApiException catch (e) {
-      if (mounted) showErrorSnack(context, e.message);
-    } catch (e) {
-      if (mounted) {
-        showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
-      }
-    } finally {
-      if (mounted) setState(() => _creatingDefaultKey = null);
-    }
+        ) ??
+        false;
   }
 
   bool _hasTemplateEdits() {
@@ -441,6 +425,7 @@ class _PresupuestoTemplateEditorScreenState
     _images
       ..clear()
       ..addAll(_imageStates(_imageDefinitions(source)));
+    _selectedTemplateSnapshot = jsonEncode(_payload(includeTemplateId: false));
   }
 
   dynamic _imageDefinitions(Map<String, dynamic> source) {
@@ -613,6 +598,7 @@ class _PresupuestoTemplateEditorScreenState
       'FRECUENCIA_MENSUAL': 'Frecuencia mensual',
       'PRECIO_VISITA': 'Precio por visita',
       'TOTAL_MENSUAL': 'Total mensual',
+      'IVA_PORCENTAJE': 'IVA (%)',
       'DURACION_CONTRATO': 'Duración del contrato',
       'FRECUENCIA_LIMPIEZA_GARAJE': 'Frecuencia de limpieza del garaje',
       'PRECIO_LIMPIEZA_GARAJE': 'Precio de limpieza del garaje',
@@ -657,6 +643,7 @@ class _PresupuestoTemplateEditorScreenState
       'FRECUENCIA_MENSUAL': 'Ej. 4 veces al mes',
       'PRECIO_VISITA': 'Ej. 480 €',
       'TOTAL_MENSUAL': 'Ej. 1.920 €',
+      'IVA_PORCENTAJE': 'Ej. 21',
       'DURACION_CONTRATO': 'Ej. un (1) año',
       'FRECUENCIA_LIMPIEZA_GARAJE': 'Ej. una vez al año',
       'PRECIO_LIMPIEZA_GARAJE': 'Ej. 650 €',
@@ -844,19 +831,20 @@ class _PresupuestoTemplateEditorScreenState
     }
     setState(() => _previewing = true);
     try {
-      if (!widget.templateOnly) {
+      final existingDocumentId = _documentFlow.presupuestoId;
+      if (!widget.templateOnly && existingDocumentId != null) {
         await _save(silent: true);
         if (!mounted || !await _confirmUnresolvedVariables('previsualizar')) {
           return;
         }
       }
-      final response = widget.templateOnly
+      final response = widget.templateOnly || existingDocumentId == null
           ? await widget.api.previewLiveTemplatePdf(
               groupId: widget.groupId,
               template: _payload(includeTemplateId: false),
             )
           : await widget.api.previewTemplatePdf(
-              _documentFlow.presupuestoId!,
+              existingDocumentId,
             );
       final bytes = InvoiceEditorPdf.validatePdf(response);
       if (!mounted) return;
@@ -977,12 +965,16 @@ class _PresupuestoTemplateEditorScreenState
     final id = _string(template['_id']) ?? _string(template['id']);
     if (id == null || id.isEmpty || _deletingTemplateId != null) return;
     final name = _string(template['name']) ?? 'Plantilla sin nombre';
+    final discardsUnsavedChanges =
+        (_templateId ?? '').trim() == id && _hasTemplateEdits();
     final confirmed = await showHexoraDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Eliminar plantilla'),
         content: Text(
-          'Se eliminara solo la plantilla "$name". Los presupuestos ya creados conservan su contenido y PDF.',
+          'Se eliminará solo la plantilla "$name". '
+          '${discardsUnsavedChanges ? 'También se descartarán los cambios sin guardar. ' : ''}'
+          'Los presupuestos ya creados conservan su contenido y PDF.',
         ),
         actions: [
           TextButton(
@@ -1038,17 +1030,27 @@ class _PresupuestoTemplateEditorScreenState
     if (_downloading) return;
     setState(() => _downloading = true);
     try {
-      await _save(silent: true);
       final presupuestoId = _documentFlow.presupuestoId;
-      if (presupuestoId == null || presupuestoId.isEmpty) return;
-      final response = await widget.api.downloadTemplatePdf(presupuestoId);
+      final response = widget.templateOnly || presupuestoId == null
+          ? await widget.api.previewLiveTemplatePdf(
+              groupId: widget.groupId,
+              template: _payload(includeTemplateId: false),
+            )
+          : await (() async {
+              await _save(silent: true);
+              return widget.api.downloadTemplatePdf(presupuestoId);
+            })();
       await launchFileDownload(
         response.bodyBytes,
         fileName: _fileName('editable'),
         mimeType: 'application/pdf',
       );
-    } catch (_) {
-      // Save/API methods already show the relevant error.
+    } on PresupuestosApiException catch (e) {
+      if (mounted) showErrorSnack(context, e.message);
+    } catch (e) {
+      if (mounted) {
+        showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
+      }
     } finally {
       if (mounted) setState(() => _downloading = false);
     }
@@ -1505,9 +1507,16 @@ class _PresupuestoTemplateEditorScreenState
     });
   }
 
-  void _newTemplate() {
+  Future<void> _newTemplate() async {
+    if (!await _confirmTemplateReplacement(
+        nextName: 'una plantilla en blanco')) {
+      return;
+    }
+    if (!mounted) return;
     setState(() {
       _templateId = null;
+      _selectedDefaultKey = null;
+      _selectedDefaultTemplate = null;
       _hydrate(_newTemplateSource());
     });
   }
@@ -1548,12 +1557,6 @@ class _PresupuestoTemplateEditorScreenState
 
   bool _isDark(ThemeData theme) => _TemplateEditorLayout(this)._isDark(theme);
 
-  Color _editorCardBg(ThemeData theme) =>
-      _TemplateEditorLayout(this)._editorCardBg(theme);
-
-  Color _editorPanelBg(ThemeData theme) =>
-      _TemplateEditorLayout(this)._editorPanelBg(theme);
-
   Color _editorInsetBg(ThemeData theme) =>
       _TemplateEditorLayout(this)._editorInsetBg(theme);
 
@@ -1569,13 +1572,21 @@ class _PresupuestoTemplateEditorScreenState
       _documentFlow.presupuestoId == null &&
       _selectedDefaultKey == null;
 
+  String? get _selectedTemplateName {
+    final defaultName = _string(_selectedDefaultTemplate?['name']);
+    if (defaultName != null && defaultName.isNotEmpty) return defaultName;
+    final saved = _templateById(_templateId);
+    final savedName = _string(saved?['name']);
+    return savedName == null || savedName.isEmpty ? null : savedName;
+  }
+
   List<_EditorStep> _editorSteps() {
     final steps = <_EditorStep>[];
     final canChooseTemplate = widget.templateOnly ||
         (widget.createDocumentDraft && _documentFlow.presupuestoId == null);
     final baseChildren = <Widget>[
       if (canChooseTemplate) _buildDefaultTemplatesCard(),
-      if (widget.templateOnly && (_templates.isNotEmpty || widget.templateOnly))
+      if (widget.templateOnly && _templates.isNotEmpty)
         _buildTemplateSelectorCard(),
     ];
     if (baseChildren.isNotEmpty) {

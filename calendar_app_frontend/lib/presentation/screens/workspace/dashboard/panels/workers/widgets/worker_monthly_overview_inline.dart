@@ -6,7 +6,6 @@ import 'package:hexora/presentation/screens/workspace/sections/workers/worker/en
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/monthly_overview/widgets/year_switcher.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:hexora/l10n/build_context_locale.dart';
 
 import 'month_list.dart';
 
@@ -131,7 +130,6 @@ class _WorkerMonthlyOverviewInlineState
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final isSpanish = context.isSpanishLocale;
     final locale = Localizations.localeOf(context).toString();
     return Column(
       children: [
@@ -139,10 +137,13 @@ class _WorkerMonthlyOverviewInlineState
           child: Padding(
             padding: const EdgeInsets.only(top: 8),
             child: FolderPanel(
-              onBack: widget.onBack,
-              title: isSpanish ? 'Horas' : 'Hours',
-              contentTopPadding: 38,
+              // Back now lives inside the left column's year header (see
+              // YearSwitcher.onBack), so the panel no longer renders its own
+              // standalone toolbar row and the wasted vertical space is gone.
+              showBorder: false,
+              showToolbarDivider: false,
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     flex: 3,
@@ -150,6 +151,7 @@ class _WorkerMonthlyOverviewInlineState
                       children: [
                         YearSwitcher(
                           year: _year,
+                          onBack: widget.onBack,
                           onYearChanged: (newYear) {
                             setState(() => _year = newYear);
                             _loadAllMonths();

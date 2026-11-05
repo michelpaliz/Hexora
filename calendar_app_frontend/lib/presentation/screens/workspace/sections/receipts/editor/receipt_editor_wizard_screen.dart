@@ -152,7 +152,7 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
     if (!mounted) return;
     final l = AppLocalizations.of(context)!;
     try {
-      final response = await _receiptsApi.previewPdf(r.id);
+      final response = await _receiptsApi.previewPdfWithFallback(r.id);
       final bytes = InvoiceEditorPdf.validatePdf(response);
       final fileName = (r.receiptNumber?.trim().isNotEmpty == true)
           ? 'receipt-${r.receiptNumber!.trim()}.pdf'

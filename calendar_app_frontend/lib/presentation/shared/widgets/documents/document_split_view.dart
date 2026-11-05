@@ -289,11 +289,14 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
           child: TweenAnimationBuilder<double>(
             key: ValueKey(widget.selectionKey),
             tween: Tween(begin: 1, end: 0),
-            duration: HexoraMotion.duration(context, HexoraMotion.navigation),
-            curve: HexoraMotion.enter,
-            builder: (context, value, child) => Transform.translate(
-              offset: Offset(drawerWidth * value, 0),
-              child: child,
+            duration: HexoraMotion.duration(context, HexoraMotion.sidePanel),
+            curve: HexoraMotion.navigationCurve,
+            builder: (context, value, child) => Opacity(
+              opacity: 1 - value,
+              child: Transform.translate(
+                offset: Offset(drawerWidth * value, 0),
+                child: child,
+              ),
             ),
             child: CallbackShortcuts(
               bindings: {

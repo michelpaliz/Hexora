@@ -935,86 +935,15 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     required String message,
     required String dismissLabel,
   }) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final successColor =
-        isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32);
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final snackWidth = screenWidth < 472 ? screenWidth - 32 : 440.0;
-    final messenger = ScaffoldMessenger.of(context);
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          width: snackWidth,
-          elevation: 10,
-          backgroundColor: cs.surface,
-          dismissDirection: DismissDirection.horizontal,
-          duration: const Duration(seconds: 4),
-          padding: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-            side: BorderSide(
-              color: successColor.withValues(alpha: isDark ? 0.32 : 0.18),
-            ),
-          ),
-          action: SnackBarAction(
-            label: dismissLabel,
-            textColor: successColor,
-            onPressed: messenger.hideCurrentSnackBar,
-          ),
-          content: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: successColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.check_circle_rounded,
-                    color: successColor,
-                    size: 21,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: cs.onSurface,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        message,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: cs.onSurfaceVariant,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
+    // Reuse the shared document-saved toast so receipts, invoices and
+    // presupuestos all confirm a save the same way.
+    showDocumentSavedSnack(
+      context,
+      title: title,
+      message: message,
+      reference: _savedInvoice?.invoiceNumber,
+      dismissLabel: dismissLabel,
+    );
   }
 
   Future<void> previewPdf(BuildContext context) async {

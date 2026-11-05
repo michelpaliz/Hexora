@@ -240,7 +240,7 @@ class _GastosModuleScreenState extends State<GastosModuleScreen> {
           width: _sideRailCollapsed
               ? NavigationTokens.railWidth
               : NavigationTokens.sidebarWidth,
-          child: HexoraMenuContentTransition(
+          child: HexoraMenuContentTransition.submenu(
             transitionKey: _sideRailCollapsed,
             child: _GastosUnifiedRail(
               isEs: _isEs,
@@ -262,7 +262,7 @@ class _GastosModuleScreenState extends State<GastosModuleScreen> {
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: HexoraMenuContentTransition(
+          child: HexoraMenuContentTransition.submenu(
             transitionKey:
                 '$_activeModule:$_gastosSection:$_modelosSection:$_taxSection',
             child: IndexedStack(

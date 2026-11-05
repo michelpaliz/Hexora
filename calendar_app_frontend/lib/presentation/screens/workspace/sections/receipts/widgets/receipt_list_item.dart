@@ -385,24 +385,19 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
             onPressed: widget.onDownload,
           ),
       ],
-      status: Row(mainAxisSize: MainAxisSize.min, children: [
-        Flexible(
-          child: HexoraStatusBadge.document(
-            context,
-            status: issued
-                ? HexoraDocumentStatus.issued
-                : HexoraDocumentStatus.draft,
-            label: issued ? l.statusIssued : l.statusDraft,
-          ),
-        ),
-        const SizedBox(width: 4),
-        DeliveryStatusBadge(
-            status: widget.receipt.deliveryStatus,
-            channel: widget.receipt.deliveryChannel,
-            sentAt: widget.receipt.sentAt,
-            deliveryError: widget.receipt.deliveryError,
-            compact: true),
-      ]),
+      status: HexoraStatusBadge.document(
+        context,
+        status:
+            issued ? HexoraDocumentStatus.issued : HexoraDocumentStatus.draft,
+        label: issued ? l.statusIssued : l.statusDraft,
+      ),
+      showDeliveryColumn: true,
+      delivery: DeliveryStatusBadge(
+        status: widget.receipt.deliveryStatus,
+        channel: widget.receipt.deliveryChannel,
+        sentAt: widget.receipt.sentAt,
+        deliveryError: widget.receipt.deliveryError,
+      ),
       details: !_detailsExpanded
           ? null
           : Align(

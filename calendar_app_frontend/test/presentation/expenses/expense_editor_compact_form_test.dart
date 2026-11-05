@@ -274,4 +274,38 @@ void main() {
     expect(find.text('Proveedor manual'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('supplier picker shows a compact retry action on load failure',
+      (tester) async {
+    var retries = 0;
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.forPlatform(
+        Brightness.light,
+        platform: TargetPlatform.windows,
+      ),
+      locale: const Locale('es'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: SizedBox(
+          width: 480,
+          child: ExpenseProviderPicker(
+            providers: const [],
+            selectedProviderId: null,
+            providersError: 'No hay conexión con el servidor.',
+            loading: false,
+            onSelectProvider: (_) {},
+            onRetry: () => retries++,
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No hay conexión con el servidor.'), findsOneWidget);
+    expect(find.byIcon(Icons.cloud_off_outlined), findsOneWidget);
+    await tester.tap(find.text('Reintentar'));
+    expect(retries, 1);
+    expect(tester.takeException(), isNull);
+  });
 }

@@ -44,6 +44,7 @@ class ClientSearchSelect extends StatefulWidget {
   final TextEditingController? searchController;
   final bool flatRows;
   final bool compactToolbar;
+  final bool showVisibleCount;
 
   const ClientSearchSelect({
     super.key,
@@ -62,6 +63,7 @@ class ClientSearchSelect extends StatefulWidget {
     this.searchController,
     this.flatRows = false,
     this.compactToolbar = false,
+    this.showVisibleCount = false,
   });
 
   @override
@@ -475,6 +477,18 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (widget.showVisibleCount)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  '${filtered.length} ${isSpanish ? (filtered.length == 1 ? 'cliente' : 'clientes') : (filtered.length == 1 ? 'client' : 'clients')}',
+                  key: const ValueKey('client-search-visible-count'),
+                  style: t.bodySmall.copyWith(
+                    fontSize: 11,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ),
             Theme(
               data: Theme.of(context).copyWith(
                 chipTheme: ChipTheme.of(context).copyWith(

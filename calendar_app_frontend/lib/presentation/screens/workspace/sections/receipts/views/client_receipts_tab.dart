@@ -7,6 +7,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
     as pdf_launcher;
 import 'package:hexora/presentation/screens/workspace/sections/receipts/widgets/receipt_list_item.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';
+import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -84,7 +85,7 @@ class _ClientReceiptsTabState extends State<ClientReceiptsTab> {
   Future<void> _previewReceiptPdf(Receipt receipt) async {
     final l = AppLocalizations.of(context)!;
     try {
-      final response = await _api.previewPdf(receipt.id);
+      final response = await _api.previewPdfWithFallback(receipt.id);
       final bytes = InvoiceEditorPdf.validatePdf(response);
       final fileName = (receipt.receiptNumber?.trim().isNotEmpty == true)
           ? 'receipt-${receipt.receiptNumber!.trim()}.pdf'
@@ -92,10 +93,7 @@ class _ClientReceiptsTabState extends State<ClientReceiptsTab> {
       await pdf_launcher.launchPdfPreview(bytes, fileName: fileName);
     } catch (e) {
       if (!mounted) return;
-      final msg = e.toString().replaceFirst('Exception: ', '').trim();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg.isEmpty ? l.receiptPreviewFailed : msg)),
-      );
+      showFailureSnack(context, e, title: l.receiptPreviewFailed);
     }
   }
 

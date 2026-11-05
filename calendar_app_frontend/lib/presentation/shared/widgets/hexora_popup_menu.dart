@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 
 enum HexoraPopupMenuTone { neutral, primary, destructive }
@@ -33,6 +34,7 @@ class HexoraPopupMenuButton<T> extends StatelessWidget {
         ),
         clipBehavior: Clip.antiAlias,
         position: PopupMenuPosition.under,
+        popUpAnimationStyle: HexoraMotion.popupStyle(context),
         onSelected: onSelected,
         itemBuilder: itemBuilder,
       );

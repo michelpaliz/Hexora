@@ -20,11 +20,10 @@ extension _TemplateDocumentPreview on _PresupuestoTemplateEditorScreenState {
 
     return _card(
       title: 'Vista previa',
-      icon: Icons.preview_outlined,
       trailing: Wrap(
         spacing: 6,
         children: [
-          OutlinedButton.icon(
+          TextButton.icon(
             onPressed:
                 _previewing || _mustSelectDefaultTemplate ? null : _previewPdf,
             icon: _previewing
@@ -35,7 +34,7 @@ extension _TemplateDocumentPreview on _PresupuestoTemplateEditorScreenState {
                   )
                 : const Icon(Icons.visibility_outlined, size: 17),
             label: const Text('Previsualizar'),
-            style: OutlinedButton.styleFrom(
+            style: TextButton.styleFrom(
               minimumSize: const Size(0, 34),
               padding: const EdgeInsets.symmetric(horizontal: 10),
               visualDensity: VisualDensity.compact,
@@ -99,20 +98,12 @@ extension _TemplateDocumentPreview on _PresupuestoTemplateEditorScreenState {
                       children: [
                         Row(
                           children: [
-                            Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primary
-                                    .withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.description_outlined,
-                                color: theme.colorScheme.primary,
-                              ),
+                            Icon(
+                              Icons.description_outlined,
+                              color: theme.colorScheme.primary,
+                              size: 22,
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,

@@ -29,6 +29,7 @@ void main() {
         issueDate: DateTime(2026, 10, 28 - (index % 20)),
         subtotal: 100 + index,
         total: 121 + index,
+        deliveryStatus: index == 0 ? 'sent' : 'not_sent',
       ),
     );
     final mode = ValueNotifier<DocumentViewMode?>(DocumentViewMode.list);
@@ -78,6 +79,9 @@ void main() {
     expect(footer.countLabel, '24 recibos');
     expect(footer.taxableBaseValue, contains('2.676,00'));
     expect(footer.totalValue, contains('3.180,00'));
+    expect(find.text('Envío'), findsOneWidget);
+    expect(find.text('Enviado'), findsOneWidget);
+    expect(find.text('No enviado'), findsWidgets);
 
     final initialTop = tester.getTopLeft(footerFinder).dy;
     await tester.drag(find.byType(ListView).first, const Offset(0, -350));

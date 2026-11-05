@@ -1280,7 +1280,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                                 child: miniPanelShell(
                                   title: miniCalendarDetailTitle(),
                                   trailing: detailTrailing,
-                                  child: HexoraMenuContentTransition(
+                                  child: HexoraMenuContentTransition.tab(
                                     transitionKey: _panelView,
                                     child: miniCalendarDetailPanel(),
                                   ),
@@ -1549,7 +1549,7 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                         calendarSidebar(),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: HexoraMenuContentTransition(
+                          child: HexoraMenuContentTransition.submenu(
                             transitionKey: _selectedSideMenu,
                             child: isCalendarSection
                                 ? Row(
@@ -1576,8 +1576,8 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                                             child: FolderPanel(
                                               title: calendarRightPanelTitle(),
                                               showTab: true,
-                                              child:
-                                                  HexoraMenuContentTransition(
+                                              child: HexoraMenuContentTransition
+                                                  .tab(
                                                 transitionKey: _panelView,
                                                 child:
                                                     calendarRightPanelContent(),

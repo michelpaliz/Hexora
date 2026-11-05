@@ -209,7 +209,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   final ValueNotifier<DocumentViewMode?> _receiptSplitModeNotifier =
       ValueNotifier<DocumentViewMode?>(null);
   final Set<String> _updatingReceiptDeliveryIds = <String>{};
-  String _selectedMenu = 'clients';
+  String _selectedMenu = 'invoices_issued';
   bool _businessExpanded = false;
   bool _facturacionExpanded = false;
   bool _gastosExpanded = false;
@@ -1465,7 +1465,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   Future<void> _previewReceiptPdf(Receipt receipt) async {
     final l = AppLocalizations.of(context)!;
     try {
-      final r = await _receiptsApi.previewPdf(receipt.id);
+      final r = await _receiptsApi.previewPdfWithFallback(receipt.id);
       final Uint8List bytes = InvoiceEditorPdf.validatePdf(r);
       final fileName = (receipt.receiptNumber?.trim().isNotEmpty == true)
           ? 'receipt-${receipt.receiptNumber!.trim()}.pdf'
@@ -1473,13 +1473,12 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       await pdf_launcher.launchPdfPreview(bytes, fileName: fileName);
     } catch (e) {
       if (!mounted) return;
-      final msg = e.toString().replaceFirst('Exception: ', '').trim();
-      showErrorSnack(context, msg.isEmpty ? l.receiptPreviewFailed : msg);
+      showFailureSnack(context, e, title: l.receiptPreviewFailed);
     }
   }
 
   Future<Uint8List?> _loadReceiptInlinePdfBytes(Receipt receipt) async {
-    final r = await _receiptsApi.previewPdf(receipt.id);
+    final r = await _receiptsApi.previewPdfWithFallback(receipt.id);
     return InvoiceEditorPdf.validatePdf(r);
   }
 

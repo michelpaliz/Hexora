@@ -53,7 +53,7 @@ class WideLayout extends StatelessWidget {
     return HexoraAppShell(
       globalNav: _DashboardTopNav(state: state, l: l, user: state.user),
       moduleLabel: moduleLabel,
-      body: HexoraMenuContentTransition(
+      body: HexoraMenuContentTransition.module(
         transitionKey: state.activeSection,
         child: _buildContent(state, context, l),
       ),
@@ -182,15 +182,27 @@ List<HexoraNavDestination> _dashboardDestinations(
 }) {
   final es = l.localeName.startsWith('es');
   return [
+    if (canSeeAdmin) ...[
+      HexoraNavDestination(
+        id: Sections.invoices,
+        icon: Icons.receipt_long_outlined,
+        label: es ? 'Ingresos' : 'Income',
+      ),
+      HexoraNavDestination(
+        id: Sections.expenses,
+        icon: Icons.trending_down_rounded,
+        label: es ? 'Gastos' : 'Expenses',
+      ),
+      HexoraNavDestination(
+        id: Sections.enableBanking,
+        icon: Icons.account_balance_outlined,
+        label: es ? 'Banco' : 'Bank',
+      ),
+    ],
     HexoraNavDestination(
       id: Sections.calendar,
       icon: Icons.calendar_month_rounded,
       label: l.calendar,
-    ),
-    HexoraNavDestination(
-      id: Sections.maps,
-      icon: Icons.map_outlined,
-      label: es ? 'Mapa' : 'Map',
     ),
     if (canSeeAdmin) ...[
       HexoraNavDestination(
@@ -199,24 +211,9 @@ List<HexoraNavDestination> _dashboardDestinations(
         label: es ? 'Operaciones' : 'Operations',
       ),
       HexoraNavDestination(
-        id: Sections.invoices,
-        icon: Icons.receipt_long_outlined,
-        label: es ? 'Ingresos' : 'Income',
-      ),
-      HexoraNavDestination(
         id: Sections.budgets,
         icon: Icons.description_outlined,
         label: es ? 'Propuestas' : 'Proposals',
-      ),
-      HexoraNavDestination(
-        id: Sections.expenses,
-        icon: Icons.trending_down_rounded,
-        label: es ? 'Gastos' : 'Expenses',
-      ),
-      const HexoraNavDestination(
-        id: Sections.emails,
-        icon: Icons.email_outlined,
-        label: 'Emails',
       ),
     ],
     const HexoraNavDestination(
@@ -224,22 +221,31 @@ List<HexoraNavDestination> _dashboardDestinations(
       icon: Icons.chat_bubble_outline_rounded,
       label: 'Chat',
     ),
+    HexoraNavDestination(
+      id: Sections.maps,
+      icon: Icons.map_outlined,
+      label: es ? 'Mapa' : 'Map',
+      placement: HexoraNavPlacement.more,
+    ),
+    if (canSeeAdmin)
+      const HexoraNavDestination(
+        id: Sections.emails,
+        icon: Icons.email_outlined,
+        label: 'Emails',
+        placement: HexoraNavPlacement.more,
+      ),
     if (canSeeWorkers)
       HexoraNavDestination(
         id: Sections.workers,
         icon: Icons.access_time_rounded,
         label: es ? 'Trabajadores' : 'Workers',
+        placement: HexoraNavPlacement.more,
       ),
     if (canSeeAdmin) ...[
       HexoraNavDestination(
         id: Sections.chat,
         icon: Icons.auto_awesome_outlined,
         label: es ? 'Asistente IA' : 'AI assistant',
-      ),
-      HexoraNavDestination(
-        id: Sections.enableBanking,
-        icon: Icons.account_balance_outlined,
-        label: l.statementsNavTitle,
         placement: HexoraNavPlacement.more,
       ),
       const HexoraNavDestination(

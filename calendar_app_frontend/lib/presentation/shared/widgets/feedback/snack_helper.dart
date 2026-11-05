@@ -25,6 +25,26 @@ void showSuccessSnack(
       action: action,
     );
 
+/// Success feedback for a saved document (receipt / invoice / budget), so the
+/// three editors share one consistent confirmation. When [reference] (the
+/// document number) is known it is appended to the title, naming the exact
+/// document; otherwise the plain [title] and friendly [message] are shown.
+void showDocumentSavedSnack(
+  BuildContext context, {
+  required String title,
+  required String message,
+  String? reference,
+  String? dismissLabel,
+}) {
+  final ref = reference?.trim() ?? '';
+  showSuccessSnack(
+    context,
+    message,
+    title: ref.isEmpty ? title : '$title · $ref',
+    actionLabel: dismissLabel,
+  );
+}
+
 void showErrorSnack(
   BuildContext context,
   String message, {

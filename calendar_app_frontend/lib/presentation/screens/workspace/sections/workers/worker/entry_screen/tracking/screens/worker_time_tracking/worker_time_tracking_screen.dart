@@ -1,4 +1,3 @@
-import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -64,6 +63,44 @@ class WorkerTimeTrackingScreen extends StatelessWidget {
   }
 }
 
+enum _WorkerHoursAction {
+  toggleMissingDays,
+  exportExcel,
+  importExcel,
+  calendarPdf,
+  previewPayrollPdf,
+  downloadPayrollPdf,
+}
+
+class _OptionsMenuRow extends StatelessWidget {
+  const _OptionsMenuRow({
+    required this.icon,
+    required this.label,
+    this.loading = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 20,
+          height: 20,
+          child: loading
+              ? const CircularProgressIndicator(strokeWidth: 2)
+              : Icon(icon, size: 19),
+        ),
+        const SizedBox(width: 10),
+        Text(label),
+      ],
+    );
+  }
+}
+
 class _WorkerTimeTrackingView extends StatefulWidget {
   final bool embedded;
   final VoidCallback? onDataChanged;
@@ -80,6 +117,7 @@ class _WorkerTimeTrackingView extends StatefulWidget {
 
 class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
   bool _showMissingDays = false;
+  bool _showCreateEntry = false;
   bool _previewingPayrollPdf = false;
   bool _previewingMonthlyCalendarPdf = false;
   bool _downloadingPayrollPdf = false;
@@ -179,6 +217,10 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
 
   Future<void> _addEntry(BuildContext context) async {
     final c = context.read<WorkerTimeTrackingController>();
+    if (widget.embedded) {
+      setState(() => _showCreateEntry = true);
+      return;
+    }
     final created = await showModalBottomSheet<bool>(
       sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
@@ -339,56 +381,111 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
     }
   }
 
-  Widget _toolbarActionButton(
+  Widget _optionsMenu(
     BuildContext context, {
-    required String tooltip,
-    required IconData icon,
-    required VoidCallback? onPressed,
-    Color? color,
-    bool loading = false,
-    bool selected = false,
+    required AppLocalizations l,
+    required bool isSpanish,
+    bool compact = false,
   }) {
-    final cs = Theme.of(context).colorScheme;
-    final accent = color ?? cs.onSurfaceVariant;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: Tooltip(
-        message: tooltip,
-        child: IconButton.filledTonal(
-          onPressed: loading ? null : onPressed,
-          iconSize: 18,
-          style: IconButton.styleFrom(
-            minimumSize: const Size(34, 34),
-            fixedSize: const Size(34, 34),
-            padding: EdgeInsets.zero,
-            visualDensity: VisualDensity.compact,
-            backgroundColor: selected
-                ? cs.primary.withValues(alpha: 0.14)
-                : accent.withValues(alpha: 0.09),
-            disabledBackgroundColor:
-                cs.surfaceContainerHighest.withValues(alpha: 0.42),
-            foregroundColor: selected ? cs.primary : accent,
-            disabledForegroundColor:
-                cs.onSurfaceVariant.withValues(alpha: 0.44),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-              side: BorderSide(
-                color: selected
-                    ? cs.primary.withValues(alpha: 0.22)
-                    : cs.outlineVariant.withValues(alpha: 0.28),
-              ),
-            ),
+    final colors = Theme.of(context).colorScheme;
+    return PopupMenuButton<_WorkerHoursAction>(
+      tooltip: isSpanish ? 'Opciones' : 'Options',
+      position: PopupMenuPosition.under,
+      offset: const Offset(0, 4),
+      onSelected: (action) {
+        switch (action) {
+          case _WorkerHoursAction.toggleMissingDays:
+            setState(() => _showMissingDays = !_showMissingDays);
+          case _WorkerHoursAction.exportExcel:
+            _exportExcel(context);
+          case _WorkerHoursAction.importExcel:
+            _openExcelImport(context);
+          case _WorkerHoursAction.calendarPdf:
+            _previewMonthlyCalendarPdf(context);
+          case _WorkerHoursAction.previewPayrollPdf:
+            _previewPayrollPdf(context);
+          case _WorkerHoursAction.downloadPayrollPdf:
+            _downloadPayrollPdf(context);
+        }
+      },
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: _WorkerHoursAction.toggleMissingDays,
+          child: _OptionsMenuRow(
+            icon: _showMissingDays
+                ? Icons.visibility_off_outlined
+                : Icons.visibility_outlined,
+            label: l.toggleEmptyDays,
           ),
-          icon: loading
-              ? SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(accent),
-                  ),
-                )
-              : Icon(icon),
+        ),
+        PopupMenuItem(
+          value: _WorkerHoursAction.exportExcel,
+          child: _OptionsMenuRow(
+            icon: Icons.grid_on_rounded,
+            label: l.exportExcel,
+          ),
+        ),
+        PopupMenuItem(
+          value: _WorkerHoursAction.importExcel,
+          child: _OptionsMenuRow(
+            icon: Icons.upload_file_outlined,
+            label: isSpanish ? 'Importar Excel' : 'Import Excel',
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: _WorkerHoursAction.calendarPdf,
+          enabled: !_previewingMonthlyCalendarPdf,
+          child: _OptionsMenuRow(
+            icon: Icons.calendar_month_outlined,
+            label: isSpanish ? 'Calendario mensual' : 'Monthly calendar',
+            loading: _previewingMonthlyCalendarPdf,
+          ),
+        ),
+        PopupMenuItem(
+          value: _WorkerHoursAction.previewPayrollPdf,
+          enabled: !_previewingPayrollPdf,
+          child: _OptionsMenuRow(
+            icon: Icons.picture_as_pdf_outlined,
+            label: isSpanish ? 'Vista previa del PDF' : 'Preview PDF',
+            loading: _previewingPayrollPdf,
+          ),
+        ),
+        PopupMenuItem(
+          value: _WorkerHoursAction.downloadPayrollPdf,
+          enabled: !_downloadingPayrollPdf,
+          child: _OptionsMenuRow(
+            icon: Icons.file_download_outlined,
+            label: isSpanish ? 'Descargar PDF' : 'Download PDF',
+            loading: _downloadingPayrollPdf,
+          ),
+        ),
+      ],
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(color: colors.outlineVariant),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.tune_rounded, size: 18, color: colors.primary),
+            if (!compact) ...[
+              const SizedBox(width: 7),
+              Text(
+                isSpanish ? 'Opciones' : 'Options',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: colors.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+            ],
+          ],
         ),
       ),
     );
@@ -398,65 +495,143 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final isSpanish = context.isSpanishLocale;
-    final previewPdfLabel = isSpanish ? 'Ver PDF' : 'Preview PDF';
-    final downloadPdfLabel = isSpanish ? 'Descargar PDF' : 'Download PDF';
-    final monthlyCalendarPdfLabel = isSpanish
-        ? 'Ver PDF del calendario mensual'
-        : 'Preview monthly calendar PDF';
     return Consumer<WorkerTimeTrackingController>(
       builder: (context, c, _) {
-        final addButton = Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton.icon(
-              onPressed: () => _addEntry(context),
-              icon: const Icon(Icons.add),
-              label: Text(l.addTimeEntryCta),
-            ),
+        final completedDuration = c.entries.fold<Duration>(
+          Duration.zero,
+          (total, entry) => entry.end == null
+              ? total
+              : total + entry.end!.difference(entry.start),
+        );
+        final durationHours = completedDuration.inMinutes / 60;
+        final durationLabel = durationHours == durationHours.roundToDouble()
+            ? durationHours.toStringAsFixed(0)
+            : durationHours.toStringAsFixed(1).replaceAll('.', ',');
+        final entriesFooter = Padding(
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+          child: Row(
+            children: [
+              Icon(
+                Icons.calendar_month_outlined,
+                size: 20,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: isSpanish
+                            ? '${c.entries.length} registros · '
+                            : '${c.entries.length} entries · ',
+                      ),
+                      TextSpan(
+                        text: isSpanish
+                            ? '$durationLabel h totales'
+                            : '$durationLabel total hours',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                onPressed: () => _addEntry(context),
+                icon: const Icon(Icons.add, size: 18),
+                label: Text(l.addTimeEntryCta),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 38),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+              ),
+            ],
           ),
         );
 
-        final content = c.loading
-            ? const Center(child: CircularProgressIndicator())
-            : c.error
-                ? Center(child: Text(l.errorLoadingData))
-                : c.entries.isEmpty
-                    ? EmptyView(
-                        icon: Icons.timer_outlined,
-                        title: l.noTimeEntriesYetTitle,
-                        subtitle: l.noTimeEntriesYetSubtitle,
-                        cta: l.addTimeEntryCta,
-                        onPressed: () => _addEntry(context),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: c.load,
-                        child: Column(
-                          children: [
-                            StatsHeader(
-                              entries: c.entries,
-                              totals: c.totals,
-                              worker: c.worker,
-                              totalsLoading: c.totalsLoading,
-                              totalsError: c.totalsError,
+        final content = _showCreateEntry
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => setState(() => _showCreateEntry = false),
+                      icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                      label: Text(l.back),
+                    ),
+                  ),
+                  Expanded(
+                    child: CreateTimeEntryScreen(
+                      key: ValueKey('inline-time-entry-${c.worker.id}'),
+                      group: c.group,
+                      workers: [c.worker],
+                      embedded: true,
+                      showHeader: false,
+                      initialSelectedIds: {c.worker.id},
+                      onCancel: () => setState(() => _showCreateEntry = false),
+                      onCreated: () async {
+                        if (mounted) {
+                          setState(() => _showCreateEntry = false);
+                        }
+                        await c.load();
+                        widget.onDataChanged?.call();
+                      },
+                    ),
+                  ),
+                ],
+              )
+            : c.loading
+                ? const Center(child: CircularProgressIndicator())
+                : c.error
+                    ? Center(child: Text(l.errorLoadingData))
+                    : c.entries.isEmpty
+                        ? EmptyView(
+                            icon: Icons.timer_outlined,
+                            title: l.noTimeEntriesYetTitle,
+                            subtitle: l.noTimeEntriesYetSubtitle,
+                            cta: l.addTimeEntryCta,
+                            onPressed: () => _addEntry(context),
+                          )
+                        : RefreshIndicator(
+                            onRefresh: c.load,
+                            child: Column(
+                              children: [
+                                StatsHeader(
+                                  entries: c.entries,
+                                  totals: c.totals,
+                                  worker: c.worker,
+                                  totalsLoading: c.totalsLoading,
+                                  totalsError: c.totalsError,
+                                ),
+                                Expanded(
+                                  child: TimeEntriesList(
+                                    entries: c.entries,
+                                    groupId: c.group.id,
+                                    repo:
+                                        context.read<ITimeTrackingRepository>(),
+                                    getToken: () => context
+                                        .read<UserDomain>()
+                                        .getAuthToken(),
+                                    onUpdated: () =>
+                                        _reloadAfterEntryChange(context),
+                                    worker: c.worker,
+                                    showMissingDays: _showMissingDays,
+                                  ),
+                                ),
+                                entriesFooter,
+                              ],
                             ),
-                            Expanded(
-                              child: TimeEntriesList(
-                                entries: c.entries,
-                                groupId: c.group.id,
-                                repo: context.read<ITimeTrackingRepository>(),
-                                getToken: () =>
-                                    context.read<UserDomain>().getAuthToken(),
-                                onUpdated: () =>
-                                    _reloadAfterEntryChange(context),
-                                worker: c.worker,
-                                showMissingDays: _showMissingDays,
-                              ),
-                            ),
-                            addButton,
-                          ],
-                        ),
-                      );
+                          );
         if (widget.embedded) {
           return Column(
             children: [
@@ -464,69 +639,152 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
                 padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: WorkerAppBarTitle(
-                        group: c.group,
-                        worker: c.worker,
-                        year: c.year,
-                        month: c.month,
-                        totals: c.totals,
-                        compact: true,
-                        advanceAmount: c.advanceAmount,
-                        currency: (c.totals?['currency'] ?? c.worker.currency)
-                            ?.toString(),
-                        onOpenAdvanceDialog: () => _openAdvanceDialog(context),
+                    if (_showCreateEntry) ...[
+                      TextButton.icon(
+                        key: const ValueKey('embedded-time-entry-back'),
+                        onPressed: () =>
+                            setState(() => _showCreateEntry = false),
+                        icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                        label: Text(l.back),
                       ),
-                    ),
-                    _toolbarActionButton(
-                      context,
-                      tooltip: l.toggleEmptyDays,
-                      icon: _showMissingDays
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                      selected: _showMissingDays,
-                      onPressed: () =>
-                          setState(() => _showMissingDays = !_showMissingDays),
-                    ),
-                    _toolbarActionButton(
-                      context,
-                      tooltip: l.exportExcel,
-                      icon: Icons.grid_on_rounded,
-                      onPressed: () => _exportExcel(context),
-                    ),
-                    _toolbarActionButton(
-                      context,
-                      tooltip: isSpanish ? 'Importar Excel' : 'Import Excel',
-                      icon: Icons.upload_file_outlined,
-                      onPressed: () => _openExcelImport(context),
-                    ),
-                    _toolbarActionButton(
-                      context,
-                      tooltip: monthlyCalendarPdfLabel,
-                      icon: Icons.calendar_month_outlined,
-                      color: const Color(0xFF2E6E5A),
-                      loading: _previewingMonthlyCalendarPdf,
-                      onPressed: () => _previewMonthlyCalendarPdf(context),
-                    ),
-                    _toolbarActionButton(
-                      context,
-                      tooltip: previewPdfLabel,
-                      icon: Icons.picture_as_pdf_outlined,
-                      color: const Color(0xFFC62828),
-                      loading: _previewingPayrollPdf,
-                      onPressed: () => _previewPayrollPdf(context),
-                    ),
-                    _toolbarActionButton(
-                      context,
-                      tooltip: downloadPdfLabel,
-                      icon: Icons.file_download_outlined,
-                      loading: _downloadingPayrollPdf,
-                      onPressed: () => _downloadPayrollPdf(context),
-                    ),
+                      const SizedBox(width: 4),
+                      Text(
+                        l.addTimeEntryCta,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(width: 4),
+                      Tooltip(
+                        message: isSpanish
+                            ? 'Selecciona los trabajadores y el horario que quieres registrar.'
+                            : 'Select the workers and schedule you want to register.',
+                        child: Icon(Icons.info_outline_rounded,
+                            size: 17,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant),
+                      ),
+                      const SizedBox(width: 12),
+                    ],
+                    if (_showCreateEntry)
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                c.worker.displayName ??
+                                    c.worker.userId ??
+                                    l.unknownWorker,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: ThemeColors.success(context)
+                                    .withValues(alpha: .09),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                c.worker.status == WorkerStatus.active
+                                    ? l.statusActive
+                                    : l.statusInactive,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: c.worker.status == WorkerStatus.active
+                                      ? ThemeColors.success(context)
+                                      : Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final narrow = constraints.maxWidth < 700;
+                            final identity = WorkerAppBarTitle(
+                              group: c.group,
+                              worker: c.worker,
+                              year: c.year,
+                              month: c.month,
+                              totals: c.totals,
+                              compact: true,
+                              identityOnly: true,
+                              advanceAmount: c.advanceAmount,
+                              currency:
+                                  (c.totals?['currency'] ?? c.worker.currency)
+                                      ?.toString(),
+                            );
+                            final financial = WorkerAppBarTitle(
+                              group: c.group,
+                              worker: c.worker,
+                              year: c.year,
+                              month: c.month,
+                              totals: c.totals,
+                              compact: true,
+                              financialOnly: true,
+                              showAdvance: !narrow,
+                              advanceAmount: c.advanceAmount,
+                              currency:
+                                  (c.totals?['currency'] ?? c.worker.currency)
+                                      ?.toString(),
+                              onOpenAdvanceDialog: () =>
+                                  _openAdvanceDialog(context),
+                            );
+                            final options = _optionsMenu(
+                              context,
+                              l: l,
+                              isSpanish: isSpanish,
+                              compact: narrow,
+                            );
+                            if (narrow) {
+                              return Row(
+                                children: [
+                                  Expanded(child: identity),
+                                  const SizedBox(width: 8),
+                                  financial,
+                                  const SizedBox(width: 8),
+                                  options,
+                                ],
+                              );
+                            }
+                            return Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: ConstrainedBox(
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 230),
+                                    child: identity,
+                                  ),
+                                ),
+                                Center(child: financial),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: options,
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
                   ],
                 ),
               ),
-              const Divider(height: 1),
               Expanded(child: content),
             ],
           );
@@ -545,108 +803,23 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
               year: c.year,
               month: c.month,
               totals: c.totals,
+              compact: true,
+              showAdvance: MediaQuery.sizeOf(context).width >= 760,
               advanceAmount: c.advanceAmount,
               currency:
                   (c.totals?['currency'] ?? c.worker.currency)?.toString(),
+              onOpenAdvanceDialog: () => _openAdvanceDialog(context),
             ),
             actions: [
-              if (MediaQuery.sizeOf(context).width < 760)
-                PopupMenuButton<int>(
-                  tooltip: l.timeTrackingActionsCta,
-                  onSelected: (value) {
-                    switch (value) {
-                      case 0:
-                        setState(() => _showMissingDays = !_showMissingDays);
-                      case 1:
-                        _exportExcel(context);
-                      case 2:
-                        _openExcelImport(context);
-                      case 3:
-                        _previewMonthlyCalendarPdf(context);
-                      case 4:
-                        _previewPayrollPdf(context);
-                      case 5:
-                        _downloadPayrollPdf(context);
-                    }
-                  },
-                  itemBuilder: (_) => [
-                    CheckedPopupMenuItem(
-                        value: 0,
-                        checked: _showMissingDays,
-                        child: Text(l.toggleEmptyDays)),
-                    NavigationPopupMenuItem(
-                        value: 1, child: Text(l.exportExcel)),
-                    NavigationPopupMenuItem(
-                        value: 2,
-                        child: Text(
-                            isSpanish ? 'Importar Excel' : 'Import Excel')),
-                    NavigationPopupMenuItem(
-                        value: 3,
-                        enabled: !_previewingMonthlyCalendarPdf,
-                        child: Text(monthlyCalendarPdfLabel)),
-                    NavigationPopupMenuItem(
-                        value: 4,
-                        enabled: !_previewingPayrollPdf,
-                        child: Text(isSpanish
-                            ? 'Ver PDF de horas y pagos'
-                            : 'Preview hours and pay PDF')),
-                    NavigationPopupMenuItem(
-                        value: 5,
-                        enabled: !_downloadingPayrollPdf,
-                        child: Text(isSpanish
-                            ? 'Descargar PDF de horas y pagos'
-                            : 'Download hours and pay PDF')),
-                  ],
-                )
-              else ...[
-                _toolbarActionButton(
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: _optionsMenu(
                   context,
-                  tooltip: l.toggleEmptyDays,
-                  icon: _showMissingDays
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                  selected: _showMissingDays,
-                  onPressed: () =>
-                      setState(() => _showMissingDays = !_showMissingDays),
+                  l: l,
+                  isSpanish: isSpanish,
+                  compact: MediaQuery.sizeOf(context).width < 760,
                 ),
-                _toolbarActionButton(
-                  context,
-                  tooltip: l.exportExcel,
-                  icon: Icons.grid_on_rounded,
-                  onPressed: () => _exportExcel(context),
-                ),
-                _toolbarActionButton(
-                  context,
-                  tooltip: isSpanish ? 'Importar Excel' : 'Import Excel',
-                  icon: Icons.upload_file_outlined,
-                  onPressed: () => _openExcelImport(context),
-                ),
-                _toolbarActionButton(
-                  context,
-                  tooltip: monthlyCalendarPdfLabel,
-                  icon: Icons.calendar_month_outlined,
-                  color: const Color(0xFF2E6E5A),
-                  loading: _previewingMonthlyCalendarPdf,
-                  onPressed: () => _previewMonthlyCalendarPdf(context),
-                ),
-                _toolbarActionButton(
-                  context,
-                  tooltip:
-                      '$previewPdfLabel - monthly payroll (hours and pay).',
-                  icon: Icons.picture_as_pdf_outlined,
-                  color: const Color(0xFFC62828),
-                  loading: _previewingPayrollPdf,
-                  onPressed: () => _previewPayrollPdf(context),
-                ),
-                _toolbarActionButton(
-                  context,
-                  tooltip:
-                      '$downloadPdfLabel - monthly payroll (hours and pay).',
-                  icon: Icons.file_download_outlined,
-                  loading: _downloadingPayrollPdf,
-                  onPressed: () => _downloadPayrollPdf(context),
-                ),
-              ],
+              ),
             ],
           ),
           body: content,

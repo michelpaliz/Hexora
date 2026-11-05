@@ -73,7 +73,13 @@ void main() {
 
     update(() => step = 1);
     await tester.pump(const Duration(milliseconds: 120));
-    expect(find.byType(AnimatedSlide), findsNWidgets(2));
+    expect(find.byType(AnimatedSlide), findsOneWidget);
+    expect(
+      find.byType(AnimatedSlide, skipOffstage: false),
+      findsNWidgets(2),
+    );
+    expect(find.text('Cliente 1'), findsNothing);
+    expect(find.text('Detalles 0'), findsOneWidget);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Detalles 0'));
     await tester.pump();

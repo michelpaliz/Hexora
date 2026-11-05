@@ -230,6 +230,7 @@ class CompactDocumentTableHeader extends StatelessWidget {
     required this.identityLabel,
     required this.visibleFinancialColumns,
     this.clientLabel = 'Cliente',
+    this.conceptLabel = 'Concepto',
     this.statusLabel = 'Estado',
     this.paymentLabel = 'Pago',
     this.actionsLabel = 'Acciones',
@@ -245,6 +246,7 @@ class CompactDocumentTableHeader extends StatelessWidget {
   final String identityLabel;
   final Set<HexoraFinancialColumn> visibleFinancialColumns;
   final String clientLabel;
+  final String conceptLabel;
   final String statusLabel;
   final String paymentLabel;
   final String actionsLabel;
@@ -432,7 +434,8 @@ class CompactDocumentTableHeader extends StatelessWidget {
               layout.columns.contains(HexoraFinancialColumn.date))
             _cell(context, CompactDocumentColumn.date, 'Fecha', layout.date),
           if (layout.columns.contains(HexoraFinancialColumn.concept))
-            HexoraFinancialHeaderCell(label: 'Concepto', width: layout.concept),
+            HexoraFinancialHeaderCell(
+                label: conceptLabel, width: layout.concept),
           if (layout.columns.contains(HexoraFinancialColumn.taxableBase))
             _cell(context, CompactDocumentColumn.taxableBase, 'Base imponible',
                 layout.base,

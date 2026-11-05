@@ -10,6 +10,7 @@ import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/r
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/widgets/worker_monthly_overview_inline.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/widgets/month_list.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/monthly_overview/widgets/year_switcher.dart';
+import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/create_time_entry_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/worker_time_tracking_screen.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/widgets/status_filter_chips.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/widgets/worker_directory_view.dart';
@@ -126,7 +127,34 @@ void main() {
         .map((w) => w.id)
         .toList();
     expect(visibleIds(), ['worker']);
-    await tester.tap(find.byTooltip('Resumen mensual').first);
+    expect(
+        find.descendant(
+          of: find.byType(WorkersFormPanel),
+          matching: find.text('Registrar horas'),
+        ),
+        findsNothing);
+    final directoryList =
+        tester.widget<WorkerListSection>(find.byType(WorkerListSection));
+    directoryList.onAddHours(directoryList.workers.single);
+    await tester.pumpAndSettle();
+    expect(find.byType(CreateTimeEntryScreen), findsOneWidget);
+    expect(
+        find.byTooltip(
+            'Selecciona los trabajadores y el horario que quieres registrar.'),
+        findsOneWidget);
+    expect(find.text('Trabajadores (1)'), findsOneWidget);
+    expect(find.text('Fecha y hora de inicio'), findsOneWidget);
+    expect(find.text('Fecha y hora de fin'), findsOneWidget);
+    expect(
+        find.descendant(
+          of: find.byType(WorkersFormPanel),
+          matching: find.text('Registrar horas'),
+        ),
+        findsNothing);
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded).last);
+    await tester.pumpAndSettle();
+    expect(find.byType(CreateTimeEntryScreen), findsNothing);
+    await tester.tap(find.byTooltip('Ver horas').first);
     await tester.pumpAndSettle();
     expect(find.byType(WorkerMonthlyOverviewInline), findsOneWidget);
     expect(find.byType(WorkerDirectoryView), findsNothing);
@@ -150,6 +178,22 @@ void main() {
             find.byType(WorkerTimeTrackingScreen));
     expect(tracking().embedded, isTrue);
     expect(tracking().worker.id, 'worker');
+    final embeddedTracking = find.byType(WorkerTimeTrackingScreen);
+    await tester.tap(find.descendant(
+      of: embeddedTracking,
+      matching: find.text('Registrar horas'),
+    ));
+    await tester.pumpAndSettle();
+    expect(
+        find.descendant(
+          of: embeddedTracking,
+          matching: find.byType(CreateTimeEntryScreen),
+        ),
+        findsOneWidget);
+    expect(find.byType(BottomSheet), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('embedded-time-entry-back')));
+    await tester.pumpAndSettle();
+    expect(find.byType(CreateTimeEntryScreen), findsNothing);
     final monthList = tester.widget<MonthList>(find.byType(MonthList));
     final nextMonth = monthList.selectedMonth == 1 ? 2 : 1;
     monthList.onTapMonth(nextMonth);
@@ -161,7 +205,7 @@ void main() {
     expect(tracking().initialYear, years.year - 1);
     expect(tracking().initialMonth, nextMonth);
     expect(tester.takeException(), isNull);
-    await tester.tap(find.byTooltip('Volver'));
+    await tester.tap(find.byTooltip('Atrás'));
     await tester.pumpAndSettle();
     expect(visibleIds(), ['worker']);
     await tester.tap(find.byKey(const ValueKey('directory-partners')));
@@ -175,15 +219,29 @@ void main() {
     expect(visibleIds(), ['admin-worker']);
     await tester.tap(find.byTooltip('Limpiar búsqueda'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Nombre (A–Z)').first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Nombre (Z–A)').last);
+    if (find.byType(DropdownButton<bool>).evaluate().isNotEmpty) {
+      await tester.tap(find.byType(DropdownButton<bool>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Z–A').last);
+    } else {
+      await tester.tap(find.byTooltip('Opciones de vista'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Nombre (Z–A)'));
+    }
     await tester.pumpAndSettle();
     expect(visibleIds(), ['owner-worker', 'admin-worker', 'co-admin-worker']);
-    await tester.tap(find.descendant(
-      of: find.byType(StatusFilterChips),
-      matching: find.text('Inactivo'),
-    ));
+    if (find.byType(StatusFilterChips).evaluate().isNotEmpty) {
+      await tester.tap(find.descendant(
+        of: find.byType(StatusFilterChips),
+        matching: find.text('Inactivos'),
+      ));
+    } else {
+      await tester.tap(find.byTooltip('Filtros'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byWidgetPredicate((widget) =>
+          widget is CheckedPopupMenuItem<WorkerStatusFilter> &&
+          widget.value == WorkerStatusFilter.inactive));
+    }
     await tester.pumpAndSettle();
     expect(visibleIds(), ['co-admin-worker']);
     await tester.tap(find.byKey(const ValueKey('directory-workers')));

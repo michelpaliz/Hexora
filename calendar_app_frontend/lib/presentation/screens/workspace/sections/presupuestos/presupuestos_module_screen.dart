@@ -85,8 +85,9 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 760;
     final title = _isEs ? 'Propuestas' : 'Proposals';
-    final menuContent = HexoraMenuContentTransition(
+    final menuContent = HexoraMenuContentTransition.submenu(
       transitionKey: _menu,
+      preserveState: true,
       child: _content(),
     );
     final content = _loading

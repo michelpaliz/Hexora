@@ -4,7 +4,12 @@ import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/shared/currency_options.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/create_time_entry_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/client_editor_theme.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/client_form_fields.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/input_border.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_active_switch.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_section_tabs.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -38,108 +43,85 @@ class WorkersFormPanel extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBg = isDark ? cs.surface : cs.surfaceContainerHighest;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: (isDark
-                        ? cs.surfaceContainerHigh
-                        : cs.surfaceContainerHighest)
-                    .withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: TabBar(
-                controller: tabController,
-                indicatorSize: TabBarIndicatorSize.tab,
-                indicatorPadding: const EdgeInsets.all(4),
-                labelPadding: const EdgeInsets.symmetric(horizontal: 12),
-                dividerColor: Colors.transparent,
-                labelColor: cs.onPrimary,
-                unselectedLabelColor: cs.onSurface,
-                labelStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
-                unselectedLabelStyle:
-                    t.bodySmall.copyWith(fontWeight: FontWeight.w600),
-                indicator: BoxDecoration(
-                  color: cs.primary,
-                  borderRadius: BorderRadius.circular(8),
+    // Neutral surface, no colored card wrapper around the whole form.
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Column(
+        children: [
+          HexoraSectionTabs(
+            controller: tabController,
+            compact: true,
+            tabs: [
+              Tab(text: l.editWorker),
+              Tab(text: l.createWorkerCta),
+              if (enableAddHoursTab) Tab(text: l.addTimeEntryCta),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: TabBarView(
+              controller: tabController,
+              children: [
+                selectedWorker == null
+                    ? _RequiredPlaceholder(l: l, t: t, cs: cs)
+                    : _WorkerEditorForm(
+                        key: ValueKey('edit-${selectedWorker!.id}'),
+                        group: group,
+                        repo: repo,
+                        getToken: getToken,
+                        worker: selectedWorker!,
+                        isCreate: false,
+                        onSaved: onSaved,
+                      ),
+                _WorkerEditorForm(
+                  key: const ValueKey('create-worker'),
+                  group: group,
+                  repo: repo,
+                  getToken: getToken,
+                  worker: Worker.newExternal(groupId: group.id),
+                  isCreate: true,
+                  onSaved: onSaved,
                 ),
-                tabs: [
-                  Tab(text: l.editWorker),
-                  Tab(text: l.createWorkerCta),
-                  if (enableAddHoursTab) Tab(text: l.addTimeEntryCta),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: TabBarView(
-                controller: tabController,
-                children: [
+                if (enableAddHoursTab)
                   selectedWorker == null
-                      ? Center(
-                          child: Text(
-                            l.workerRequired,
-                            style: t.bodySmall.copyWith(
-                              color: cs.onSurface.withValues(alpha: 0.7),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        )
-                      : _WorkerEditorForm(
-                          key: ValueKey('edit-${selectedWorker!.id}'),
+                      ? _RequiredPlaceholder(l: l, t: t, cs: cs)
+                      : CreateTimeEntryScreen(
+                          key: ValueKey('add-hours-${selectedWorker!.id}'),
                           group: group,
-                          repo: repo,
-                          getToken: getToken,
-                          worker: selectedWorker!,
-                          isCreate: false,
-                          onSaved: onSaved,
+                          workers: allWorkers.isNotEmpty
+                              ? allWorkers
+                              : [selectedWorker!],
+                          initialSelectedIds: {selectedWorker!.id},
+                          embedded: true,
+                          onCreated: onTimeEntryChanged,
                         ),
-                  _WorkerEditorForm(
-                    key: const ValueKey('create-worker'),
-                    group: group,
-                    repo: repo,
-                    getToken: getToken,
-                    worker: Worker.newExternal(groupId: group.id),
-                    isCreate: true,
-                    onSaved: onSaved,
-                  ),
-                  if (enableAddHoursTab)
-                    selectedWorker == null
-                        ? Center(
-                            child: Text(
-                              l.workerRequired,
-                              style: t.bodySmall.copyWith(
-                                color: cs.onSurface.withValues(alpha: 0.7),
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          )
-                        : CreateTimeEntryScreen(
-                            key: ValueKey('add-hours-${selectedWorker!.id}'),
-                            group: group,
-                            workers: allWorkers.isNotEmpty
-                                ? allWorkers
-                                : [selectedWorker!],
-                            initialSelectedIds: {selectedWorker!.id},
-                            embedded: true,
-                            onCreated: onTimeEntryChanged,
-                          ),
-                ],
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RequiredPlaceholder extends StatelessWidget {
+  const _RequiredPlaceholder({
+    required this.l,
+    required this.t,
+    required this.cs,
+  });
+
+  final AppLocalizations l;
+  final AppTypography t;
+  final ColorScheme cs;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        l.workerRequired,
+        style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+        textAlign: TextAlign.center,
       ),
     );
   }
@@ -258,196 +240,138 @@ class _WorkerEditorFormState extends State<_WorkerEditorForm> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final inputTextStyle = t.bodyMedium;
-    final labelTextStyle =
-        t.bodySmall.copyWith(color: cs.onSurface.withValues(alpha: 0.7));
 
-    return Column(
-      children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            widget.isCreate ? l.createWorkerCta : l.editWorker,
-            style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Expanded(
-          child: SingleChildScrollView(
+    // Reuse the Clientes form theme so label typography, floating-label
+    // behaviour, hint and error styles match across modules.
+    return Theme(
+      data: clientEditorThemeOf(context),
+      child: Builder(
+        builder: (context) {
+          final text = Theme.of(context).textTheme;
+          final isSpanish =
+              Localizations.localeOf(context).languageCode == 'es';
+          return SingleChildScrollView(
+            padding: const EdgeInsets.only(top: 2, bottom: 8),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             child: Form(
               key: _formKey,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _SectionCard(
-                    title: l.workerLabel,
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: _nameCtrl,
-                          style: inputTextStyle,
-                          decoration: InputDecoration(
-                            labelText: l.workerNameLabel,
-                            labelStyle: labelTextStyle,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        TextFormField(
-                          controller: _roleTagCtrl,
-                          style: inputTextStyle,
-                          decoration: InputDecoration(
-                            labelText: l.roleLabel,
-                            labelStyle: labelTextStyle,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _SectionCard(
-                    title: l.totalHours,
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: _rateCtrl,
-                          style: inputTextStyle,
-                          decoration: InputDecoration(
-                            labelText: l.hourlyRateLabel,
-                            labelStyle: labelTextStyle,
-                          ),
-                          keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true),
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) return null;
-                            final n = double.tryParse(v.replaceAll(',', '.'));
-                            if (n == null || n < 0) return l.invalidRate;
-                            return null;
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _SectionCard(
-                    title: l.currencyLabel,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            initialValue: _currency,
-                            style: inputTextStyle,
-                            items: workerCurrencyOptions
-                                .map((c) =>
-                                    DropdownMenuItem(value: c, child: Text(c)))
-                                .toList(),
-                            onChanged: (v) => setState(
-                                () => _currency = v ?? defaultWorkerCurrency),
-                            decoration: InputDecoration(
-                              labelText: l.currencyLabel,
-                              labelStyle: labelTextStyle,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: DropdownButtonFormField<WorkerStatus>(
-                            initialValue: _status,
-                            style: inputTextStyle,
-                            items: [
-                              DropdownMenuItem(
-                                value: WorkerStatus.active,
-                                child: Text(l.statusActive),
-                              ),
-                              DropdownMenuItem(
-                                value: WorkerStatus.archived,
-                                child: Text(l.statusInactive),
-                              ),
-                            ],
-                            onChanged: (v) => setState(
-                                () => _status = v ?? WorkerStatus.active),
-                            decoration: InputDecoration(
-                              labelText: l.statusLabel,
-                              labelStyle: labelTextStyle,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _SectionCard(
-                    title: l.notesLabel,
-                    child: TextFormField(
-                      controller: _notesCtrl,
-                      style: inputTextStyle,
-                      decoration: InputDecoration(
-                        labelText: l.notesLabel,
-                        labelStyle: labelTextStyle,
+                  ClientFormFields(
+                    firstFlex: 3,
+                    secondFlex: 2,
+                    gap: 12,
+                    first: TextFormField(
+                      controller: _nameCtrl,
+                      style: text.bodyLarge,
+                      decoration: buildInputDecoration(
+                        context,
+                        label: l.workerNameLabel,
+                        prefixIcon: const Icon(Icons.person_outline),
+                        isFilled: _nameCtrl.text.trim().isNotEmpty,
                       ),
-                      maxLines: 3,
+                    ),
+                    second: TextFormField(
+                      controller: _roleTagCtrl,
+                      style: text.bodyLarge,
+                      decoration: buildInputDecoration(
+                        context,
+                        label: l.roleLabel,
+                        prefixIcon: const Icon(Icons.badge_outlined),
+                        isFilled: _roleTagCtrl.text.trim().isNotEmpty,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
+                  const SizedBox(height: 10),
+                  ClientFormFields(
+                    gap: 12,
+                    first: TextFormField(
+                      controller: _rateCtrl,
+                      style: text.bodyLarge,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: buildInputDecoration(
+                        context,
+                        label: l.hourlyRateLabel,
+                        prefixIcon: const Icon(Icons.payments_outlined),
+                        isFilled: _rateCtrl.text.trim().isNotEmpty,
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return null;
+                        final n = double.tryParse(v.replaceAll(',', '.'));
+                        if (n == null || n < 0) return l.invalidRate;
+                        return null;
+                      },
+                    ),
+                    second: DropdownButtonFormField<String>(
+                      initialValue: _currency,
+                      isExpanded: true,
+                      style: text.bodyLarge,
+                      items: workerCurrencyOptions
+                          .map(
+                              (c) => DropdownMenuItem(value: c, child: Text(c)))
+                          .toList(),
+                      onChanged: (v) => setState(
+                          () => _currency = v ?? defaultWorkerCurrency),
+                      decoration: buildInputDecoration(
+                        context,
+                        label: l.currencyLabel,
+                        prefixIcon:
+                            const Icon(Icons.currency_exchange_outlined),
+                        isFilled: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: SizedBox(
+                      width: 150,
+                      child: ActiveSwitch(
+                        value: _status == WorkerStatus.active,
+                        showIcon: false,
+                        showDescription: false,
+                        compact: true,
+                        onChanged: (isActive) => setState(() => _status =
+                            isActive
+                                ? WorkerStatus.active
+                                : WorkerStatus.archived),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _notesCtrl,
+                    style: text.bodyLarge,
+                    minLines: 3,
+                    maxLines: 6,
+                    decoration: buildInputDecoration(
+                      context,
+                      label: l.notesLabel,
+                      hintText: isSpanish
+                          ? 'Añadir notas opcionales...'
+                          : 'Add optional notes...',
+                      isFilled: _notesCtrl.text.trim().isNotEmpty,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerRight,
                     child: HexoraButton(
                       icon: Icons.save_outlined,
                       label:
                           widget.isCreate ? l.createWorkerCta : l.saveChanges,
-                      size: HexoraButtonSize.large,
+                      size: HexoraButtonSize.compact,
                       loading: _saving,
                       onPressed: _saving ? null : _save,
                     ),
                   ),
-                  const SizedBox(height: 4),
                 ],
               ),
             ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SectionCard extends StatelessWidget {
-  final String title;
-  final Widget child;
-
-  const _SectionCard({
-    required this.title,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark
-        ? cs.surfaceContainerHigh.withValues(alpha: 0.75)
-        : cs.surfaceContainerHighest.withValues(alpha: 0.45);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: t.bodySmall.copyWith(
-              fontWeight: FontWeight.w800,
-              color: cs.onSurface.withValues(alpha: 0.7),
-            ),
-          ),
-          const SizedBox(height: 8),
-          child,
-        ],
+          );
+        },
       ),
     );
   }

@@ -52,6 +52,7 @@ class DeliveryStatusBadge extends StatelessWidget {
     this.deliveryError,
     this.compact = false,
     this.feminine = false,
+    this.notSentLabel,
   });
 
   final String? status;
@@ -60,12 +61,15 @@ class DeliveryStatusBadge extends StatelessWidget {
   final String? deliveryError;
   final bool compact;
   final bool feminine;
+  final String? notSentLabel;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final normalized = normalizedDeliveryStatus(status);
-    final label = deliveryStatusLabel(status, feminine: feminine);
+    final label = normalized == 'not_sent' && notSentLabel != null
+        ? notSentLabel!
+        : deliveryStatusLabel(status, feminine: feminine);
     final color = switch (normalized) {
       'delivered' => Theme.of(context).brightness == Brightness.light
           ? const Color(0xFF2E7D32)

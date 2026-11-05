@@ -36,6 +36,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
     as pdf_launcher;
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/buttons.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
@@ -767,11 +768,15 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
                 ),
                 // ── PDF Preview ──────────────────────────────────────────────
                 Expanded(
-                  child: _buildInlineTabContent(
-                    cs,
-                    l,
-                    selectedIndex: _inlineTabIndex,
-                    isEs: isEs,
+                  child: HexoraMenuContentTransition.tab(
+                    transitionKey: _inlineTabIndex,
+                    preserveState: true,
+                    child: _buildInlineTabContent(
+                      cs,
+                      l,
+                      selectedIndex: _inlineTabIndex,
+                      isEs: isEs,
+                    ),
                   ),
                 ),
 
@@ -1954,7 +1959,12 @@ class _InvoiceDetailTabs extends StatelessWidget {
             child: InkWell(
               onTap: () => onSelected(index),
               borderRadius: BorderRadius.circular(6),
-              child: Container(
+              child: AnimatedContainer(
+                duration: HexoraMotion.duration(
+                  context,
+                  HexoraMotion.tabIndicator,
+                ),
+                curve: HexoraMotion.navigationCurve,
                 alignment: Alignment.center,
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 decoration: BoxDecoration(

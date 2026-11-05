@@ -750,7 +750,7 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
                 ? null
                 : _step < 2
                     ? () => _tryGoToStep(_step + 1)
-                    : _saveDraft,
+                    : _saveDraftAndFinish,
             loading: _savingDraft,
             icon: _step < 2 ? Icons.arrow_forward_rounded : Icons.save_outlined,
             label: _step < 2

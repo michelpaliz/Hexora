@@ -2,10 +2,11 @@ import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.da
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_list_row.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/theme/typography/hexora_design_tokens.dart';
-import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:flutter/services.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:intl/intl.dart';
@@ -73,69 +74,108 @@ class WorkerDirectoryCard extends StatelessWidget {
             '${number(worker.defaultHourlyRate!)} ${worker.currency ?? 'EUR'}/h',
             green),
     ]);
-    final buttonStyle = ThemedButtons.iconAction(context);
-    final actions = Row(mainAxisSize: MainAxisSize.min, children: [
-      IconButton.outlined(
-          tooltip: l.addTimeEntryCta,
-          onPressed: onAddHours,
-          style: buttonStyle,
-          icon: Icon(Icons.schedule_outlined, size: 17, color: cs.primary)),
-      const SizedBox(width: 5),
-      IconButton.outlined(
-          tooltip: l.overviewInfoTitle,
-          onPressed: onOverview,
-          style: buttonStyle,
-          icon: const Icon(Icons.calendar_view_month_outlined, size: 17)),
-      const SizedBox(width: 5),
-      IconButton.outlined(
-          tooltip: l.editWorker,
-          onPressed: onEdit,
-          style: buttonStyle,
-          icon: const Icon(Icons.edit_outlined, size: 17)),
-      const SizedBox(width: 5),
-      SizedBox(
-          width: ThemedButtons.actionTarget(context),
-          height: ThemedButtons.actionTarget(context),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(HexoraDimensions.radius)),
-            child: PopupMenuButton<String>(
-              padding: EdgeInsets.zero,
-              tooltip: isEs ? 'Más opciones' : 'More options',
-              icon: const Icon(Icons.more_vert_rounded, size: 17),
-              onSelected: (value) async {
-                if (value == 'copy') {
-                  await Clipboard.setData(ClipboardData(text: name));
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(isEs ? 'Nombre copiado' : 'Name copied')));
-                } else {
-                  showHexoraDialog<void>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                            title: Text(name),
-                            content: SelectableText(worker.notes!),
-                            actions: [
-                              TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: Text(MaterialLocalizations.of(context)
-                                      .closeButtonLabel))
-                            ],
-                          ));
-                }
-              },
-              itemBuilder: (_) => [
-                NavigationPopupMenuItem(
-                    value: 'copy',
-                    child: Text(isEs ? 'Copiar nombre' : 'Copy name')),
-                if ((worker.notes ?? '').trim().isNotEmpty)
-                  NavigationPopupMenuItem(
-                      value: 'notes',
-                      child: Text(isEs ? 'Ver notas' : 'View notes')),
-              ],
-            ),
-          )),
-    ]);
+    Widget menuEntry(IconData icon, String label) => Row(
+          children: [
+            Icon(icon, size: 16),
+            const SizedBox(width: 8),
+            Text(label),
+          ],
+        );
+
+    Widget actions({required bool compact}) => SizedBox(
+          width: compact ? 74 : 148,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (compact)
+                HexoraButton.iconOnly(
+                  tooltip: isEs ? 'Ver horas' : 'View hours',
+                  icon: Symbols.calendar_clock,
+                  size: HexoraButtonSize.standard,
+                  variant: HexoraButtonVariant.secondary,
+                  accentColor: cs.primary,
+                  onPressed: onOverview,
+                )
+              else
+                SizedBox(
+                  width: 108,
+                  child: HexoraButton(
+                    tooltip: isEs ? 'Ver horas' : 'View hours',
+                    icon: Symbols.calendar_clock,
+                    label: isEs ? 'Ver horas' : 'View hours',
+                    size: HexoraButtonSize.standard,
+                    variant: HexoraButtonVariant.secondary,
+                    accentColor: cs.primary,
+                    onPressed: onOverview,
+                  ),
+                ),
+              const SizedBox(width: 6),
+              SizedBox.square(
+                dimension: 34,
+                child: PopupMenuButton<String>(
+                  padding: EdgeInsets.zero,
+                  tooltip: isEs ? 'Más opciones' : 'More options',
+                  icon: const Icon(Icons.more_vert_rounded, size: 18),
+                  onSelected: (value) async {
+                    if (value == 'add-hours') {
+                      onAddHours();
+                    } else if (value == 'edit') {
+                      onEdit();
+                    } else if (value == 'copy') {
+                      await Clipboard.setData(ClipboardData(text: name));
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content:
+                              Text(isEs ? 'Nombre copiado' : 'Name copied')));
+                    } else if (value == 'notes') {
+                      showHexoraDialog<void>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                                title: Text(name),
+                                content: SelectableText(worker.notes!),
+                                actions: [
+                                  TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: Text(
+                                          MaterialLocalizations.of(context)
+                                              .closeButtonLabel))
+                                ],
+                              ));
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    NavigationPopupMenuItem(
+                      value: 'add-hours',
+                      child: menuEntry(
+                        Icons.schedule_outlined,
+                        l.addTimeEntryCta,
+                      ),
+                    ),
+                    NavigationPopupMenuItem(
+                      value: 'edit',
+                      child: menuEntry(Icons.edit_outlined, l.editWorker),
+                    ),
+                    NavigationPopupMenuItem(
+                      value: 'copy',
+                      child: menuEntry(
+                        Icons.content_copy_outlined,
+                        isEs ? 'Copiar nombre' : 'Copy name',
+                      ),
+                    ),
+                    if ((worker.notes ?? '').trim().isNotEmpty)
+                      NavigationPopupMenuItem(
+                        value: 'notes',
+                        child: menuEntry(
+                          Icons.notes_outlined,
+                          isEs ? 'Ver notas' : 'View notes',
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
     final description =
         '${linked ? l.linkedUser : l.externalWorker}${(worker.roleTag ?? '').isEmpty ? '' : ' · ${worker.roleTag}'}';
     final roleLabel = switch (partnerRole) {
@@ -224,6 +264,7 @@ class WorkerDirectoryCard extends StatelessWidget {
     ]);
     return HexoraListRow(
       selected: selected,
+      separatorWidth: 0,
       onTap: onEdit,
       child: LayoutBuilder(builder: (context, constraints) {
         final stacked = grid ||
@@ -239,7 +280,7 @@ class WorkerDirectoryCard extends StatelessWidget {
                     spacing: 8,
                     runSpacing: 6,
                     crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [metrics, actions]),
+                    children: [metrics, actions(compact: true)]),
               ]);
         }
         return Row(children: [
@@ -248,7 +289,7 @@ class WorkerDirectoryCard extends StatelessWidget {
           ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 120), child: metrics),
           const SizedBox(width: 8),
-          actions
+          actions(compact: false)
         ]);
       }),
     );

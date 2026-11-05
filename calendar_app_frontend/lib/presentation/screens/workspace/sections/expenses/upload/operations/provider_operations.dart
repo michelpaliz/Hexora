@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/feedback/error_message.dart';
 import 'package:hexora/services/providers/providers_api.dart';
+import 'package:http/http.dart' as http;
 
 /// Mixin for provider management operations
 mixin ProviderOperationsMixin<T extends StatefulWidget> on State<T> {
@@ -60,9 +64,21 @@ mixin ProviderOperationsMixin<T extends StatefulWidget> on State<T> {
       if (kDebugMode) {
         debugPrint('[ProviderOperations] providers: groupId=$groupId');
       }
-      final list = List<Map<String, dynamic>>.from(
-        await providersApi.list(groupId: groupId),
-      );
+      List<Map<String, dynamic>> list;
+      try {
+        list = List<Map<String, dynamic>>.from(
+          await providersApi.list(groupId: groupId),
+        );
+      } on Object catch (error) {
+        final transient =
+            error is http.ClientException || error is TimeoutException;
+        if (!transient) rethrow;
+        // Provider loading is a safe GET. Retry a single time so a short
+        // browser/network interruption does not block the expense form.
+        list = List<Map<String, dynamic>>.from(
+          await providersApi.list(groupId: groupId),
+        );
+      }
       list.sort((a, b) {
         final an = (a['name'] ?? '').toString();
         final bn = (b['name'] ?? '').toString();
@@ -84,7 +100,7 @@ mixin ProviderOperationsMixin<T extends StatefulWidget> on State<T> {
       if (kDebugMode) {
         debugPrint('[ProviderOperations] providers: error $e');
       }
-      setState(() => providersError = e.toString());
+      setState(() => providersError = describeError(context, e).message);
     } finally {
       if (mounted) setState(() => loadingProviders = false);
     }
@@ -148,8 +164,7 @@ mixin ProviderOperationsMixin<T extends StatefulWidget> on State<T> {
         providerStreetController.text = address['street']?.toString() ?? '';
         providerExtraController.text = address['extra']?.toString() ?? '';
         providerCityController.text = address['city']?.toString() ?? '';
-        providerProvinceController.text =
-            address['province']?.toString() ?? '';
+        providerProvinceController.text = address['province']?.toString() ?? '';
         providerPostalCodeController.text =
             address['postalCode']?.toString() ?? '';
         providerCountryController.text = address['country']?.toString() ?? '';

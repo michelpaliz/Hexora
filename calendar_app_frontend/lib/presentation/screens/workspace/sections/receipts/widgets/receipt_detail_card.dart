@@ -7,6 +7,7 @@ import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/models/receipt/receipt_line.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_workspace_chrome.dart';
+import 'package:hexora/presentation/shared/widgets/feedback/error_message.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -96,8 +97,7 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
       setState(() => _previewBytes = bytes);
     } catch (e) {
       if (!mounted) return;
-      final msg = e.toString().replaceFirst('Exception: ', '').trim();
-      setState(() => _previewError = msg);
+      setState(() => _previewError = describeError(context, e).message);
     } finally {
       if (mounted) setState(() => _loadingPreview = false);
     }
@@ -469,8 +469,7 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
                 backgroundColor: cs.primaryContainer,
                 foregroundColor: cs.onPrimaryContainer,
                 shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(HexoraDimensions.radius),
+                  borderRadius: BorderRadius.circular(HexoraDimensions.radius),
                 ),
                 elevation: 0,
               ),

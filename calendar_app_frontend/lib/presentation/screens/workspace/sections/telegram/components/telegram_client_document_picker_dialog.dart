@@ -26,6 +26,7 @@ class TelegramClientDocumentSelection {
     required this.clientId,
     required this.documentId,
     required this.documentLabel,
+    required this.documentKind,
   });
 
   final String fileName;
@@ -34,6 +35,15 @@ class TelegramClientDocumentSelection {
   final String clientId;
   final String documentId;
   final String documentLabel;
+  final String documentKind;
+}
+
+abstract final class ClientDocumentKinds {
+  static const invoice = 'invoice';
+  static const draft = 'draft';
+  static const receipt = 'receipt';
+  static const quote = 'presupuesto';
+  static const all = <String>{invoice, draft, receipt, quote};
 }
 
 /// Lets the user tick PDFs across clients and document types; returns them in
@@ -43,6 +53,7 @@ Future<List<TelegramClientDocumentSelection>?>
   BuildContext context, {
   required String groupId,
   String? initialClientId,
+  Set<String> allowedDocumentKinds = ClientDocumentKinds.all,
 }) {
   return showHexoraDialog<List<TelegramClientDocumentSelection>>(
     context: context,
@@ -58,6 +69,7 @@ Future<List<TelegramClientDocumentSelection>?>
         child: TelegramClientDocumentPickerDialog(
           groupId: groupId,
           initialClientId: initialClientId,
+          allowedDocumentKinds: allowedDocumentKinds,
         ),
       ),
     ),
@@ -69,10 +81,12 @@ class TelegramClientDocumentPickerDialog extends StatefulWidget {
     super.key,
     required this.groupId,
     this.initialClientId,
+    this.allowedDocumentKinds = ClientDocumentKinds.all,
   });
 
   final String groupId;
   final String? initialClientId;
+  final Set<String> allowedDocumentKinds;
 
   @override
   State<TelegramClientDocumentPickerDialog> createState() =>
@@ -145,8 +159,7 @@ class _TelegramClientDocumentPickerDialogState
   String? _clientsError;
   String? _documentsError;
   String? _selectedClientId;
-  _TelegramClientDocumentType _selectedType =
-      _TelegramClientDocumentType.invoice;
+  late _TelegramClientDocumentType _selectedType;
   // Keyed by entry key so ticks survive client, type and search changes.
   final Map<String, ({_TelegramClientDocumentEntry entry, String clientId})>
       _selectedEntries =
@@ -155,8 +168,20 @@ class _TelegramClientDocumentPickerDialogState
   @override
   void initState() {
     super.initState();
+    _selectedType = _availableTypes.first;
     _documentSearchController.addListener(_handleDocumentSearchChanged);
     _loadClients();
+  }
+
+  List<_TelegramClientDocumentType> get _availableTypes {
+    final available = _TelegramClientDocumentType.values
+        .where((type) => widget.allowedDocumentKinds.contains(type.name))
+        .toList(growable: false);
+    return available.isEmpty
+        ? const <_TelegramClientDocumentType>[
+            _TelegramClientDocumentType.invoice,
+          ]
+        : available;
   }
 
   @override
@@ -396,10 +421,11 @@ class _TelegramClientDocumentPickerDialogState
       okLabel: _isSpanish ? 'Emitida' : 'Issued',
     );
     final date = invoice.issueDate ?? invoice.registeredAt;
+    final total = _invoiceTotal(invoice);
     final subtitleParts = <String>[
       status,
       if (date != null) _formatDate(date),
-      if (invoice.total != null) _formatAmount(invoice.total),
+      'Total ${_formatAmount(total)}',
     ];
 
     return _TelegramClientDocumentEntry(
@@ -431,10 +457,11 @@ class _TelegramClientDocumentPickerDialogState
       okLabel: _isSpanish ? 'Emitido' : 'Issued',
     );
     final date = receipt.issueDate ?? receipt.registeredAt;
+    final total = _receiptTotal(receipt);
     final subtitleParts = <String>[
       status,
       if (date != null) _formatDate(date),
-      if (receipt.total != null) _formatAmount(receipt.total),
+      'Total ${_formatAmount(total)}',
     ];
 
     return _TelegramClientDocumentEntry(
@@ -468,15 +495,11 @@ class _TelegramClientDocumentPickerDialogState
       okLabel: _isSpanish ? 'Aprobado' : 'Approved',
     );
     final date = _parseDate(item['createdAt'] ?? item['updatedAt']);
-    final total = _parseNum(
-      item['grandTotal'] ??
-          item['total'] ??
-          (item['totals'] is Map ? item['totals']['total'] : null),
-    );
+    final total = _presupuestoTotal(item);
     final subtitleParts = <String>[
       status,
       if (date != null) _formatDate(date),
-      if (total != null) _formatAmount(total),
+      if (total != null) 'Total ${_formatAmount(total)}',
     ];
 
     return _TelegramClientDocumentEntry(
@@ -526,6 +549,7 @@ class _TelegramClientDocumentPickerDialogState
             clientId: item.clientId,
             documentId: item.entry.documentId,
             documentLabel: item.entry.title,
+            documentKind: item.entry.type.name,
           ),
       ]);
     } catch (e) {
@@ -898,10 +922,11 @@ class _TelegramClientDocumentPickerDialogState
           const SizedBox(height: 14),
           _DocumentTypeTabs(
             selectedType: _selectedType,
+            availableTypes: _availableTypes,
             isSpanish: _isSpanish,
             enabled: selectedClient != null && !_loadingDocuments,
             counts: {
-              for (final type in _TelegramClientDocumentType.values)
+              for (final type in _availableTypes)
                 type: _documentCountForClient(_selectedClientId, type),
             },
             onSelected: _selectDocumentType,
@@ -1127,6 +1152,94 @@ class _TelegramClientDocumentPickerDialogState
     ).format(value);
   }
 
+  num _invoiceTotal(Invoice invoice) {
+    if (invoice.total != null) return invoice.total!;
+    if (invoice.lines.isNotEmpty) {
+      return invoice.lines.fold<num>(0, (sum, line) {
+        if (line.lineTotal != null) return sum + line.lineTotal!;
+        final base =
+            line.quantity * line.unitPrice * (1 - (line.discountRate / 100));
+        return sum + base * (1 + (line.taxRate / 100));
+      });
+    }
+    if (invoice.blocks.isNotEmpty) {
+      return invoice.blocks.fold<num>(0, (sum, block) {
+        if (block.isBillable == false) return sum;
+        if (block.lineTotal != null) return sum + block.lineTotal!;
+        final quantity = block.qty ?? 0;
+        final unitPrice = block.unitPrice ?? 0;
+        final discount = block.discountRate ?? 0;
+        final tax = block.taxRate ?? 0;
+        final base = quantity * unitPrice * (1 - (discount / 100));
+        return sum + base * (1 + (tax / 100));
+      });
+    }
+    return (invoice.subtotal ?? 0) + (invoice.taxTotal ?? 0);
+  }
+
+  num _receiptTotal(Receipt receipt) {
+    if (receipt.total != null) return receipt.total!;
+    if (receipt.lines.isNotEmpty) {
+      return receipt.lines.fold<num>(
+        0,
+        (sum, line) => sum + (line.total ?? line.quantity * line.unitPrice),
+      );
+    }
+    return receipt.subtotal ?? 0;
+  }
+
+  num? _presupuestoTotal(Map<String, dynamic> item) {
+    if (PresupuestoKind.fromJson(item) == PresupuestoKind.document) {
+      return presupuestoDocumentAmount(item);
+    }
+    final totals = item['totals'];
+    for (final value in <dynamic>[
+      item['grandTotal'],
+      item['total'],
+      item['totalAmount'],
+      item['amountTotal'],
+      item['amount'],
+      if (totals is Map) totals['total'],
+      if (totals is Map) totals['grandTotal'],
+      if (totals is Map) totals['amount'],
+    ]) {
+      final parsed = _parseNum(value);
+      if (parsed != null) return parsed;
+    }
+
+    for (final group in <dynamic>[item['lines'], item['blocks']]) {
+      if (group is! List || group.isEmpty) continue;
+      num total = 0;
+      var hasAmount = false;
+      for (final raw in group.whereType<Map>()) {
+        if (raw['isBillable'] == false) continue;
+        final lineTotal = _parseNum(raw['lineTotal'] ?? raw['total']);
+        if (lineTotal != null) {
+          total += lineTotal;
+          hasAmount = true;
+          continue;
+        }
+        final quantity = _parseNum(raw['quantity'] ?? raw['qty']) ?? 1;
+        final unitPrice = _parseNum(
+              raw['unitPrice'] ?? raw['price'] ?? raw['unit_price'],
+            ) ??
+            0;
+        if (unitPrice == 0) continue;
+        final discount =
+            _parseNum(raw['discountRate'] ?? raw['discountPercent']) ?? 0;
+        final tax = _parseNum(
+              raw['taxRate'] ?? raw['tax'] ?? raw['vat'] ?? raw['iva'],
+            ) ??
+            0;
+        final base = quantity * unitPrice * (1 - discount.clamp(0, 100) / 100);
+        total += base * (1 + tax / 100);
+        hasAmount = true;
+      }
+      if (hasAmount) return total;
+    }
+    return null;
+  }
+
   DateTime? _parseDate(dynamic raw) {
     if (raw == null) return null;
     if (raw is DateTime) return raw;
@@ -1143,7 +1256,17 @@ class _TelegramClientDocumentPickerDialogState
   num? _parseNum(dynamic raw) {
     if (raw == null) return null;
     if (raw is num) return raw;
-    return num.tryParse(raw.toString().trim().replaceAll(',', '.'));
+    final text = raw.toString().trim().replaceAll(RegExp(r'\s'), '');
+    if (text.isEmpty) return null;
+    if (text.contains(',') && text.contains('.')) {
+      final commaIsDecimal = text.lastIndexOf(',') > text.lastIndexOf('.');
+      return num.tryParse(
+        commaIsDecimal
+            ? text.replaceAll('.', '').replaceAll(',', '.')
+            : text.replaceAll(',', ''),
+      );
+    }
+    return num.tryParse(text.replaceAll(',', '.'));
   }
 
   String _safeFileName(String value) {
@@ -1155,6 +1278,7 @@ class _TelegramClientDocumentPickerDialogState
 class _DocumentTypeTabs extends StatelessWidget {
   const _DocumentTypeTabs({
     required this.selectedType,
+    required this.availableTypes,
     required this.isSpanish,
     required this.enabled,
     required this.counts,
@@ -1162,6 +1286,7 @@ class _DocumentTypeTabs extends StatelessWidget {
   });
 
   final _TelegramClientDocumentType selectedType;
+  final List<_TelegramClientDocumentType> availableTypes;
   final bool isSpanish;
   final bool enabled;
   final Map<_TelegramClientDocumentType, int> counts;
@@ -1184,7 +1309,7 @@ class _DocumentTypeTabs extends StatelessWidget {
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 620;
           final tabs = [
-            for (final type in _TelegramClientDocumentType.values)
+            for (final type in availableTypes)
               _DocumentTypeTabButton(
                 type: type,
                 label: type.label(isSpanish),

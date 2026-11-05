@@ -29,10 +29,15 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
                     ? Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(flex: 7, child: leftPane),
-                          const SizedBox(width: 12),
+                          Expanded(flex: 5, child: leftPane),
+                          VerticalDivider(
+                            width: 21,
+                            thickness: 1,
+                            color: theme.colorScheme.outlineVariant
+                                .withValues(alpha: 0.55),
+                          ),
                           Expanded(
-                            flex: 5,
+                            flex: 6,
                             child: ListView(
                               padding: EdgeInsets.zero,
                               children: previewColumn,
@@ -70,12 +75,6 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
       ? theme.colorScheme.surface
       : theme.scaffoldBackgroundColor;
 
-  Color _editorCardBg(ThemeData theme) =>
-      _isDark(theme) ? const Color(0xFF101A28) : theme.colorScheme.surface;
-
-  Color _editorPanelBg(ThemeData theme) =>
-      _isDark(theme) ? const Color(0xFF132235) : theme.colorScheme.surface;
-
   Color _editorInsetBg(ThemeData theme) => _isDark(theme)
       ? const Color(0xFF0B1624)
       : theme.colorScheme.surfaceContainerLowest;
@@ -105,19 +104,52 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
     List<_EditorStep> steps,
     int activeStep,
   ) {
-    return HexoraDocumentStepper(
-      steps: [
-        for (var i = 0; i < steps.length; i++)
-          HexoraDocumentStep(
-            label: steps[i].title,
-            icon: steps[i].icon,
-            enabled: !(_mustSelectDefaultTemplate && i > 0),
-          ),
-      ],
-      currentStep: activeStep,
-      onStepTapped: (index) => _updateEditorState(() => _activeStep = index),
-      itemKeyBuilder: (_, step) => ValueKey('editor_step_${step.label}'),
-      compactConnectors: true,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (var i = 0; i < steps.length; i++)
+            Semantics(
+              button: true,
+              selected: i == activeStep,
+              enabled: !(_mustSelectDefaultTemplate && i > 0),
+              child: InkWell(
+                key: ValueKey('editor_step_${steps[i].title}'),
+                onTap: _mustSelectDefaultTemplate && i > 0
+                    ? null
+                    : () => _updateEditorState(() => _activeStep = i),
+                borderRadius: BorderRadius.circular(4),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(10, 7, 10, 6),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: i == activeStep
+                            ? theme.colorScheme.primary
+                            : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    steps[i].title,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: i == activeStep
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant.withValues(
+                              alpha: _mustSelectDefaultTemplate && i > 0
+                                  ? 0.45
+                                  : 1,
+                            ),
+                      fontWeight:
+                          i == activeStep ? FontWeight.w800 : FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -130,13 +162,9 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
     final selectionBlocked = _mustSelectDefaultTemplate;
     final saveLabel =
         widget.templateOnly ? 'Guardar como plantilla' : 'Guardar borrador';
-    final footerText = widget.templateOnly
-        ? (isLastStep
-            ? 'Crea o actualiza una plantilla reutilizable.'
-            : 'Podrás crear o actualizar la plantilla en el último paso.')
-        : (isLastStep
-            ? 'Guarda este presupuesto como borrador para continuar editandolo.'
-            : 'El presupuesto se guardará como borrador en el último paso.');
+    final footerText = isLastStep
+        ? (widget.templateOnly ? 'Lista para guardar' : 'Borrador listo')
+        : 'Cambios sin guardar';
     final info = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -241,6 +269,7 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
 
   Widget _buildHero(ThemeData theme) {
     final title = widget.templateOnly ? 'Plantilla PDF' : 'Presupuesto PDF';
+    final selectedTemplateName = _selectedTemplateName;
     return Row(
       children: [
         Icon(
@@ -258,13 +287,12 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
           ),
         ),
         const SizedBox(width: 10),
-        if (_selectedDefaultTemplate != null)
+        if (selectedTemplateName != null)
           Flexible(
             child: _heroChip(
               theme,
               icon: Icons.account_tree_outlined,
-              label: _string(_selectedDefaultTemplate!['name']) ??
-                  'Tipo seleccionado',
+              label: selectedTemplateName,
             ),
           ),
         const Spacer(),
@@ -294,29 +322,22 @@ extension _TemplateEditorLayout on _PresupuestoTemplateEditorScreenState {
     required IconData icon,
     required String label,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15, color: theme.colorScheme.primary),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: theme.colorScheme.primary),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

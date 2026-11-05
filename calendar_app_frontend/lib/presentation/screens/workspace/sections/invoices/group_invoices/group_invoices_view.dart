@@ -196,8 +196,9 @@ class _GroupInvoicesView extends StatelessWidget {
       final invoiceToolbarLeading =
           showInvoiceActions ? invoiceToolbarTabs : null;
 
-      final content = HexoraMenuContentTransition(
+      final content = HexoraMenuContentTransition.submenu(
         transitionKey: activeMenu,
+        preserveState: true,
         child: _GroupInvoicesContent(
           state: state,
           menu: menu,

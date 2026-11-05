@@ -144,7 +144,7 @@ void main() {
       createDocumentDraft: true,
     )));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Usar plantilla').first);
+    await tester.tap(find.text('Seleccionar').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Previsualizar'));
     await tester.pumpAndSettle();
@@ -223,7 +223,7 @@ void main() {
       createDocumentDraft: true,
     )));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Usar plantilla').first);
+    await tester.tap(find.text('Seleccionar').first);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
     await tester.pumpAndSettle();
@@ -320,7 +320,7 @@ void main() {
       expect(find.text('Selecciona una plantilla'), findsOne);
       expect(api.defaultDocumentCreates, 0);
 
-      await tester.tap(find.text('Usar plantilla').last);
+      await tester.tap(find.text('Seleccionar').last);
       await tester.pumpAndSettle();
 
       expect(api.defaultDocumentCreates, 0);
@@ -578,6 +578,105 @@ void main() {
     },
   );
 
+  testWidgets('preview and download do not create a draft before explicit save',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = _FakePresupuestosApi();
+
+    await tester.pumpWidget(MaterialApp(
+      home: PresupuestoTemplateEditorScreen(
+        api: api,
+        groupId: 'group-1',
+        createDocumentDraft: true,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Seleccionar').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Previsualizar'));
+    await tester.pumpAndSettle();
+    expect(api.livePreviewCalls, 1);
+    expect(api.defaultDocumentCreates, 0);
+
+    await tester.tap(find.text('Descargar PDF'));
+    await tester.pumpAndSettle();
+    expect(api.livePreviewCalls, 2);
+    expect(api.defaultDocumentCreates, 0);
+  });
+
+  testWidgets('selecting a recommended template does not persist a template',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = _FakePresupuestosApi();
+
+    await tester.pumpWidget(MaterialApp(
+      home: PresupuestoTemplateEditorScreen(
+        api: api,
+        groupId: 'group-1',
+        templateOnly: true,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Seleccionar').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Seleccionada'), findsOneWidget);
+    expect(api.defaultTemplateCreates, 0);
+    expect(find.text('Mantenimiento anual de jardin y piscina'), findsWidgets);
+  });
+
+  testWidgets('changing templates confirms before replacing unsaved edits',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = _FakePresupuestosApi();
+
+    await tester.pumpWidget(MaterialApp(
+      home: PresupuestoTemplateEditorScreen(
+        api: api,
+        groupId: 'group-1',
+        createDocumentDraft: true,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Seleccionar').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('variable_CLIENTE')),
+      'Cliente con cambios',
+    );
+    await tester.tap(find.byKey(const ValueKey('editor_step_Plantilla base')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Seleccionar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cambiar plantilla'), findsWidgets);
+    expect(find.textContaining('cambios sin guardar'), findsOneWidget);
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('variable_CLIENTE')))
+          .controller!
+          .text,
+      'Cliente con cambios',
+    );
+    expect(api.defaultDocumentCreates, 0);
+  });
+
   testWidgets('garage fields follow the optional section switch',
       (tester) async {
     tester.view.physicalSize = const Size(1600, 1800);
@@ -595,7 +694,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Usar plantilla').last);
+    await tester.tap(find.text('Seleccionar').last);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
     await tester.pumpAndSettle();
@@ -682,7 +781,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Usar plantilla').last);
+    await tester.tap(find.text('Seleccionar').last);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
     await tester.pumpAndSettle();
@@ -765,7 +864,7 @@ void main() {
         ),
       ));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Usar plantilla').last);
+      await tester.tap(find.text('Seleccionar').last);
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
       await tester.pumpAndSettle();
@@ -869,7 +968,7 @@ void main() {
         ),
       ));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Usar plantilla').first);
+      await tester.tap(find.text('Seleccionar').first);
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
       await tester.pumpAndSettle();
@@ -940,7 +1039,7 @@ void main() {
       createDocumentDraft: true,
     )));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Usar plantilla').first);
+    await tester.tap(find.text('Seleccionar').first);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
     await tester.pumpAndSettle();
@@ -1036,7 +1135,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Usar plantilla').first);
+    await tester.tap(find.text('Seleccionar').first);
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('editor_step_Imagenes')), findsOne);
@@ -1063,7 +1162,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Usar plantilla').first);
+    await tester.tap(find.text('Seleccionar').first);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('editor_step_Imagenes')));
     await tester.pumpAndSettle();
@@ -1112,9 +1211,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Usar plantilla').last);
+    await tester.tap(find.text('Seleccionar').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Usar plantilla'));
+    await tester.tap(find.text('Seleccionar'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
     await tester.pumpAndSettle();
@@ -1347,7 +1446,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Usar plantilla').last);
+    await tester.tap(find.text('Seleccionar').last);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('editor_step_Datos')));
     await tester.pumpAndSettle();
@@ -1396,11 +1495,37 @@ class _FakePresupuestosApi extends PresupuestosApi {
 
   final bool omitTableCalculations;
   int defaultDocumentCreates = 0;
+  int defaultTemplateCreates = 0;
+  int livePreviewCalls = 0;
   String? lastDefaultKey;
   Map<String, dynamic>? lastDocumentContent;
   String? attachedTargetId;
   String? attachedImageId;
   String? attachedSlot;
+
+  @override
+  Future<Map<String, dynamic>> listTemplatesByGroup(String groupId) async =>
+      <String, dynamic>{'templates': <Map<String, dynamic>>[]};
+
+  @override
+  Future<Map<String, dynamic>> createTemplateFromDefault({
+    required String key,
+    required String groupId,
+  }) async {
+    defaultTemplateCreates++;
+    return <String, dynamic>{
+      'template': <String, dynamic>{'_id': 'created'}
+    };
+  }
+
+  @override
+  Future<http.Response> previewLiveTemplatePdf({
+    required String groupId,
+    required Map<String, dynamic> template,
+  }) async {
+    livePreviewCalls++;
+    throw Exception('Live PDF endpoint reached');
+  }
 
   @override
   Future<Map<String, dynamic>> listDefaultTemplates() async {

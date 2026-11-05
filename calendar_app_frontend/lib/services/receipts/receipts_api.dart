@@ -308,24 +308,36 @@ class ReceiptsApi {
   }
 
   Future<http.Response> previewPdf(String id) async {
-    final r = await AuthenticatedHttpClient.get(
-      _u('/$id/pdf/preview'),
-      headers: _headers(),
-    );
+    final r = await _get(_u('/$id/pdf/preview'));
     if (r.statusCode >= 200 && r.statusCode < 300) return r;
-    throw Exception(
-        'Failed to preview PDF (${r.statusCode}): ${r.reasonPhrase}');
+    return _decode<http.Response>(r, (_) => r);
   }
 
   Future<http.Response> downloadPdf(String id) async {
-    final r = await AuthenticatedHttpClient.get(
-      _u('/$id/pdf'),
-      headers: _headers(),
-    );
+    final r = await _get(_u('/$id/pdf'));
     if (r.statusCode >= 200 && r.statusCode < 300) return r;
-    throw Exception(
-      'Failed to download PDF (${r.statusCode}): ${r.reasonPhrase}',
-    );
+    return _decode<http.Response>(r, (_) => r);
+  }
+
+  Future<http.Response> previewPdfWithFallback(String id) async {
+    Future<http.Response> retryNetwork(
+      Future<http.Response> Function() request,
+    ) async {
+      try {
+        return await request();
+      } on http.ClientException {
+        // GET requests are safe to repeat and browser transport failures are
+        // frequently transient during navigation or token refresh.
+        return request();
+      }
+    }
+
+    try {
+      return await retryNetwork(() => previewPdf(id));
+    } on ReceiptsApiException catch (error) {
+      if (error.statusCode < 500 || error.statusCode >= 600) rethrow;
+      return retryNetwork(() => downloadPdf(id));
+    }
   }
 
   Future<Map<String, dynamic>> getImportJsonPromptTemplate(String id) async {

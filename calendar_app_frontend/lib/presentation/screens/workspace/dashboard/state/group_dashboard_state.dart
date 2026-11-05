@@ -90,7 +90,7 @@ class GroupDashboardState extends ChangeNotifier {
 
   // UI
   String activeSection = Sections.calendar;
-  String? invoicesInitialMenu;
+  String? invoicesInitialMenu = 'invoices_issued';
   String? invoicesInitialInvoiceId;
   String? invoicesInitialReceiptId;
   String? invoicesInitialBudgetId;
@@ -108,14 +108,6 @@ class GroupDashboardState extends ChangeNotifier {
     Sections.telegram,
     Sections.settings,
     Sections.workers,
-  };
-
-  static const _restorableSections = {
-    Sections.calendar,
-    Sections.maps,
-    Sections.businessChat,
-    Sections.notifications,
-    ..._adminOnlySections,
   };
 
   String _sectionKey(String userId) =>
@@ -136,6 +128,13 @@ class GroupDashboardState extends ChangeNotifier {
     if (section == Sections.workers && !canSeeAdmin) return;
     _sectionChosenSinceOpen = true;
     if (activeSection == section) return;
+    if (section == Sections.invoices) {
+      invoicesInitialMenu = 'invoices_issued';
+      invoicesInitialInvoiceId = null;
+      invoicesInitialReceiptId = null;
+      invoicesInitialBudgetId = null;
+      invoicesNavigationRevision += 1;
+    }
     activeSection = section;
     final userId = user?.id;
     if (userId != null) unawaited(_rememberSection(userId, section));
@@ -218,17 +217,9 @@ class GroupDashboardState extends ChangeNotifier {
 
     role = await RoleResolver.resolve(group: target, userDomain: _ud);
     user = await _getSafeUser();
-    if (!_sectionChosenSinceOpen && user != null) {
-      try {
-        final preferences = await SharedPreferences.getInstance();
-        final savedSection = preferences.getString(_sectionKey(user!.id));
-        if (savedSection != null &&
-            _restorableSections.contains(savedSection)) {
-          activeSection = savedSection;
-        }
-      } catch (_) {
-        // Fall back to the calendar when browser storage is unavailable.
-      }
+    if (!_sectionChosenSinceOpen && canSeeAdmin) {
+      activeSection = Sections.invoices;
+      invoicesInitialMenu = 'invoices_issued';
     }
     if (_adminOnlySections.contains(activeSection) && !canSeeAdmin) {
       activeSection = Sections.calendar;

@@ -209,7 +209,6 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
         priceKey == null ? null : _buildVariableInput(priceDefinition!);
     return _card(
       title: 'Datos del presupuesto',
-      icon: Icons.edit_note_rounded,
       child: Column(
         children: [
           _field(
@@ -348,27 +347,21 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
           ],
           if (usedFields.isNotEmpty) _groupedVariableFields(usedFields),
           if (optionalFields.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.only(bottom: 14),
-              decoration: BoxDecoration(
-                color: _editorInsetBg(theme),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: _editorBorder(theme, alpha: 0.65)),
+            ExpansionTile(
+              expansionAnimationStyle: HexoraMotion.expansionStyle(context),
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              shape: const Border(),
+              collapsedShape: const Border(),
+              leading: Icon(
+                Icons.tune_rounded,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-              child: ExpansionTile(
-                expansionAnimationStyle: HexoraMotion.expansionStyle(context),
-                tilePadding: const EdgeInsets.symmetric(horizontal: 14),
-                childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 4),
-                leading: Icon(
-                  Icons.tune_rounded,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                title: const Text('Otros campos opcionales'),
-                subtitle: Text(
-                  '${optionalFields.length} campos no utilizados por la plantilla actual',
-                ),
-                children: [_variableFieldsGrid(optionalFields)],
+              title: const Text('Otros campos opcionales'),
+              subtitle: Text(
+                '${optionalFields.length} campos no utilizados por la plantilla actual',
               ),
+              children: [_variableFieldsGrid(optionalFields)],
             ),
           Divider(color: _editorBorder(theme, alpha: 0.72)),
           const SizedBox(height: 14),
@@ -446,46 +439,38 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
       unique.putIfAbsent(
           field.key.toUpperCase().replaceAll('Ñ', 'N'), () => field);
     }
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: cs.primary.withValues(alpha: 0.055),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.primary.withValues(alpha: 0.14)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.info_outline_rounded, size: 18, color: cs.primary),
-          const SizedBox(width: 10),
-          Expanded(
-              child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Datos automáticos', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 4),
-              Text(
-                  'Estos datos se completan automáticamente al generar el documento.',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: cs.onSurfaceVariant)),
-              const SizedBox(height: 6),
-              Wrap(spacing: 16, runSpacing: 4, children: [
-                for (final field in unique.values)
-                  Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text('${_variableDisplayLabel(field)}: ',
-                        style: theme.textTheme.bodySmall),
-                    Text(
-                        (_variables[field.key]?.text.trim().isEmpty ?? true)
-                            ? 'Automático'
-                            : _variables[field.key]!.text.trim(),
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(fontWeight: FontWeight.w600)),
-                  ]),
-              ]),
-            ],
-          )),
-        ],
-      ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.info_outline_rounded, size: 18, color: cs.primary),
+        const SizedBox(width: 10),
+        Expanded(
+            child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Datos automáticos', style: theme.textTheme.labelLarge),
+            const SizedBox(height: 4),
+            Text(
+                'Estos datos se completan automáticamente al generar el documento.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant)),
+            const SizedBox(height: 6),
+            Wrap(spacing: 16, runSpacing: 4, children: [
+              for (final field in unique.values)
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text('${_variableDisplayLabel(field)}: ',
+                      style: theme.textTheme.bodySmall),
+                  Text(
+                      (_variables[field.key]?.text.trim().isEmpty ?? true)
+                          ? 'Automático'
+                          : _variables[field.key]!.text.trim(),
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(fontWeight: FontWeight.w600)),
+                ]),
+            ]),
+          ],
+        )),
+      ],
     );
   }
 }

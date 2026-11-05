@@ -7,6 +7,125 @@ import 'package:hexora/services/auth/token/authenticated_http_client.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/shared/backend_api_exception.dart';
 
+enum BusinessChatChannelType {
+  general,
+  income,
+  expenses,
+  quotes,
+  workers,
+  custom,
+}
+
+enum BusinessChatComposerAction {
+  attachFile,
+  image,
+  link,
+  invoice,
+  receipt,
+  expense,
+  quote,
+  timesheet,
+  bankTransaction,
+}
+
+BusinessChatChannelType _businessChatChannelType(
+  Object? rawType,
+  String conversationType,
+  String title,
+) {
+  final value = rawType?.toString().trim().toLowerCase() ?? '';
+  for (final type in BusinessChatChannelType.values) {
+    if (type.name == value) return type;
+  }
+  if (conversationType.trim().toLowerCase() == 'general') {
+    return BusinessChatChannelType.general;
+  }
+
+  // Backward-compatible migration for channels created before channelType
+  // existed. The composer consumes the resolved type/actions and never
+  // depends directly on a user-editable channel title.
+  final legacy = title.trim().toLowerCase().replaceAll(RegExp(r'[\s-]+'), '_');
+  return switch (legacy) {
+    'horas_trabajadores' => BusinessChatChannelType.workers,
+    'factura_ingresos' || 'facturas_ingresos' => BusinessChatChannelType.income,
+    'presupuestos' => BusinessChatChannelType.quotes,
+    'facturas_gastos' || 'factura_gastos' => BusinessChatChannelType.expenses,
+    _ => BusinessChatChannelType.custom,
+  };
+}
+
+Set<BusinessChatComposerAction> _defaultComposerActions(
+  BusinessChatChannelType type,
+  String title,
+) {
+  final defaults = switch (type) {
+    BusinessChatChannelType.general => {
+        BusinessChatComposerAction.attachFile,
+        BusinessChatComposerAction.image,
+      },
+    BusinessChatChannelType.income => {
+        BusinessChatComposerAction.attachFile,
+        BusinessChatComposerAction.invoice,
+        BusinessChatComposerAction.receipt,
+      },
+    BusinessChatChannelType.expenses => {
+        BusinessChatComposerAction.attachFile,
+        BusinessChatComposerAction.expense,
+        BusinessChatComposerAction.receipt,
+      },
+    BusinessChatChannelType.quotes => {
+        BusinessChatComposerAction.attachFile,
+        BusinessChatComposerAction.quote,
+      },
+    BusinessChatChannelType.workers => {
+        BusinessChatComposerAction.attachFile,
+        BusinessChatComposerAction.timesheet,
+      },
+    BusinessChatChannelType.custom => {
+        BusinessChatComposerAction.attachFile,
+      },
+  };
+  final legacy = title.trim().toLowerCase();
+  if (type == BusinessChatChannelType.custom && legacy == 'marketing') {
+    return {
+      ...defaults,
+      BusinessChatComposerAction.image,
+      BusinessChatComposerAction.link,
+    };
+  }
+  return defaults;
+}
+
+BusinessChatComposerAction? _businessChatComposerAction(Object? value) {
+  final raw = value?.toString().trim().toLowerCase() ?? '';
+  return switch (raw) {
+    'file' ||
+    'attach_file' ||
+    'attachfile' ||
+    'attachment' =>
+      BusinessChatComposerAction.attachFile,
+    'image' || 'images' => BusinessChatComposerAction.image,
+    'link' || 'links' => BusinessChatComposerAction.link,
+    'invoice' || 'invoices' => BusinessChatComposerAction.invoice,
+    'receipt' || 'receipts' => BusinessChatComposerAction.receipt,
+    'expense' || 'expenses' => BusinessChatComposerAction.expense,
+    'quote' ||
+    'quotes' ||
+    'budget' ||
+    'presupuesto' =>
+      BusinessChatComposerAction.quote,
+    'timesheet' ||
+    'timesheets' ||
+    'worker_hours' =>
+      BusinessChatComposerAction.timesheet,
+    'bank_transaction' ||
+    'banktransaction' ||
+    'bank' =>
+      BusinessChatComposerAction.bankTransaction,
+    _ => null,
+  };
+}
+
 class BusinessChatMessage {
   const BusinessChatMessage({
     required this.id,
@@ -18,6 +137,7 @@ class BusinessChatMessage {
     this.editedAt,
     this.isDeleted = false,
     this.attachment,
+    this.businessRecord,
     this.bankTransaction,
     this.replyTo,
   });
@@ -31,6 +151,7 @@ class BusinessChatMessage {
   final DateTime? editedAt;
   final bool isDeleted;
   final Map<String, dynamic>? attachment;
+  final Map<String, dynamic>? businessRecord;
   final Map<String, dynamic>? bankTransaction;
   final Map<String, dynamic>? replyTo;
 
@@ -48,6 +169,13 @@ class BusinessChatMessage {
         attachment: json['attachment'] is Map
             ? Map<String, dynamic>.from(json['attachment'])
             : null,
+        businessRecord: json['businessRecord'] is Map
+            ? Map<String, dynamic>.from(json['businessRecord'])
+            : (json['attachment'] is Map &&
+                    (json['attachment'] as Map)['businessRecord'] is Map
+                ? Map<String, dynamic>.from(
+                    (json['attachment'] as Map)['businessRecord'] as Map)
+                : null),
         bankTransaction: json['bankTransaction'] is Map
             ? Map<String, dynamic>.from(json['bankTransaction'])
             : null,
@@ -96,7 +224,9 @@ class BusinessChatConversation {
       this.canManageParticipants = false,
       this.canModerateMessages = false,
       this.muted = false,
-      this.canShareBankTransaction = false});
+      this.canShareBankTransaction = false,
+      this.channelType = BusinessChatChannelType.custom,
+      this.composerActions = const {BusinessChatComposerAction.attachFile}});
   final String id;
   final String type;
   final String title;
@@ -109,31 +239,64 @@ class BusinessChatConversation {
   final bool canModerateMessages;
   final bool muted;
   final bool canShareBankTransaction;
+  final BusinessChatChannelType channelType;
+  final Set<BusinessChatComposerAction> composerActions;
 
-  factory BusinessChatConversation.fromJson(Map<String, dynamic> json) =>
-      BusinessChatConversation(
-        id: (json['id'] ?? '').toString(),
-        type: (json['type'] ?? '').toString(),
-        title: (json['title'] ?? '').toString(),
-        unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
-        lastMessage: json['lastMessage'] is Map
-            ? BusinessChatMessage.fromJson(
-                Map<String, dynamic>.from(json['lastMessage']))
-            : null,
-        issue: json['issue'] is Map
-            ? Map<String, dynamic>.from(json['issue'])
-            : null,
-        participantIds: (json['participantIds'] as List<dynamic>? ?? const [])
-            .map((id) => id.toString())
-            .toList(),
-        moderatorIds: (json['moderatorIds'] as List<dynamic>? ?? const [])
-            .map((id) => id.toString())
-            .toList(),
-        canManageParticipants: json['canManageParticipants'] == true,
-        canModerateMessages: json['canModerateMessages'] == true,
-        muted: json['muted'] == true,
-        canShareBankTransaction: json['canShareBankTransaction'] == true,
-      );
+  factory BusinessChatConversation.fromJson(Map<String, dynamic> json) {
+    final conversationType = (json['type'] ?? '').toString();
+    final title = (json['title'] ?? '').toString();
+    final channelConfig = json['channelConfig'] is Map
+        ? Map<String, dynamic>.from(json['channelConfig'] as Map)
+        : const <String, dynamic>{};
+    final channelType = _businessChatChannelType(
+      json['channelType'] ??
+          json['channel_type'] ??
+          channelConfig['type'] ??
+          channelConfig['channelType'],
+      conversationType,
+      title,
+    );
+    final rawActions = json['allowedActions'] ??
+        json['composerActions'] ??
+        json['allowed_actions'] ??
+        channelConfig['allowedActions'] ??
+        channelConfig['composerActions'];
+    final configuredActions = rawActions is List
+        ? rawActions
+            .map(_businessChatComposerAction)
+            .whereType<BusinessChatComposerAction>()
+            .toSet()
+        : <BusinessChatComposerAction>{};
+    final composerActions = configuredActions.isEmpty
+        ? _defaultComposerActions(channelType, title)
+        : configuredActions;
+    composerActions.add(BusinessChatComposerAction.attachFile);
+    return BusinessChatConversation(
+      id: (json['id'] ?? '').toString(),
+      type: conversationType,
+      title: title,
+      unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
+      lastMessage: json['lastMessage'] is Map
+          ? BusinessChatMessage.fromJson(
+              Map<String, dynamic>.from(json['lastMessage']))
+          : null,
+      issue: json['issue'] is Map
+          ? Map<String, dynamic>.from(json['issue'])
+          : null,
+      participantIds: (json['participantIds'] as List<dynamic>? ?? const [])
+          .map((id) => id.toString())
+          .toList(),
+      moderatorIds: (json['moderatorIds'] as List<dynamic>? ?? const [])
+          .map((id) => id.toString())
+          .toList(),
+      canManageParticipants: json['canManageParticipants'] == true,
+      canModerateMessages: json['canModerateMessages'] == true,
+      muted: json['muted'] == true,
+      canShareBankTransaction: json['canShareBankTransaction'] == true,
+      channelType: channelType,
+      composerActions: composerActions,
+    );
+  }
 
   BusinessChatConversation copyWith({int? unreadCount}) =>
       BusinessChatConversation(
@@ -148,6 +311,8 @@ class BusinessChatConversation {
           canModerateMessages: canModerateMessages,
           muted: muted,
           canShareBankTransaction: canShareBankTransaction,
+          channelType: channelType,
+          composerActions: composerActions,
           unreadCount: unreadCount ?? this.unreadCount);
 }
 
@@ -283,7 +448,7 @@ class BusinessChatApi {
 
   Future<BusinessChatMessage> sendAttachment(
       String groupId, String conversationId, PlatformFile file, String body,
-      {String? replyToMessageId}) async {
+      {String? replyToMessageId, Map<String, dynamic>? businessRecord}) async {
     if (file.bytes == null) throw StateError('File data is unavailable');
     final response = await AuthenticatedHttpClient.sendMultipart((headers) {
       final request = http.MultipartRequest(
@@ -291,6 +456,9 @@ class BusinessChatApi {
       request.fields['body'] = body;
       if (replyToMessageId != null) {
         request.fields['replyToMessageId'] = replyToMessageId;
+      }
+      if (businessRecord != null) {
+        request.fields['businessRecord'] = jsonEncode(businessRecord);
       }
       final extension = file.extension?.toLowerCase() ?? '';
       final mime = {
@@ -413,6 +581,24 @@ class BusinessChatApi {
         body: jsonEncode({'title': title}));
     if (response.statusCode != 200)
       throw BackendApiException.fromResponse(response);
+  }
+
+  Future<void> updateChannelConfiguration(
+    String groupId,
+    String conversationId, {
+    required BusinessChatChannelType channelType,
+    required Set<BusinessChatComposerAction> allowedActions,
+  }) async {
+    final response = await AuthenticatedHttpClient.patch(
+        _uri(groupId, '/conversations/$conversationId'),
+        body: jsonEncode({
+          'channelType': channelType.name,
+          'allowedActions':
+              allowedActions.map((action) => action.name).toList(),
+        }));
+    if (response.statusCode != 200) {
+      throw BackendApiException.fromResponse(response);
+    }
   }
 
   Future<void> removeParticipant(

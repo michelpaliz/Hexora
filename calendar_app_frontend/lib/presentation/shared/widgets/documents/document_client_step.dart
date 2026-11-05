@@ -61,6 +61,7 @@ class DocumentClientStep extends StatelessWidget {
     this.modeSelectorAlignment = Alignment.center,
     this.adaptivePreview = false,
     this.compactSelectionMaxWidth = 620,
+    this.showClientCount = true,
   });
 
   final List<GroupClient> clients;
@@ -84,6 +85,7 @@ class DocumentClientStep extends StatelessWidget {
   final AlignmentGeometry modeSelectorAlignment;
   final bool adaptivePreview;
   final double compactSelectionMaxWidth;
+  final bool showClientCount;
 
   @override
   Widget build(BuildContext context) {
@@ -112,6 +114,7 @@ class DocumentClientStep extends StatelessWidget {
             maxListHeight: listHeight,
             searchController: clientSearchController,
             flat: flat,
+            showVisibleCount: !showClientCount,
           );
           // Fade just the preview when the selection changes, so the list on
           // the left stays rock-steady during row changes.
@@ -194,7 +197,7 @@ class DocumentClientStep extends StatelessWidget {
               children: [
                 _ClientModeHeader(
                   title: title,
-                  count: manualMode ? null : clients.length,
+                  count: manualMode || !showClientCount ? null : clients.length,
                   showHeading: showSelectionHeading,
                   selectorAlignment: modeSelectorAlignment,
                   selector: canUseManual
@@ -372,9 +375,7 @@ class _ModeSelector extends StatelessWidget {
       required String label,
     }) {
       final selected = mode == value;
-      final foreground = selected
-          ? cs.primary
-          : cs.onSurfaceVariant;
+      final foreground = selected ? cs.primary : cs.onSurfaceVariant;
       return Expanded(
         child: Semantics(
           button: true,
@@ -412,7 +413,8 @@ class _ModeSelector extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w600,
                         color: foreground,
                         letterSpacing: 0.1,
                       ),
@@ -667,6 +669,7 @@ class _ExistingClientPanel extends StatelessWidget {
     required this.maxListHeight,
     this.searchController,
     required this.flat,
+    required this.showVisibleCount,
   });
 
   final List<GroupClient> clients;
@@ -676,6 +679,7 @@ class _ExistingClientPanel extends StatelessWidget {
   final double maxListHeight;
   final TextEditingController? searchController;
   final bool flat;
+  final bool showVisibleCount;
 
   @override
   Widget build(BuildContext context) {
@@ -703,6 +707,7 @@ class _ExistingClientPanel extends StatelessWidget {
                 searchDesktopHeight: 42,
                 searchController: searchController,
                 maxListHeight: maxListHeight,
+                showVisibleCount: showVisibleCount,
               ),
             ),
           ),

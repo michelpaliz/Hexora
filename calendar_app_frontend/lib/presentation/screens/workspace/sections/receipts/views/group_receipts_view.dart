@@ -14,6 +14,7 @@ import 'package:hexora/presentation/screens/workspace/sections/receipts/widgets/
 import 'package:hexora/presentation/screens/workspace/sections/receipts/widgets/receipt_list_item.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
@@ -65,7 +66,7 @@ class _MonthDivider extends StatelessWidget {
   Widget build(BuildContext context) => HexoraMonthSeparator(label: label);
 }
 
-enum _ReceiptSortColumn { number, client, status, date, base, total }
+enum _ReceiptSortColumn { number, client, status, delivery, date, base, total }
 
 class _ReceiptRange {
   const _ReceiptRange({this.min, this.max});
@@ -222,8 +223,8 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
   bool _filterActive(CompactDocumentColumn column) => switch (column) {
         CompactDocumentColumn.identity => _numberQuery.isNotEmpty,
         CompactDocumentColumn.client => _clients.isNotEmpty,
-        CompactDocumentColumn.status =>
-          _statuses.isNotEmpty || _deliveryStatuses.isNotEmpty,
+        CompactDocumentColumn.status => _statuses.isNotEmpty,
+        CompactDocumentColumn.delivery => _deliveryStatuses.isNotEmpty,
         CompactDocumentColumn.date => _fromDate != null || _toDate != null,
         CompactDocumentColumn.taxableBase => _baseRange.active,
         CompactDocumentColumn.total => _totalRange.active,
@@ -235,6 +236,7 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
         CompactDocumentColumn.identity => _ReceiptSortColumn.number,
         CompactDocumentColumn.client => _ReceiptSortColumn.client,
         CompactDocumentColumn.status => _ReceiptSortColumn.status,
+        CompactDocumentColumn.delivery => _ReceiptSortColumn.delivery,
         CompactDocumentColumn.date => _ReceiptSortColumn.date,
         CompactDocumentColumn.taxableBase => _ReceiptSortColumn.base,
         _ => _ReceiptSortColumn.total,
@@ -316,25 +318,18 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
         selectionPluralLabel: 'clientes seleccionados',
       );
     } else if (column == CompactDocumentColumn.status) {
-      filter = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('Documento', style: Theme.of(context).textTheme.labelSmall),
-          HexoraMultiSelectFilter(
-            values: statusValues,
-            selected: _statuses,
-            labelFor: _statusLabel,
-            onChanged: (value) => setState(() => _statuses = value),
-          ),
-          const SizedBox(height: 6),
-          Text('Entrega', style: Theme.of(context).textTheme.labelSmall),
-          HexoraMultiSelectFilter(
-            values: deliveryValues,
-            selected: _deliveryStatuses,
-            labelFor: _deliveryLabel,
-            onChanged: (value) => setState(() => _deliveryStatuses = value),
-          ),
-        ],
+      filter = HexoraMultiSelectFilter(
+        values: statusValues,
+        selected: _statuses,
+        labelFor: _statusLabel,
+        onChanged: (value) => setState(() => _statuses = value),
+      );
+    } else if (column == CompactDocumentColumn.delivery) {
+      filter = HexoraMultiSelectFilter(
+        values: deliveryValues,
+        selected: _deliveryStatuses,
+        labelFor: _deliveryLabel,
+        onChanged: (value) => setState(() => _deliveryStatuses = value),
       );
     } else if (column == CompactDocumentColumn.date) {
       filter = Wrap(spacing: 6, runSpacing: 6, children: [
@@ -403,6 +398,7 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
           number,
           clientName,
           _statusLabel(_status(receipt)),
+          _deliveryLabel(normalizedDeliveryStatus(receipt.deliveryStatus)),
           _total(receipt).toString(),
         ].join(' ').toLowerCase();
         if (!searchable.contains(query)) return false;
@@ -443,6 +439,9 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
               .compareTo((b.receiptNumber ?? '').toLowerCase()),
           _ReceiptSortColumn.client => _clientName(a).compareTo(_clientName(b)),
           _ReceiptSortColumn.status => _status(a).compareTo(_status(b)),
+          _ReceiptSortColumn.delivery => normalizedDeliveryStatus(
+              a.deliveryStatus,
+            ).compareTo(normalizedDeliveryStatus(b.deliveryStatus)),
           _ReceiptSortColumn.date =>
             (_date(a) ?? DateTime(9999)).compareTo(_date(b) ?? DateTime(9999)),
           _ReceiptSortColumn.base =>
@@ -608,6 +607,7 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
                       identityLabel: 'Recibo',
                       visibleFinancialColumns: _visible,
                       actionsWidth: 128,
+                      showDeliveryColumn: true,
                       headerBuilder: _header,
                     ),
                   ],
@@ -642,6 +642,7 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
             totalValue: totalValue,
             visibleFinancialColumns: _visible,
             actionsWidth: 128,
+            showDeliveryColumn: true,
             compactFallback: compactFooter,
           ),
         ),
@@ -831,6 +832,10 @@ class GroupReceiptsView extends StatelessWidget {
           key: ValueKey('receipt-tabs-$initialTabIndex-$showHeaderTabs'),
           length: 2,
           initialIndex: initialTabIndex.clamp(0, 1),
+          animationDuration: HexoraMotion.duration(
+            context,
+            HexoraMotion.tabIndicator,
+          ),
           child: Container(
             decoration: BoxDecoration(
               color: isDark

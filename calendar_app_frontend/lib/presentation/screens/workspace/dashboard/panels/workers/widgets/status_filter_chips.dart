@@ -26,13 +26,13 @@ class StatusFilterChips extends StatelessWidget {
           onTap: () => onChanged(WorkerStatusFilter.all),
         ),
         _FilterChip(
-          label: l.statusActive,
+          label: l.localeName.startsWith('es') ? 'Activos' : l.statusActive,
           dot: const Color(0xff08662f),
           selected: value == WorkerStatusFilter.active,
           onTap: () => onChanged(WorkerStatusFilter.active),
         ),
         _FilterChip(
-          label: l.statusInactive,
+          label: l.localeName.startsWith('es') ? 'Inactivos' : l.statusInactive,
           dot: const Color(0xff9298ae),
           selected: value == WorkerStatusFilter.inactive,
           onTap: () => onChanged(WorkerStatusFilter.inactive),

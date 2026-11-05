@@ -213,12 +213,14 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                           icon: Icons.people_outline,
                           label: isEs ? 'Todos' : 'All',
                           selected: selectedMenu == 'clients',
+                          indent: childIndent,
                           onPressed: () => onMenuChanged('clients'),
                         ),
                         GroupInvoicesSubMenuItem(
                           icon: Icons.category_outlined,
                           label: l.clientClassificationTitle,
                           selected: selectedMenu == 'client_classifications',
+                          indent: childIndent,
                           onPressed: () =>
                               onMenuChanged('client_classifications'),
                         ),
@@ -226,6 +228,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                           icon: Icons.insights_outlined,
                           label: 'Análisis de ingresos',
                           selected: selectedMenu == 'client_invoice_stats',
+                          indent: childIndent,
                           onPressed: () =>
                               onMenuChanged('client_invoice_stats'),
                         ),

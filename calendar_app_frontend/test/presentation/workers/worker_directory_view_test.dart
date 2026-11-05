@@ -12,6 +12,7 @@ void main() {
   for (final width in [600.0, 1400.0]) {
     testWidgets('directory pagination, search and card view at width $width',
         (tester) async {
+      var selectedStatus = WorkerStatusFilter.all;
       tester.view.physicalSize = Size(width, 900);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -46,8 +47,8 @@ void main() {
             showPartners: false,
             onTabChanged: (_) {},
             monthSummary: const Text('octubre de 2026'),
-            statusFilter: StatusFilterChips(
-                value: WorkerStatusFilter.all, onChanged: (_) {}),
+            statusFilter: WorkerStatusFilter.all,
+            onStatusFilterChanged: (value) => selectedStatus = value,
             onCreate: () {},
             onEdit: (_) {},
             onAddHours: (_) {},
@@ -68,11 +69,13 @@ void main() {
       await tester.tap(next);
       await tester.pumpAndSettle();
       expect(list().workers.map((w) => w.id), ['8', '9']);
-      expect(find.text('Mostrando 9–10 de 10 trabajadores'), findsOneWidget);
+      expect(find.text('9–10 / 10 trabajadores'), findsOneWidget);
       expect(
           tester
-              .widget<IconButton>(find.byWidgetPredicate((widget) =>
-                  widget is IconButton && widget.tooltip == 'Página siguiente'))
+              .widget<TextButton>(find.descendant(
+                of: find.byTooltip('Página siguiente'),
+                matching: find.byType(TextButton),
+              ))
               .onPressed,
           isNull);
       final search = find.byType(TextField);
@@ -80,13 +83,36 @@ void main() {
       await tester.enterText(search, 'Worker 00');
       await tester.pumpAndSettle();
       expect(list().workers.single.id, '0');
-      expect(find.text('Mostrando 1 de 1 trabajadores'), findsOneWidget);
-      await tester.tap(find.byTooltip('Vista de tarjetas'));
+      expect(find.text('1 trabajadores'), findsOneWidget);
+      if (width >= 840) {
+        await tester.tap(find.byTooltip('Vista de tarjetas'));
+      } else {
+        await tester.tap(find.byTooltip('Opciones de vista'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Vista de tarjetas'));
+      }
       await tester.pumpAndSettle();
       expect(list().grid, isTrue);
-      await tester.tap(find.byTooltip('Vista de lista'));
+      if (width >= 840) {
+        await tester.tap(find.byTooltip('Vista de lista'));
+      } else {
+        await tester.tap(find.byTooltip('Opciones de vista'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Vista de lista'));
+      }
       await tester.pumpAndSettle();
       expect(list().grid, isFalse);
+      if (width >= 840) {
+        await tester.tap(find.text('Activos'));
+      } else {
+        await tester.tap(find.byTooltip('Filtros'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byWidgetPredicate((widget) =>
+            widget is CheckedPopupMenuItem<WorkerStatusFilter> &&
+            widget.value == WorkerStatusFilter.active));
+      }
+      await tester.pumpAndSettle();
+      expect(selectedStatus, WorkerStatusFilter.active);
       expect(tester.takeException(), isNull);
     });
   }

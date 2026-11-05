@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/input_border.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -17,33 +18,18 @@ class NotesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          l.notesLabel,
-          style: t.bodyMedium.copyWith(fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          style: t.bodyMedium.copyWith(
-            color: ThemeColors.textPrimary(context),
-          ),
-          decoration: InputDecoration(
-            hintText: l.notesOptionalHint,
-            hintStyle: t.bodySmall.copyWith(
-              color: ThemeColors.textSecondary(context),
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            filled: true,
-            fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-          ),
-          maxLines: 3,
-        ),
-      ],
+    return TextField(
+      controller: controller,
+      style: t.bodyMedium.copyWith(
+        color: ThemeColors.textPrimary(context),
+      ),
+      decoration: buildInputDecoration(
+        context,
+        label: l.notesLabel,
+        hintText: l.notesOptionalHint,
+      ),
+      minLines: 2,
+      maxLines: 5,
     );
   }
 }

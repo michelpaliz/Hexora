@@ -33,8 +33,13 @@ void main() {
     expect(validation.message, contains('billing.taxId: NIF no válido'));
     expect(validation.details, contains('HTTP 400'));
 
-    final network = describeError(ctx, http.ClientException('XMLHttpRequest error'));
+    final network =
+        describeError(ctx, http.ClientException('XMLHttpRequest error'));
     expect(network.message, contains('conexión'));
+
+    final gateway = describeError(ctx, _ApiError(502, 'Bad gateway'));
+    expect(gateway.message, isNot(contains('Bad gateway')));
+    expect(gateway.details, contains('Bad gateway'));
 
     final unknown = describeError(ctx, Exception('Bad Request (status 400)'));
     expect(unknown.message, 'Bad Request (status 400)');

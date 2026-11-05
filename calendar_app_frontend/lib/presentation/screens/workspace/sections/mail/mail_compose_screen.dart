@@ -168,6 +168,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   String? _inlineClientId;
   String? _recipientClientId;
   String? _recipientClientError;
+  String? _autoRecipientEmail;
 
   final List<MailOutgoingAttachment> _attachments = [];
   List<GroupClient> _pickerClients = const [];
@@ -706,6 +707,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       _recentInvoicesError = null;
       _recipientClientId = null;
       _inlineClientId = null;
+      _autoRecipientEmail = null;
       _toList.clear();
       _ccList.clear();
       _bccList.clear();
@@ -770,10 +772,37 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       }
 
       for (final id in _selectedPresupuestoIds) {
-        names.add('${_isSpanishLocale ? 'Presupuesto' : 'Estimate'} $id.pdf');
+        names.add(_presupuestoDisplayFileName(id));
       }
     }
     return names;
+  }
+
+  String _presupuestoDisplayFileName(String id) {
+    Map<String, dynamic>? presupuesto;
+    for (final items in _pickerPresupuestosByClient.values) {
+      for (final item in items) {
+        if (_mailPresupuestoId(item) == id) {
+          presupuesto = item;
+          break;
+        }
+      }
+      if (presupuesto != null) break;
+    }
+
+    final number = (presupuesto?['presupuestoNumber'] ??
+            presupuesto?['budgetNumber'] ??
+            '')
+        .toString()
+        .trim();
+    if (number.isNotEmpty) {
+      return '${_isSpanishLocale ? 'Presupuesto' : 'Estimate'} $number.pdf';
+    }
+    if (presupuesto != null && _isWordPresupuesto(presupuesto)) {
+      final title = presupuestoDocumentTitle(presupuesto).trim();
+      if (title.isNotEmpty) return '$title.pdf';
+    }
+    return '${_isSpanishLocale ? 'Presupuesto' : 'Estimate'} $id.pdf';
   }
 
   String _manualPdfAttachmentName(MailOutgoingAttachment attachment) {
@@ -1015,16 +1044,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       existingClients: _pickerClients,
     );
     if (!mounted || updated == null) return;
-    setState(() {
-      final index = _pickerClients.indexWhere((item) => item.id == updated.id);
-      if (index >= 0) {
-        _pickerClients = [..._pickerClients]..[index] = updated;
-      }
-    });
-    final email = _clientPrimaryEmail(updated);
-    if (email.isNotEmpty && !_toList.contains(email)) {
-      setState(() => _toList.add(email));
-    }
+    _applyRecipientClient(updated.id, updated, replaceClient: true);
   }
 
   DateTime _invoiceDisplayDate(Invoice invoice) {
@@ -1127,20 +1147,59 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     _toList.add(email);
   }
 
-  void _selectRecipientClient(String id) {
+  void _applyRecipientClient(
+    String clientId,
+    GroupClient client, {
+    bool replaceClient = false,
+  }) {
+    final email = _clientPrimaryEmail(client);
+    setState(() {
+      _useClientMode = true;
+      _recipientClientId = clientId;
+      _inlineClientId = clientId;
+
+      final previousEmail = _autoRecipientEmail;
+      if (previousEmail != null && previousEmail != email) {
+        _toList.remove(previousEmail);
+      }
+      if (email.isNotEmpty && !_toList.contains(email)) {
+        _toList.add(email);
+      }
+      _autoRecipientEmail = email.isEmpty ? null : email;
+
+      if (replaceClient) {
+        final index = _pickerClients.indexWhere((item) => item.id == clientId);
+        if (index >= 0) {
+          _pickerClients = [..._pickerClients]..[index] = client;
+        }
+      }
+    });
+  }
+
+  Future<void> _selectRecipientClient(String id) async {
     final normalizedId = id.trim();
     if (normalizedId.isEmpty) return;
     final client = _pickerClients.cast<GroupClient?>().firstWhere(
           (item) => item?.id == normalizedId,
           orElse: () => null,
         );
-    final email = client == null ? '' : _clientPrimaryEmail(client);
-    setState(() {
-      _useClientMode = true;
-      _recipientClientId = normalizedId;
-      _inlineClientId = normalizedId;
-      if (email.isNotEmpty && !_toList.contains(email)) _toList.add(email);
-    });
+    if (client == null) return;
+
+    // Apply the list value immediately, then refresh the full client record.
+    // The list endpoint can omit nested billing contact details.
+    _applyRecipientClient(normalizedId, client);
+    try {
+      final detailedClient = await _clientsApi.getById(normalizedId);
+      if (!mounted || _recipientClientId != normalizedId) return;
+      _applyRecipientClient(
+        normalizedId,
+        detailedClient,
+        replaceClient: true,
+      );
+    } catch (_) {
+      // Keep the list value and selected client available if detail refresh
+      // fails; the existing missing/invalid email guidance remains visible.
+    }
   }
 
   Future<void> _openRecentIssuedInvoicesPicker() async {

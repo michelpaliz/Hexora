@@ -72,7 +72,7 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
       _RegisterHoursImportPanel(group: widget.group),
       WorkerAccountSetupScreen(group: widget.group),
     ];
-    return HexoraMenuContentTransition(
+    return HexoraMenuContentTransition.submenu(
       transitionKey: _section,
       child: IndexedStack(
         index: _section.index,

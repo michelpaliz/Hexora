@@ -2685,7 +2685,13 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
         _budgetsTabIndex == 0 ? filteredDrafts : filteredIssuedBudgets;
     // Only drafts need the labelled Emitir action. Issued rows use the shared
     // compact preview icon, avoiding a duplicate eye + Ver control.
-    final primaryActionWidth = activeList.any(_isDraftBudget) ? 84.0 : 0.0;
+    final primaryActionWidth = activeList.any(
+      (item) =>
+          _isDraftBudget(item) ||
+          (!_isDraftBudget(item) && widget.onEditDraftBudget != null),
+    )
+        ? 84.0
+        : 0.0;
     final selected = activeList.cast<Map<String, dynamic>?>().firstWhere(
           (e) =>
               _budgetId(e ?? const {}).trim() ==
@@ -2802,7 +2808,20 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                   variant: HexoraButtonVariant.primary,
                 ),
               )
-            : null,
+            : widget.onEditDraftBudget == null
+                ? null
+                : Tooltip(
+                    message: _isSpanishLocale
+                        ? 'Editar presupuesto emitido'
+                        : 'Edit issued proposal',
+                    child: HexoraButton(
+                      onPressed: () => widget.onEditDraftBudget!.call(id),
+                      icon: Icons.edit_outlined,
+                      label: _isSpanishLocale ? 'Editar' : 'Edit',
+                      size: HexoraButtonSize.compact,
+                      variant: HexoraButtonVariant.secondary,
+                    ),
+                  ),
         quickActionSlots: 1,
         quickActions: [
           CompactDocumentQuickAction(

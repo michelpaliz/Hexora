@@ -38,26 +38,36 @@ class HexoraStepTransition extends StatelessWidget {
         children: [
           for (var index = 0; index < indexedChildren.length; index++)
             Positioned.fill(
-              child: IgnorePointer(
-                ignoring: index != currentStep,
-                child: ExcludeSemantics(
-                  excluding: index != currentStep,
-                  child: TickerMode(
-                    enabled: index == currentStep,
-                    child: Focus(
-                      canRequestFocus: index == currentStep,
-                      descendantsAreFocusable: index == currentStep,
-                      child: AnimatedOpacity(
-                        duration: duration,
-                        curve: HexoraMotion.emphasized,
-                        opacity: index == currentStep ? 1 : 0,
-                        child: AnimatedSlide(
+              // Keep inactive steps mounted for form/scroll state, but never
+              // let them paint behind the active step. Rapid navigation could
+              // otherwise leave several implicit opacity animations visible
+              // at once and visually stack whole wizard pages.
+              child: Offstage(
+                offstage: index != currentStep,
+                child: IgnorePointer(
+                  ignoring: index != currentStep,
+                  child: ExcludeSemantics(
+                    excluding: index != currentStep,
+                    child: TickerMode(
+                      enabled: index == currentStep,
+                      child: Focus(
+                        canRequestFocus: index == currentStep,
+                        descendantsAreFocusable: index == currentStep,
+                        child: AnimatedOpacity(
                           duration: duration,
                           curve: HexoraMotion.emphasized,
-                          offset: index == currentStep
-                              ? Offset.zero
-                              : Offset(index < currentStep ? -.025 : .025, 0),
-                          child: indexedChildren[index],
+                          opacity: index == currentStep ? 1 : 0,
+                          child: AnimatedSlide(
+                            duration: duration,
+                            curve: HexoraMotion.emphasized,
+                            offset: index == currentStep
+                                ? Offset.zero
+                                : Offset(
+                                    index < currentStep ? -.025 : .025,
+                                    0,
+                                  ),
+                            child: indexedChildren[index],
+                          ),
                         ),
                       ),
                     ),

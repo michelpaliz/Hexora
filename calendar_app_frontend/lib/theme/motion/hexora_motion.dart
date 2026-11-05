@@ -10,9 +10,20 @@ abstract final class HexoraMotion {
   static const Duration navigation = Duration(milliseconds: 240);
   static const Duration chart = Duration(milliseconds: 750);
 
+  /// Motion profiles for navigation surfaces. These intentionally remain
+  /// separate from wizard/page timings so changing one does not affect the
+  /// other workflows.
+  static const Duration moduleNavigation = Duration(milliseconds: 180);
+  static const Duration submenuNavigation = Duration(milliseconds: 120);
+  static const Duration tabNavigation = Duration(milliseconds: 110);
+  static const Duration tabIndicator = Duration(milliseconds: 150);
+  static const Duration sidePanel = Duration(milliseconds: 200);
+  static const Duration popup = Duration(milliseconds: 100);
+
   static const Curve enter = Curves.easeOutCubic;
   static const Curve exit = Curves.easeInCubic;
   static const Curve emphasized = Curves.easeInOutCubic;
+  static const Curve navigationCurve = Cubic(0.2, 0, 0, 1);
 
   static bool reduceMotion(BuildContext context) =>
       MediaQuery.maybeOf(context)?.disableAnimations ?? false;
@@ -31,6 +42,13 @@ abstract final class HexoraMotion {
         duration: duration(context, navigation),
         reverseDuration: duration(context, standard),
         curve: enter,
+        reverseCurve: exit,
+      );
+
+  static AnimationStyle popupStyle(BuildContext context) => AnimationStyle(
+        duration: duration(context, popup),
+        reverseDuration: duration(context, popup),
+        curve: navigationCurve,
         reverseCurve: exit,
       );
 }

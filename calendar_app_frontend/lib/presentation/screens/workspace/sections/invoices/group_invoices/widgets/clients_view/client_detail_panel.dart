@@ -12,6 +12,7 @@ import '../invoice_row_item.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/date_range_filter_card.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'client_invoice_stats_card.dart';
 import 'client_contracts_tab.dart';
@@ -226,6 +227,10 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
               ),
               length: 4,
               initialIndex: widget.initialTabIndex.clamp(0, 3),
+              animationDuration: HexoraMotion.duration(
+                context,
+                HexoraMotion.tabIndicator,
+              ),
               child: Column(
                 children: [
                   Padding(

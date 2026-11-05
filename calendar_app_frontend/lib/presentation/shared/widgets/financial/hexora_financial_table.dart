@@ -526,14 +526,18 @@ class HexoraColumnVisibilityMenu extends StatelessWidget {
     required this.availableColumns,
     required this.visibleColumns,
     required this.onChanged,
+    this.columnLabels = const {},
   });
 
   final String moduleKey;
   final Set<HexoraFinancialColumn> availableColumns;
   final Set<HexoraFinancialColumn> visibleColumns;
   final ValueChanged<Set<HexoraFinancialColumn>> onChanged;
+  final Map<HexoraFinancialColumn, String> columnLabels;
 
-  String _label(HexoraFinancialColumn column) => switch (column) {
+  String _label(HexoraFinancialColumn column) =>
+      columnLabels[column] ??
+      switch (column) {
         HexoraFinancialColumn.date => 'Fecha',
         HexoraFinancialColumn.concept => 'Concepto',
         HexoraFinancialColumn.taxableBase => 'Base imponible',

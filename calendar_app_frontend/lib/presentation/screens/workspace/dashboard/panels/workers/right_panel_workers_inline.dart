@@ -1,7 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
 import 'package:hexora/presentation/shared/widgets/navigation_menu_header.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
@@ -239,6 +238,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
   List<Worker> _workers = const [];
   bool _showPartners = false;
   bool _showWorkerForm = false;
+  bool _showInlineTimeEntry = false;
   Worker? _selectedWorker;
   Worker? _overviewWorker;
   _InlineSection _section = _InlineSection.workers;
@@ -262,7 +262,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     final now = DateTime.now();
     _totalsYear = now.year;
     _totalsMonth = now.month;
-    _tabController = TabController(length: kIsWeb ? 3 : 2, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
@@ -339,7 +339,11 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
 
   String _selectedMonthLabel(BuildContext context) {
     final locale = Localizations.localeOf(context).toString();
-    return DateFormat.yMMMM(locale).format(DateTime(_totalsYear, _totalsMonth));
+    final label =
+        DateFormat.yMMM(locale).format(DateTime(_totalsYear, _totalsMonth));
+    return label.isEmpty
+        ? label
+        : '${label[0].toUpperCase()}${label.substring(1)}';
   }
 
   Future<void> _pickTotalsMonth() async {
@@ -461,33 +465,54 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                             icon: const Icon(Icons.history_rounded, size: 16),
                             label: Text(isEs ? 'Historial' : 'History')),
                       ]);
+    final compactIconStyle = IconButton.styleFrom(
+      minimumSize: const Size(34, 34),
+      maximumSize: const Size(34, 34),
+      padding: EdgeInsets.zero,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+      side: BorderSide(color: cs.outlineVariant.withValues(alpha: .55)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    );
     final controls = Row(mainAxisSize: MainAxisSize.min, children: [
       OutlinedButton.icon(
         onPressed: _activeTotalsLoading ? null : _pickTotalsMonth,
-        icon: const Icon(Icons.calendar_month_outlined, size: 18),
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(0, 34),
+          maximumSize: const Size(double.infinity, 34),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+          side: BorderSide(color: cs.outlineVariant.withValues(alpha: .55)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        icon: const Icon(Icons.calendar_month_outlined, size: 17),
         label: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(_selectedMonthLabel(context)),
-          const SizedBox(width: 8),
-          const Icon(Icons.expand_more_rounded, size: 18),
+          Text(_selectedMonthLabel(context),
+              style: const TextStyle(fontSize: 12.5)),
+          const SizedBox(width: 5),
+          const Icon(Icons.expand_more_rounded, size: 17),
         ]),
       ),
-      const SizedBox(width: 12),
-      IconButton.outlined(
+      const SizedBox(width: 6),
+      IconButton(
         tooltip: isEs ? 'Mes anterior' : 'Previous month',
+        style: compactIconStyle,
         onPressed:
             _activeTotalsLoading || (_totalsYear == 2018 && _totalsMonth == 1)
                 ? null
                 : () => _shiftTotalsMonth(-1),
-        icon: const Icon(Icons.chevron_left_rounded, size: 20),
+        icon: const Icon(Icons.chevron_left_rounded, size: 18),
       ),
-      const SizedBox(width: 6),
-      IconButton.outlined(
+      const SizedBox(width: 4),
+      IconButton(
         tooltip: isEs ? 'Mes siguiente' : 'Next month',
+        style: compactIconStyle,
         onPressed:
             _activeTotalsLoading || (_totalsYear == 2100 && _totalsMonth == 12)
                 ? null
                 : () => _shiftTotalsMonth(1),
-        icon: const Icon(Icons.chevron_right_rounded, size: 20),
+        icon: const Icon(Icons.chevron_right_rounded, size: 18),
       ),
     ]);
     if (controlsOnly) return controls;
@@ -571,6 +596,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     setState(() {
       _selectedWorker = w;
       _showWorkerForm = true;
+      _showInlineTimeEntry = false;
     });
     return null;
   }
@@ -586,6 +612,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
       _overviewWorker = null;
       _selectedWorker = null;
       _showWorkerForm = true;
+      _showInlineTimeEntry = false;
     });
   }
 
@@ -769,22 +796,21 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
         _showPartners = value;
         _selectedWorker = null;
         _showWorkerForm = false;
+        _showInlineTimeEntry = false;
         _tabController.animateTo(0);
       }),
       monthSummary: _buildActiveTotalsInlineCard(context, controlsOnly: true),
-      statusFilter: StatusFilterChips(
-        value: _statusFilter,
-        onChanged: (next) {
-          setState(() => _statusFilter = next);
-          _load();
-        },
-      ),
+      statusFilter: _statusFilter,
+      onStatusFilterChanged: (next) {
+        setState(() => _statusFilter = next);
+        _load();
+      },
       onCreate: _openCreateWorkerForm,
       onEdit: _openEditWorkerDialog,
       onAddHours: _addHoursForWorker,
       onOverview: _openMonthlyOverview,
     );
-    final details = WorkersFormPanel(
+    final workerForm = WorkersFormPanel(
       group: widget.group,
       repo: _repo,
       getToken: _token,
@@ -803,13 +829,32 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
           _selectedWorker = savedWorker;
           _showPartners = isPartnerWorker(savedWorker, widget.group);
           _showWorkerForm = false;
+          _showInlineTimeEntry = false;
           _tabController.animateTo(0);
         });
       },
       tabController: _tabController,
-      enableAddHoursTab: kIsWeb,
+      enableAddHoursTab: false,
       onTimeEntryChanged: _reloadActiveTotals,
     );
+    final details = _showInlineTimeEntry && _selectedWorker != null
+        ? CreateTimeEntryScreen(
+            key: ValueKey('worker-entry-${_selectedWorker!.id}'),
+            group: widget.group,
+            workers: [_selectedWorker!],
+            embedded: true,
+            initialSelectedIds: {_selectedWorker!.id},
+            onCancel: () => setState(() {
+              _showInlineTimeEntry = false;
+              _tabController.animateTo(0);
+            }),
+            onCreated: () async {
+              setState(() => _showInlineTimeEntry = false);
+              await _load();
+              await _reloadActiveTotals();
+            },
+          )
+        : workerForm;
 
     return LayoutBuilder(builder: (context, constraints) {
       if (constraints.maxWidth >= 1040) {
@@ -837,6 +882,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                         ),
                         onPressed: () => setState(() {
                           _showWorkerForm = false;
+                          _showInlineTimeEntry = false;
                         }),
                         icon: const Icon(Icons.arrow_back_rounded),
                         label: Text(_isSpanish(context)
@@ -992,9 +1038,11 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
                     child: FolderPanel(
                       title: _sectionTitle(context),
                       showTab: _section != _InlineSection.workers,
+                      showBorder: false,
+                      showToolbarDivider: false,
                       contentTopPadding:
                           _section == _InlineSection.workers ? 12 : 30,
-                      child: HexoraMenuContentTransition(
+                      child: HexoraMenuContentTransition.tab(
                         transitionKey: _section,
                         child: IndexedStack(
                           index: _section.index,
@@ -1038,26 +1086,13 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     );
   }
 
-  Future<void> _addHoursForWorker(Worker w) async {
-    if (kIsWeb) {
-      _tabController.animateTo(2);
-      setState(() {
-        _selectedWorker = w;
-        _showWorkerForm = true;
-      });
-      return;
-    }
-    final ordered = [w, ..._workers.where((x) => x.id != w.id)];
-    final created = await showModalBottomSheet<bool>(
-      sheetAnimationStyle: HexoraMotion.sheetStyle(context),
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => FractionallySizedBox(
-        heightFactor: 0.92,
-        child: CreateTimeEntryScreen(group: widget.group, workers: ordered),
-      ),
-    );
-    if (created == true) _load();
+  void _addHoursForWorker(Worker w) {
+    _tabController.animateTo(0);
+    setState(() {
+      _selectedWorker = w;
+      _showWorkerForm = true;
+      _showInlineTimeEntry = true;
+    });
   }
 }
 

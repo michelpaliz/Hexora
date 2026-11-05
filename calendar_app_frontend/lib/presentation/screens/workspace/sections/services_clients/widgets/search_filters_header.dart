@@ -43,6 +43,7 @@ class SearchFiltersHeader extends StatefulWidget {
       this.autoExpandWhenActive = false,
       this.filtersInMenu = false,
       this.filterMenuWidth = 360,
+      this.filterBeforeSearch = false,
       this.toolbarContent,
       this.trailingActions = const []});
   final TextEditingController searchController;
@@ -61,6 +62,7 @@ class SearchFiltersHeader extends StatefulWidget {
   final bool autoExpandWhenActive;
   final bool filtersInMenu;
   final double filterMenuWidth;
+  final bool filterBeforeSearch;
   final Widget? toolbarContent;
   final double searchDesktopHeight;
   final bool compactDesktopControls;
@@ -155,50 +157,59 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                 : Expanded(child: search);
             Widget filterButton(VoidCallback onPressed,
                 {bool expanded = false}) {
+              // Compact icon-only Filtros control. Active-filter count rides
+              // on a small badge instead of changing the border to blue; the
+              // tooltip carries both the "Filtros" label and the count for
+              // screen readers.
+              final tooltip = widget.activeFilterCount > 0
+                  ? '${l.sectionFilters} (${widget.activeFilterCount})'
+                  : l.sectionFilters;
               return Semantics(
                 expanded: expanded,
-                child: OutlinedButton(
-                  key: const ValueKey('client-advanced-filters-toggle'),
-                  onPressed: onPressed,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: Size(32, height),
-                    maximumSize: Size(double.infinity, height),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                    foregroundColor: widget.hasActiveFilters
-                        ? cs.primary
-                        : cs.onSurfaceVariant,
-                    backgroundColor: widget.hasActiveFilters
-                        ? cs.primary.withValues(alpha: .06)
-                        : Colors.transparent,
-                    side: BorderSide(
-                      color: widget.hasActiveFilters
-                          ? cs.primary.withValues(alpha: .55)
-                          : cs.outlineVariant.withValues(alpha: .6),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    HexoraButton.iconOnly(
+                      key: const ValueKey('client-advanced-filters-toggle'),
+                      onPressed: onPressed,
+                      tooltip: tooltip,
+                      icon: Icons.tune_rounded,
+                      variant: HexoraButtonVariant.ghost,
+                      size: HexoraButtonSize.compact,
+                      accentColor: widget.hasActiveFilters ? cs.primary : null,
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.tune_rounded, size: 16),
-                      const SizedBox(width: 4),
-                      Text(widget.activeFilterCount > 0
-                          ? '${l.sectionFilters} (${widget.activeFilterCount})'
-                          : l.sectionFilters),
-                      Icon(
-                        widget.filtersInMenu
-                            ? Icons.expand_more
-                            : expanded
-                                ? Icons.expand_less
-                                : Icons.expand_more,
-                        size: 16,
+                    if (widget.activeFilterCount > 0)
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: IgnorePointer(
+                          child: Container(
+                            constraints: const BoxConstraints(
+                              minWidth: 14,
+                              minHeight: 14,
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 3),
+                            decoration: BoxDecoration(
+                              color: cs.primary,
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(color: cs.surface, width: 1.5),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${widget.activeFilterCount}',
+                                style: TextStyle(
+                                  color: cs.onPrimary,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ],
-                  ),
+                  ],
                 ),
               );
             }
@@ -260,8 +271,12 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                     : null;
 
             final primaryControls = <Widget>[
+              if (widget.filterBeforeSearch && filterControl != null) ...[
+                filterControl,
+                const SizedBox(width: 8),
+              ],
               searchSlot,
-              if (filterControl != null) ...[
+              if (!widget.filterBeforeSearch && filterControl != null) ...[
                 const SizedBox(width: 8),
                 filterControl,
               ],

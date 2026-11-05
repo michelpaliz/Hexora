@@ -300,7 +300,7 @@ class HexoraSidePanelHost {
       barrierLabel: barrierLabel ?? localizations.modalBarrierDismissLabel,
       barrierColor: Colors.black.withValues(alpha: 0.34),
       transitionDuration:
-          HexoraMotion.duration(context, HexoraMotion.navigation),
+          HexoraMotion.duration(context, HexoraMotion.sidePanel),
       routeSettings: settings,
       pageBuilder: (dialogContext, animation, secondaryAnimation) {
         final media = MediaQuery.of(dialogContext);
@@ -346,7 +346,7 @@ class HexoraSidePanelHost {
             MediaQuery.sizeOf(context).width >= mobileBreakpoint;
         final curved = CurvedAnimation(
           parent: animation,
-          curve: HexoraMotion.enter,
+          curve: HexoraMotion.navigationCurve,
           reverseCurve: HexoraMotion.exit,
         );
         final offset = Tween<Offset>(
@@ -416,14 +416,14 @@ class HexoraSidePanelLayout extends StatelessWidget {
         final open = panel != null;
         final media = MediaQuery.of(context);
         final motionDuration =
-            media.disableAnimations ? Duration.zero : HexoraMotion.navigation;
+            media.disableAnimations ? Duration.zero : HexoraMotion.sidePanel;
 
         return Stack(
           fit: StackFit.expand,
           children: [
             AnimatedPadding(
               duration: motionDuration,
-              curve: HexoraMotion.enter,
+              curve: HexoraMotion.navigationCurve,
               padding: EdgeInsets.only(right: open && docked ? panelWidth : 0),
               child: child,
             ),
@@ -436,7 +436,7 @@ class HexoraSidePanelLayout extends StatelessWidget {
                 ignoring: !open,
                 child: AnimatedSwitcher(
                   duration: motionDuration,
-                  switchInCurve: HexoraMotion.enter,
+                  switchInCurve: HexoraMotion.navigationCurve,
                   switchOutCurve: HexoraMotion.exit,
                   transitionBuilder: (panelChild, animation) => SlideTransition(
                     position: Tween<Offset>(

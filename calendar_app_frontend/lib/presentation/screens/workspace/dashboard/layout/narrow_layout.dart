@@ -99,7 +99,7 @@ class NarrowLayout extends StatelessWidget {
 
     return GroupDashboardContent(
       panelBg: state.backdrop,
-      child: HexoraMenuContentTransition(
+      child: HexoraMenuContentTransition.module(
         transitionKey: state.activeSection,
         child: child,
       ),

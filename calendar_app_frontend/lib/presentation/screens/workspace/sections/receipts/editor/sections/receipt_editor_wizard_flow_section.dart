@@ -179,11 +179,12 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
         _markDraftSynced();
       });
       if (showSavedSnack) {
-        showSuccessSnack(
+        showDocumentSavedSnack(
           context,
-          successSnackMessage ?? l.receiptDraftSavedSnackMessage,
           title: l.receiptDraftSavedSnackTitle,
-          actionLabel: l.invoiceDraftSnackDismiss,
+          message: successSnackMessage ?? l.receiptDraftSavedSnackMessage,
+          reference: saved.receiptNumber,
+          dismissLabel: l.invoiceDraftSnackDismiss,
         );
       }
       return saved;
@@ -206,6 +207,12 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
     }
   }
 
+  Future<void> _saveDraftAndFinish() async {
+    final saved = await _saveDraft();
+    if (!mounted || saved == null) return;
+    _close(changed: true);
+  }
+
   Future<void> _loadDraftPreview({required String receiptId}) async {
     final l = AppLocalizations.of(context)!;
     setState(() {
@@ -213,7 +220,7 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
       _previewError = null;
     });
     try {
-      final r = await _receiptsApi.previewPdf(receiptId);
+      final r = await _receiptsApi.previewPdfWithFallback(receiptId);
       final bytes = InvoiceEditorPdf.validatePdf(r);
       if (!mounted) return;
       setState(() => _previewPdfBytes = bytes);
@@ -231,9 +238,12 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
 
   Future<bool> _preparePreviewStep() async {
     final draft = await _saveDraft(showSavedSnack: false);
+    // Advancing only depends on the draft actually persisting. The PDF preview
+    // is best-effort: if it fails the preview step renders the error inline
+    // with a retry, so a preview problem must never block saving or progress.
     if (draft == null || !mounted) return false;
     await _loadDraftPreview(receiptId: draft.id);
-    return mounted && _previewError == null;
+    return mounted;
   }
 
   Future<void> _tryGoToStep(int targetStep) async {

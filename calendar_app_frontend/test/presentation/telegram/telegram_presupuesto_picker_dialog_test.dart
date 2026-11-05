@@ -15,6 +15,7 @@ void main() {
         'status': 'draft',
         'title': 'Trabajo pendiente',
         'presupuestoNumber': null,
+        'totals': {'total': 1210.50},
         'createdAt': '2026-09-05T12:00:00Z',
       },
       {
@@ -23,6 +24,7 @@ void main() {
         'status': 'issued',
         'title': 'Trabajo emitido',
         'presupuestoNumber': '025-26',
+        'grandTotal': 845.25,
         'issueDate': '2026-09-03T12:00:00Z',
       },
       {
@@ -32,6 +34,7 @@ void main() {
         'title': 'Presupuesto tipo documento',
         'documentTitle': 'Presupuesto tipo documento',
         'templateKey': 'garden_pool_annual_maintenance',
+        'amount': 99.95,
         'createdAt': '2026-09-06T12:00:00Z',
       },
     ]);
@@ -65,6 +68,9 @@ void main() {
     expect(find.text('Emitido'), findsOneWidget);
     expect(find.textContaining('BORRADOR'), findsNWidgets(2));
     expect(find.textContaining('05/09/2026'), findsOneWidget);
+    expect(find.textContaining('1.210,50'), findsOneWidget);
+    expect(find.textContaining('845,25'), findsOneWidget);
+    expect(find.textContaining('99,95'), findsOneWidget);
 
     await tester.tap(find.text('Borradores'));
     await tester.pumpAndSettle();

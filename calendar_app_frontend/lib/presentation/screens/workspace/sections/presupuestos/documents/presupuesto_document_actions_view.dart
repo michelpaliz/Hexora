@@ -8,6 +8,7 @@ import 'package:hexora/presentation/shared/widgets/documents/document_split_view
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/clients/client.dart';
@@ -21,6 +22,14 @@ import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:intl/intl.dart';
 
 enum PresupuestoDocumentActionMode { all, drafts, issued, edit, preview }
+
+const double _proposalIdentityWidth = 120;
+const double _proposalDateWidth = 104;
+const double _proposalStatusWidth = 100;
+const double _proposalDeliveryWidth = 118;
+const double _proposalBaseWidth = 116;
+const double _proposalVatWidth = 100;
+const double _proposalTotalWidth = 120;
 
 class PresupuestoDocumentActionsView extends StatefulWidget {
   const PresupuestoDocumentActionsView({
@@ -62,10 +71,18 @@ class _PresupuestoDocumentActionsViewState
   final Set<String> _selected = {};
   static const _availableFinancialColumns = {
     HexoraFinancialColumn.date,
+    HexoraFinancialColumn.concept,
+    HexoraFinancialColumn.taxableBase,
+    HexoraFinancialColumn.vat,
+    HexoraFinancialColumn.total,
+  };
+  static const _defaultFinancialColumns = {
+    HexoraFinancialColumn.date,
+    HexoraFinancialColumn.concept,
     HexoraFinancialColumn.total,
   };
   Set<HexoraFinancialColumn> _visibleFinancialColumns =
-      Set.of(_availableFinancialColumns);
+      Set.of(_defaultFinancialColumns);
   Map<String, dynamic>? _editingDocument;
   Map<String, dynamic>? _detailDocument;
   Uint8List? _detailPdfBytes;
@@ -82,8 +99,8 @@ class _PresupuestoDocumentActionsViewState
     _workspace = PresupuestoDocumentWorkspace(api: _api);
     _search.addListener(_onSearchChanged);
     HexoraColumnVisibilityStore.load(
-      'presupuestos',
-      _availableFinancialColumns,
+      'presupuestos_documents_v4',
+      _defaultFinancialColumns,
     ).then((value) {
       if (mounted) setState(() => _visibleFinancialColumns = value);
     });
@@ -102,7 +119,6 @@ class _PresupuestoDocumentActionsViewState
   Future<void> _selectDetail(Map<String, dynamic> document) async {
     final id = presupuestoDocumentId(document);
     if (id.isEmpty) return;
-    _splitModeNotifier.value = null;
     setState(() {
       _detailDocument = document;
       _detailPdfBytes = null;
@@ -187,6 +203,7 @@ class _PresupuestoDocumentActionsViewState
               presupuestoDocumentTitle(document),
               presupuestoDocumentClientName(document),
               _documentNumber(document),
+              ...presupuestoDocumentConcepts(document),
             ].join(' ').toLowerCase();
             return searchable.contains(query);
           }).toList(growable: false);
@@ -811,7 +828,8 @@ class _PresupuestoDocumentActionsViewState
         _DocumentEmptyState(mode: widget.mode, searchQuery: _search.text.trim())
       else
         LayoutBuilder(builder: (context, constraints) {
-          final table = constraints.maxWidth >= 760;
+          final table = constraints.maxWidth >= 1150 &&
+              MediaQuery.textScalerOf(context).scale(1) <= 1.4;
           return Column(children: [
             if (table)
               Container(
@@ -836,19 +854,41 @@ class _PresupuestoDocumentActionsViewState
                       }),
                     ),
                   ),
-                  Expanded(
-                      flex: 5, child: _tableHeaderLabel(context, 'Propuesta')),
+                  SizedBox(
+                      width: _proposalIdentityWidth,
+                      child: _tableHeaderLabel(context, 'Propuesta')),
+                  if (_visibleFinancialColumns
+                      .contains(HexoraFinancialColumn.date))
+                    const HexoraFinancialHeaderCell(
+                        label: 'Fecha', width: _proposalDateWidth),
                   Expanded(
                       flex: 3, child: _tableHeaderLabel(context, 'Cliente')),
                   if (_visibleFinancialColumns
-                      .contains(HexoraFinancialColumn.date))
-                    const HexoraFinancialHeaderCell(label: 'Fecha', width: 104),
+                      .contains(HexoraFinancialColumn.concept))
+                    Expanded(
+                        flex: 4, child: _tableHeaderLabel(context, 'Concepto')),
                   SizedBox(
-                      width: 110, child: _tableHeaderLabel(context, 'Estado')),
+                      width: _proposalStatusWidth,
+                      child: _tableHeaderLabel(context, 'Estado')),
+                  SizedBox(
+                      width: _proposalDeliveryWidth,
+                      child: _tableHeaderLabel(context, 'Envío')),
+                  if (_visibleFinancialColumns
+                      .contains(HexoraFinancialColumn.taxableBase))
+                    const HexoraFinancialHeaderCell(
+                        label: 'Base imponible',
+                        width: _proposalBaseWidth,
+                        numeric: true),
+                  if (_visibleFinancialColumns
+                      .contains(HexoraFinancialColumn.vat))
+                    const HexoraFinancialHeaderCell(
+                        label: 'IVA', width: _proposalVatWidth, numeric: true),
                   if (_visibleFinancialColumns
                       .contains(HexoraFinancialColumn.total))
                     const HexoraFinancialHeaderCell(
-                        label: 'Total', width: 120, numeric: true),
+                        label: 'Importe',
+                        width: _proposalTotalWidth,
+                        numeric: true),
                   SizedBox(
                       width: HexoraTableTokens.actionColumn,
                       child: _tableHeaderLabel(context, 'Acciones')),
@@ -951,7 +991,7 @@ class _PresupuestoDocumentActionsViewState
           _sortButton(context),
           const SizedBox(width: HexoraTableTokens.gap),
           HexoraColumnVisibilityMenu(
-            moduleKey: 'presupuestos',
+            moduleKey: 'presupuestos_documents_v4',
             availableColumns: _availableFinancialColumns,
             visibleColumns: _visibleFinancialColumns,
             onChanged: (value) =>
@@ -1116,8 +1156,6 @@ class _DocumentRow extends StatelessWidget {
 
   bool get _isIssued => presupuestoDocumentStatus(document) == 'issued';
   bool get _isDraft => presupuestoDocumentStatus(document) == 'draft';
-  bool get _isSent => document['deliveryStatus'] == 'sent';
-
   HexoraDocumentStatus get _statusKind {
     if (_isIssued) return HexoraDocumentStatus.issued;
     if (_isDraft) return HexoraDocumentStatus.draft;
@@ -1135,9 +1173,11 @@ class _DocumentRow extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final date = _documentDate(document, issued: _isIssued);
-    final amount = presupuestoDocumentAmount(document);
+    final financials = presupuestoDocumentFinancials(document);
+    final amount = financials.total;
     final client = _clientName(document, clients);
     final title = presupuestoDocumentTitle(document);
+    final concepts = presupuestoDocumentConcepts(document);
 
     if (table) {
       String email = '';
@@ -1173,38 +1213,21 @@ class _DocumentRow extends StatelessWidget {
                   width: 36,
                   child: Checkbox(value: selected, onChanged: onSelect),
                 ),
-                Expanded(
-                    flex: 5,
+                SizedBox(
+                    width: _proposalIdentityWidth,
                     child: Padding(
                         padding: const EdgeInsets.only(right: 12),
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Tooltip(message: title, child: line(title)),
-                              const SizedBox(height: 2),
-                              Row(mainAxisSize: MainAxisSize.min, children: [
-                                if (_documentNumber(document).isNotEmpty)
-                                  Text(_documentNumber(document),
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                              fontSize: 11,
-                                              color: cs.onSurfaceVariant)),
-                                if (_documentNumber(document).isNotEmpty &&
-                                    (_isDraft || _isIssued))
-                                  Text(' · ',
-                                      style: TextStyle(
-                                          fontSize: 11,
-                                          color: cs.onSurfaceVariant)),
-                                if (_isDraft)
-                                  Text(
-                                      '${presupuestoDocumentImageCount(document)} img',
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                              fontSize: 11,
-                                              color: cs.onSurfaceVariant)),
-                                if (_isIssued) _deliveryIndicator(context),
-                              ]),
-                            ]))),
+                        child: Tooltip(
+                          message: title,
+                          child: line(
+                            _documentNumber(document).isEmpty
+                                ? 'Borrador'
+                                : _documentNumber(document),
+                          ),
+                        ))),
+                if (visibleFinancialColumns
+                    .contains(HexoraFinancialColumn.date))
+                  HexoraDateCell(value: date, width: _proposalDateWidth),
                 Expanded(
                     flex: 3,
                     child: Padding(
@@ -1247,10 +1270,16 @@ class _DocumentRow extends StatelessWidget {
                           ),
                         ]))),
                 if (visibleFinancialColumns
-                    .contains(HexoraFinancialColumn.date))
-                  HexoraDateCell(value: date, width: 104),
+                    .contains(HexoraFinancialColumn.concept))
+                  Expanded(
+                    flex: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: _ProposalConceptCell(concepts: concepts),
+                    ),
+                  ),
                 SizedBox(
-                    width: 110,
+                    width: _proposalStatusWidth,
                     child: Align(
                         alignment: Alignment.centerLeft,
                         child: HexoraStatusBadge.document(
@@ -1258,9 +1287,31 @@ class _DocumentRow extends StatelessWidget {
                           status: _statusKind,
                           label: _statusLabel,
                         ))),
+                SizedBox(
+                  width: _proposalDeliveryWidth,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: _deliveryIndicator(context),
+                  ),
+                ),
+                if (visibleFinancialColumns
+                    .contains(HexoraFinancialColumn.taxableBase))
+                  HexoraFinancialCell(
+                    value: financials.taxableBase,
+                    width: _proposalBaseWidth,
+                  ),
+                if (visibleFinancialColumns.contains(HexoraFinancialColumn.vat))
+                  HexoraFinancialCell(
+                    value: financials.vat,
+                    width: _proposalVatWidth,
+                  ),
                 if (visibleFinancialColumns
                     .contains(HexoraFinancialColumn.total))
-                  HexoraFinancialCell(value: amount, total: true, width: 120),
+                  HexoraFinancialCell(
+                    value: amount,
+                    total: true,
+                    width: _proposalTotalWidth,
+                  ),
                 SizedBox(
                     width: HexoraTableTokens.actionColumn,
                     child: _actions(context)),
@@ -1314,7 +1365,7 @@ class _DocumentRow extends StatelessWidget {
               ),
               if (_isIssued) ...[
                 const SizedBox(width: HexoraTableTokens.gap),
-                _deliveryIndicator(context),
+                _deliveryIndicator(context, compact: true),
               ],
               const SizedBox(width: HexoraTableTokens.gap),
               Expanded(
@@ -1335,33 +1386,26 @@ class _DocumentRow extends StatelessWidget {
     );
   }
 
-  Widget _deliveryIndicator(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final channel =
-        document['deliveryChannel'] == 'telegram' ? 'Telegram' : 'Email';
-    final sentAt = DateTime.tryParse('${document['sentAt'] ?? ''}')?.toLocal();
-    final details = sentAt == null
-        ? 'Enviado por $channel'
-        : 'Enviado por $channel el ${DateFormat('d MMM y, HH:mm', 'es').format(sentAt)}';
-
-    if (_isSent) {
-      return Tooltip(
-        message: details,
-        child: _DocumentPill(
-          label: 'Enviado',
-          color: Colors.green.shade700,
-        ),
-      );
-    }
-    return Tooltip(
-      message: 'No consta un envío por Hexora Email o Telegram.',
-      child: Icon(Icons.mail_outline, size: 15, color: cs.outline),
+  Widget _deliveryIndicator(BuildContext context, {bool compact = false}) {
+    return DeliveryStatusBadge(
+      status: document['deliveryStatus']?.toString(),
+      channel: document['deliveryChannel']?.toString(),
+      sentAt: DateTime.tryParse(document['sentAt']?.toString() ?? ''),
+      deliveryError: document['deliveryError']?.toString(),
+      feminine: true,
+      notSentLabel: 'Sin enviar',
+      compact: compact,
     );
   }
 
   Widget _actions(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return PopupMenuButton<String>(
+    void openPreviewPanel() {
+      DocumentWorkspaceScope.maybeOf(context)?.openPreviewDrawer();
+      onPreview();
+    }
+
+    final menu = PopupMenuButton<String>(
       tooltip: 'Más acciones',
       offset: const Offset(0, 46),
       elevation: 8,
@@ -1379,7 +1423,7 @@ class _DocumentRow extends StatelessWidget {
           case 'open':
             onOpen();
           case 'preview':
-            onPreview();
+            openPreviewPanel();
           case 'issue':
             onIssue();
           case 'delete':
@@ -1451,6 +1495,27 @@ class _DocumentRow extends StatelessWidget {
             size: HexoraTableTokens.icon, color: cs.onSurfaceVariant),
       ),
     );
+    if (!table) return menu;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: 'Vista previa del PDF',
+          onPressed: fileActionsDisabled ? null : openPreviewPanel,
+          icon: fileBusy
+              ? const SizedBox.square(
+                  dimension: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.visibility_outlined),
+          iconSize: HexoraTableTokens.icon,
+          padding: EdgeInsets.zero,
+          visualDensity: VisualDensity.compact,
+        ),
+        menu,
+      ],
+    );
   }
 
   Widget _actionMenuItem(
@@ -1502,13 +1567,53 @@ class _DocumentRow extends StatelessWidget {
   }
 }
 
-class _DocumentPill extends StatelessWidget {
-  const _DocumentPill({required this.label, required this.color});
-  final String label;
-  final Color color;
+class _ProposalConceptCell extends StatelessWidget {
+  const _ProposalConceptCell({required this.concepts});
+
+  final List<String> concepts;
+
   @override
-  Widget build(BuildContext context) =>
-      HexoraStatusBadge(label: label, color: color);
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    if (concepts.isEmpty) {
+      return Text(
+        '—',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      );
+    }
+    final remaining = concepts.length - 1;
+    final tooltip =
+        remaining == 0 ? concepts.first : concepts.skip(1).join('\n');
+    return Tooltip(
+      message: tooltip,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              concepts.first,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: HexoraTypography.body,
+              ),
+            ),
+          ),
+          if (remaining > 0) ...[
+            const SizedBox(width: 4),
+            Text(
+              '+$remaining',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 class _DocumentEmptyState extends StatelessWidget {

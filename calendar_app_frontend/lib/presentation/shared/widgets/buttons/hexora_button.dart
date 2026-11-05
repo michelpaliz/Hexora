@@ -157,24 +157,24 @@ class HexoraButton extends StatelessWidget {
               return Colors.transparent;
             }
             if (s.contains(WidgetState.pressed)) {
-              return cs.onSurface.withValues(alpha: 0.10);
+              return (accentColor ?? cs.onSurface).withValues(alpha: 0.10);
             }
             if (s.contains(WidgetState.hovered)) {
-              return cs.onSurface.withValues(alpha: 0.05);
+              return (accentColor ?? cs.onSurface).withValues(alpha: 0.05);
             }
             return Colors.transparent;
           }),
           foregroundColor: WidgetStateProperty.resolveWith((s) =>
               s.contains(WidgetState.disabled)
                   ? cs.onSurface.withValues(alpha: 0.38)
-                  : cs.onSurface),
-          overlayColor:
-              WidgetStatePropertyAll(cs.onSurface.withValues(alpha: 0.06)),
+                  : accentColor ?? cs.onSurface),
+          overlayColor: WidgetStatePropertyAll(
+              (accentColor ?? cs.onSurface).withValues(alpha: 0.06)),
           elevation: const WidgetStatePropertyAll(0),
           side: WidgetStateProperty.resolveWith((s) => BorderSide(
               color: s.contains(WidgetState.disabled)
                   ? cs.onSurface.withValues(alpha: 0.12)
-                  : cs.outlineVariant)),
+                  : accentColor?.withValues(alpha: 0.45) ?? cs.outlineVariant)),
         ),
       HexoraButtonVariant.tonal => base.copyWith(
           backgroundColor: WidgetStateProperty.resolveWith((s) {

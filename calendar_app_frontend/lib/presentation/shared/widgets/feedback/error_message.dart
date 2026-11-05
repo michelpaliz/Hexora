@@ -57,9 +57,9 @@ FriendlyError describeError(BuildContext context, Object error) {
   if (status != null) {
     final fieldErrors = _fieldErrors(data);
     final base = switch (status) {
-      400 || 422 => es
-          ? 'Algunos datos no son válidos.'
-          : 'Some of the data is not valid.',
+      400 ||
+      422 =>
+        es ? 'Algunos datos no son válidos.' : 'Some of the data is not valid.',
       401 => es
           ? 'Tu sesión ha caducado. Vuelve a iniciar sesión.'
           : 'Your session has expired. Please sign in again.',
@@ -78,16 +78,27 @@ FriendlyError describeError(BuildContext context, Object error) {
       _ => es ? 'La solicitud no se completó.' : 'The request failed.',
     };
     // The server's own wording is usually the most specific explanation.
+    final normalizedServerMessage = serverMessage?.toLowerCase().trim();
+    final genericServerFailure = status >= 500 &&
+        const {
+          'bad gateway',
+          'internal server error',
+          'service unavailable',
+          'gateway timeout',
+          'request failed',
+        }.contains(normalizedServerMessage);
     final specific = [
       if (serverMessage != null &&
           serverMessage.isNotEmpty &&
-          serverMessage != 'Request failed')
+          serverMessage != 'Request failed' &&
+          !genericServerFailure)
         serverMessage,
       ...fieldErrors,
     ];
     return FriendlyError(
       message: specific.isEmpty ? base : '$base ${specific.join(' · ')}',
-      details: 'HTTP $status${serverMessage == null ? '' : ' · $serverMessage'}',
+      details:
+          'HTTP $status${serverMessage == null ? '' : ' · $serverMessage'}',
     );
   }
 
@@ -111,7 +122,8 @@ List<String> _fieldErrors(Map? data) {
     for (final item in errors) {
       if (item is Map && item['message'] != null) {
         final path = item['path'] ?? item['field'];
-        out.add(path == null ? '${item['message']}' : '$path: ${item['message']}');
+        out.add(
+            path == null ? '${item['message']}' : '$path: ${item['message']}');
       } else if (item != null) {
         out.add(item.toString());
       }

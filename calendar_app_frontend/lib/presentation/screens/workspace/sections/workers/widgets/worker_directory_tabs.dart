@@ -44,18 +44,20 @@ class WorkerDirectoryTabs extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isEs = context.isSpanishLocale;
     if (decorated) {
-      return Wrap(spacing: 8, runSpacing: 8, children: [
-        for (final partners in [false, true]) _buildChip(
-          key: ValueKey(partners ? 'directory-partners' : 'directory-workers'),
-          selected: showPartners == partners,
-          icon: partners ? Icons.groups_outlined : Icons.people_outline,
-          label: partners
-              ? (isEs ? 'Socios' : 'Partners')
-              : (isEs ? 'Trabajadores' : 'Workers'),
-          count: partners ? partnerCount : workerCount,
-          onTap: () => onChanged(partners),
-          cs: cs,
-        ),
+      return Row(mainAxisSize: MainAxisSize.min, children: [
+        for (final partners in [false, true])
+          _buildTab(
+            key:
+                ValueKey(partners ? 'directory-partners' : 'directory-workers'),
+            selected: showPartners == partners,
+            icon: partners ? Icons.groups_outlined : Icons.people_outline,
+            label: partners
+                ? (isEs ? 'Socios' : 'Partners')
+                : (isEs ? 'Trabajadores' : 'Workers'),
+            count: partners ? partnerCount : workerCount,
+            onTap: () => onChanged(partners),
+            cs: cs,
+          ),
       ]);
     }
     return Align(
@@ -86,7 +88,7 @@ class WorkerDirectoryTabs extends StatelessWidget {
     );
   }
 
-  Widget _buildChip({
+  Widget _buildTab({
     required Key key,
     required bool selected,
     required IconData icon,
@@ -95,36 +97,55 @@ class WorkerDirectoryTabs extends StatelessWidget {
     required VoidCallback onTap,
     required ColorScheme cs,
   }) {
-    final bg =
-        selected ? cs.primaryContainer.withValues(alpha: .5) : cs.surface;
     final fg = selected ? cs.primary : cs.onSurfaceVariant;
-    return InkWell(
-      key: key,
-      borderRadius: BorderRadius.circular(999),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: InkWell(
+        key: key,
+        borderRadius: BorderRadius.circular(5),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
             color: selected
-                ? cs.primary.withValues(alpha: .5)
-                : cs.outlineVariant.withValues(alpha: .4),
+                ? cs.primaryContainer.withValues(alpha: .16)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: SizedBox(
+            height: 34,
+            child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+              Expanded(
+                child: Center(
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(icon, size: 16, color: fg),
+                    const SizedBox(width: 6),
+                    Text(
+                      '$label  $count',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w500,
+                        color: fg,
+                      ),
+                    ),
+                  ]),
+                ),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                curve: Curves.easeOutCubic,
+                width: selected ? 28 : 0,
+                height: 2,
+                decoration: BoxDecoration(
+                  color: cs.primary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ]),
           ),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 15, color: fg),
-          const SizedBox(width: 6),
-          Text(
-            '$label  $count',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              color: fg,
-            ),
-          ),
-        ]),
       ),
     );
   }

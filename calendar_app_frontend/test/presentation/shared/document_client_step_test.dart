@@ -183,6 +183,25 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('visible client count follows the active search', (tester) async {
+    await tester.pumpWidget(app(ClientSearchSelect(
+      clients: clients,
+      selectedClientId: null,
+      onClientChanged: (_) {},
+      showAdvancedFilters: false,
+      compact: true,
+      compactToolbar: true,
+      showVisibleCount: true,
+    )));
+
+    expect(find.text('2 clientes'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'Alqueria');
+    await tester.pump();
+
+    expect(find.text('1 cliente'), findsOneWidget);
+    expect(find.text('Belman'), findsNothing);
+  });
+
   testWidgets('supports compact desktop master-detail configuration',
       (tester) async {
     tester.view.physicalSize = const Size(1280, 720);

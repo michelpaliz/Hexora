@@ -25,6 +25,9 @@ class _ClientsApi extends ClientsApi {
     bool? active,
     bool includeCurrentMonthInvoiceFlag = false,
     bool? missingCurrentMonthInvoice,
+    String? customerType,
+    String? propertyType,
+    String? propertyRelationship,
   }) async =>
       [
         GroupClient(
@@ -37,6 +40,18 @@ class _ClientsApi extends ClientsApi {
           name: 'Cliente sin correo',
         ),
       ];
+
+  @override
+  Future<GroupClient> getById(String id) async {
+    if (id == 'client-1') {
+      return GroupClient(
+        id: id,
+        name: 'Las Alondras Playa',
+        email: 'facturas@example.com',
+      );
+    }
+    return GroupClient(id: id, name: 'Cliente sin correo');
+  }
 }
 
 class _InvoicesApi extends InvoicesApi {
@@ -191,11 +206,35 @@ class _PresupuestosApi extends PresupuestosApi {
       const [];
 }
 
+class _PresupuestosWithItemApi extends _PresupuestosApi {
+  @override
+  Future<List<Map<String, dynamic>>> listByGroup({
+    required String groupId,
+    String? clientId,
+    PresupuestoKind? presupuestoKind,
+    String? status,
+    String? sortBy,
+    String? sortDir,
+    int? limit,
+  }) async =>
+      [
+        {
+          '_id': 'budget-internal-id',
+          'clientId': 'client-1',
+          'presupuestoNumber': '033-26',
+          'status': 'issued',
+          'issueDate': '2026-11-03T12:00:00Z',
+          'total': 484,
+        },
+      ];
+}
+
 Future<void> _selectFirstClient(WidgetTester tester) async {
   await tester.tap(
     find.byKey(const ValueKey('client-select-row-client-1')),
   );
   await tester.pumpAndSettle();
+  expect(find.text('facturas@example.com'), findsWidgets);
 }
 
 void main() {
@@ -523,6 +562,52 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('1 adjunto'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('presupuesto attachment chip uses its document number',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.forPlatform(
+        Brightness.light,
+        platform: TargetPlatform.windows,
+      ),
+      locale: const Locale('es'),
+      localizationsDelegates: const [
+        ...AppLocalizations.localizationsDelegates,
+        quill.FlutterQuillLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: MailComposeScreen(
+        groupId: 'group-1',
+        clientsApi: _ClientsApi(),
+        invoicesApi: _InvoicesApi(),
+        receiptsApi: _ReceiptsApi(),
+        presupuestosApi: _PresupuestosWithItemApi(),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await _selectFirstClient(tester);
+    await tester.tap(find.text('Continuar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Presupuestos (1)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('033-26'));
+    await tester.pump();
+    await tester.tap(find.text('Continuar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Adjuntar 1 documentos'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Presupuesto 033-26.pdf'), findsWidgets);
+    expect(find.textContaining('Presupuesto budget-internal-id.pdf'),
+        findsNothing);
     expect(tester.takeException(), isNull);
   });
 

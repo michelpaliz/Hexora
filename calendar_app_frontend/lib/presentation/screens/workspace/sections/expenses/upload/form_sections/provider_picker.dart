@@ -8,6 +8,7 @@ class ExpenseProviderPicker extends StatefulWidget {
   final String? providersError;
   final bool loading;
   final ValueChanged<String?> onSelectProvider;
+  final VoidCallback? onRetry;
   final bool manualMode;
   final VoidCallback? onManualMode;
 
@@ -18,6 +19,7 @@ class ExpenseProviderPicker extends StatefulWidget {
     required this.providersError,
     required this.loading,
     required this.onSelectProvider,
+    this.onRetry,
     this.manualMode = false,
     this.onManualMode,
   });
@@ -204,6 +206,38 @@ class _ExpenseProviderPickerState extends State<ExpenseProviderPicker> {
     );
   }
 
+  Widget _errorRow(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 5, left: 2),
+      child: Row(
+        children: [
+          Icon(Icons.cloud_off_outlined, size: 15, color: cs.error),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              widget.providersError!,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: cs.error, fontSize: 12),
+            ),
+          ),
+          if (widget.onRetry != null)
+            TextButton.icon(
+              onPressed: widget.loading ? null : widget.onRetry,
+              icon: const Icon(Icons.refresh_rounded, size: 15),
+              label: const Text('Reintentar'),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, 30),
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _providerRow(
     BuildContext context,
     Map<String, dynamic> provider, {
@@ -295,9 +329,7 @@ class _ExpenseProviderPickerState extends State<ExpenseProviderPicker> {
             ),
           ),
           if (widget.providersError != null) ...[
-            const SizedBox(height: 5),
-            Text(widget.providersError!,
-                style: TextStyle(color: cs.error, fontSize: 12)),
+            _errorRow(context),
           ],
         ],
       );
@@ -349,12 +381,7 @@ class _ExpenseProviderPickerState extends State<ExpenseProviderPicker> {
                   ],
                 ),
               ),
-            if (widget.providersError != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 5, left: 2),
-                child: Text(widget.providersError!,
-                    style: TextStyle(color: cs.error, fontSize: 12)),
-              ),
+            if (widget.providersError != null) _errorRow(context),
           ],
         );
       },

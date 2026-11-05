@@ -11,13 +11,19 @@ class HexoraListRow extends StatefulWidget {
       this.onTap,
       this.minHeight = HexoraTableTokens.rowMinHeight,
       this.verticalPadding = HexoraTableTokens.rowPadding,
-      this.separatorWidth = HexoraTableTokens.separatorWidth});
+      this.separatorWidth = HexoraTableTokens.separatorWidth,
+      this.margin = EdgeInsets.zero,
+      this.borderRadius = 0,
+      this.outlined = false});
   final double separatorWidth;
   final double minHeight;
   final double verticalPadding;
   final Widget child;
   final bool selected;
   final VoidCallback? onTap;
+  final EdgeInsetsGeometry margin;
+  final double borderRadius;
+  final bool outlined;
 
   @override
   State<HexoraListRow> createState() => _HexoraListRowState();
@@ -39,51 +45,68 @@ class _HexoraListRowState extends State<HexoraListRow> {
         onPointerDown: (_) => _pointerDown = true,
         onPointerUp: (_) => _pointerDown = false,
         onPointerCancel: (_) => _pointerDown = false,
-        child: Material(
-          color: widget.selected
-              ? cs.primary.withValues(alpha: .05)
-              : Colors.transparent,
-          child: InkWell(
-            onTap: widget.onTap,
-            mouseCursor: widget.onTap == null
-                ? SystemMouseCursors.basic
-                : SystemMouseCursors.click,
-            canRequestFocus: widget.onTap != null,
-            onFocusChange: (focused) =>
-                setState(() => _keyboardFocused = focused && !_pointerDown),
-            hoverColor: cs.primary.withValues(alpha: .04),
-            focusColor: _keyboardFocused
-                ? cs.primary.withValues(alpha: .12)
+        child: Container(
+          margin: widget.margin,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(widget.borderRadius),
+            border: widget.outlined
+                ? Border.all(
+                    color: cs.outlineVariant.withValues(alpha: .32),
+                  )
+                : null,
+          ),
+          child: Material(
+            color: widget.selected
+                ? cs.primary.withValues(alpha: .07)
                 : Colors.transparent,
-            child: Container(
-              constraints: BoxConstraints(minHeight: widget.minHeight),
-              padding: EdgeInsets.symmetric(
-                  horizontal: HexoraTableTokens.cellPadding,
-                  vertical: widget.verticalPadding),
-              foregroundDecoration: BoxDecoration(
-                border: BorderDirectional(
-                  start: BorderSide(
-                      width: 2,
-                      color: widget.selected
-                          ? cs.primary
-                          : _keyboardFocused
-                              ? ring
-                              : Colors.transparent),
-                  top: BorderSide(
-                      width: 1,
-                      color: _keyboardFocused ? ring : Colors.transparent),
-                  end: BorderSide(
-                      width: 1,
-                      color: _keyboardFocused ? ring : Colors.transparent),
-                  bottom: BorderSide(
+            borderRadius: BorderRadius.circular(widget.borderRadius),
+            clipBehavior: widget.borderRadius > 0 ? Clip.antiAlias : Clip.none,
+            child: InkWell(
+              onTap: widget.onTap,
+              mouseCursor: widget.onTap == null
+                  ? SystemMouseCursors.basic
+                  : SystemMouseCursors.click,
+              canRequestFocus: widget.onTap != null,
+              onFocusChange: (focused) =>
+                  setState(() => _keyboardFocused = focused && !_pointerDown),
+              hoverColor: cs.primary.withValues(alpha: .04),
+              focusColor: _keyboardFocused
+                  ? cs.primary.withValues(alpha: .12)
+                  : Colors.transparent,
+              child: Container(
+                constraints: BoxConstraints(minHeight: widget.minHeight),
+                padding: EdgeInsets.symmetric(
+                    horizontal: HexoraTableTokens.cellPadding,
+                    vertical: widget.verticalPadding),
+                foregroundDecoration: BoxDecoration(
+                  border: BorderDirectional(
+                    start: BorderSide(
+                        width: 2,
+                        color: widget.selected
+                            ? cs.primary
+                            : _keyboardFocused
+                                ? ring
+                                : Colors.transparent),
+                    top: BorderSide(
+                        width: 1,
+                        color: _keyboardFocused ? ring : Colors.transparent),
+                    end: BorderSide(
+                        width: 1,
+                        color: _keyboardFocused ? ring : Colors.transparent),
+                    bottom: BorderSide(
                       width: widget.separatorWidth,
+                      style: widget.separatorWidth <= 0
+                          ? BorderStyle.none
+                          : BorderStyle.solid,
                       color: _keyboardFocused
                           ? ring
                           : cs.outlineVariant.withValues(
-                              alpha: HexoraTableTokens.separatorOpacity)),
+                              alpha: HexoraTableTokens.separatorOpacity),
+                    ),
+                  ),
                 ),
+                child: widget.child,
               ),
-              child: widget.child,
             ),
           ),
         ),

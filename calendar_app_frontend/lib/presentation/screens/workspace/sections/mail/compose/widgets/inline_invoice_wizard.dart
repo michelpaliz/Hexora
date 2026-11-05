@@ -130,6 +130,12 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel>
             ? widget.state._pickerClients.first.id
             : null);
     if (_clientId != null && _clientId!.isNotEmpty) {
+      if (recipientId != _clientId) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _clientId == null) return;
+          widget.state._selectRecipientClient(_clientId!);
+        });
+      }
       _loadInvoices(_clientId!);
       _loadReceipts(_clientId!);
       _loadPresupuestos(_clientId!);
@@ -175,6 +181,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel>
     if (hadNoClients && hasClientsNow && !hasSelected) {
       final firstId = widget.state._pickerClients.first.id;
       setState(() => _clientId = firstId);
+      widget.state._selectRecipientClient(firstId);
       _loadInvoices(firstId);
       _loadReceipts(firstId);
       _loadPresupuestos(firstId);
@@ -1027,6 +1034,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel>
       if (widget.state._pickerClients.isNotEmpty) {
         final firstId = widget.state._pickerClients.first.id;
         setState(() => _clientId = firstId);
+        widget.state._selectRecipientClient(firstId);
         _loadInvoices(firstId);
         _loadReceipts(firstId);
         _loadPresupuestos(firstId);
@@ -1207,6 +1215,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel>
                               : null);
                     });
                     if (_clientId != null && _clientId!.isNotEmpty) {
+                      widget.state._selectRecipientClient(_clientId!);
                       _loadInvoices(_clientId!);
                       _loadReceipts(_clientId!);
                       _loadPresupuestos(_clientId!);
@@ -1230,6 +1239,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel>
               _historySentOnly = false;
               _historyVisibleCount = 4;
             });
+            widget.state._selectRecipientClient(id);
             _loadInvoices(id);
             _loadReceipts(id);
             _loadPresupuestos(id);

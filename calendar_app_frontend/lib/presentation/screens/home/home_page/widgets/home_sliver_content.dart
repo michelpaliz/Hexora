@@ -2,8 +2,9 @@ import 'package:flutter/services.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/show_notifications.dart';
 import 'package:hexora/presentation/screens/profile/edit/profile_edit_dialog.dart';
 import 'package:hexora/presentation/screens/profile/view/widgets/profile_details_card.dart';
-import 'package:hexora/presentation/shared/widgets/weather/weather_summary_card.dart';
+import 'package:hexora/presentation/shared/utils/weather/weather_summary_localizer.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
+import 'package:hexora/services/weather/weather_service.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -28,11 +29,13 @@ import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/auth/exceptions/auth_exceptions.dart';
 import 'package:hexora/state/locale_provider.dart';
+import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/theme/theme_provider.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../widgets/section_header.dart';
@@ -72,14 +75,44 @@ class HomeSliverContent extends StatefulWidget {
 }
 
 class _HomeSliverContentState extends State<HomeSliverContent> {
+  static const _kShowQuotePrefKey = 'home_show_daily_quote';
+
   bool _autoStatementImportLoading = false;
   late String _userName;
   _HomeView _activeView = _HomeView.groups;
+  bool _showDailyQuote = true;
+  bool _appeared = false;
 
   @override
   void initState() {
     super.initState();
     _userName = widget.user.userName;
+    _loadQuotePreference();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _appeared = true);
+    });
+  }
+
+  Future<void> _loadQuotePreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final value = prefs.getBool(_kShowQuotePrefKey) ?? true;
+      if (mounted && value != _showDailyQuote) {
+        setState(() => _showDailyQuote = value);
+      }
+    } catch (_) {
+      // Default to showing the quote if preferences can't be read.
+    }
+  }
+
+  Future<void> _setShowDailyQuote(bool value) async {
+    setState(() => _showDailyQuote = value);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kShowQuotePrefKey, value);
+    } catch (_) {
+      // Non-fatal: the in-memory toggle still applies for this session.
+    }
   }
 
   @override
@@ -236,7 +269,12 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
         final autoImportEnabled =
             authProvider.currentUser?.autoStatementImportEnabled ?? false;
 
-        return CustomScrollView(
+        return AnimatedOpacity(
+          opacity: _appeared ? 1 : 0,
+          duration: HexoraMotion.duration(
+              context, const Duration(milliseconds: 180)),
+          curve: HexoraMotion.enter,
+          child: CustomScrollView(
           controller: widget.controller,
           slivers: [
             if (widget.showSectionNavBar && widget.sectionItems != null)
@@ -256,34 +294,30 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                   ),
                 ),
               ),
-            // ── Full header: only on dashboard / groups ──────────────
+            // ── Unified welcome hero: only on dashboard / groups ─────
             if (_activeView == _HomeView.groups) ...[
               SliverToBoxAdapter(
                 key: widget.summaryKey,
-                child: _HeroGreeting(
+                child: _WelcomeHero(
                   user: widget.user,
                   compact: !widget.isWide,
-                  settingsActive: false,
-                  notificationsActive: false,
                   onSettings: () =>
                       setState(() => _activeView = _HomeView.settings),
                   onNotifications: () =>
                       setState(() => _activeView = _HomeView.notifications),
                 ),
               ),
-              SliverToBoxAdapter(
+              if (_showDailyQuote)
+                SliverToBoxAdapter(
+                  key: widget.phraseKey,
                   child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: WeatherSummaryCard(location: widget.user.location),
-              )),
-              SliverToBoxAdapter(
-                key: widget.phraseKey,
-                child: const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
-                  child: _DailyPhraseCard(),
+                    padding: const EdgeInsets.fromLTRB(20, 2, 16, 2),
+                    child: _DailyPhraseCard(
+                      onDismiss: () => _setShowDailyQuote(false),
+                    ),
+                  ),
                 ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 8)),
+              const SliverToBoxAdapter(child: SizedBox(height: 4)),
             ],
 
             // ── Compact header: secondary views ─────────────────────
@@ -464,6 +498,8 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                       autoStatementImportEnabled: autoImportEnabled,
                       autoStatementImportBusy: _autoStatementImportLoading,
                       onToggleAutoStatementImport: _toggleAutoStatementImport,
+                      showDailyQuote: _showDailyQuote,
+                      onToggleDailyQuote: _setShowDailyQuote,
                     ),
                   ),
                 ),
@@ -571,37 +607,70 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
                 child: SizedBox(
                     height: widget.isWide ? 24 : widget.bottomSafePadding)),
           ],
+          ),
         );
       },
     );
   }
 }
 
-// ── Desktop-only hero greeting ────────────────────────────────────────────────
+// ── Unified welcome hero (greeting · date · weather · actions) ─────────────
 
-class _HeroGreeting extends StatelessWidget {
-  const _HeroGreeting({
+class _WelcomeHero extends StatefulWidget {
+  const _WelcomeHero({
     required this.user,
     this.compact = false,
     this.onNotifications,
     this.onSettings,
-    this.settingsActive = false,
-    this.notificationsActive = false,
   });
 
   final bool compact;
   final User user;
   final VoidCallback? onNotifications;
   final VoidCallback? onSettings;
-  final bool settingsActive;
-  final bool notificationsActive;
+
+  @override
+  State<_WelcomeHero> createState() => _WelcomeHeroState();
+}
+
+class _WelcomeHeroState extends State<_WelcomeHero> {
+  final _weatherService = WeatherService();
+  late Future<WeatherBundle> _weather;
+
+  String get _location => widget.user.location?.trim().isNotEmpty == true
+      ? widget.user.location!.trim()
+      : 'Denia';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWeather();
+  }
+
+  void _loadWeather() {
+    _weather = _weatherService.fetchWeatherBundle(location: _location, days: 1);
+  }
+
+  @override
+  void didUpdateWidget(covariant _WelcomeHero oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.user.location != widget.user.location) {
+      setState(_loadWeather);
+    }
+  }
+
+  @override
+  void dispose() {
+    _weatherService.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final isEs = Localizations.localeOf(context).languageCode == 'es';
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-    final loc = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final hour = DateTime.now().hour;
     final String greeting;
@@ -617,12 +686,11 @@ class _HeroGreeting extends StatelessWidget {
       greetingIcon = Icons.nightlight_round;
     }
 
-    final displayName = user.name.isNotEmpty ? user.name : user.userName;
+    final displayName =
+        widget.user.name.isNotEmpty ? widget.user.name : widget.user.userName;
     final name = displayName.isEmpty
         ? 'Usuario'
         : displayName[0].toUpperCase() + displayName.substring(1);
-    final initial = displayName.isEmpty ? 'U' : displayName[0].toUpperCase();
-    final hasPhoto = user.photoUrl != null && user.photoUrl!.isNotEmpty;
 
     final now = DateTime.now();
     final localeTag = Localizations.localeOf(context).toLanguageTag();
@@ -631,134 +699,301 @@ class _HeroGreeting extends StatelessWidget {
         ? rawDate
         : rawDate[0].toUpperCase() + rawDate.substring(1);
 
-    if (compact) {
-      final shortDate = DateFormat.MMMMEEEEd(localeTag).format(now);
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                cs.primaryContainer,
-                Color.alphaBlend(cs.primary.withValues(alpha: 0.04), cs.surface)
-              ],
-            ),
-            border: Border.all(color: cs.primary.withValues(alpha: 0.10)),
-          ),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Text(greeting,
-                      style: t.bodyMedium.copyWith(
-                          color: cs.onPrimaryContainer,
-                          fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 2),
-                  Text(name,
-                      style: t.titleLarge.copyWith(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          color: cs.onPrimaryContainer),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 8),
-                  Text(shortDate,
-                      style: t.bodySmall.copyWith(color: cs.onSurfaceVariant)),
-                ])),
-            const SizedBox(width: 12),
-            ExcludeSemantics(
-                child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                  color: cs.surface.withValues(alpha: 0.65),
-                  shape: BoxShape.circle),
-              child: Icon(greetingIcon, color: cs.primary, size: 28),
-            )),
-          ]),
-        ),
-      );
-    }
+    final bg = isDark
+        ? 'assets/images/home_page/dark_bg_color.png'
+        : 'assets/images/home_page/light_bg_color.png';
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 22, 24, 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Avatar — tappable; shows photo dialog or navigates to profile
-          GestureDetector(
-            onTap: hasPhoto
-                ? () => showHexoraDialog<void>(
-                      context: context,
-                      barrierColor: Colors.black.withValues(alpha: 0.72),
-                      builder: (_) => UserAvatarViewerDialog(user: user),
-                    )
-                : () => Navigator.pushNamed(context, AppRoutes.profileDetails),
-            child: Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: hasPhoto
-                    ? null
-                    : LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [cs.primary, cs.tertiary],
-                      ),
-                boxShadow: [
-                  BoxShadow(
-                    color: cs.primary.withValues(alpha: 0.28),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
+    // Subtle theme-aware scrim: stronger on the left (greeting) fading toward
+    // the right so the branded watermark keeps showing through.
+    final scrim = LinearGradient(
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+      colors: [
+        cs.surface.withValues(alpha: isDark ? 0.55 : 0.62),
+        cs.surface.withValues(alpha: isDark ? 0.30 : 0.34),
+        cs.surface.withValues(alpha: 0.0),
+      ],
+      stops: const [0.0, 0.55, 1.0],
+    );
+
+    final greetingBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Icon(greetingIcon,
+                size: 18, color: cs.primary.withValues(alpha: 0.9)),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                '$greeting, $name',
+                style: t.titleLarge.copyWith(
+                  fontWeight: FontWeight.w800,
+                  fontSize: widget.compact ? 22 : 25,
+                  color: cs.onSurface,
+                  letterSpacing: -0.4,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Padding(
+          padding: const EdgeInsets.only(left: 24),
+          child: Text(
+            dateStr,
+            style: t.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+
+    final content = widget.compact
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  _HeroAvatar(user: widget.user),
+                  const SizedBox(width: 12),
+                  Expanded(child: greetingBlock),
                 ],
               ),
-              child: hasPhoto
-                  ? ClipOval(
-                      child: Image.network(
-                        user.photoUrl!,
-                        width: 54,
-                        height: 54,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  : Center(
-                      child: Text(
-                        initial,
-                        style: t.titleLarge.copyWith(
-                          color: cs.onPrimary,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 22,
-                        ),
-                      ),
-                    ),
+              const SizedBox(height: 10),
+              _HeroWeather(
+                future: _weather,
+                location: _location,
+                onRefresh: () => setState(_loadWeather),
+              ),
+            ],
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _HeroAvatar(user: widget.user),
+              const SizedBox(width: 16),
+              Expanded(child: greetingBlock),
+              const SizedBox(width: 12),
+              _HeroWeather(
+                future: _weather,
+                location: _location,
+                onRefresh: () => setState(_loadWeather),
+              ),
+              const SizedBox(width: 4),
+              _HeroActions(
+                onNotifications: widget.onNotifications,
+                onSettings: widget.onSettings,
+              ),
+            ],
+          );
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, widget.compact ? 8 : 12, 16, 8),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: widget.compact ? 0 : 112),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage(bg),
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+              ),
+            ),
+            child: DecoratedBox(
+              decoration: BoxDecoration(gradient: scrim),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: widget.compact ? 16 : 20,
+                  vertical: 16,
+                ),
+                child: content,
+              ),
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroAvatar extends StatelessWidget {
+  const _HeroAvatar({required this.user});
+
+  final User user;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final displayName = user.name.isNotEmpty ? user.name : user.userName;
+    final initial = displayName.isEmpty ? 'U' : displayName[0].toUpperCase();
+    final hasPhoto = user.photoUrl != null && user.photoUrl!.isNotEmpty;
+
+    return GestureDetector(
+      onTap: hasPhoto
+          ? () => showHexoraDialog<void>(
+                context: context,
+                barrierColor: Colors.black.withValues(alpha: 0.72),
+                builder: (_) => UserAvatarViewerDialog(user: user),
+              )
+          : () => Navigator.pushNamed(context, AppRoutes.profileDetails),
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: hasPhoto
+              ? null
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [cs.primary, cs.tertiary],
+                ),
+          boxShadow: [
+            BoxShadow(
+              color: cs.primary.withValues(alpha: 0.28),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: hasPhoto
+            ? ClipOval(
+                child: Image.network(
+                  user.photoUrl!,
+                  width: 52,
+                  height: 52,
+                  fit: BoxFit.cover,
+                ),
+              )
+            : Center(
+                child: Text(
+                  initial,
+                  style: t.titleLarge.copyWith(
+                    color: cs.onPrimary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 22,
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+class _HeroActions extends StatelessWidget {
+  const _HeroActions({this.onNotifications, this.onSettings});
+
+  final VoidCallback? onNotifications;
+  final VoidCallback? onSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final loc = AppLocalizations.of(context)!;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.notifications_none_rounded),
+          tooltip: loc.notifications,
+          color: cs.onSurfaceVariant,
+          onPressed: onNotifications ??
+              () => Navigator.pushNamed(context, AppRoutes.showNotifications),
+        ),
+        IconButton(
+          icon: const Icon(Icons.settings_outlined),
+          tooltip: loc.settings,
+          color: cs.onSurfaceVariant,
+          onPressed: onSettings ??
+              () => Navigator.pushNamed(context, AppRoutes.settings),
+        ),
+      ],
+    );
+  }
+}
+
+/// Compact inline weather summary used inside the welcome hero.
+class _HeroWeather extends StatelessWidget {
+  const _HeroWeather({
+    required this.future,
+    required this.location,
+    required this.onRefresh,
+  });
+
+  final Future<WeatherBundle> future;
+  final String location;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final es = l.localeName.startsWith('es');
+
+    return FutureBuilder<WeatherBundle>(
+      future: future,
+      builder: (context, snapshot) {
+        final weather = snapshot.data?.today;
+        final loading = snapshot.connectionState == ConnectionState.waiting;
+
+        final IconData icon = weather == null
+            ? Icons.cloud_outlined
+            : weather.isDay
+                ? Icons.wb_sunny_outlined
+                : Icons.nightlight_outlined;
+
+        final condition = loading
+            ? (es ? 'Cargando…' : 'Loading…')
+            : weather == null
+                ? (es ? 'No disponible' : 'Unavailable')
+                : localizeWeatherSummary(l, weather.summary.summary);
+        final city = weather?.cityName ?? location;
+        final temp =
+            weather == null ? null : '${weather.tempMax.toStringAsFixed(0)}°';
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 24, color: cs.primary),
+            const SizedBox(width: 10),
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(greetingIcon,
-                        size: 18, color: cs.primary.withValues(alpha: 0.85)),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        '$greeting, $name',
+                    if (temp != null) ...[
+                      Text(
+                        temp,
                         style: t.titleLarge.copyWith(
                           fontWeight: FontWeight.w800,
-                          fontSize: 25,
+                          fontSize: 18,
                           color: cs.onSurface,
-                          letterSpacing: -0.4,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Flexible(
+                      child: Text(
+                        condition,
+                        style: t.bodySmall.copyWith(
+                          color: cs.onSurface,
+                          fontWeight: FontWeight.w600,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -766,49 +1001,50 @@ class _HeroGreeting extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 3),
-                Padding(
-                  padding: const EdgeInsets.only(left: 24),
-                  child: Text(
-                    dateStr,
-                    style: t.bodySmall.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 13,
-                    ),
-                  ),
+                Text(
+                  city,
+                  style: t.caption.copyWith(color: cs.onSurfaceVariant),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
-          ),
-          // Navigation icons
-          const SizedBox(width: 8),
-          IconButton(
-            icon: Icon(notificationsActive
-                ? Icons.notifications_rounded
-                : Icons.notifications_none_rounded),
-            tooltip: loc.notifications,
-            color: notificationsActive ? cs.primary : cs.onSurfaceVariant,
-            onPressed: onNotifications ??
-                () => Navigator.pushNamed(context, AppRoutes.showNotifications),
-          ),
-          IconButton(
-            icon: Icon(settingsActive
-                ? Icons.settings_rounded
-                : Icons.settings_outlined),
-            tooltip: loc.settings,
-            color: settingsActive ? cs.primary : cs.onSurfaceVariant,
-            onPressed: onSettings ??
-                () => Navigator.pushNamed(context, AppRoutes.settings),
-          ),
-        ],
-      ),
+            const SizedBox(width: 2),
+            if (loading)
+              const Padding(
+                padding: EdgeInsets.all(8),
+                child: SizedBox.square(
+                  dimension: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            else
+              IconButton(
+                tooltip: l.refresh,
+                visualDensity: VisualDensity.compact,
+                onPressed: onRefresh,
+                icon: Icon(Icons.refresh, size: 18, color: cs.onSurfaceVariant),
+              ),
+          ],
+        );
+      },
     );
   }
 }
 
-class _DailyPhraseCard extends StatelessWidget {
-  const _DailyPhraseCard();
+/// Compact, optional motivational line shown below the hero. Tap to expand a
+/// long quote; the trailing control hides it (persisted via a preference).
+class _DailyPhraseCard extends StatefulWidget {
+  const _DailyPhraseCard({this.onDismiss});
+
+  final VoidCallback? onDismiss;
+
+  @override
+  State<_DailyPhraseCard> createState() => _DailyPhraseCardState();
+}
+
+class _DailyPhraseCardState extends State<_DailyPhraseCard> {
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -818,25 +1054,40 @@ class _DailyPhraseCard extends StatelessWidget {
     final quotes = isEs ? quotesEs : quotesEn;
     final (quote, author) = quotes[dayKey % quotes.length];
     final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Row(
-        children: [
-          Icon(Icons.format_quote_rounded, size: 18, color: cs.primary),
-          const SizedBox(width: 8),
-          Expanded(
+    final text =
+        '“$quote” — ${author.replaceFirst(RegExp(r'^[\s—–-]+'), '')}';
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.format_quote_rounded, size: 15, color: cs.onSurfaceVariant),
+        const SizedBox(width: 8),
+        Expanded(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() => _expanded = !_expanded),
             child: Text(
-              '”$quote” — ${author.replaceFirst(RegExp(r'^[\s—–-]+'), '')}',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              text,
+              maxLines: _expanded ? null : 1,
+              overflow: _expanded ? null : TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: cs.onSurfaceVariant,
                     fontStyle: FontStyle.italic,
                   ),
             ),
           ),
-        ],
-      ),
+        ),
+        if (widget.onDismiss != null)
+          IconButton(
+            icon: const Icon(Icons.close_rounded, size: 15),
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            color: cs.onSurfaceVariant,
+            tooltip: isEs ? 'Ocultar frase' : 'Hide quote',
+            onPressed: widget.onDismiss,
+          ),
+      ],
     );
   }
 }

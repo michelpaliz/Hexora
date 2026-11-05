@@ -6,10 +6,15 @@ class YearSwitcher extends StatelessWidget {
   final int year;
   final ValueChanged<int> onYearChanged;
 
+  /// Optional back action rendered as a leading control, so the header can
+  /// double as the screen's navigation row instead of a separate toolbar.
+  final VoidCallback? onBack;
+
   const YearSwitcher({
     super.key,
     required this.year,
     required this.onYearChanged,
+    this.onBack,
   });
 
   @override
@@ -19,7 +24,6 @@ class YearSwitcher extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
 
     final bgColor = theme.colorScheme.primary.withValues(alpha: 0.10);
-    final borderColor = theme.colorScheme.primary.withValues(alpha: 0.16);
     final onBgColor = theme.colorScheme.primary;
     final buttonStyle = IconButton.styleFrom(
       fixedSize: const Size(42, 42),
@@ -27,12 +31,28 @@ class YearSwitcher extends StatelessWidget {
       foregroundColor: onBgColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: borderColor),
       ),
     );
 
     return Row(
       children: [
+        if (onBack != null) ...[
+          IconButton.filledTonal(
+            style: IconButton.styleFrom(
+              fixedSize: const Size(42, 42),
+              backgroundColor: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.5),
+              foregroundColor: theme.colorScheme.onSurfaceVariant,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            tooltip: l.back,
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: onBack,
+          ),
+          const SizedBox(width: 8),
+        ],
         IconButton.filledTonal(
           style: buttonStyle,
           tooltip: l.previous,
@@ -47,11 +67,6 @@ class YearSwitcher extends StatelessWidget {
                 color: theme.colorScheme.surfaceContainerHighest
                     .withValues(alpha: 0.42),
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: theme.colorScheme.outlineVariant.withValues(
-                    alpha: 0.35,
-                  ),
-                ),
               ),
               child: Text(
                 '$year',

@@ -19,13 +19,22 @@ extension _TemplateSelection on _PresupuestoTemplateEditorScreenState {
                   ),
                 ),
               ),
-              Text(
-                '$templateCount ${templateCount == 1 ? 'disponible' : 'disponibles'}',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
+              if (!widget.templateOnly)
+                Text(
+                  '$templateCount ${templateCount == 1 ? 'disponible' : 'disponibles'}',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
+              if (widget.templateOnly) ...[
+                const SizedBox(width: 6),
+                TextButton.icon(
+                  onPressed: _newTemplate,
+                  icon: const Icon(Icons.add_rounded, size: 17),
+                  label: const Text('En blanco'),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 6),
@@ -58,25 +67,11 @@ extension _TemplateSelection on _PresupuestoTemplateEditorScreenState {
               ),
             )
           else
-            DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: _editorBorder(theme, alpha: 0.5),
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                children: [
-                  for (var i = 0; i < _defaultTemplates.length; i++) ...[
-                    _defaultTemplateQueueItem(theme, _defaultTemplates[i]),
-                    if (i < _defaultTemplates.length - 1)
-                      Divider(
-                        height: 1,
-                        color: _editorBorder(theme, alpha: 0.45),
-                      ),
-                  ],
-                ],
-              ),
+            Column(
+              children: [
+                for (final template in _defaultTemplates)
+                  _defaultTemplateQueueItem(theme, template),
+              ],
             ),
         ],
       ),
@@ -93,96 +88,113 @@ extension _TemplateSelection on _PresupuestoTemplateEditorScreenState {
     final selected = key != null && key == _selectedDefaultKey;
     final cs = theme.colorScheme;
 
-    return Container(
-      constraints: const BoxConstraints(minHeight: 58),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: selected ? cs.primary.withValues(alpha: 0.055) : null,
-        borderRadius: BorderRadius.circular(9),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            selected ? Icons.description_rounded : Icons.description_outlined,
-            color: selected ? cs.primary : cs.onSurfaceVariant,
-            size: 21,
-          ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _string(template['name']) ?? 'Plantilla predeterminada',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _string(template['description']) ??
-                      'Plantilla preparada para empezar rapidamente.',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
-                ),
-              ],
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hoveredDefaultTemplateKey = key),
+      onExit: (_) {
+        if (_hoveredDefaultTemplateKey == key) {
+          setState(() => _hoveredDefaultTemplateKey = null);
+        }
+      },
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 52),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+        decoration: BoxDecoration(
+          color: selected
+              ? cs.primary.withValues(alpha: 0.045)
+              : _hoveredDefaultTemplateKey == key
+                  ? cs.onSurface.withValues(alpha: 0.035)
+                  : null,
+          border: Border(
+            left: BorderSide(
+              color: selected ? cs.primary : Colors.transparent,
+              width: 2,
             ),
           ),
-          const SizedBox(width: 8),
-          Tooltip(
-            message: 'Vista previa',
-            child: IconButton(
-              onPressed: previewing || creating || key == null
-                  ? null
-                  : () => _previewDefaultTemplate(template),
-              icon: previewing
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.visibility_outlined, size: 19),
-              visualDensity: VisualDensity.compact,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              selected ? Icons.description_rounded : Icons.description_outlined,
+              color: selected ? cs.primary : cs.onSurfaceVariant,
+              size: 21,
             ),
-          ),
-          const SizedBox(width: 4),
-          FilledButton.icon(
-            onPressed: creating || previewing || key == null || selected
-                ? null
-                : () => _useDefaultTemplate(template),
-            icon: creating
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Icon(
-                    selected ? Icons.check_rounded : Icons.add_rounded,
-                    size: 17,
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _string(template['name']) ?? 'Plantilla predeterminada',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-            label: Text(
-              creating
-                  ? 'Preparando...'
-                  : selected
-                      ? 'Seleccionada'
-                      : 'Usar plantilla',
-            ),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(0, 34),
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              visualDensity: VisualDensity.compact,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                  const SizedBox(height: 2),
+                  Text(
+                    _string(template['description']) ??
+                        'Plantilla preparada para empezar rapidamente.',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Tooltip(
+              message: 'Vista previa',
+              child: IconButton(
+                onPressed: previewing || creating || key == null
+                    ? null
+                    : () => _previewDefaultTemplate(template),
+                icon: previewing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.visibility_outlined, size: 19),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+            const SizedBox(width: 4),
+            TextButton.icon(
+              onPressed: creating || previewing || key == null || selected
+                  ? null
+                  : () => _useDefaultTemplate(template),
+              icon: creating
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      selected ? Icons.check_rounded : Icons.add_rounded,
+                      size: 17,
+                    ),
+              label: Text(
+                creating
+                    ? 'Preparando...'
+                    : selected
+                        ? 'Seleccionada'
+                        : 'Seleccionar',
+              ),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, 34),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                visualDensity: VisualDensity.compact,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -199,14 +211,6 @@ extension _TemplateSelection on _PresupuestoTemplateEditorScreenState {
         _deletingTemplateId == selectedSavedTemplateId;
     return _card(
       title: 'Plantilla base',
-      icon: Icons.account_tree_outlined,
-      trailing: widget.templateOnly
-          ? TextButton.icon(
-              onPressed: _newTemplate,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Crear plantilla'),
-            )
-          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -220,7 +224,7 @@ extension _TemplateSelection on _PresupuestoTemplateEditorScreenState {
                       ? null
                       : selectedSavedTemplateId,
                   decoration: const InputDecoration(
-                    labelText: 'Seleccionar plantilla',
+                    labelText: 'Plantilla seleccionada',
                     hintText: 'Elige una base para editar',
                   ),
                   items: [
@@ -242,7 +246,8 @@ extension _TemplateSelection on _PresupuestoTemplateEditorScreenState {
                 child: Wrap(
                   spacing: 6,
                   children: [
-                    OutlinedButton.icon(
+                    IconButton(
+                      tooltip: 'Vista previa de la plantilla',
                       onPressed: selectedSavedTemplateId == null ||
                               previewingSaved
                           ? null
@@ -255,7 +260,6 @@ extension _TemplateSelection on _PresupuestoTemplateEditorScreenState {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.visibility_outlined, size: 18),
-                      label: const Text('Vista previa'),
                     ),
                     if (selectedSavedTemplate != null &&
                         selectedSavedTemplateId != null)
@@ -281,25 +285,6 @@ extension _TemplateSelection on _PresupuestoTemplateEditorScreenState {
               ),
             ],
           ),
-          if (selectedSavedTemplate != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              'La seleccion carga el contenido completo de la plantilla elegida para seguir editando sobre ella.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    height: 1.35,
-                  ),
-            ),
-          ] else if (widget.templateOnly) ...[
-            const SizedBox(height: 12),
-            Text(
-              'Usa "Previsualizar" en la vista previa para revisar los cambios actuales sin guardarlos.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    height: 1.35,
-                  ),
-            ),
-          ],
         ],
       ),
     );

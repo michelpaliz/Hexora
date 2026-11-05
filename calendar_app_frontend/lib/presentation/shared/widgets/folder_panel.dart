@@ -23,6 +23,7 @@ class FolderPanel extends StatelessWidget {
   final bool decorateActions;
   final double actionsSpacing;
   final bool showToolbarDivider;
+  final bool showBorder;
 
   const FolderPanel({
     super.key,
@@ -36,6 +37,7 @@ class FolderPanel extends StatelessWidget {
     this.decorateActions = true,
     this.actionsSpacing = 6,
     this.showToolbarDivider = true,
+    this.showBorder = true,
   });
 
   static const double _contentGap = 8;
@@ -75,7 +77,7 @@ class FolderPanel extends StatelessWidget {
             decoration: BoxDecoration(
               color: cs.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: border),
+              border: showBorder ? Border.all(color: border) : null,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

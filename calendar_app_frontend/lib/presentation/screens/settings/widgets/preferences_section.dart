@@ -14,6 +14,8 @@ class PreferencesSection extends StatelessWidget {
   final ValueChanged<bool> onToggleAutoStatementImport;
   final String? autoStatementImportTitle;
   final String? autoStatementImportSubtitle;
+  final bool? showDailyQuote;
+  final ValueChanged<bool>? onToggleDailyQuote;
 
   const PreferencesSection({
     super.key,
@@ -26,6 +28,8 @@ class PreferencesSection extends StatelessWidget {
     required this.onToggleAutoStatementImport,
     this.autoStatementImportTitle,
     this.autoStatementImportSubtitle,
+    this.showDailyQuote,
+    this.onToggleDailyQuote,
   });
 
   @override
@@ -74,6 +78,24 @@ class PreferencesSection extends StatelessWidget {
           compact: true,
           onTap: onChangeLanguage,
         ),
+        if (showDailyQuote != null && onToggleDailyQuote != null) ...[
+          Divider(
+              height: 0,
+              indent: 63,
+              color: cs.outlineVariant.withValues(alpha: 0.4)),
+          SwitchTile(
+            leading: Icon(Icons.format_quote_rounded,
+                size: 18, color: cs.primary),
+            iconBgColor: cs.primary.withValues(alpha: 0.12),
+            title: isSpanish ? 'Frase motivacional' : 'Motivational quote',
+            subtitle: isSpanish
+                ? 'Mostrar una frase diaria en el inicio'
+                : 'Show a daily quote on the home page',
+            compact: true,
+            value: showDailyQuote!,
+            onChanged: onToggleDailyQuote!,
+          ),
+        ],
       ],
     );
   }

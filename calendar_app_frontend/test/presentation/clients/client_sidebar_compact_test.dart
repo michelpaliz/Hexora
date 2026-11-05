@@ -47,8 +47,6 @@ void main() {
     var missingOnly = false;
     String? entityFilter;
     String? propertyFilter;
-    var refreshes = 0;
-    var additions = 0;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -107,8 +105,8 @@ void main() {
                 onClearPropertyFilter: () =>
                     setState(() => propertyFilter = null),
                 onSelectClient: (_) {},
-                onRefresh: () => refreshes += 1,
-                onAddClient: () => additions += 1,
+                onRefresh: () {},
+                onAddClient: () {},
               );
             },
           ),
@@ -122,19 +120,22 @@ void main() {
         find.byKey(const ValueKey('client-advanced-filters-toggle'));
     expect(tester.getSize(searchField).height, lessThanOrEqualTo(34));
     expect(tester.getSize(filterButton).height, lessThanOrEqualTo(34));
+    expect(find.byKey(const ValueKey('client-sidebar-refresh')), findsNothing);
+    expect(find.byKey(const ValueKey('client-sidebar-add')), findsNothing);
+    expect(find.byKey(const ValueKey('client-sidebar-sort')), findsNothing);
+    expect(
+      tester.getTopLeft(filterButton).dx,
+      lessThan(tester.getTopLeft(searchField).dx),
+    );
+    expect(find.byTooltip('Filtros (1)'), findsOneWidget);
+    expect(find.byKey(const ValueKey('client-sidebar-list-summary')),
+        findsOneWidget);
     expect(
       tester
-          .getSize(find.byKey(const ValueKey('client-sidebar-refresh')))
+          .getSize(find.byKey(const ValueKey('client-sidebar-list-summary')))
           .height,
       30,
     );
-    expect(
-      tester.getSize(find.byKey(const ValueKey('client-sidebar-add'))).height,
-      30,
-    );
-    expect(find.text('Filtros (1)'), findsOneWidget);
-    expect(find.byKey(const ValueKey('client-sidebar-list-summary')),
-        findsOneWidget);
     expect(
       tester
           .getSize(
@@ -158,21 +159,23 @@ void main() {
         findsOneWidget);
     expect(find.byKey(const ValueKey('client-missing-month-invoice-filter')),
         findsOneWidget);
+    expect(
+      tester
+          .getSize(
+              find.byKey(const ValueKey('client-missing-month-invoice-filter')))
+          .height,
+      lessThanOrEqualTo(28),
+    );
 
     await tester
         .tap(find.byKey(const ValueKey('client-missing-month-invoice-filter')));
     await tester.pumpAndSettle();
-    expect(find.text('Filtros (2)'), findsOneWidget);
+    expect(find.byTooltip('Filtros (2)'), findsOneWidget);
 
     await tester.tapAt(const Offset(410, 710));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('client-filter-popover')), findsNothing);
-    expect(find.text('Filtros (2)'), findsOneWidget);
-
-    await tester.tap(find.byKey(const ValueKey('client-sidebar-refresh')));
-    await tester.tap(find.byKey(const ValueKey('client-sidebar-add')));
-    expect(refreshes, 1);
-    expect(additions, 1);
+    expect(find.byTooltip('Filtros (2)'), findsOneWidget);
 
     tester.view.physicalSize = const Size(320, 720);
     await tester.pumpAndSettle();

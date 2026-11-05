@@ -349,11 +349,11 @@ extension _GroupInvoicesBudgetsViewFlowSection
         }
       }
       if (!mounted) return;
-      showSuccessSnack(
+      showDocumentSavedSnack(
         context,
-        l.budgetDraftUpdatedSnackMessage,
         title: l.budgetDraftUpdatedSnackTitle,
-        actionLabel: l.invoiceDraftSnackDismiss,
+        message: l.budgetDraftUpdatedSnackMessage,
+        dismissLabel: l.invoiceDraftSnackDismiss,
       );
     } on PresupuestosApiException catch (e) {
       if (!mounted) return;

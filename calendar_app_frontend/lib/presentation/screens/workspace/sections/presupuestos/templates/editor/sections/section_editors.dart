@@ -5,7 +5,6 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
     final theme = Theme.of(context);
     return _card(
       title: 'Secciones',
-      icon: Icons.view_agenda_outlined,
       trailing: TextButton.icon(
         onPressed: _addSection,
         icon: const Icon(Icons.add_rounded, size: 18),
@@ -17,12 +16,8 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
         ),
       ),
       child: _sections.isEmpty
-          ? Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: _editorInsetBg(Theme.of(context)),
-              ),
+          ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
               child: Row(
                 children: [
                   const Icon(Icons.notes_rounded),
@@ -36,48 +31,35 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
                 ],
               ),
             )
-          : DecoratedBox(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: _editorBorder(theme, alpha: 0.55),
+          : ReorderableListView.builder(
+              shrinkWrap: true,
+              primary: false,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              padding: EdgeInsets.zero,
+              itemCount: _sections.length,
+              proxyDecorator: (child, index, animation) => AnimatedBuilder(
+                animation: animation,
+                child: child,
+                builder: (context, child) => Material(
+                  elevation: 1.5 * animation.value,
+                  color: theme.colorScheme.surface,
+                  shadowColor: theme.colorScheme.shadow.withValues(alpha: 0.12),
+                  child: child,
                 ),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(9),
-                child: ReorderableListView.builder(
-                  shrinkWrap: true,
-                  primary: false,
-                  physics: const NeverScrollableScrollPhysics(),
-                  buildDefaultDragHandles: false,
-                  padding: EdgeInsets.zero,
-                  itemCount: _sections.length,
-                  proxyDecorator: (child, index, animation) => AnimatedBuilder(
-                    animation: animation,
-                    child: child,
-                    builder: (context, child) => Material(
-                      elevation: 1.5 * animation.value,
-                      color: theme.colorScheme.surface,
-                      shadowColor:
-                          theme.colorScheme.shadow.withValues(alpha: 0.12),
-                      child: child,
-                    ),
-                  ),
-                  onReorder: (oldIndex, newIndex) {
-                    if (_sections[oldIndex].isPinned) return;
-                    _updateEditorState(() {
-                      if (newIndex > oldIndex) newIndex -= 1;
-                      // Free sections can't be dropped below the pinned ones.
-                      final limit = _firstPinnedSectionIndex - 1;
-                      if (newIndex > limit) newIndex = limit;
-                      final section = _sections.removeAt(oldIndex);
-                      _sections.insert(newIndex, section);
-                    });
-                  },
-                  itemBuilder: (context, i) => _sectionTile(_sections[i], i),
-                ),
-              ),
+              onReorder: (oldIndex, newIndex) {
+                if (_sections[oldIndex].isPinned) return;
+                _updateEditorState(() {
+                  if (newIndex > oldIndex) newIndex -= 1;
+                  // Free sections can't be dropped below the pinned ones.
+                  final limit = _firstPinnedSectionIndex - 1;
+                  if (newIndex > limit) newIndex = limit;
+                  final section = _sections.removeAt(oldIndex);
+                  _sections.insert(newIndex, section);
+                });
+              },
+              itemBuilder: (context, i) => _sectionTile(_sections[i], i),
             ),
     );
   }
@@ -347,15 +329,8 @@ extension _TemplateSectionEditors on _PresupuestoTemplateEditorScreenState {
             ),
           ),
           if (controllers.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              margin: const EdgeInsets.only(bottom: 10),
-              decoration: BoxDecoration(
-                color: _editorInsetBg(theme),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _editorBorder(theme, alpha: 0.7)),
-              ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
               child: Text(
                 section.generatedFrequency
                     ? 'Puedes añadir condiciones adicionales sin modificar la frecuencia automática.'

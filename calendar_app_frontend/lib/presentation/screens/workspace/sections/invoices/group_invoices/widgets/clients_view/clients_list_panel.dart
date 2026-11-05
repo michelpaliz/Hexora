@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/clients_search_filters.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';
-import 'package:hexora/presentation/shared/widgets/buttons/buttons.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -116,12 +115,46 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
             (effectiveStatus == 'active'
                 ? client.isActive != false
                 : client.isActive == false))
-        .toList(growable: false);
+        .toList();
+    visibleClients.sort((a, b) {
+      final cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      return cmp;
+    });
     final hasSearch = widget.searchController.text.trim().isNotEmpty;
     final hasStructuredFilters =
         (widget.entityFilter ?? '').trim().isNotEmpty ||
             (widget.propertyFilter ?? '').trim().isNotEmpty ||
             effectiveStatus != 'all';
+
+    // Compact summary below the toolbar: a muted count plus, when filters are
+    // applied, the most relevant filter as a subtle chip and a "+N" overflow.
+    final noun = isEs ? 'clientes' : 'customers';
+    final visibleCount = visibleClients.length;
+    final totalCount = widget.allClients.length;
+    final countLabel = visibleCount == totalCount
+        ? '$visibleCount $noun'
+        : '$visibleCount ${isEs ? 'de' : 'of'} $totalCount $noun';
+    final summaryFilters = <({String label, bool active})>[];
+    if (effectiveStatus == 'active') {
+      summaryFilters.add((label: isEs ? 'Activos' : 'Active', active: true));
+    } else if (effectiveStatus == 'inactive') {
+      summaryFilters
+          .add((label: isEs ? 'Inactivos' : 'Inactive', active: false));
+    }
+    final entityValue = (widget.entityFilter ?? '').trim();
+    if (entityValue.isNotEmpty) {
+      summaryFilters
+          .add((label: clientClassificationLabel(entityValue), active: false));
+    }
+    final propertyValue = (widget.propertyFilter ?? '').trim();
+    if (propertyValue.isNotEmpty) {
+      summaryFilters.add(
+          (label: clientClassificationLabel(propertyValue), active: false));
+    }
+    if (widget.missingCurrentMonthInvoiceOnly) {
+      summaryFilters
+          .add((label: isEs ? 'Sin factura' : 'No invoice', active: false));
+    }
 
     return Card(
       color: Colors.transparent,
@@ -149,6 +182,7 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                   moveSummaryIntoFilters: true,
                   filtersInMenu: true,
                   filterMenuWidth: 310,
+                  filterBeforeSearch: true,
                   compactClassificationDropdowns: true,
                   additionalFiltersInFilterBody: true,
                   searchDesktopHeight: 32,
@@ -191,37 +225,14 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                   onToggleProperty: widget.onTogglePropertyFilter,
                   onClearProperty: widget.onClearPropertyFilter,
                   trailingActions: [
-                    if (widget.onRefresh != null)
-                      HexoraButton.iconOnly(
-                        key: const ValueKey('client-sidebar-refresh'),
-                        onPressed: widget.refreshing ? null : widget.onRefresh,
-                        tooltip: l.refreshAction,
-                        icon: Icons.refresh_rounded,
-                        loading: widget.refreshing,
-                        variant: HexoraButtonVariant.ghost,
-                        size: HexoraButtonSize.compact,
-                      ),
-                    if (widget.onAddClient != null)
-                      HexoraButton.iconOnly(
-                        key: const ValueKey('client-sidebar-add'),
-                        onPressed: widget.onAddClient,
-                        tooltip: l.addClient,
-                        icon: Icons.person_add_outlined,
-                        variant: HexoraButtonVariant.ghost,
-                        size: HexoraButtonSize.compact,
-                        accentColor: cs.primary,
-                      ),
+                    _CompactListInfo(
+                      key: const ValueKey('client-sidebar-list-summary'),
+                      visibleCount: visibleCount,
+                      totalCount: totalCount,
+                      countLabel: countLabel,
+                      activeFilters: summaryFilters,
+                    ),
                   ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  visibleClients.length == widget.allClients.length
-                      ? '${visibleClients.length} ${isEs ? 'clientes' : 'customers'}  ·  A–Z'
-                      : '${visibleClients.length} ${isEs ? 'de' : 'of'} ${widget.allClients.length}  ·  A–Z',
-                  key: const ValueKey('client-sidebar-list-summary'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: t.caption.copyWith(color: cs.onSurfaceVariant),
                 ),
               ],
             ),
@@ -323,6 +334,59 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                       ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Result count kept inside the toolbar to avoid consuming a second row.
+class _CompactListInfo extends StatelessWidget {
+  const _CompactListInfo({
+    super.key,
+    required this.visibleCount,
+    required this.totalCount,
+    required this.countLabel,
+    required this.activeFilters,
+  });
+
+  final int visibleCount;
+  final int totalCount;
+  final String countLabel;
+  final List<({String label, bool active})> activeFilters;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final filters = activeFilters.map((filter) => filter.label).join(', ');
+    final tooltip = filters.isEmpty ? countLabel : '$countLabel · $filters';
+    final shortCount = visibleCount == totalCount
+        ? '$visibleCount'
+        : '$visibleCount/$totalCount';
+
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 7),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(alpha: .45),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.info_outline_rounded,
+                size: 15, color: cs.onSurfaceVariant),
+            const SizedBox(width: 4),
+            Text(
+              shortCount,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -437,9 +501,8 @@ class _SidebarMissingInvoiceFilter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final label = count == null
-        ? l.clientMissingInvoiceThisMonth
-        : l.clientMissingCountThisMonth(count!);
+    final label = l.clientMissingInvoiceThisMonth;
+    final cs = Theme.of(context).colorScheme;
     return Semantics(
       checked: selected,
       child: InkWell(
@@ -447,11 +510,11 @@ class _SidebarMissingInvoiceFilter extends StatelessWidget {
         borderRadius: BorderRadius.circular(7),
         onTap: () => onChanged(!selected),
         child: SizedBox(
-          height: 32,
+          height: 28,
           child: Row(
             children: [
               SizedBox.square(
-                dimension: 30,
+                dimension: 26,
                 child: Checkbox(
                   value: selected,
                   onChanged: (value) => onChanged(value ?? false),
@@ -468,6 +531,28 @@ class _SidebarMissingInvoiceFilter extends StatelessWidget {
                   style: Theme.of(context).textTheme.labelMedium,
                 ),
               ),
+              if (count != null) ...[
+                const SizedBox(width: 6),
+                Container(
+                  constraints: const BoxConstraints(minWidth: 20),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? cs.primary.withValues(alpha: .12)
+                        : cs.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$count',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: selected ? cs.primary : cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -512,6 +597,28 @@ class _ClientRow extends StatelessWidget {
       clientClassificationLabel(_clean(client.effectivePropertyType)),
       _clean(client.email),
     ].where((v) => v.isNotEmpty && seen.add(v.toLowerCase())).join('\n');
+  }
+
+  IconData _typeIcon() {
+    final property = _clean(client.effectivePropertyType).toLowerCase();
+    final entity = _clean(client.effectiveCustomerType).toLowerCase();
+    final value = '$property $entity';
+    if (value.contains('chalet') ||
+        value.contains('casa') ||
+        value.contains('vivienda')) {
+      return Icons.home_outlined;
+    }
+    if (value.contains('comunidad') ||
+        value.contains('propietar') ||
+        value.contains('residencial')) {
+      return Icons.apartment_outlined;
+    }
+    if (value.contains('empresa') ||
+        value.contains('sociedad') ||
+        value.contains('negocio')) {
+      return Icons.business_center_outlined;
+    }
+    return Icons.person_outline_rounded;
   }
 
   @override
@@ -566,8 +673,12 @@ class _ClientRow extends StatelessWidget {
       key: ValueKey('client-sidebar-row-${client.id}'),
       selected: selected,
       onTap: onTap,
-      minHeight: 48,
-      verticalPadding: 4,
+      minHeight: 44,
+      verticalPadding: 3,
+      separatorWidth: 0,
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      borderRadius: 8,
+      outlined: true,
       child: Row(children: [
         // Neutral avatars: identity comes from the name, not a loud color.
         CircleAvatar(
@@ -583,24 +694,71 @@ class _ClientRow extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(child: summary),
         if (_buildTrailing(l, cs) case final trailing?) ...[
           const SizedBox(width: 8),
           trailing,
         ],
+        const SizedBox(width: 4),
+        PopupMenuButton<_ClientRowAction>(
+          tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+          position: PopupMenuPosition.under,
+          icon: const Icon(Icons.more_vert_rounded),
+          iconSize: 18,
+          padding: EdgeInsets.zero,
+          style: IconButton.styleFrom(
+            minimumSize: const Size(30, 30),
+            fixedSize: const Size(30, 30),
+            padding: EdgeInsets.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+            foregroundColor: cs.onSurfaceVariant,
+          ),
+          onSelected: (_) => onTap(),
+          itemBuilder: (_) => [
+            PopupMenuItem(
+              value: _ClientRowAction.viewDetails,
+              child: Row(
+                children: [
+                  const Icon(Icons.open_in_new_rounded, size: 18),
+                  const SizedBox(width: 8),
+                  Text(l.viewDetails),
+                ],
+              ),
+            ),
+          ],
+        ),
       ]),
     );
   }
 
   Widget? _buildTrailing(AppLocalizations l, ColorScheme cs) {
-    final parts = <Widget>[];
+    final parts = <Widget>[
+      Tooltip(
+        message: _secondary() ?? l.details,
+        child: Container(
+          width: 22,
+          height: 22,
+          decoration: BoxDecoration(
+            color: cs.primary.withValues(alpha: .08),
+            borderRadius: BorderRadius.circular(7),
+          ),
+          child: Icon(_typeIcon(), size: 13, color: cs.primary),
+        ),
+      ),
+    ];
 
     if (client.missingCurrentMonthInvoice == true) {
+      parts.add(const SizedBox(width: 5));
       parts.add(
         Tooltip(
           message: l.clientMissingInvoiceThisMonth,
-          child: Icon(Icons.receipt_long_outlined, size: 16, color: cs.error),
+          child: Icon(
+            Icons.receipt_long_outlined,
+            size: 14,
+            color: cs.error.withValues(alpha: .86),
+          ),
         ),
       );
     }
@@ -619,7 +777,8 @@ class _ClientRow extends StatelessWidget {
       );
     }
 
-    if (parts.isEmpty) return null;
     return Row(mainAxisSize: MainAxisSize.min, children: parts);
   }
 }
+
+enum _ClientRowAction { viewDetails }

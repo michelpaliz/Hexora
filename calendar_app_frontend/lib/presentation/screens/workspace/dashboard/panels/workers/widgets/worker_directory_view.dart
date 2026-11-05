@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:hexora/l10n/build_context_locale.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/workers/worker.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/widgets/status_filter_chips.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/presentation/shared/widgets/hexora_popup_menu.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_directory_tabs.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_list_section.dart';
 
@@ -15,6 +17,7 @@ class WorkerDirectoryView extends StatefulWidget {
     required this.onTabChanged,
     required this.monthSummary,
     required this.statusFilter,
+    required this.onStatusFilterChanged,
     required this.onCreate,
     required this.onEdit,
     required this.onAddHours,
@@ -27,7 +30,8 @@ class WorkerDirectoryView extends StatefulWidget {
   final bool showPartners;
   final ValueChanged<bool> onTabChanged;
   final Widget monthSummary;
-  final Widget statusFilter;
+  final WorkerStatusFilter statusFilter;
+  final ValueChanged<WorkerStatusFilter> onStatusFilterChanged;
   final VoidCallback onCreate;
   final ValueChanged<Worker> onEdit;
   final ValueChanged<Worker> onAddHours;
@@ -129,7 +133,9 @@ class _WorkerDirectoryViewState extends State<WorkerDirectoryView> {
     );
     final add = HexoraButton(
       icon: Icons.add_rounded,
-      label: isEs ? 'Añadir trabajador' : 'Add worker',
+      label: widget.showPartners
+          ? (isEs ? 'Añadir socio' : 'Add partner')
+          : (isEs ? 'Añadir trabajador' : 'Add worker'),
       size: HexoraButtonSize.compact,
       onPressed: widget.onCreate,
     );
@@ -145,9 +151,71 @@ class _WorkerDirectoryViewState extends State<WorkerDirectoryView> {
         ? '${visible.length} $noun'
         : '$first–$last / ${visible.length} $noun';
 
+    final filters = _DirectoryFilterMenu(
+      value: widget.statusFilter,
+      isSpanish: isEs,
+      onChanged: widget.onStatusFilterChanged,
+    );
+    final statusFilters = StatusFilterChips(
+      value: widget.statusFilter,
+      onChanged: widget.onStatusFilterChanged,
+    );
+    final options = _DirectoryOptionsMenu(
+      ascending: _ascending,
+      grid: _grid,
+      isSpanish: isEs,
+      onSelected: (value) {
+        setState(() {
+          switch (value) {
+            case 'sort-asc':
+              _ascending = true;
+              _page = 0;
+            case 'sort-desc':
+              _ascending = false;
+              _page = 0;
+            case 'view-list':
+              _grid = false;
+            case 'view-grid':
+              _grid = true;
+          }
+        });
+      },
+    );
+    final sorting = Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 9),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .45)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.swap_vert_rounded, size: 17, color: cs.onSurfaceVariant),
+        const SizedBox(width: 5),
+        DropdownButtonHideUnderline(
+          child: DropdownButton<bool>(
+            value: _ascending,
+            isDense: true,
+            borderRadius: BorderRadius.circular(8),
+            style: TextStyle(fontSize: 13, color: cs.onSurface),
+            icon: const Icon(Icons.expand_more_rounded, size: 18),
+            items: const [
+              DropdownMenuItem(value: true, child: Text('A–Z')),
+              DropdownMenuItem(value: false, child: Text('Z–A')),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() {
+                _ascending = value;
+                _page = 0;
+              });
+            },
+          ),
+        ),
+      ]),
+    );
     final viewToggle = Row(mainAxisSize: MainAxisSize.min, children: [
-      for (final grid in [false, true]) ...[
-        if (grid) const SizedBox(width: 6),
+      for (final grid in [false, true])
         HexoraButton.iconOnly(
           tooltip: grid
               ? (isEs ? 'Vista de tarjetas' : 'Card view')
@@ -159,51 +227,16 @@ class _WorkerDirectoryViewState extends State<WorkerDirectoryView> {
           variant: _grid == grid
               ? HexoraButtonVariant.tonal
               : HexoraButtonVariant.ghost,
+          accentColor: cs.primary,
           onPressed: () => setState(() => _grid = grid),
         ),
-      ],
     ]);
 
-    final sorting = Container(
-      height: 34,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: .45)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<bool>(
-          value: _ascending,
-          isDense: true,
-          borderRadius: BorderRadius.circular(8),
-          style: TextStyle(fontSize: 13, color: cs.onSurface),
-          icon: const Padding(
-            padding: EdgeInsets.only(left: 8),
-            child: Icon(Icons.expand_more_rounded, size: 18),
-          ),
-          items: [
-            DropdownMenuItem(
-                value: true,
-                child: Text(isEs ? 'Nombre (A–Z)' : 'Name (A–Z)')),
-            DropdownMenuItem(
-                value: false,
-                child: Text(isEs ? 'Nombre (Z–A)' : 'Name (Z–A)')),
-          ],
-          onChanged: (value) {
-            if (value != null) {
-              setState(() {
-                _ascending = value;
-                _page = 0;
-              });
-            }
-          },
-        ),
-      ),
-    );
-
     return LayoutBuilder(builder: (context, constraints) {
-      final inline = constraints.maxWidth >= 520 &&
+      final inline = constraints.maxWidth >= 720 &&
           MediaQuery.textScalerOf(context).scale(1) < 1.5;
+      final fullToolbar = constraints.maxWidth >= 840 &&
+          MediaQuery.textScalerOf(context).scale(1) < 1.3;
       return SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -224,21 +257,27 @@ class _WorkerDirectoryViewState extends State<WorkerDirectoryView> {
               ),
             const SizedBox(height: 10),
 
-            // ── toolbar (flat, no border) ──
-            Wrap(
-              spacing: 10,
-              runSpacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [widget.monthSummary, widget.statusFilter],
-            ),
-            const SizedBox(height: 8),
-            if (inline)
+            if (fullToolbar)
+              Row(children: [
+                widget.monthSummary,
+                const SizedBox(width: 10),
+                statusFilters,
+                const SizedBox(width: 12),
+                Expanded(child: search),
+                const SizedBox(width: 10),
+                sorting,
+                const SizedBox(width: 6),
+                viewToggle,
+              ])
+            else if (inline)
               Row(children: [
                 Expanded(child: search),
                 const SizedBox(width: 8),
-                sorting,
+                widget.monthSummary,
                 const SizedBox(width: 8),
-                viewToggle,
+                filters,
+                const SizedBox(width: 4),
+                options,
               ])
             else
               Wrap(
@@ -247,13 +286,13 @@ class _WorkerDirectoryViewState extends State<WorkerDirectoryView> {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   SizedBox(
-                    width: (constraints.maxWidth - 24)
-                        .clamp(160, 320)
-                        .toDouble(),
+                    width:
+                        (constraints.maxWidth - 24).clamp(160, 320).toDouble(),
                     child: search,
                   ),
-                  sorting,
-                  viewToggle,
+                  widget.monthSummary,
+                  filters,
+                  options,
                 ],
               ),
             const SizedBox(height: 10),
@@ -355,4 +394,147 @@ class _WorkerDirectoryViewState extends State<WorkerDirectoryView> {
       );
     });
   }
+}
+
+class _DirectoryFilterMenu extends StatelessWidget {
+  const _DirectoryFilterMenu({
+    required this.value,
+    required this.isSpanish,
+    required this.onChanged,
+  });
+
+  final WorkerStatusFilter value;
+  final bool isSpanish;
+  final ValueChanged<WorkerStatusFilter> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final activeCount = value == WorkerStatusFilter.all ? 0 : 1;
+    final label = isSpanish ? 'Filtros' : 'Filters';
+    return SizedBox.square(
+      dimension: 34,
+      child: PopupMenuButton<WorkerStatusFilter>(
+        tooltip: activeCount == 0 ? label : '$label ($activeCount)',
+        position: PopupMenuPosition.under,
+        constraints: const BoxConstraints(minWidth: 210, maxWidth: 240),
+        onSelected: onChanged,
+        itemBuilder: (_) => [
+          for (final filter in WorkerStatusFilter.values)
+            CheckedPopupMenuItem(
+              value: filter,
+              checked: value == filter,
+              child: Text(switch (filter) {
+                WorkerStatusFilter.all => isSpanish ? 'Todos' : 'All',
+                WorkerStatusFilter.active => isSpanish ? 'Activo' : 'Active',
+                WorkerStatusFilter.inactive =>
+                  isSpanish ? 'Inactivo' : 'Inactive',
+              }),
+            ),
+          const PopupMenuDivider(),
+          PopupMenuItem(
+            value: WorkerStatusFilter.all,
+            enabled: value != WorkerStatusFilter.all,
+            child: Row(children: [
+              const Icon(Icons.restart_alt_rounded, size: 17),
+              const SizedBox(width: 8),
+              Text(isSpanish ? 'Restablecer' : 'Reset'),
+            ]),
+          ),
+        ],
+        icon: Stack(clipBehavior: Clip.none, children: [
+          Icon(
+            Icons.filter_list_rounded,
+            size: 19,
+            color: activeCount == 0 ? cs.onSurfaceVariant : cs.primary,
+          ),
+          if (activeCount > 0)
+            Positioned(
+              right: -7,
+              top: -7,
+              child: Container(
+                width: 15,
+                height: 15,
+                alignment: Alignment.center,
+                decoration:
+                    BoxDecoration(color: cs.primary, shape: BoxShape.circle),
+                child: Text(
+                  '$activeCount',
+                  style: TextStyle(
+                    color: cs.onPrimary,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+}
+
+class _DirectoryOptionsMenu extends StatelessWidget {
+  const _DirectoryOptionsMenu({
+    required this.ascending,
+    required this.grid,
+    required this.isSpanish,
+    required this.onSelected,
+  });
+
+  final bool ascending;
+  final bool grid;
+  final bool isSpanish;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) => SizedBox.square(
+        dimension: 34,
+        child: HexoraPopupMenuButton<String>(
+          tooltip: isSpanish ? 'Opciones de vista' : 'View options',
+          icon: const Icon(Icons.tune_rounded, size: 19),
+          onSelected: onSelected,
+          itemBuilder: (_) => [
+            HexoraPopupMenuActionItem(
+              value: 'sort-asc',
+              icon: ascending
+                  ? Icons.radio_button_checked_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              label: isSpanish ? 'Nombre (A–Z)' : 'Name (A–Z)',
+              tone: ascending
+                  ? HexoraPopupMenuTone.primary
+                  : HexoraPopupMenuTone.neutral,
+            ),
+            HexoraPopupMenuActionItem(
+              value: 'sort-desc',
+              icon: !ascending
+                  ? Icons.radio_button_checked_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              label: isSpanish ? 'Nombre (Z–A)' : 'Name (Z–A)',
+              tone: !ascending
+                  ? HexoraPopupMenuTone.primary
+                  : HexoraPopupMenuTone.neutral,
+            ),
+            const HexoraPopupMenuDivider(),
+            HexoraPopupMenuActionItem(
+              value: 'view-list',
+              icon: !grid
+                  ? Icons.check_rounded
+                  : Icons.format_list_bulleted_rounded,
+              label: isSpanish ? 'Vista de lista' : 'List view',
+              tone: !grid
+                  ? HexoraPopupMenuTone.primary
+                  : HexoraPopupMenuTone.neutral,
+            ),
+            HexoraPopupMenuActionItem(
+              value: 'view-grid',
+              icon: grid ? Icons.check_rounded : Icons.grid_view_rounded,
+              label: isSpanish ? 'Vista de tarjetas' : 'Card view',
+              tone: grid
+                  ? HexoraPopupMenuTone.primary
+                  : HexoraPopupMenuTone.neutral,
+            ),
+          ],
+        ),
+      );
 }

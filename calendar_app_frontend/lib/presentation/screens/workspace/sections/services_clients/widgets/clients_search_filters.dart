@@ -96,6 +96,7 @@ class ClientsSearchFilters extends StatelessWidget {
   final bool summaryInToolbar;
   final bool filtersInMenu;
   final double filterMenuWidth;
+  final bool filterBeforeSearch;
   final bool additionalFiltersInFilterBody;
   final bool compactClassificationDropdowns;
   final bool compactSummary;
@@ -146,6 +147,7 @@ class ClientsSearchFilters extends StatelessWidget {
     this.summaryInToolbar = false,
     this.filtersInMenu = false,
     this.filterMenuWidth = 360,
+    this.filterBeforeSearch = false,
     this.additionalFiltersInFilterBody = false,
     this.compactClassificationDropdowns = false,
     this.compactSummary = false,
@@ -358,6 +360,7 @@ class ClientsSearchFilters extends StatelessWidget {
       autoExpandWhenActive: autoExpandWhenActive,
       filtersInMenu: filtersInMenu,
       filterMenuWidth: filterMenuWidth,
+      filterBeforeSearch: filterBeforeSearch,
       toolbarContent: summaryInToolbar ? summary : null,
       persistentContent:
           moveSummaryIntoFilters || summaryInToolbar ? null : summary,

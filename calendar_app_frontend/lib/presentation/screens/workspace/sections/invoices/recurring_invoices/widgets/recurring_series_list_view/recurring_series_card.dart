@@ -47,7 +47,6 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
     String status,
     bool isExpired,
     ColorScheme cs,
-    Brightness brightness,
   ) {
     if (isExpired) return cs.error;
     switch (status) {
@@ -58,9 +57,7 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
       case 'completed':
         return cs.primary;
       default:
-        return brightness == Brightness.dark
-            ? cs.secondary
-            : const Color(0xFF0F766E);
+        return cs.primary;
     }
   }
 
@@ -223,7 +220,7 @@ class _RecurringSeriesCardState extends State<RecurringSeriesCard> {
                     ? l.recurringInvoicesStatusCompleted
                     : l.recurringInvoicesStatusActive;
 
-    final stripe = _stripeColor(status, isExpired, cs, theme.brightness);
+    final stripe = _stripeColor(status, isExpired, cs);
 
     final rawTz = (rule is Map ? rule['timezone'] : null) ?? series['timezone'];
     final timezone = rawTz?.toString();

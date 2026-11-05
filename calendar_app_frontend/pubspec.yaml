@@ -124,6 +124,7 @@ flutter:
     - assets/images/months/december.png
     - assets/images/logo.png
     - assets/images/branding/
+    - assets/images/home_page/
 
   fonts:
     - family: Inter

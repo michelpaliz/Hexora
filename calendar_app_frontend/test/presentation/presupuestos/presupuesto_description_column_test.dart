@@ -41,6 +41,7 @@ class _Api implements PresupuestosApi {
 void main() {
   testWidgets('presupuestos table shows the description column',
       (tester) async {
+    String? editedBudgetId;
     tester.view.physicalSize = const Size(1800, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -56,6 +57,7 @@ void main() {
           groupId: 'group-1',
           clients: const [],
           api: _Api(),
+          onEditDraftBudget: (id) async => editedBudgetId = id,
         ),
       ),
     ));
@@ -68,6 +70,11 @@ void main() {
     expect(find.text('Envío'), findsOneWidget);
     expect(find.text('Enviado'), findsOneWidget);
     expect(find.byTooltip('Vista previa'), findsOneWidget);
+    expect(find.byTooltip('Editar presupuesto emitido'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Editar presupuesto emitido'));
+    await tester.pump();
+    expect(editedBudgetId, 'budget-1');
 
     await tester.tap(find.byTooltip('Vista previa'));
     await tester.pumpAndSettle();

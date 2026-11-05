@@ -98,9 +98,7 @@ class _InvoiceEditorView extends StatelessWidget {
                   : state._c.currency.text.trim();
               final rawSubtotal = state._c.rawSubtotal;
               final discountAmount = state._c.effectiveDiscountAmount;
-              final baseAfterDiscount = state._c.subtotalAfterDiscount;
               final taxAfterDiscount = state._c.taxAfterDiscount;
-              final showDiscountRows = discountAmount > 0;
 
               final headerBar = _InvoiceEditorHeaderSection(
                 state: state,
@@ -157,14 +155,40 @@ class _InvoiceEditorView extends StatelessWidget {
                     )
                   : linesSection;
 
+              var summaryUsesSavedInvoice = false;
               List<Map<String, Object>> buildSummaryRows() {
                 final rows = <Map<String, Object>>[];
+
+                String lineDescription({
+                  required String description,
+                  required String title,
+                  required String items,
+                }) {
+                  final detail = description.trim();
+                  if (detail.isNotEmpty) return detail;
+                  final concepts = items
+                      .split(RegExp(r'[,;\n]'))
+                      .map((item) => item.trim())
+                      .where((item) => item.isNotEmpty)
+                      .join('\n');
+                  if (concepts.isNotEmpty) return concepts;
+                  return title.trim();
+                }
+
                 if (state._c.useBlocks) {
                   for (final block in state._c.blocks) {
                     if (!block.isBillableLine) continue;
                     final desc = block.isSection || block.isChecklist
-                        ? block.title.text.trim()
-                        : block.description.text.trim();
+                        ? lineDescription(
+                            description: block.title.text,
+                            title: block.conceptTitleCtrl.text,
+                            items: block.conceptItemsCtrl.text,
+                          )
+                        : lineDescription(
+                            description: block.description.text,
+                            title: block.conceptTitleCtrl.text,
+                            items: block.conceptItemsCtrl.text,
+                          );
                     if (desc.isEmpty) continue;
                     final qty = block.qty ?? 0;
                     final price = block.unitPrice ?? 0;
@@ -180,7 +204,11 @@ class _InvoiceEditorView extends StatelessWidget {
                   }
                 } else {
                   for (final line in state._c.lines) {
-                    final desc = line.description.text.trim();
+                    final desc = lineDescription(
+                      description: line.description.text,
+                      title: line.conceptTitleCtrl.text,
+                      items: line.conceptItemsCtrl.text,
+                    );
                     if (desc.isEmpty) continue;
                     final qty = line.quantity ?? 0;
                     final price = line.unitPrice ?? 0;
@@ -195,10 +223,55 @@ class _InvoiceEditorView extends StatelessWidget {
                     });
                   }
                 }
+
+                // A saved draft can contain server-normalized lines even when
+                // the current editor collection has no displayable legacy
+                // description. Keep the summary synchronized with the same
+                // persisted data used to render the PDF preview.
+                if (rows.isEmpty) {
+                  final saved = state._c.savedInvoice;
+                  if (saved != null) {
+                    for (final line in saved.lines) {
+                      final desc = lineDescription(
+                        description: line.description,
+                        title: line.conceptTitle ?? line.sku ?? '',
+                        items:
+                            (line.conceptItems ?? const <String>[]).join('\n'),
+                      );
+                      if (desc.isEmpty) continue;
+                      final qty = line.quantity;
+                      final price = line.unitPrice;
+                      final tax = line.taxRate;
+                      final subtotal = line.lineSubtotal ?? (qty * price);
+                      final total = line.lineTotal ??
+                          (subtotal + (line.lineTax ?? (subtotal * tax / 100)));
+                      rows.add({
+                        'desc': desc,
+                        'qty': qty,
+                        'price': price,
+                        'tax': tax,
+                        'total': total,
+                      });
+                    }
+                    summaryUsesSavedInvoice = rows.isNotEmpty;
+                  }
+                }
                 return rows;
               }
 
               final summaryRows = buildSummaryRows();
+              final summaryInvoice =
+                  summaryUsesSavedInvoice ? state._c.savedInvoice : null;
+              final summaryRawSubtotal =
+                  summaryInvoice?.subtotal ?? rawSubtotal;
+              final summaryDiscountAmount =
+                  summaryInvoice?.discountAmount ?? discountAmount;
+              final summaryBaseAfterDiscount =
+                  (summaryRawSubtotal - summaryDiscountAmount)
+                      .clamp(0, double.infinity);
+              final summaryTax = summaryInvoice?.taxTotal ?? taxAfterDiscount;
+              final summaryTotal = summaryInvoice?.total ?? state._c.total;
+              final summaryShowsDiscount = summaryDiscountAmount > 0;
 
               // ignore: unused_element
               Widget discountEditorCard() {
@@ -625,29 +698,29 @@ class _InvoiceEditorView extends StatelessWidget {
                             color: cs.outlineVariant.withValues(alpha: 0.5)),
                         const SizedBox(height: 8),
                         totalsBreakdownRow(
-                          showDiscountRows
+                          summaryShowsDiscount
                               ? 'Total parcial'
                               : l.invoiceSubtotalLabel,
-                          currencyFmt.format(rawSubtotal).trim(),
+                          currencyFmt.format(summaryRawSubtotal).trim(),
                         ),
-                        if (showDiscountRows)
+                        if (summaryShowsDiscount)
                           totalsBreakdownRow(
                             'Descuento',
-                            '-${currencyFmt.format(discountAmount).trim()}',
+                            '-${currencyFmt.format(summaryDiscountAmount).trim()}',
                           ),
-                        if (showDiscountRows)
+                        if (summaryShowsDiscount)
                           totalsBreakdownRow(
                             'Base imponible',
-                            currencyFmt.format(baseAfterDiscount).trim(),
+                            currencyFmt.format(summaryBaseAfterDiscount).trim(),
                           ),
                         totalsBreakdownRow(
                           'IVA',
-                          currencyFmt.format(taxAfterDiscount).trim(),
+                          currencyFmt.format(summaryTax).trim(),
                         ),
                         const SizedBox(height: 4),
                         totalsBreakdownRow(
                           l.invoiceTotalLabel,
-                          currencyFmt.format(state._c.total).trim(),
+                          currencyFmt.format(summaryTotal).trim(),
                           strong: true,
                         ),
                       ],
@@ -1163,6 +1236,7 @@ class _InvoiceEditorView extends StatelessWidget {
             adaptivePreview: true,
             compactSelectionMaxWidth: 620,
             flat: true,
+            showClientCount: false,
           ),
         ),
       ),
@@ -1430,24 +1504,6 @@ class _InvoiceClientStatsBoxState extends State<_InvoiceClientStatsBox>
                 style: t.bodySmall.copyWith(
                   color: cs.onSurfaceVariant,
                   fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(width: 7),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: cs.tertiary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(999),
-                  border:
-                      Border.all(color: cs.tertiary.withValues(alpha: 0.25)),
-                ),
-                child: Text(
-                  isEs ? 'Mes recurrente' : 'Recurrent month',
-                  style: t.bodySmall.copyWith(
-                    fontSize: 9,
-                    color: cs.tertiary,
-                    fontWeight: FontWeight.w700,
-                  ),
                 ),
               ),
             ],

@@ -158,6 +158,10 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
             ),
             length: 2,
             initialIndex: widget.initialTabIndex.clamp(0, 1),
+            animationDuration: HexoraMotion.duration(
+              context,
+              HexoraMotion.tabIndicator,
+            ),
             child: Card(
               color: Colors.transparent,
               elevation: 0,
