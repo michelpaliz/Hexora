@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
-import '../input_border.dart';
-
 class BillingDocumentType extends StatelessWidget {
   final String value;
   final ValueChanged<String> onChanged;
@@ -17,18 +15,20 @@ class BillingDocumentType extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
 
-    return DropdownButtonFormField<String>(
-      initialValue: value,
-      decoration: buildInputDecoration(
-        context,
-        label: l.billingDocumentType,
-        isFilled: true,
-      ),
-      items: [
-        DropdownMenuItem(value: 'invoice', child: Text(l.documentTypeInvoice)),
-        DropdownMenuItem(value: 'receipt', child: Text(l.documentTypeReceipt)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l.billingDocumentType),
+        const SizedBox(height: 8),
+        SegmentedButton<String>(
+          segments: [
+            ButtonSegment(value: 'invoice', label: Text(l.documentTypeInvoice)),
+            ButtonSegment(value: 'receipt', label: Text(l.documentTypeReceipt)),
+          ],
+          selected: {value},
+          onSelectionChanged: (selection) => onChanged(selection.first),
+        ),
       ],
-      onChanged: (v) => onChanged(v ?? 'invoice'),
     );
   }
 }

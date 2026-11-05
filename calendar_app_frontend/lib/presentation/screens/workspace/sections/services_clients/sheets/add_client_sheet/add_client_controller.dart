@@ -230,10 +230,9 @@ class AddClientController {
   bool get hasBillingData =>
       billingFromInputs(includeNulls: false)?.hasData ?? false;
 
-  static const List<String> billingRequiredKeys = [
-    'billingTaxId',
-    'billingCountry',
-  ];
+  List<String> get billingRequiredKeys => billingDocType == 'receipt'
+      ? const ['billingStreet']
+      : const ['billingStreet', 'billingTaxId', 'billingCountry'];
 
   int get billingRequiredTotal => billingRequiredKeys.length;
 

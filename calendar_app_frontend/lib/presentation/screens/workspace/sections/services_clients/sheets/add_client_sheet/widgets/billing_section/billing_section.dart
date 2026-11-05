@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_address_form.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_contact_form.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_document_type.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/widgets/billing_section/billing_legal_and_tax.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -86,6 +87,14 @@ class _BillingSectionState extends State<BillingSection> {
         childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
         children: [
           const SizedBox(height: 6),
+          BillingDocumentType(
+            value: c.billingDocType,
+            onChanged: (value) {
+              setState(() => c.billingDocType = value);
+              widget.onFieldChanged();
+            },
+          ),
+          const SizedBox(height: 12),
           BillingLegalAndTax(
             c: c,
             requireBilling: requireBilling,
