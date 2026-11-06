@@ -1102,8 +1102,8 @@ class _InvoiceEditorView extends StatelessWidget {
                           final bytes =
                               await state._c.fetchHistoricalPdf(inv.id);
                           final fileName = inv.isDraft
-                              ? 'invoice-draft-${inv.id}.pdf'
-                              : 'invoice-${inv.invoiceNumber}.pdf';
+                              ? '${l.localeName.startsWith('es') ? 'factura' : 'invoice'}-draft-${inv.id}.pdf'
+                              : '${l.localeName.startsWith('es') ? 'factura' : 'invoice'}-${inv.invoiceNumber}.pdf';
                           await pdf_launcher.launchPdfPreview(bytes,
                               fileName: fileName);
                         },

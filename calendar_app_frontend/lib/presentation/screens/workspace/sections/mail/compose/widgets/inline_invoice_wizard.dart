@@ -382,8 +382,8 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
       final r = await widget.state._invoicesApi.previewPdf(invoice.id);
       final bytes = InvoiceEditorPdf.validatePdf(r);
       final fileName = invoice.invoiceNumber.trim().isNotEmpty
-          ? 'invoice-${invoice.invoiceNumber.trim()}.pdf'
-          : 'invoice-preview-${invoice.id}.pdf';
+          ? '${l.localeName.startsWith('es') ? 'factura' : 'invoice'}-${invoice.invoiceNumber.trim()}.pdf'
+          : '${l.localeName.startsWith('es') ? 'factura' : 'invoice'}-preview-${invoice.id}.pdf';
       await pdf_launcher.launchPdfPreview(bytes, fileName: fileName);
     } catch (e) {
       if (!mounted) return;
@@ -400,8 +400,8 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel> {
       final r = await widget.state._receiptsApi.previewPdf(receipt.id);
       final bytes = InvoiceEditorPdf.validatePdf(r);
       final fileName = (receipt.receiptNumber?.trim().isNotEmpty == true)
-          ? 'receipt-${receipt.receiptNumber!.trim()}.pdf'
-          : 'receipt-preview-${receipt.id}.pdf';
+          ? '${l.localeName.startsWith('es') ? 'recibo' : 'receipt'}-${receipt.receiptNumber!.trim()}.pdf'
+          : '${l.localeName.startsWith('es') ? 'recibo' : 'receipt'}-preview-${receipt.id}.pdf';
       await pdf_launcher.launchPdfPreview(bytes, fileName: fileName);
     } catch (e) {
       if (!mounted) return;

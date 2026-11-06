@@ -476,6 +476,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
   }
 
   Future<void> _previewHistoricalBudget(Map<String, dynamic> budget) async {
+    final pdfPrefix = Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto' : 'budget';
     final id = (budget['_id'] ?? budget['id'] ?? '').toString();
     final number =
         (budget['presupuestoNumber'] ?? budget['budgetNumber'] ?? 'preview')
@@ -484,7 +485,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
       final r = await _presupuestosApi.previewPdf(id);
       final bytes = InvoiceEditorPdf.validatePdf(r);
       await pdf_launcher.launchPdfPreview(bytes,
-          fileName: 'presupuesto-$number.pdf');
+          fileName: '$pdfPrefix-$number.pdf');
     } catch (e) {
       if (!mounted) return;
       showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
@@ -1385,6 +1386,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
 
   Future<void> _downloadBudgetPdf(Map<String, dynamic> budget) async {
     final l = AppLocalizations.of(context)!;
+    final pdfPrefix = l.localeName.startsWith('es') ? 'presupuesto' : 'budget';
     final id = _budgetId(budget).trim();
     if (id.isEmpty) return;
     try {
@@ -1393,7 +1395,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
           : await _presupuestosApi.downloadPdf(id);
       final number = _budgetNumber(budget).replaceAll('/', '-');
       final fileName =
-          number == '-' ? 'presupuesto-$id.pdf' : 'presupuesto-$number.pdf';
+          number == '-' ? '$pdfPrefix-$id.pdf' : '$pdfPrefix-$number.pdf';
       await launchFileDownload(
         response.bodyBytes,
         fileName: fileName,
@@ -2568,8 +2570,8 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
                     OutlinedButton.icon(
                       onPressed: () async {
                         final fileName = budgetId.isEmpty
-                            ? 'presupuesto-preview.pdf'
-                            : 'presupuesto-$budgetId-preview.pdf';
+                            ? '${Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto' : 'budget'}-preview.pdf'
+                            : '${Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto' : 'budget'}-$budgetId-preview.pdf';
                         await pdf_launcher.launchPdfPreview(
                           Uint8List.fromList(_detailPreviewPdfBytes!),
                           fileName: fileName,

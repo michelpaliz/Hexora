@@ -356,7 +356,7 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
                                     InvoiceEditorPdf.validatePdf(response);
                                 await pdf_launcher.launchPdfPreview(bytes,
                                     fileName:
-                                        'presupuesto-${_budgetNumber(document)}.pdf');
+                                        '${isEs ? 'presupuesto' : 'budget'}-${_budgetNumber(document)}.pdf');
                               }, close: false),
                       icon: const Icon(Icons.picture_as_pdf_outlined),
                       label:
@@ -370,7 +370,7 @@ class _InvoicesMobileViewState extends State<_InvoicesMobileView>
                                     .downloadPdf(_budgetId(document));
                                 await launchFileDownload(response.bodyBytes,
                                     fileName:
-                                        'presupuesto-${_budgetNumber(document)}.pdf',
+                                        '${isEs ? 'presupuesto' : 'budget'}-${_budgetNumber(document)}.pdf',
                                     mimeType: 'application/pdf');
                               }, close: false),
                       icon: const Icon(Icons.download_outlined),

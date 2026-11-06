@@ -159,6 +159,7 @@ $html
       'text': text,
       'html': html,
       'attachInvoicePdf': true,
+      'locale': Localizations.localeOf(context).languageCode,
       'attachPdf': _attachPdf,
       'pdfLink': _attachPdf ? '' : widget.pdfLink,
       'applyDefaultFooter': true,

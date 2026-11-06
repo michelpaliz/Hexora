@@ -1421,8 +1421,8 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       final r = await _receiptsApi.previewPdf(receipt.id);
       final Uint8List bytes = InvoiceEditorPdf.validatePdf(r);
       final fileName = (receipt.receiptNumber?.trim().isNotEmpty == true)
-          ? 'receipt-${receipt.receiptNumber!.trim()}.pdf'
-          : 'receipt-preview.pdf';
+          ? '${l.localeName.startsWith('es') ? 'recibo' : 'receipt'}-${receipt.receiptNumber!.trim()}.pdf'
+          : '${l.localeName.startsWith('es') ? 'recibo' : 'receipt'}-preview.pdf';
       await pdf_launcher.launchPdfPreview(bytes, fileName: fileName);
     } catch (e) {
       if (!mounted) return;
@@ -1442,8 +1442,8 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       final r = await _receiptsApi.downloadPdf(receipt.id);
       final Uint8List bytes = InvoiceEditorPdf.validatePdf(r);
       final fileName = (receipt.receiptNumber?.trim().isNotEmpty == true)
-          ? 'receipt-${receipt.receiptNumber!.trim()}.pdf'
-          : 'receipt.pdf';
+          ? '${l.localeName.startsWith('es') ? 'recibo' : 'receipt'}-${receipt.receiptNumber!.trim()}.pdf'
+          : '${l.localeName.startsWith('es') ? 'recibo' : 'receipt'}.pdf';
       await launchFileDownload(
         bytes,
         fileName: fileName,

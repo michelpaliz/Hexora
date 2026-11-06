@@ -46,6 +46,7 @@ class MailSendRequest {
   final bool? includeInvoiceLinks;
   final bool? applyDefaultFooter;
   final String? templateId;
+  final String? locale;
   final Map<String, dynamic>? templateVars;
 
   const MailSendRequest({
@@ -67,6 +68,7 @@ class MailSendRequest {
     this.includeInvoiceLinks,
     this.applyDefaultFooter,
     this.templateId,
+    this.locale,
     this.templateVars,
   });
 
@@ -94,6 +96,7 @@ class MailSendRequest {
       if (applyDefaultFooter != null) 'applyDefaultFooter': applyDefaultFooter,
       if (templateId != null && templateId!.isNotEmpty)
         'templateId': templateId,
+      if (locale != null) 'locale': locale,
       if (templateVars != null && templateVars!.isNotEmpty)
         'templateVars': templateVars,
     };

@@ -843,7 +843,7 @@ class _PresupuestoTemplateEditorScreenState
         bytes: bytes,
         onDownload: () => launchFileDownload(
           bytes,
-          fileName: 'presupuesto-plantilla-$key-preview.pdf',
+          fileName: '${Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto-plantilla' : 'budget-template'}-$key-preview.pdf',
           mimeType: 'application/pdf',
         ),
       );
@@ -859,6 +859,7 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   Future<void> _previewSavedTemplate(String? templateId) async {
+    final pdfPrefix = Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto-plantilla' : 'budget-template';
     final id = templateId?.trim();
     if (id == null || id.isEmpty || _previewingSavedTemplateId != null) return;
     setState(() => _previewingSavedTemplateId = id);
@@ -866,7 +867,7 @@ class _PresupuestoTemplateEditorScreenState
       final response = await widget.api.previewSavedTemplatePdf(id);
       await launchFileDownload(
         response.bodyBytes,
-        fileName: 'presupuesto-plantilla-$id-preview.pdf',
+        fileName: '$pdfPrefix-$id-preview.pdf',
         mimeType: 'application/pdf',
       );
     } on PresupuestosApiException catch (e) {
@@ -1227,7 +1228,8 @@ class _PresupuestoTemplateEditorScreenState
         (widget.presupuestoNumber ?? _documentFlow.presupuestoId ?? 'documento')
             .replaceAll('/', '-')
             .trim();
-    return 'presupuesto-$number-$suffix.pdf';
+    final prefix = Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto' : 'budget';
+    return '$prefix-$number-$suffix.pdf';
   }
 
   void _moveSection(int index, int delta) {

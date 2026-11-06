@@ -394,6 +394,7 @@ class _PresupuestoInvoiceConversionViewState
   }
 
   Future<void> _previewSelectedPresupuesto() async {
+    final pdfPrefix = Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto' : 'budget';
     final presupuesto = _selectedPresupuesto;
     final presupuestoId = _selectedPresupuestoId?.trim() ?? '';
     if (presupuesto == null || presupuestoId.isEmpty || _previewingPdf) return;
@@ -405,7 +406,7 @@ class _PresupuestoInvoiceConversionViewState
           : await _presupuestosApi.downloadPdf(presupuestoId);
       await pdf_launcher.launchPdfPreview(
         Uint8List.fromList(response.bodyBytes),
-        fileName: 'presupuesto-${_presupuestoNumber(presupuesto)}.pdf',
+        fileName: '$pdfPrefix-${_presupuestoNumber(presupuesto)}.pdf',
       );
     } on PresupuestosApiException catch (e) {
       if (!mounted) return;

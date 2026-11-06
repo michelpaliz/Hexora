@@ -1063,8 +1063,8 @@ extension _GroupInvoicesBudgetsViewStepContentSection
                 OutlinedButton.icon(
                   onPressed: () async {
                     final fileName = previewId.isEmpty
-                        ? 'presupuesto-preview.pdf'
-                        : 'presupuesto-$previewId-preview.pdf';
+                        ? '${l.localeName.startsWith('es') ? 'presupuesto' : 'budget'}-preview.pdf'
+                        : '${l.localeName.startsWith('es') ? 'presupuesto' : 'budget'}-$previewId-preview.pdf';
                     await pdf_launcher.launchPdfPreview(
                       Uint8List.fromList(_previewPdfBytes!),
                       fileName: fileName,
@@ -1419,8 +1419,8 @@ extension _GroupInvoicesBudgetsViewStepContentSection
                                 ? () => _createDraftAndPreparePreview()
                                 : () async {
                                     final fileName = previewId.isEmpty
-                                        ? 'presupuesto-preview.pdf'
-                                        : 'presupuesto-$previewId-preview.pdf';
+                                        ? '${l.localeName.startsWith('es') ? 'presupuesto' : 'budget'}-preview.pdf'
+                                        : '${l.localeName.startsWith('es') ? 'presupuesto' : 'budget'}-$previewId-preview.pdf';
                                     await pdf_launcher.launchPdfPreview(
                                       Uint8List.fromList(_previewPdfBytes!),
                                       fileName: fileName,

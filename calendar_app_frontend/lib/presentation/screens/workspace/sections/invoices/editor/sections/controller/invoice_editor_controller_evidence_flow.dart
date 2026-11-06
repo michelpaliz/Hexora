@@ -1370,12 +1370,13 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
 
   Future<void> previewDraft(BuildContext context, Invoice draft) async {
     final l = AppLocalizations.of(context)!;
+    final pdfPrefix = l.localeName.startsWith('es') ? 'factura' : 'invoice';
     try {
       final r = await _invoicesApi.previewPdf(draft.id);
       final Uint8List bytes = InvoiceEditorPdf.validatePdf(r);
       await pdf_launcher.launchPdfPreview(
         bytes,
-        fileName: 'invoice-draft-${draft.id}.pdf',
+        fileName: '$pdfPrefix-draft-${draft.id}.pdf',
       );
     } catch (e) {
       if (!context.mounted) return;

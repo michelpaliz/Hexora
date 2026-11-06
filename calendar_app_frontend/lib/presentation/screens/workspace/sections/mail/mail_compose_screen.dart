@@ -502,6 +502,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
           'includeLinks=$_includeInvoiceLinks '
           'applyDefaultFooter=$_applyDefaultFooter');
       final request = MailSendRequest(
+        locale: _isSpanishLocale ? 'es' : 'en',
         groupId: groupId,
         replyToMessageId: widget.replyToMessage?.id,
         to: to,
@@ -630,7 +631,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
             .toString()
             .trim()
             .replaceAll(RegExp(r'[^a-zA-Z0-9_-]+'), '-');
-    return 'presupuesto-${number.isEmpty ? id : number}.pdf';
+    return '${_isSpanishLocale ? 'presupuesto' : 'budget'}-${number.isEmpty ? id : number}.pdf';
   }
 
   String? _currentGroupId() {
@@ -1258,7 +1259,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       final bytes = InvoiceEditorPdf.validatePdf(r);
       await pdf_launcher.launchPdfPreview(
         bytes,
-        fileName: 'presupuesto-preview-$id.pdf',
+        fileName: '${_isSpanishLocale ? 'presupuesto' : 'budget'}-preview-$id.pdf',
       );
     } catch (e) {
       if (!mounted) return;

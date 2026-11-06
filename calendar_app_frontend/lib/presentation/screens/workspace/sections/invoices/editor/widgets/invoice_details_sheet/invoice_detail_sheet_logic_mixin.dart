@@ -104,13 +104,14 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
   }
 
   Future<void> _previewPdf() async {
+    final pdfPrefix = Localizations.localeOf(context).languageCode == 'es' ? 'factura' : 'invoice';
     setState(() => _previewing = true);
     try {
       final r = await _invoicesApi.previewPdf(_invoice.id);
       final bytes = _validatePdf(r);
       await pdf_launcher.launchPdfPreview(
         bytes,
-        fileName: 'invoice-${_invoice.invoiceNumber}.pdf',
+        fileName: '$pdfPrefix-${_invoice.invoiceNumber}.pdf',
       );
     } catch (e) {
       if (!mounted) return;
@@ -152,6 +153,7 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
 
   Future<void> _downloadPdf() async {
     if (_downloadingPdf) return;
+    final pdfPrefix = Localizations.localeOf(context).languageCode == 'es' ? 'factura' : 'invoice';
     setState(() => _downloadingPdf = true);
     try {
       final r = await _invoicesApi.downloadPdf(_invoice.id);
@@ -160,11 +162,8 @@ mixin InvoiceDetailSheetLogic on State<InvoiceDetailSheet> {
           : _invoice.id.trim();
       final fallback = invoiceName.endsWith('.pdf')
           ? invoiceName
-          : 'invoice-$invoiceName.pdf';
-      final fileName = downloadFileNameFromHeaders(
-        r.headers,
-        fallback: fallback,
-      );
+          : '$pdfPrefix-$invoiceName.pdf';
+      final fileName = fallback;
       await launchFileDownload(
         r.bodyBytes,
         fileName: fileName,

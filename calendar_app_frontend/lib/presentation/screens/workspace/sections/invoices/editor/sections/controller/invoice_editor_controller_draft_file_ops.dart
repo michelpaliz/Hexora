@@ -42,15 +42,13 @@ extension InvoiceEditorControllerDraftFileOps on InvoiceEditorController {
   }
 
   Future<void> downloadDraftPdf(BuildContext context, Invoice draft) async {
+    final pdfPrefix = Localizations.localeOf(context).languageCode == 'es' ? 'factura' : 'invoice';
     try {
       final r = await _invoicesApi.downloadPdf(draft.id);
       final invoiceNumber = draft.invoiceNumber.trim();
-      final fileName = downloadFileNameFromHeaders(
-        r.headers,
-        fallback: invoiceNumber.isEmpty
-            ? 'BORRADOR.pdf'
-            : 'invoice-$invoiceNumber.pdf',
-      );
+      final fileName = invoiceNumber.isEmpty
+          ? '$pdfPrefix-draft-${draft.id}.pdf'
+          : '$pdfPrefix-$invoiceNumber.pdf';
       await launchFileDownload(
         r.bodyBytes,
         fileName: fileName,

@@ -176,12 +176,13 @@ class _PresupuestoDocumentActionsViewState
     Map<String, dynamic> document, {
     required bool preview,
   }) async {
+    final pdfPrefix = Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto' : 'budget';
     final id = presupuestoDocumentId(document);
     if (id.isEmpty || _fileBusyId != null) return;
     setState(() => _fileBusyId = id);
     try {
       final number = _documentNumber(document).replaceAll('/', '-');
-      final fileName = 'presupuesto-$number-documento.pdf';
+      final fileName = '$pdfPrefix-$number-documento.pdf';
       final variables = await _api.getTemplateVariables(id);
       if (!mounted ||
           !await _confirmUnresolvedVariables(

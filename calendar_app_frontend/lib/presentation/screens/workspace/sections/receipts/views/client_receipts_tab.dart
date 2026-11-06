@@ -87,8 +87,8 @@ class _ClientReceiptsTabState extends State<ClientReceiptsTab> {
       final response = await _api.previewPdf(receipt.id);
       final bytes = InvoiceEditorPdf.validatePdf(response);
       final fileName = (receipt.receiptNumber?.trim().isNotEmpty == true)
-          ? 'receipt-${receipt.receiptNumber!.trim()}.pdf'
-          : 'receipt-preview.pdf';
+          ? '${l.localeName.startsWith('es') ? 'recibo' : 'receipt'}-${receipt.receiptNumber!.trim()}.pdf'
+          : '${l.localeName.startsWith('es') ? 'recibo' : 'receipt'}-preview.pdf';
       await pdf_launcher.launchPdfPreview(bytes, fileName: fileName);
     } catch (e) {
       if (!mounted) return;

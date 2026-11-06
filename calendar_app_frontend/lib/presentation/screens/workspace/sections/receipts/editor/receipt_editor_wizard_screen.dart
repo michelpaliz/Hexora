@@ -154,8 +154,8 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
       final response = await _receiptsApi.previewPdf(r.id);
       final bytes = InvoiceEditorPdf.validatePdf(response);
       final fileName = (r.receiptNumber?.trim().isNotEmpty == true)
-          ? 'receipt-${r.receiptNumber!.trim()}.pdf'
-          : 'receipt-preview.pdf';
+          ? '${l.localeName.startsWith('es') ? 'recibo' : 'receipt'}-${r.receiptNumber!.trim()}.pdf'
+          : '${l.localeName.startsWith('es') ? 'recibo' : 'receipt'}-preview.pdf';
       await pdf_launcher.launchPdfPreview(bytes, fileName: fileName);
     } catch (e) {
       if (!mounted) return;

@@ -412,7 +412,7 @@ class _TelegramClientDocumentPickerDialogState
           ? _TelegramClientDocumentType.draft
           : _TelegramClientDocumentType.invoice,
       fileName:
-          'invoice-${_safeFileName(title.isEmpty ? invoice.id : title)}.pdf',
+          '${_isSpanish ? 'factura' : 'invoice'}-${_safeFileName(title.isEmpty ? invoice.id : title)}.pdf',
       loadBytes: () async {
         final response = await _invoicesApi.previewPdf(invoice.id);
         return response.bodyBytes;
@@ -445,7 +445,7 @@ class _TelegramClientDocumentPickerDialogState
       icon: Icons.receipt_rounded,
       type: _TelegramClientDocumentType.receipt,
       fileName:
-          'receipt-${_safeFileName(title.isEmpty ? receipt.id : title)}.pdf',
+          '${_isSpanish ? 'recibo' : 'receipt'}-${_safeFileName(title.isEmpty ? receipt.id : title)}.pdf',
       loadBytes: () async {
         final response = await _receiptsApi.previewPdf(receipt.id);
         return response.bodyBytes;
@@ -486,7 +486,7 @@ class _TelegramClientDocumentPickerDialogState
       statusLabel: status,
       icon: Icons.request_quote_rounded,
       type: _TelegramClientDocumentType.presupuesto,
-      fileName: 'presupuesto-${_safeFileName(title.isEmpty ? id : title)}.pdf',
+      fileName: '${_isSpanish ? 'presupuesto' : 'budget'}-${_safeFileName(title.isEmpty ? id : title)}.pdf',
       loadBytes: () async {
         final response = await _presupuestosApi.previewPdf(id);
         return response.bodyBytes;
