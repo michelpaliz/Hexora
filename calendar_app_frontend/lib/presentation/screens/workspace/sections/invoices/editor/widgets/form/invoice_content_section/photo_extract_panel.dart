@@ -348,12 +348,24 @@ class InvoicePhotoExtractPanel extends StatelessWidget {
               dividerColor: Colors.transparent,
               tabs: [
                 Tab(
-                  icon: const Icon(Icons.auto_awesome_outlined, size: 18),
-                  text: isEs ? 'Chat IA' : 'AI chat',
+                  height: 40,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.auto_awesome_outlined, size: 18),
+                      const SizedBox(width: 7),
+                      Text(isEs ? 'Chat IA' : 'AI chat'),
+                    ],
+                  ),
                 ),
                 Tab(
-                  icon: const Icon(Icons.document_scanner_outlined, size: 18),
-                  text: isEs ? 'Extracción rápida' : 'Quick extraction',
+                  height: 40,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.document_scanner_outlined, size: 18),
+                      const SizedBox(width: 7),
+                      Text(isEs ? 'Extracción rápida' : 'Quick extraction'),
+                    ],
+                  ),
                 ),
               ],
             ),

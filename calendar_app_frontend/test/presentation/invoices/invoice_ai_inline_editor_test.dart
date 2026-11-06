@@ -58,7 +58,12 @@ void main() {
       find.byKey(const ValueKey('invoice-ai-inline-editor')),
       findsOneWidget,
     );
-    expect(find.text('Crear factura con IA'), findsOneWidget);
+    expect(find.text('¿Qué quieres incluir en la factura?'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('invoice-ai-composer')),
+      findsOneWidget,
+    );
+    expect(find.text('Crear factura con IA'), findsNothing);
     expect(find.text('Cancelar'), findsNothing);
 
     await tester.tap(find.text('Extracción rápida'));

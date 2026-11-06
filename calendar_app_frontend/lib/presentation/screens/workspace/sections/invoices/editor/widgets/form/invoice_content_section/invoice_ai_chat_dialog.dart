@@ -409,108 +409,302 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
 
   Widget _buildChatPane(BuildContext context, bool isEs) {
     final colors = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(isEs ? 'Chat' : 'Chat',
-            style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
-        Expanded(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: colors.surfaceContainerLowest,
-              border: Border.all(color: colors.outlineVariant),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ListView(
-              padding: const EdgeInsets.all(10),
-              children: [
-                if (_messages.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Text(isEs
-                        ? 'Pega tus notas o adjunta una imagen o PDF. Revisa las líneas propuestas y pide correcciones aquí.'
-                        : 'Paste your notes or attach an image or PDF. Review the proposed lines and ask for changes here.'),
-                  ),
-                for (final item in _messages)
-                  Align(
-                    alignment: item['role'] == 'user'
-                        ? Alignment.centerRight
-                        : Alignment.centerLeft,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 480),
-                      child: Card(
-                        color: item['role'] == 'user'
-                            ? colors.primaryContainer
-                            : colors.surfaceContainerHigh,
-                        child: Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: Text(item['text'] ?? ''),
+    final textTheme = Theme.of(context).textTheme;
+    final prompts = isEs
+        ? const [
+            'Añade estos trabajos y precios',
+            'Organiza las líneas por fecha',
+            'Revisa y corrige mi borrador',
+          ]
+        : const [
+            'Add these jobs and prices',
+            'Organize the lines by date',
+            'Review and correct my draft',
+          ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: ListView(
+                  key: const ValueKey('invoice-ai-conversation'),
+                  padding: const EdgeInsets.fromLTRB(12, 20, 12, 24),
+                  children: [
+                    if (_messages.isEmpty) ...[
+                      SizedBox(
+                          height: (constraints.maxHeight * .13).clamp(8, 72)),
+                      Center(
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: colors.primaryContainer,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.auto_awesome_rounded,
+                            color: colors.primary,
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                      Text(
+                        isEs
+                            ? '¿Qué quieres incluir en la factura?'
+                            : 'What would you like to include in the invoice?',
+                        textAlign: TextAlign.center,
+                        style: textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        isEs
+                            ? 'Describe el trabajo o adjunta una imagen o PDF. Podrás revisar cada línea antes de añadirla.'
+                            : 'Describe the work or attach an image or PDF. You can review every line before adding it.',
+                        textAlign: TextAlign.center,
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final prompt in prompts)
+                            ActionChip(
+                              label: Text(prompt),
+                              onPressed: _sending
+                                  ? null
+                                  : () {
+                                      _message.text = prompt;
+                                      _message.selection =
+                                          TextSelection.collapsed(
+                                        offset: _message.text.length,
+                                      );
+                                      _messageFocus.requestFocus();
+                                    },
+                            ),
+                        ],
+                      ),
+                    ] else
+                      for (final item in _messages)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 18),
+                          child: item['role'] == 'user'
+                              ? Align(
+                                  alignment: Alignment.centerRight,
+                                  child: ConstrainedBox(
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 560),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 11,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: colors.surfaceContainerHigh,
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Text(item['text'] ?? ''),
+                                    ),
+                                  ),
+                                )
+                              : Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: BoxDecoration(
+                                        color: colors.primaryContainer,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.auto_awesome_rounded,
+                                        size: 16,
+                                        color: colors.primary,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: SelectableText(
+                                          item['text'] ?? '',
+                                          style: textTheme.bodyMedium?.copyWith(
+                                            height: 1.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (_error != null)
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
                   ),
-              ],
+                  decoration: BoxDecoration(
+                    color: colors.errorContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    _error!,
+                    style: TextStyle(color: colors.onErrorContainer),
+                  ),
+                ),
+              ),
+            ),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: Container(
+                key: const ValueKey('invoice-ai-composer'),
+                margin: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: colors.outlineVariant.withValues(alpha: .7),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.shadow.withValues(alpha: .08),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    if (_file != null)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.fromLTRB(8, 6, 4, 6),
+                        decoration: BoxDecoration(
+                          color: colors.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(children: [
+                          if (!_file!.fileName.toLowerCase().endsWith('.pdf'))
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(7),
+                              child: Image.memory(
+                                Uint8List.fromList(_file!.bytes),
+                                width: 34,
+                                height: 34,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.image_not_supported_outlined,
+                                ),
+                              ),
+                            )
+                          else
+                            const Icon(Icons.picture_as_pdf_outlined),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _file!.fileName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: isEs ? 'Quitar archivo' : 'Remove file',
+                            onPressed: _sending
+                                ? null
+                                : () => setState(() => _file = null),
+                            icon: const Icon(Icons.close, size: 18),
+                          ),
+                        ]),
+                      ),
+                    TextField(
+                      controller: _message,
+                      focusNode: _messageFocus,
+                      minLines: 1,
+                      maxLines: 5,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        filled: false,
+                        hintText: isEs
+                            ? 'Escribe cómo quieres crear la factura...'
+                            : 'Describe how you want to create the invoice...',
+                        contentPadding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
+                      ),
+                      onSubmitted: (_) => _send(),
+                    ),
+                    Row(children: [
+                      IconButton(
+                        tooltip: isEs
+                            ? 'Adjuntar imagen o PDF'
+                            : 'Attach image or PDF',
+                        onPressed: _sending ? null : _pickFile,
+                        icon: const Icon(Icons.add_rounded),
+                      ),
+                      if (_file == null)
+                        Text(
+                          isEs ? 'Imagen o PDF' : 'Image or PDF',
+                          style: textTheme.labelMedium?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      const Spacer(),
+                      IconButton.filled(
+                        tooltip: isEs ? 'Enviar' : 'Send',
+                        onPressed: _sending ? null : _send,
+                        icon: _sending
+                            ? SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: colors.onPrimary,
+                                ),
+                              )
+                            : const Icon(Icons.arrow_upward_rounded),
+                      ),
+                    ]),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
-        if (_error != null) ...[
-          const SizedBox(height: 8),
-          Text(_error!, style: TextStyle(color: colors.error)),
-        ],
-        if (_file != null) ...[
-          const SizedBox(height: 8),
-          Row(children: [
-            if (!_file!.fileName.toLowerCase().endsWith('.pdf'))
-              Image.memory(Uint8List.fromList(_file!.bytes),
-                  width: 42,
-                  height: 42,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
-                      const Icon(Icons.image_not_supported_outlined)),
-            const SizedBox(width: 8),
-            Expanded(
-                child: Text(_file!.fileName, overflow: TextOverflow.ellipsis)),
-            IconButton(
-              onPressed: _sending ? null : () => setState(() => _file = null),
-              icon: const Icon(Icons.close),
+          const SizedBox(height: 6),
+          Text(
+            isEs
+                ? 'Revisa siempre las líneas antes de añadirlas al borrador.'
+                : 'Always review the lines before adding them to the draft.',
+            textAlign: TextAlign.center,
+            style: textTheme.bodySmall?.copyWith(
+              color: colors.onSurfaceVariant,
             ),
-          ]),
+          ),
         ],
-        const SizedBox(height: 8),
-        TextField(
-          controller: _message,
-          focusNode: _messageFocus,
-          minLines: 1,
-          maxLines: 3,
-          decoration: InputDecoration(
-            border: const OutlineInputBorder(),
-            hintText: isEs
-                ? 'Pega notas con fechas, trabajos y precios o describe el archivo...'
-                : 'Paste notes with dates, work, and prices or describe the file...',
-          ),
-          onSubmitted: (_) => _send(),
-        ),
-        const SizedBox(height: 8),
-        Row(children: [
-          OutlinedButton.icon(
-            onPressed: _sending ? null : _pickFile,
-            icon: const Icon(Icons.attach_file),
-            label: Text(isEs ? 'Imagen o PDF' : 'Image or PDF'),
-          ),
-          const Spacer(),
-          FilledButton.icon(
-            onPressed: _sending ? null : _send,
-            icon: _sending
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.send),
-            label: Text(isEs ? 'Enviar' : 'Send'),
-          ),
-        ]),
-      ],
+      ),
     );
   }
 
@@ -696,30 +890,31 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(children: [
-            const Icon(Icons.auto_awesome_outlined),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                  isEs ? 'Crear factura con IA' : 'Create invoice with AI',
-                  style: Theme.of(context).textTheme.titleLarge),
-            ),
-            if (!widget.embedded)
+          if (!widget.embedded) ...[
+            Row(children: [
+              const Icon(Icons.auto_awesome_outlined),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                    isEs ? 'Crear factura con IA' : 'Create invoice with AI',
+                    style: Theme.of(context).textTheme.titleLarge),
+              ),
               IconButton(
                 tooltip: isEs ? 'Cerrar' : 'Close',
                 onPressed: _sending ? null : () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.close),
               ),
-          ]),
-          const SizedBox(height: 4),
-          Text(isEs
-              ? 'Escribe o adjunta un archivo a la izquierda y edita las líneas de la factura a la derecha.'
-              : 'Write or attach a file on the left and edit the invoice lines on the right.'),
-          const SizedBox(height: 16),
+            ]),
+            const SizedBox(height: 4),
+            Text(isEs
+                ? 'Escribe o adjunta un archivo a la izquierda y edita las líneas de la factura a la derecha.'
+                : 'Write or attach a file on the left and edit the invoice lines on the right.'),
+            const SizedBox(height: 16),
+          ],
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                if (constraints.maxWidth >= 700) {
+                if (constraints.maxWidth >= 980) {
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -732,15 +927,28 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                     ],
                   );
                 }
-                return Column(
-                  children: [
-                    Expanded(flex: 5, child: _buildChatPane(context, isEs)),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      flex: 4,
-                      child: _buildInvoicePreview(context, isEs),
-                    ),
-                  ],
+                return DefaultTabController(
+                  length: 2,
+                  child: Column(
+                    children: [
+                      TabBar(
+                        dividerColor: Colors.transparent,
+                        tabs: [
+                          Tab(text: isEs ? 'Conversación' : 'Conversation'),
+                          Tab(text: isEs ? 'Borrador' : 'Draft'),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Expanded(
+                        child: TabBarView(
+                          children: [
+                            _buildChatPane(context, isEs),
+                            _buildInvoicePreview(context, isEs),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 );
               },
             ),
@@ -764,14 +972,8 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
     );
 
     if (widget.embedded) {
-      final colors = Theme.of(context).colorScheme;
-      return Container(
+      return KeyedSubtree(
         key: const ValueKey('invoice-ai-inline-editor'),
-        decoration: BoxDecoration(
-          color: colors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colors.outlineVariant),
-        ),
         child: content,
       );
     }
