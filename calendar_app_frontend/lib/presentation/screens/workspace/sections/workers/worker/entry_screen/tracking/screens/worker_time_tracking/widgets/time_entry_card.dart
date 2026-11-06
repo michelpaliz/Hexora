@@ -5,7 +5,6 @@ import 'package:hexora/presentation/screens/workspace/sections/workers/worker/en
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:intl/intl.dart';
 
 class TimeEntryCard extends StatelessWidget {
@@ -99,7 +98,6 @@ class TimeEntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final text = AppTypography.of(context);
     final l = AppLocalizations.of(context)!;
     final locale = Localizations.localeOf(context).toLanguageTag();
     final start = entry.start.toLocal();
@@ -110,117 +108,214 @@ class TimeEntryCard extends StatelessWidget {
     final date = DateFormat('EEEE, d MMM y', locale);
     final time = DateFormat.Hm(locale);
 
+    final dateBlock = SizedBox(
+      width: 40,
+      height: 40,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          color: colors.surfaceContainerHighest.withValues(alpha: .52),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              month.format(start).toUpperCase(),
+              style: TextStyle(
+                fontSize: 10,
+                height: 1,
+                letterSpacing: .35,
+                fontWeight: FontWeight.w600,
+                color: colors.primary,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              day.format(start),
+              style: TextStyle(
+                fontSize: 14,
+                height: 1,
+                fontWeight: FontWeight.w600,
+                color: colors.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    final dateLabel = Text(
+      _capitalize(date.format(start)),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 13,
+        height: 1.2,
+        fontWeight: FontWeight.w600,
+        color: colors.onSurface,
+      ),
+    );
+    final statusChip = _EntryChip(
+      label: end != null ? l.completed : l.inProgress,
+      icon: end != null
+          ? Icons.check_circle_outline_rounded
+          : Icons.timelapse_rounded,
+      color: end != null ? colors.primary : colors.secondary,
+      fontSize: 11,
+    );
+    final durationChip = end != null && duration != null
+        ? _EntryChip(
+            label: _durationLabel(duration),
+            icon: Icons.schedule_rounded,
+            color: colors.onSurfaceVariant,
+            fontSize: 12,
+          )
+        : null;
+    final timeRange = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.schedule_rounded, size: 15, color: colors.onSurfaceVariant),
+        const SizedBox(width: 5),
+        Text(
+          end != null ? '${time.format(start)}–${time.format(end)}' : l.ongoing,
+          style: TextStyle(
+            fontSize: 12.5,
+            height: 1,
+            fontWeight: FontWeight.w500,
+            color: colors.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+    final actions = PopupMenuButton<_EntryAction>(
+      tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+      icon: const Icon(Icons.more_vert_rounded),
+      iconSize: 18,
+      style: IconButton.styleFrom(
+        minimumSize: const Size(32, 32),
+        fixedSize: const Size(32, 32),
+        padding: EdgeInsets.zero,
+        visualDensity: VisualDensity.compact,
+        foregroundColor: colors.onSurfaceVariant,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      onSelected: (action) {
+        if (action == _EntryAction.edit) {
+          _edit(context);
+        } else {
+          _delete(context);
+        }
+      },
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: _EntryAction.edit,
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.edit_outlined, size: 19),
+            title: Text(l.edit),
+          ),
+        ),
+        PopupMenuItem(
+          value: _EntryAction.delete,
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.delete_outline_rounded,
+                size: 19, color: colors.error),
+            title: Text(l.delete),
+          ),
+        ),
+      ],
+    );
+
     return Dismissible(
       key: ValueKey('time-entry-${entry.id}'),
       direction: DismissDirection.horizontal,
       background: _swipeBackground(context, Alignment.centerLeft),
       secondaryBackground: _swipeBackground(context, Alignment.centerRight),
       confirmDismiss: (_) => _delete(context),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _edit(context),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: colors.outlineVariant.withValues(alpha: .34))),
-          child: Row(children: [
-            Container(
-                width: 54,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    color: colors.primary.withValues(alpha: .08)),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text(month.format(start).toUpperCase(),
-                      style: text.caption.copyWith(
-                          letterSpacing: .6,
-                          fontWeight: FontWeight.w700,
-                          color: colors.primary)),
-                  const SizedBox(height: 2),
-                  Text(day.format(start),
-                      style: text.bodyMedium
-                          .copyWith(fontWeight: FontWeight.w700)),
-                ])),
-            const SizedBox(width: 14),
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Text(_capitalize(date.format(start)),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.bodyMedium
-                          .copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 6),
-                  Wrap(spacing: 6, runSpacing: 4, children: [
-                    _EntryChip(
-                        label: end != null ? l.completed : l.inProgress,
-                        icon: end != null
-                            ? Icons.check_circle_outline_rounded
-                            : Icons.timelapse_rounded,
-                        color: end != null ? colors.primary : colors.secondary),
-                    if (end != null && duration != null)
-                      _EntryChip(
-                          label: _durationLabel(duration),
-                          icon: Icons.schedule_rounded,
-                          color: colors.onSurfaceVariant),
-                  ]),
-                ])),
-            const SizedBox(width: 12),
-            if (end != null) ...[
-              Icon(Icons.schedule_rounded,
-                  size: 18, color: colors.onSurfaceVariant),
-              const SizedBox(width: 6),
-              Text('${time.format(start)}–${time.format(end)}',
-                  style:
-                      text.bodySmall.copyWith(color: colors.onSurfaceVariant)),
-            ] else
-              Text(l.ongoing,
-                  style:
-                      text.bodySmall.copyWith(color: colors.onSurfaceVariant)),
-            const SizedBox(width: 12),
-            PopupMenuButton<_EntryAction>(
-              tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
-              icon: const Icon(Icons.more_vert_rounded),
-              iconSize: 20,
-              style: IconButton.styleFrom(
-                  minimumSize: const Size(36, 36),
-                  fixedSize: const Size(36, 36),
-                  padding: EdgeInsets.zero,
-                  backgroundColor:
-                      colors.surfaceContainerHighest.withValues(alpha: .55),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10))),
-              onSelected: (action) {
-                if (action == _EntryAction.edit) {
-                  _edit(context);
-                } else {
-                  _delete(context);
-                }
-              },
-              itemBuilder: (_) => [
-                PopupMenuItem(
-                    value: _EntryAction.edit,
-                    child: ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.edit_outlined, size: 19),
-                        title: Text(l.edit))),
-                PopupMenuItem(
-                    value: _EntryAction.delete,
-                    child: ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(Icons.delete_outline_rounded,
-                            size: 19, color: colors.error),
-                        title: Text(l.delete))),
-              ],
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 52),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          border: Border(
+            bottom: BorderSide(
+              color: colors.outlineVariant.withValues(alpha: .38),
             ),
-          ]),
+          ),
+        ),
+        child: InkWell(
+          onTap: () => _edit(context),
+          hoverColor: colors.surfaceContainerHighest.withValues(alpha: .34),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 620;
+                if (compact) {
+                  return Row(
+                    children: [
+                      dateBlock,
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            dateLabel,
+                            const SizedBox(height: 3),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(child: statusChip),
+                                if (durationChip != null) ...[
+                                  const SizedBox(width: 5),
+                                  Flexible(child: durationChip),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      timeRange,
+                      const SizedBox(width: 4),
+                      actions,
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    dateBlock,
+                    const SizedBox(width: 10),
+                    SizedBox(width: 180, child: dateLabel),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 98,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: statusChip,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    SizedBox(
+                      width: 82,
+                      child: durationChip == null
+                          ? const SizedBox.shrink()
+                          : Align(
+                              alignment: Alignment.centerLeft,
+                              child: durationChip,
+                            ),
+                    ),
+                    const Spacer(),
+                    timeRange,
+                    const SizedBox(width: 8),
+                    actions,
+                  ],
+                );
+              },
+            ),
+          ),
         ),
       ),
     );
@@ -229,24 +324,37 @@ class TimeEntryCard extends StatelessWidget {
 
 class _EntryChip extends StatelessWidget {
   const _EntryChip(
-      {required this.label, required this.icon, required this.color});
+      {required this.label,
+      required this.icon,
+      required this.color,
+      required this.fontSize});
   final String label;
   final IconData icon;
   final Color color;
+  final double fontSize;
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
-            color: color.withValues(alpha: .08),
-            border: Border.all(color: color.withValues(alpha: .2))),
+            borderRadius: BorderRadius.circular(7),
+            color: color.withValues(alpha: .07)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
-          Text(label,
-              style: AppTypography.of(context).caption.copyWith(
-                  height: 1, fontWeight: FontWeight.w600, color: color)),
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 3),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: fontSize,
+                height: 1,
+                fontWeight: FontWeight.w500,
+                color: color,
+              ),
+            ),
+          ),
         ]),
       );
 }

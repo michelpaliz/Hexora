@@ -10,20 +10,20 @@ class TimeEntryHeaderStrip extends StatelessWidget {
     super.key,
     required this.l,
     required this.t,
-    required this.workers,
+    this.worker,
     this.onBack,
   });
 
   final AppLocalizations l;
   final AppTypography t;
-  final List<Worker> workers;
+  final Worker? worker;
   final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final worker = workers.length == 1 ? workers.single : null;
-    final active = worker?.status == WorkerStatus.active;
+    final currentWorker = worker;
+    final active = currentWorker?.status == WorkerStatus.active;
     return SizedBox(
       height: 42,
       child: Row(children: [
@@ -39,7 +39,8 @@ class TimeEntryHeaderStrip extends StatelessWidget {
         ],
         Text(
           l.addTimeEntryCta,
-          style: t.bodyMedium.copyWith(
+          style: t.titleLarge.copyWith(
+            fontSize: 16,
             fontWeight: FontWeight.w800,
             color: cs.onSurface,
           ),
@@ -47,16 +48,22 @@ class TimeEntryHeaderStrip extends StatelessWidget {
         const SizedBox(width: 4),
         Tooltip(
           message: l.localeName.startsWith('es')
-              ? 'Selecciona los trabajadores y el horario que quieres registrar.'
-              : 'Select the workers and schedule you want to register.',
+              ? worker == null
+                  ? 'Selecciona los trabajadores y el horario que quieres registrar.'
+                  : 'Selecciona el horario que quieres registrar para este trabajador.'
+              : worker == null
+                  ? 'Select the workers and schedule you want to register.'
+                  : 'Select the schedule to register for this worker.',
           child: Icon(Icons.info_outline_rounded,
               size: 17, color: cs.onSurfaceVariant),
         ),
         const Spacer(),
-        if (worker != null) ...[
+        if (currentWorker != null) ...[
           Flexible(
             child: Text(
-              worker.displayName ?? worker.userId ?? l.unknownWorker,
+              currentWorker.displayName ??
+                  currentWorker.userId ??
+                  l.unknownWorker,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: t.bodySmall.copyWith(

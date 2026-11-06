@@ -105,12 +105,6 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
     final cs = widget.cs;
     final ts = widget.ts;
     final isEs = Localizations.localeOf(context).languageCode == 'es';
-    final steps = [
-      (icon: Icons.upload_file_outlined, label: 'Sube tus documentos'),
-      (icon: Icons.auto_awesome_outlined, label: 'Hexora analiza con IA'),
-      (icon: Icons.checklist_rounded, label: 'Revisa incidencias'),
-      (icon: Icons.check_circle_outline_rounded, label: 'Importa al instante'),
-    ];
     final webDropEnabled = kIsWeb &&
         widget.onDropWebDocuments != null &&
         FlutterDropzonePlatform.instance.runtimeType.toString() ==
@@ -252,33 +246,6 @@ class _BatchOnboardingFlowState extends State<_BatchOnboardingFlow> {
               ),
             ],
           ),
-          const SizedBox(height: 22),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 680),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < steps.length; i++) ...[
-                  _OnboardingStep(
-                    icon: steps[i].icon,
-                    label: steps[i].label,
-                    index: i + 1,
-                    cs: cs,
-                    ts: ts,
-                  ),
-                  if (i < steps.length - 1)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: Icon(
-                        Icons.arrow_forward_rounded,
-                        size: 13,
-                        color: cs.primary.withValues(alpha: 0.35),
-                      ),
-                    ),
-                ],
-              ],
-            ),
-          ),
           const SizedBox(height: 18),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
@@ -395,63 +362,4 @@ class _BatchLimitItem extends StatelessWidget {
           ),
         ],
       );
-}
-
-class _OnboardingStep extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final int index;
-  final ColorScheme cs;
-  final TextTheme ts;
-
-  const _OnboardingStep({
-    required this.icon,
-    required this.label,
-    required this.index,
-    required this.cs,
-    required this.ts,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Flexible(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-        decoration: BoxDecoration(
-          color: cs.primaryContainer.withValues(alpha: 0.22),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: cs.primary.withValues(alpha: 0.18),
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Icon(icon, size: 15, color: cs.primary),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: ts.bodySmall?.copyWith(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-                color: cs.onSurface,
-                height: 1.25,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

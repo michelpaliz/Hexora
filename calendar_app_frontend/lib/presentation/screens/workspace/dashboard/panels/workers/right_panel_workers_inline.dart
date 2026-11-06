@@ -842,6 +842,7 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
             key: ValueKey('worker-entry-${_selectedWorker!.id}'),
             group: widget.group,
             workers: [_selectedWorker!],
+            fixedWorker: _selectedWorker,
             embedded: true,
             initialSelectedIds: {_selectedWorker!.id},
             onCancel: () => setState(() {

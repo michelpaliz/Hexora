@@ -4,6 +4,7 @@ import 'package:hexora/models/time_tracking/time_entry.dart';
 import 'package:hexora/models/workers/worker.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/sections/actions_section.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/sections/notes_section.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/sections/time_entry_header_strip.dart';
@@ -26,6 +27,7 @@ class CreateTimeEntryScreen extends StatefulWidget {
     this.onCreated,
     this.onCancel,
     this.showHeader = true,
+    this.fixedWorker,
   }) : assert(workers.length > 0);
 
   final Group group;
@@ -35,6 +37,7 @@ class CreateTimeEntryScreen extends StatefulWidget {
   final VoidCallback? onCreated;
   final VoidCallback? onCancel;
   final bool showHeader;
+  final Worker? fixedWorker;
 
   @override
   State<CreateTimeEntryScreen> createState() => _CreateTimeEntryScreenState();
@@ -50,9 +53,11 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedWorkerIds = widget.initialSelectedIds != null
-        ? Set<String>.from(widget.initialSelectedIds!)
-        : {widget.workers.first.id};
+    _selectedWorkerIds = widget.fixedWorker != null
+        ? {widget.fixedWorker!.id}
+        : widget.initialSelectedIds != null
+            ? Set<String>.from(widget.initialSelectedIds!)
+            : {widget.workers.first.id};
     final now = DateTime.now();
     _end = now;
     _start = now.subtract(const Duration(hours: 1));
@@ -73,7 +78,7 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
       _end.hour,
       _end.minute,
     );
-    return syncedEnd.isBefore(start)
+    return !syncedEnd.isAfter(start)
         ? start.add(const Duration(hours: 1))
         : syncedEnd;
   }
@@ -123,7 +128,7 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
           .showSnackBar(SnackBar(content: Text(l.workerRequiredError)));
       return;
     }
-    if (_end.isBefore(_start)) {
+    if (!_end.isAfter(_start)) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(l.invalidTimeRange)));
       return;
@@ -133,9 +138,11 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
     try {
       final repo = context.read<ITimeTrackingRepository>();
       final token = await context.read<UserDomain>().getAuthToken();
-      final selected = widget.workers
-          .where((w) => _selectedWorkerIds.contains(w.id))
-          .toList();
+      final selected = widget.fixedWorker != null
+          ? [widget.fixedWorker!]
+          : widget.workers
+              .where((w) => _selectedWorkerIds.contains(w.id))
+              .toList();
 
       for (final w in selected) {
         final entry = TimeEntry.newEntry(
@@ -162,8 +169,13 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
+      showFailureSnack(
+        context,
+        e,
+        title: l.localeName.startsWith('es')
+            ? 'No se pudieron registrar las horas'
+            : 'Could not add the time entry',
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -197,7 +209,7 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
             child: TimeEntryHeaderStrip(
               l: l,
               t: t,
-              workers: widget.workers,
+              worker: widget.fixedWorker,
               onBack: cancel,
             ),
           ),
@@ -207,29 +219,33 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                WorkerSelectionSection(
-                  workers: widget.workers,
-                  selectedIds: _selectedWorkerIds,
-                  onSelectAll: () => setState(
-                    () => _selectedWorkerIds =
-                        widget.workers.map((w) => w.id).toSet(),
+                if (widget.fixedWorker == null) ...[
+                  WorkerSelectionSection(
+                    workers: widget.workers,
+                    selectedIds: _selectedWorkerIds,
+                    onSelectAll: () => setState(
+                      () => _selectedWorkerIds =
+                          widget.workers.map((w) => w.id).toSet(),
+                    ),
+                    onClear: () => setState(() => _selectedWorkerIds.clear()),
+                    onToggle: (id, selected) => setState(() {
+                      if (selected) {
+                        _selectedWorkerIds.add(id);
+                      } else {
+                        _selectedWorkerIds.remove(id);
+                      }
+                    }),
                   ),
-                  onClear: () => setState(() => _selectedWorkerIds.clear()),
-                  onToggle: (id, selected) => setState(() {
-                    if (selected) {
-                      _selectedWorkerIds.add(id);
-                    } else {
-                      _selectedWorkerIds.remove(id);
-                    }
-                  }),
-                ),
-                const SizedBox(height: 10),
+                  const SizedBox(height: 10),
+                ],
                 TimeSummarySection(
                   start: _start,
                   end: _end,
                   dateFormat: dateFormat,
                   timeFormat: timeFormat,
-                  selectedCount: selectedWorkers.length,
+                  selectedCount: widget.fixedWorker == null
+                      ? selectedWorkers.length
+                      : null,
                 ),
                 const SizedBox(height: 12),
                 TimePickersSection(
@@ -270,25 +286,34 @@ class _CreateTimeEntryScreenState extends State<CreateTimeEntryScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: widget.fixedWorker == null,
         backgroundColor: cs.surface,
         iconTheme: IconThemeData(color: ThemeColors.textPrimary(context)),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              l.addTimeEntryCta,
-              style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(width: 6),
-            Tooltip(
-              message: l.localeName.startsWith('es')
-                  ? 'Selecciona los trabajadores y el horario que quieres registrar.'
-                  : 'Select the workers and schedule you want to register.',
-              child: Icon(Icons.info_outline_rounded,
-                  size: 18, color: cs.onSurfaceVariant),
-            ),
-          ],
-        ),
+        titleSpacing: widget.fixedWorker == null ? null : 8,
+        title: widget.fixedWorker != null
+            ? TimeEntryHeaderStrip(
+                l: l,
+                t: t,
+                worker: widget.fixedWorker,
+                onBack: cancel,
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l.addTimeEntryCta,
+                    style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(width: 6),
+                  Tooltip(
+                    message: l.localeName.startsWith('es')
+                        ? 'Selecciona los trabajadores y el horario que quieres registrar.'
+                        : 'Select the workers and schedule you want to register.',
+                    child: Icon(Icons.info_outline_rounded,
+                        size: 18, color: cs.onSurfaceVariant),
+                  ),
+                ],
+              ),
       ),
       body: content,
     );

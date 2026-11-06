@@ -202,8 +202,10 @@ class TimeTrackingApiClient implements ITimeTrackingApiClient {
       body: jsonEncode(entry.toCreateJson()),
     );
     if (res.statusCode != 201 && res.statusCode != 200) {
-      throw Exception(
-          'Failed to create time entry: ${res.statusCode} ${res.body}');
+      throw BackendApiException.fromResponse(
+        res,
+        fallbackMessage: 'Failed to create time entry',
+      );
     }
     final map = jsonDecode(res.body) as Map<String, dynamic>;
     return TimeEntry.fromJson(map);

@@ -285,7 +285,12 @@ final Map<String, WidgetBuilder> routes = {
     if (args == null) return const MissingRouteDataScreen();
     final group = args['group'] as Group;
     final workers = args['workers'] as List<Worker>;
-    return CreateTimeEntryScreen(group: group, workers: workers);
+    final fixedWorker = args['fixedWorker'] as Worker?;
+    return CreateTimeEntryScreen(
+      group: group,
+      workers: workers,
+      fixedWorker: fixedWorker,
+    );
   },
   AppRoutes.workerTimeTracking: (context) {
     final args =

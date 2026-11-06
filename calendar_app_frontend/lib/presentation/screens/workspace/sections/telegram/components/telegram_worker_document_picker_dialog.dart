@@ -12,6 +12,7 @@ import 'package:hexora/services/shared/backend_api_exception.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
+import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_month_navigator.dart';
 
 class TelegramWorkerDocumentSelection {
   const TelegramWorkerDocumentSelection({
@@ -136,6 +137,14 @@ class _TelegramWorkerDocumentPickerDialogState
 
   Future<void> _loadWorkers() async {
     final isEs = _isSpanish;
+    final selectedWorkerId = _selectedWorkerId;
+    Worker? previouslySelectedWorker;
+    for (final worker in _workers) {
+      if (worker.id == selectedWorkerId) {
+        previouslySelectedWorker = worker;
+        break;
+      }
+    }
     setState(() {
       _loadingWorkers = true;
       _error = null;
@@ -167,6 +176,16 @@ class _TelegramWorkerDocumentPickerDialogState
         final right = (b.displayName ?? b.id).toLowerCase();
         return left.compareTo(right);
       });
+      if (selectedWorkerId != null &&
+          previouslySelectedWorker != null &&
+          !workers.any((worker) => worker.id == selectedWorkerId)) {
+        workers.add(previouslySelectedWorker);
+        workers.sort((a, b) {
+          final left = (a.displayName ?? a.id).toLowerCase();
+          final right = (b.displayName ?? b.id).toLowerCase();
+          return left.compareTo(right);
+        });
+      }
       if (!mounted) return;
       setState(() {
         _workers = workers;
@@ -186,19 +205,15 @@ class _TelegramWorkerDocumentPickerDialogState
     }
   }
 
-  Future<void> _pickMonth() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedMonth,
-      firstDate: DateTime(2020, 1, 1),
-      lastDate: DateTime.now().add(const Duration(days: 3650)),
-      initialDatePickerMode: DatePickerMode.year,
-    );
-    if (picked == null) return;
+  void _changeMonth(DateTime picked) {
+    if (picked.year == _selectedMonth.year &&
+        picked.month == _selectedMonth.month) {
+      return;
+    }
     setState(() {
       _selectedMonth = DateTime(picked.year, picked.month, 1);
     });
-    await _loadWorkers();
+    _loadWorkers();
   }
 
   String _workerLabel(Worker worker) {
@@ -419,11 +434,11 @@ class _TelegramWorkerDocumentPickerDialogState
                                     ?.copyWith(fontWeight: FontWeight.w700),
                               ),
                             ),
-                            OutlinedButton.icon(
-                              onPressed: _pickMonth,
-                              icon: const Icon(Icons.calendar_month_outlined,
-                                  size: 16),
-                              label: Text(_monthLabel()),
+                            WorkerMonthNavigator(
+                              selectedMonth: _selectedMonth,
+                              enabled: !_loadingWorkers,
+                              maxYear: DateTime.now().year + 10,
+                              onChanged: _changeMonth,
                             ),
                           ],
                         ),

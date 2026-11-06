@@ -4,68 +4,123 @@
 part of '../../expense_upload_screen.dart';
 
 extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
-  Widget _buildRecentBatchJobs(ColorScheme cs) {
-    final jobs = _recentBatchJobs
-        .take(_recentBatchJobsExpanded ? 5 : 1)
-        .toList(growable: false);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+  /// Compact header action that keeps batch history out of the active
+  /// workflow: the recent-jobs list now lives behind a "Historial" dialog
+  /// instead of a card stacked above every step.
+  Widget _buildBatchHistorialBar(ColorScheme cs) {
+    final count = _recentBatchJobs.length;
+    return Align(
+      alignment: Alignment.centerRight,
+      child: TextButton.icon(
+        onPressed: _openBatchHistorialDialog,
+        style: TextButton.styleFrom(
+          foregroundColor: cs.onSurfaceVariant,
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        ),
+        icon: const Icon(Icons.history_rounded, size: 16),
+        label: Text(count > 0 ? 'Historial ($count)' : 'Historial'),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [
-          const Expanded(
-              child: Text('Lotes recientes',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
-          if (_recentBatchJobs.length > 1)
-            TextButton(
-              onPressed: () => _updateImportState(
-                  () => _recentBatchJobsExpanded = !_recentBatchJobsExpanded),
-              child: Text(_recentBatchJobsExpanded
-                  ? 'Mostrar menos'
-                  : 'Ver todos (${_recentBatchJobs.length})'),
-            ),
-          IconButton(
-            tooltip: 'Actualizar lotes',
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.refresh, size: 17),
-            onPressed: _recentBatchJobsLoading ? null : _loadRecentBatchJobs,
-          ),
-        ]),
-        if (_recentBatchJobsLoading && jobs.isEmpty)
-          const LinearProgressIndicator(minHeight: 2)
-        else if (_recentBatchJobsError != null && jobs.isEmpty)
-          Text('No se pudo cargar el historial: $_recentBatchJobsError',
-              style: TextStyle(fontSize: 11, color: cs.error))
-        else if (jobs.isEmpty)
-          Text('Los ZIP aparecen aqui tras pulsar «Confirmar y analizar».',
-              style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant))
-        else
-          for (final job in jobs)
-            ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              leading:
-                  Icon(Icons.folder_zip_outlined, size: 16, color: cs.primary),
-              title: Text(
-                  _batchJobText(job['sourceArchiveName']).isEmpty
-                      ? 'Lote de ${_batchJobText(job['totalFiles'])} facturas'
-                      : _batchJobText(job['sourceArchiveName']),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
-              subtitle: Text(_batchJobText(job['status']),
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-              trailing: job['canResume'] == true
-                  ? TextButton(
-                      onPressed: () => _openRecentBatchJob(job),
-                      child: const Text('Abrir'))
-                  : null,
-            ),
-      ]),
+    );
+  }
+
+  Future<void> _openBatchHistorialDialog() async {
+    if (_recentBatchJobs.isEmpty && !_recentBatchJobsLoading) {
+      await _loadRecentBatchJobs();
+    }
+    if (!mounted) return;
+    await showHexoraDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        final cs = Theme.of(dialogCtx).colorScheme;
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            Future<void> refresh() async {
+              await _loadRecentBatchJobs();
+              if (ctx.mounted) setLocal(() {});
+            }
+
+            Widget body;
+            if (_recentBatchJobsLoading && _recentBatchJobs.isEmpty) {
+              body = const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: LinearProgressIndicator(minHeight: 2),
+              );
+            } else if (_recentBatchJobsError != null &&
+                _recentBatchJobs.isEmpty) {
+              body = Text(
+                'No se pudo cargar el historial: $_recentBatchJobsError',
+                style: TextStyle(fontSize: 12, color: cs.error),
+              );
+            } else if (_recentBatchJobs.isEmpty) {
+              body = Text(
+                'Los lotes aparecen aquí tras pulsar «Confirmar y analizar».',
+                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+              );
+            } else {
+              body = SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final job in _recentBatchJobs.take(10))
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.folder_zip_outlined,
+                            size: 18, color: cs.primary),
+                        title: Text(
+                          _batchJobText(job['sourceArchiveName']).isEmpty
+                              ? 'Lote de ${_batchJobText(job['totalFiles'])} facturas'
+                              : _batchJobText(job['sourceArchiveName']),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          _batchJobText(job['status']),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: job['canResume'] == true
+                            ? TextButton(
+                                onPressed: () {
+                                  Navigator.of(dialogCtx).pop();
+                                  _openRecentBatchJob(job);
+                                },
+                                child: const Text('Abrir'),
+                              )
+                            : null,
+                      ),
+                  ],
+                ),
+              );
+            }
+
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.history_rounded, size: 18, color: cs.primary),
+                  const SizedBox(width: 8),
+                  const Expanded(child: Text('Lotes recientes')),
+                  IconButton(
+                    tooltip: 'Actualizar',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    onPressed: _recentBatchJobsLoading ? null : refresh,
+                  ),
+                ],
+              ),
+              content: SizedBox(width: 460, child: body),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogCtx).pop(),
+                  child: const Text('Cerrar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -249,7 +304,7 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
       Widget executionPanel = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildRecentBatchJobs(cs),
+          _buildBatchHistorialBar(cs),
           if (_batchStartingJob && batchArchiveName != null) ...[
             Text('Subiendo y extrayendo facturas del ZIP…',
                 style: Theme.of(context).textTheme.bodySmall),
@@ -257,44 +312,45 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
             const LinearProgressIndicator(minHeight: 3),
             const SizedBox(height: 6),
           ],
-          _BatchCollapsibleSummary(
-            collapsed: _batchSummaryCollapsed,
-            onToggle: () => _updateImportState(() {
-              _batchSummaryCollapsed = !_batchSummaryCollapsed;
-            }),
-            loadedCount: headerLoadedCount,
-            maxCount: maxBatchDocs,
-            totalBytes: totalBytes,
-            remainingSlots: remainingSlots,
-            uploadRatio: uploadRatio,
-            status: jobStatusName,
-            hasTrackedJob: hasTrackedJob,
-            totalFiles: jobTotalFiles > 0 ? jobTotalFiles : headerLoadedCount,
-            processedFiles: jobProcessedFiles,
-            importedCount: jobImportedCount,
-            skippedCount: jobSkippedCount,
-            reviewCount: _batchJobInt(_batchJobStatus?['warningCount']) +
-                _batchJobInt(_batchJobStatus?['failedCount']),
-            duplicateCount: _batchJobInt(_batchJobStatus?['duplicateCount']),
-            currentStep: _batchJobText(_batchJobStatus?['currentStep']),
-            message: _batchJobText(_batchJobStatus?['message']),
-            loadingResult: _batchResultLoading,
-            warningDetails: batchSkippedDetails,
-            warningsExpanded: _batchErrorsExpanded,
-            onToggleWarnings: () => _updateImportState(() {
-              _batchErrorsExpanded = !_batchErrorsExpanded;
-            }),
-            onCopyWarnings: batchSkippedDetails.isEmpty
-                ? null
-                : () => copyTextWithManualFallbackDialog(
-                      context,
-                      text: copyIssuesText,
-                      successMessage: 'Lista copiada',
-                      dialogTitle: 'Copiar incidencias manualmente',
-                      dialogMessage:
-                          'Tu navegador bloqueo la copia automatica. Selecciona la lista y copiala manualmente.',
-                    ),
-          ),
+          if (hasTrackedJob)
+            _BatchCollapsibleSummary(
+              collapsed: _batchSummaryCollapsed,
+              onToggle: () => _updateImportState(() {
+                _batchSummaryCollapsed = !_batchSummaryCollapsed;
+              }),
+              loadedCount: headerLoadedCount,
+              maxCount: maxBatchDocs,
+              totalBytes: totalBytes,
+              remainingSlots: remainingSlots,
+              uploadRatio: uploadRatio,
+              status: jobStatusName,
+              hasTrackedJob: hasTrackedJob,
+              totalFiles: jobTotalFiles > 0 ? jobTotalFiles : headerLoadedCount,
+              processedFiles: jobProcessedFiles,
+              importedCount: jobImportedCount,
+              skippedCount: jobSkippedCount,
+              reviewCount: _batchJobInt(_batchJobStatus?['warningCount']) +
+                  _batchJobInt(_batchJobStatus?['failedCount']),
+              duplicateCount: _batchJobInt(_batchJobStatus?['duplicateCount']),
+              currentStep: _batchJobText(_batchJobStatus?['currentStep']),
+              message: _batchJobText(_batchJobStatus?['message']),
+              loadingResult: _batchResultLoading,
+              warningDetails: batchSkippedDetails,
+              warningsExpanded: _batchErrorsExpanded,
+              onToggleWarnings: () => _updateImportState(() {
+                _batchErrorsExpanded = !_batchErrorsExpanded;
+              }),
+              onCopyWarnings: batchSkippedDetails.isEmpty
+                  ? null
+                  : () => copyTextWithManualFallbackDialog(
+                        context,
+                        text: copyIssuesText,
+                        successMessage: 'Lista copiada',
+                        dialogTitle: 'Copiar incidencias manualmente',
+                        dialogMessage:
+                            'Tu navegador bloqueo la copia automatica. Selecciona la lista y copiala manualmente.',
+                      ),
+            ),
           if ((batchError ?? '').trim().isNotEmpty &&
               batchSkippedDetails.isEmpty) ...[
             const SizedBox(height: 6),

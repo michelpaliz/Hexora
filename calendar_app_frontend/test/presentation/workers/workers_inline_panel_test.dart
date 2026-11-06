@@ -11,11 +11,13 @@ import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/w
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/widgets/month_list.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/monthly_overview/widgets/year_switcher.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/create_time_entry_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/sections/worker_selection_section.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/worker_time_tracking_screen.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/widgets/status_filter_chips.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/widgets/worker_directory_view.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/workers/widgets/workers_form_panel.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/worker_list_section.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
@@ -39,8 +41,15 @@ class _User extends ChangeNotifier implements UserDomain {
 }
 
 class _Repository implements ITimeTrackingRepository {
+  String? createdWorkerId;
+
   @override
   dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.memberName == #createTimeEntry) {
+      final entry = invocation.positionalArguments[1] as TimeEntry;
+      createdWorkerId = entry.workerId;
+      return Future.value(entry.copyWith(id: 'entry'));
+    }
     if (invocation.memberName == #getWorkers) {
       final status = invocation.namedArguments[#status] as WorkerStatus?;
       return Future.value([
@@ -139,10 +148,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(CreateTimeEntryScreen), findsOneWidget);
     expect(
-        find.byTooltip(
-            'Selecciona los trabajadores y el horario que quieres registrar.'),
-        findsOneWidget);
-    expect(find.text('Trabajadores (1)'), findsOneWidget);
+        tester
+            .widget<CreateTimeEntryScreen>(find.byType(CreateTimeEntryScreen))
+            .fixedWorker
+            ?.id,
+        'worker');
+    expect(find.byType(WorkerSelectionSection), findsNothing);
+    expect(find.text('Trabajadores (1)'), findsNothing);
     expect(find.text('Fecha y hora de inicio'), findsOneWidget);
     expect(find.text('Fecha y hora de fin'), findsOneWidget);
     expect(
@@ -190,6 +202,27 @@ void main() {
           matching: find.byType(CreateTimeEntryScreen),
         ),
         findsOneWidget);
+    expect(
+        find.descendant(
+          of: embeddedTracking,
+          matching: find.byKey(const ValueKey('embedded-time-entry-back')),
+        ),
+        findsOneWidget);
+    expect(
+        find.descendant(
+          of: embeddedTracking,
+          matching: find.byType(WorkerSelectionSection),
+        ),
+        findsNothing);
+    expect(
+        tester
+            .widget<CreateTimeEntryScreen>(find.descendant(
+              of: embeddedTracking,
+              matching: find.byType(CreateTimeEntryScreen),
+            ))
+            .fixedWorker
+            ?.id,
+        'worker');
     expect(find.byType(BottomSheet), findsNothing);
     await tester.tap(find.byKey(const ValueKey('embedded-time-entry-back')));
     await tester.pumpAndSettle();
@@ -254,5 +287,103 @@ void main() {
     expect(find.byType(WorkerDirectoryView), findsOneWidget);
     expect(find.text('Volver al equipo'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('general registration keeps multi-worker selection controls',
+      (tester) async {
+    final group = Group(
+      id: 'group',
+      name: 'Team',
+      ownerId: 'owner',
+      userRoles: const {},
+      userIds: const ['owner'],
+      createdTime: DateTime(2026),
+      description: '',
+    );
+    const worker = Worker(
+      id: 'worker',
+      groupId: 'group',
+      displayName: 'Trejo',
+      status: WorkerStatus.active,
+    );
+
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.fromBrightness(Brightness.light),
+      locale: const Locale('es'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: CreateTimeEntryScreen(
+          group: group,
+          workers: const [worker],
+          embedded: true,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(WorkerSelectionSection), findsOneWidget);
+    expect(find.text('Trabajadores (1)'), findsOneWidget);
+    expect(find.byType(PopupMenuButton<String>), findsOneWidget);
+    expect(
+        tester
+            .widget<CreateTimeEntryScreen>(find.byType(CreateTimeEntryScreen))
+            .fixedWorker,
+        isNull);
+  });
+
+  testWidgets('fixed-worker registration always saves to the locked worker',
+      (tester) async {
+    final repo = _Repository();
+    final group = Group(
+      id: 'group',
+      name: 'Team',
+      ownerId: 'owner',
+      userRoles: const {},
+      userIds: const ['owner'],
+      createdTime: DateTime(2026),
+      description: '',
+    );
+    const worker = Worker(
+      id: 'worker',
+      groupId: 'group',
+      displayName: 'Trejo',
+      status: WorkerStatus.active,
+    );
+    const other = Worker(
+      id: 'other',
+      groupId: 'group',
+      displayName: 'Other',
+      status: WorkerStatus.active,
+    );
+
+    await tester.pumpWidget(MultiProvider(
+      providers: [
+        ChangeNotifierProvider<UserDomain>(create: (_) => _User()),
+        Provider<ITimeTrackingRepository>.value(value: repo),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.fromBrightness(Brightness.light),
+        locale: const Locale('es'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: CreateTimeEntryScreen(
+            group: group,
+            workers: const [worker, other],
+            fixedWorker: worker,
+            initialSelectedIds: const {'other'},
+            embedded: true,
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(WorkerSelectionSection), findsNothing);
+    await tester.tap(find.widgetWithText(HexoraButton, 'Registrar horas'));
+    await tester.pumpAndSettle();
+
+    expect(repo.createdWorkerId, 'worker');
   });
 }

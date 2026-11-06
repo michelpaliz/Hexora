@@ -533,7 +533,6 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
   List<_ExpenseBatchPreviewItem> _batchPreviewItems = [];
   List<Map<String, dynamic>> _recentBatchJobs = [];
   bool _recentBatchJobsLoading = false;
-  bool _recentBatchJobsExpanded = false;
   String? _recentBatchJobsError;
   Timer? _batchJobPollTimer;
 

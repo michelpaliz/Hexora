@@ -275,6 +275,7 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
       arguments: {
         'group': widget.group,
         'workers': [worker],
+        'fixedWorker': worker,
       },
     );
     if (created == true) {

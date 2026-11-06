@@ -10,14 +10,14 @@ class TimeSummarySection extends StatelessWidget {
     required this.end,
     required this.dateFormat,
     required this.timeFormat,
-    required this.selectedCount,
+    this.selectedCount,
   });
 
   final DateTime start;
   final DateTime end;
   final DateFormat dateFormat;
   final DateFormat timeFormat;
-  final int selectedCount;
+  final int? selectedCount;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +25,7 @@ class TimeSummarySection extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
     final duration = end.difference(start);
-    final valid = !duration.isNegative;
+    final valid = duration > Duration.zero;
     final hours = duration.inMinutes ~/ 60;
     final minutes = duration.inMinutes.remainder(60);
     final durationLabel = !valid
@@ -34,14 +34,21 @@ class TimeSummarySection extends StatelessWidget {
             if (hours > 0) '$hours h',
             if (minutes > 0 || hours == 0) '$minutes min',
           ].join(' ');
-    final workerLabel = selectedCount == 1
-        ? (l.localeName.startsWith('es') ? '1 trabajador' : '1 worker')
-        : (l.localeName.startsWith('es')
-            ? '$selectedCount trabajadores'
-            : '$selectedCount workers');
+    final workerLabel = selectedCount == null
+        ? null
+        : selectedCount == 1
+            ? (l.localeName.startsWith('es') ? '1 trabajador' : '1 worker')
+            : (l.localeName.startsWith('es')
+                ? '$selectedCount trabajadores'
+                : '$selectedCount workers');
     final endLabel = DateUtils.isSameDay(start, end)
         ? timeFormat.format(end)
         : '${dateFormat.format(end)} ${timeFormat.format(end)}';
+    final summaryParts = <String>[
+      '${dateFormat.format(start)} · ${timeFormat.format(start)}–$endLabel',
+      durationLabel,
+      if (workerLabel != null) workerLabel,
+    ];
 
     return Row(
       children: [
@@ -50,7 +57,7 @@ class TimeSummarySection extends StatelessWidget {
         const SizedBox(width: 6),
         Expanded(
           child: Text(
-            '${dateFormat.format(start)} · ${timeFormat.format(start)}–$endLabel · $durationLabel · $workerLabel',
+            summaryParts.join(' · '),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: t.bodySmall.copyWith(

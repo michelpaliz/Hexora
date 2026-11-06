@@ -230,6 +230,7 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
         child: CreateTimeEntryScreen(
           group: c.group,
           workers: [c.worker],
+          fixedWorker: c.worker,
         ),
       ),
     );
@@ -559,36 +560,22 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
         );
 
         final content = _showCreateEntry
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: () => setState(() => _showCreateEntry = false),
-                      icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                      label: Text(l.back),
-                    ),
-                  ),
-                  Expanded(
-                    child: CreateTimeEntryScreen(
-                      key: ValueKey('inline-time-entry-${c.worker.id}'),
-                      group: c.group,
-                      workers: [c.worker],
-                      embedded: true,
-                      showHeader: false,
-                      initialSelectedIds: {c.worker.id},
-                      onCancel: () => setState(() => _showCreateEntry = false),
-                      onCreated: () async {
-                        if (mounted) {
-                          setState(() => _showCreateEntry = false);
-                        }
-                        await c.load();
-                        widget.onDataChanged?.call();
-                      },
-                    ),
-                  ),
-                ],
+            ? CreateTimeEntryScreen(
+                key: ValueKey('inline-time-entry-${c.worker.id}'),
+                group: c.group,
+                workers: [c.worker],
+                fixedWorker: c.worker,
+                embedded: true,
+                showHeader: false,
+                initialSelectedIds: {c.worker.id},
+                onCancel: () => setState(() => _showCreateEntry = false),
+                onCreated: () async {
+                  if (mounted) {
+                    setState(() => _showCreateEntry = false);
+                  }
+                  await c.load();
+                  widget.onDataChanged?.call();
+                },
               )
             : c.loading
                 ? const Center(child: CircularProgressIndicator())
@@ -658,8 +645,8 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
                       const SizedBox(width: 4),
                       Tooltip(
                         message: isSpanish
-                            ? 'Selecciona los trabajadores y el horario que quieres registrar.'
-                            : 'Select the workers and schedule you want to register.',
+                            ? 'Selecciona el horario que quieres registrar para este trabajador.'
+                            : 'Select the schedule to register for this worker.',
                         child: Icon(Icons.info_outline_rounded,
                             size: 17,
                             color:
@@ -688,7 +675,11 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: ThemeColors.success(context)
+                                color: (c.worker.status == WorkerStatus.active
+                                        ? ThemeColors.success(context)
+                                        : Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant)
                                     .withValues(alpha: .09),
                                 borderRadius: BorderRadius.circular(8),
                               ),
