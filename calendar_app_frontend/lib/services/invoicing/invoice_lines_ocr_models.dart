@@ -120,6 +120,13 @@ class OcrImageFile {
   });
 }
 
+class InvoiceAiChatResponse {
+  const InvoiceAiChatResponse({required this.reply, required this.draftLines});
+
+  final String reply;
+  final List<OcrExtractedLineDraft> draftLines;
+}
+
 class OcrSaveFailure {
   final int index;
   final OcrExtractedLineDraft line;
