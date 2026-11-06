@@ -116,123 +116,302 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
     Navigator.of(context).pop();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isEs = _isSpanish;
-    final width = MediaQuery.sizeOf(context).width;
-    return AlertDialog(
-      title: Text(isEs ? 'Crear factura con IA' : 'Create invoice with AI'),
-      content: SizedBox(
-        width: width < 720 ? width - 80 : 640,
-        height: MediaQuery.sizeOf(context).height * 0.65,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(isEs
-                ? 'Adjunta una imagen o PDF y explica qué necesitas. Revisa las líneas antes de añadirlas al borrador.'
-                : 'Attach an image or PDF and describe what you need. Review the lines before adding them to the draft.'),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView(
-                children: [
-                  for (final item in _messages)
-                    Align(
-                      alignment: item['role'] == 'user'
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
+  Widget _buildChatPane(BuildContext context, bool isEs) {
+    final colors = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(isEs ? 'Chat' : 'Chat',
+            style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Expanded(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerLowest,
+              border: Border.all(color: colors.outlineVariant),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: ListView(
+              padding: const EdgeInsets.all(10),
+              children: [
+                if (_messages.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Text(isEs
+                        ? 'Adjunta una imagen o PDF y describe las líneas que necesitas. Puedes pedir correcciones después.'
+                        : 'Attach an image or PDF and describe the invoice lines you need. You can ask for changes afterward.'),
+                  ),
+                for (final item in _messages)
+                  Align(
+                    alignment: item['role'] == 'user'
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 480),
                       child: Card(
+                        color: item['role'] == 'user'
+                            ? colors.primaryContainer
+                            : colors.surfaceContainerHigh,
                         child: Padding(
                           padding: const EdgeInsets.all(10),
                           child: Text(item['text'] ?? ''),
                         ),
                       ),
                     ),
-                  if (_suggestedLines.isNotEmpty) ...[
-                    const Divider(),
-                    Text(isEs ? 'Líneas propuestas' : 'Proposed lines',
-                        style: Theme.of(context).textTheme.titleSmall),
-                    for (final line in _suggestedLines)
-                      ListTile(
-                        dense: true,
-                        title: Text(line.description),
-                        subtitle: Text(
-                            '${line.quantity} × ${line.unitPrice.toStringAsFixed(2)} € · IVA ${line.taxRate}%'),
-                        trailing:
-                            Text('${line.lineTotal.toStringAsFixed(2)} €'),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 8),
+          Text(_error!, style: TextStyle(color: colors.error)),
+        ],
+        if (_file != null) ...[
+          const SizedBox(height: 8),
+          Row(children: [
+            if (!_file!.fileName.toLowerCase().endsWith('.pdf'))
+              Image.memory(Uint8List.fromList(_file!.bytes),
+                  width: 42,
+                  height: 42,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.image_not_supported_outlined)),
+            const SizedBox(width: 8),
+            Expanded(
+                child: Text(_file!.fileName, overflow: TextOverflow.ellipsis)),
+            IconButton(
+              onPressed: _sending ? null : () => setState(() => _file = null),
+              icon: const Icon(Icons.close),
+            ),
+          ]),
+        ],
+        const SizedBox(height: 8),
+        TextField(
+          controller: _message,
+          minLines: 1,
+          maxLines: 3,
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            hintText: isEs
+                ? 'Ej.: Usa esta foto y cambia el precio a 120 €'
+                : 'E.g. Use this photo and change the price to €120',
+          ),
+          onSubmitted: (_) => _send(),
+        ),
+        const SizedBox(height: 8),
+        Row(children: [
+          OutlinedButton.icon(
+            onPressed: _sending ? null : _pickFile,
+            icon: const Icon(Icons.attach_file),
+            label: Text(isEs ? 'Imagen o PDF' : 'Image or PDF'),
+          ),
+          const Spacer(),
+          FilledButton.icon(
+            onPressed: _sending ? null : _send,
+            icon: _sending
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.send),
+            label: Text(isEs ? 'Enviar' : 'Send'),
+          ),
+        ]),
+      ],
+    );
+  }
+
+  Widget _buildInvoicePreview(BuildContext context, bool isEs) {
+    final colors = Theme.of(context).colorScheme;
+    final subtotal =
+        _suggestedLines.fold<double>(0, (sum, line) => sum + line.lineSubtotal);
+    final tax =
+        _suggestedLines.fold<double>(0, (sum, line) => sum + line.lineTax);
+    final total =
+        _suggestedLines.fold<double>(0, (sum, line) => sum + line.lineTotal);
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow,
+        border: Border.all(color: colors.outlineVariant),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(children: [
+            const Icon(Icons.receipt_long_outlined),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(isEs ? 'Vista previa de factura' : 'Invoice preview',
+                  style: Theme.of(context).textTheme.titleMedium),
+            ),
+            Text('${_suggestedLines.length}',
+                style: Theme.of(context).textTheme.labelLarge),
+          ]),
+          const Divider(height: 24),
+          if (_suggestedLines.isEmpty)
+            Expanded(
+              child: Center(
+                child: Text(
+                  isEs
+                      ? 'Las líneas que proponga la IA aparecerán aquí.'
+                      : 'AI proposed invoice lines will appear here.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: colors.onSurfaceVariant),
+                ),
+              ),
+            )
+          else ...[
+            Expanded(
+              child: ListView.separated(
+                itemCount: _suggestedLines.length,
+                separatorBuilder: (_, __) => const Divider(height: 20),
+                itemBuilder: (context, index) {
+                  final line = _suggestedLines[index];
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(line.description,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${line.quantity} × ${line.unitPrice.toStringAsFixed(2)} € · ${isEs ? 'IVA' : 'VAT'} ${line.taxRate}%',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
                       ),
-                  ],
-                ],
+                      const SizedBox(width: 8),
+                      Text('${line.lineTotal.toStringAsFixed(2)} €'),
+                      IconButton(
+                        tooltip: isEs ? 'Eliminar línea' : 'Remove line',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () =>
+                            setState(() => _suggestedLines.removeAt(index)),
+                        icon: const Icon(Icons.close, size: 18),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(_error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
-            ],
-            if (_file != null) ...[
-              const SizedBox(height: 8),
+            const Divider(height: 20),
+            _totalRow(isEs ? 'Base imponible' : 'Subtotal', subtotal),
+            const SizedBox(height: 6),
+            _totalRow(isEs ? 'Impuestos' : 'Tax', tax),
+            const SizedBox(height: 10),
+            _totalRow(isEs ? 'Total' : 'Total', total, strong: true),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _totalRow(String label, double amount, {bool strong = false}) {
+    final style = strong
+        ? Theme.of(context)
+            .textTheme
+            .titleMedium
+            ?.copyWith(fontWeight: FontWeight.w800)
+        : Theme.of(context).textTheme.bodyMedium;
+    return Row(
+      children: [
+        Expanded(child: Text(label, style: style)),
+        Text('${amount.toStringAsFixed(2)} €', style: style)
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEs = _isSpanish;
+    final screen = MediaQuery.sizeOf(context);
+    return Dialog(
+      insetPadding: const EdgeInsets.all(12),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: screen.width < 820 ? screen.width - 24 : 1100,
+          maxHeight: screen.height * 0.9,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
               Row(children: [
-                if (!_file!.fileName.toLowerCase().endsWith('.pdf'))
-                  Image.memory(Uint8List.fromList(_file!.bytes),
-                      width: 42,
-                      height: 42,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          const Icon(Icons.image_not_supported_outlined)),
-                const SizedBox(width: 8),
+                const Icon(Icons.auto_awesome_outlined),
+                const SizedBox(width: 10),
                 Expanded(
-                    child:
-                        Text(_file!.fileName, overflow: TextOverflow.ellipsis)),
+                  child: Text(
+                      isEs ? 'Crear factura con IA' : 'Create invoice with AI',
+                      style: Theme.of(context).textTheme.titleLarge),
+                ),
                 IconButton(
-                    onPressed:
-                        _sending ? null : () => setState(() => _file = null),
-                    icon: const Icon(Icons.close)),
+                  tooltip: isEs ? 'Cerrar' : 'Close',
+                  onPressed:
+                      _sending ? null : () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ]),
+              const SizedBox(height: 4),
+              Text(isEs
+                  ? 'Conversa a la izquierda y revisa las líneas y los importes a la derecha.'
+                  : 'Chat on the left and review invoice lines and totals on the right.'),
+              const SizedBox(height: 16),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth >= 700) {
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                              flex: 6, child: _buildChatPane(context, isEs)),
+                          const SizedBox(width: 16),
+                          Expanded(
+                              flex: 5,
+                              child: _buildInvoicePreview(context, isEs)),
+                        ],
+                      );
+                    }
+                    return Column(
+                      children: [
+                        Expanded(flex: 5, child: _buildChatPane(context, isEs)),
+                        const SizedBox(height: 12),
+                        Expanded(
+                            flex: 4,
+                            child: _buildInvoicePreview(context, isEs)),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(children: [
+                TextButton(
+                  onPressed:
+                      _sending ? null : () => Navigator.of(context).pop(),
+                  child: Text(isEs ? 'Cancelar' : 'Cancel'),
+                ),
+                const Spacer(),
+                FilledButton.icon(
+                  onPressed:
+                      _sending || _suggestedLines.isEmpty ? null : _apply,
+                  icon: const Icon(Icons.playlist_add_check),
+                  label: Text(isEs ? 'Añadir al borrador' : 'Add to draft'),
+                ),
               ]),
             ],
-            const SizedBox(height: 8),
-            TextField(
-              controller: _message,
-              minLines: 1,
-              maxLines: 3,
-              decoration: InputDecoration(
-                border: const OutlineInputBorder(),
-                hintText: isEs
-                    ? 'Ej.: Usa esta foto y cambia el precio a 120 €'
-                    : 'E.g. Use this photo and change the price to €120',
-              ),
-              onSubmitted: (_) => _send(),
-            ),
-            const SizedBox(height: 8),
-            Row(children: [
-              OutlinedButton.icon(
-                onPressed: _sending ? null : _pickFile,
-                icon: const Icon(Icons.attach_file),
-                label: Text(isEs ? 'Imagen o PDF' : 'Image or PDF'),
-              ),
-              const Spacer(),
-              FilledButton.icon(
-                onPressed: _sending ? null : _send,
-                icon: _sending
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.send),
-                label: Text(isEs ? 'Enviar' : 'Send'),
-              ),
-            ]),
-          ],
+          ),
         ),
       ),
-      actions: [
-        TextButton(
-            onPressed: _sending ? null : () => Navigator.of(context).pop(),
-            child: Text(isEs ? 'Cancelar' : 'Cancel')),
-        FilledButton(
-          onPressed: _sending || _suggestedLines.isEmpty ? null : _apply,
-          child: Text(isEs ? 'Añadir al borrador' : 'Add to draft'),
-        ),
-      ],
     );
   }
 }
