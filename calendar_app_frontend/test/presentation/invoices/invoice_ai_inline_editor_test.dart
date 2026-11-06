@@ -8,7 +8,7 @@ import 'package:hexora/services/invoicing/invoice_lines_ocr_flow.dart';
 import 'package:hexora/theme/themes/app_theme.dart';
 
 void main() {
-  testWidgets('shows AI chat inline and preserves quick extraction',
+  testWidgets('shows the unified AI chat inline without secondary tabs',
       (tester) async {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1;
@@ -65,12 +65,8 @@ void main() {
     );
     expect(find.text('Crear factura con IA'), findsNothing);
     expect(find.text('Cancelar'), findsNothing);
-
-    await tester.tap(find.text('Extracción rápida'));
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const ValueKey('invoice-quick-extraction-panel')),
-      findsOneWidget,
-    );
+    expect(find.text('Chat IA'), findsNothing);
+    expect(find.text('Extracción rápida'), findsNothing);
+    expect(find.byType(TabBar), findsNothing);
   });
 }

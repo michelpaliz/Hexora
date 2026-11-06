@@ -335,56 +335,10 @@ class InvoicePhotoExtractPanel extends StatelessWidget {
 
     if (controller == null) return extractionPanel;
 
-    final isEs = l.localeName.startsWith('es');
-    return DefaultTabController(
-      length: 2,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TabBar(
-              isScrollable: true,
-              dividerColor: Colors.transparent,
-              tabs: [
-                Tab(
-                  height: 40,
-                  child: Row(
-                    children: [
-                      const Icon(Icons.auto_awesome_outlined, size: 18),
-                      const SizedBox(width: 7),
-                      Text(isEs ? 'Chat IA' : 'AI chat'),
-                    ],
-                  ),
-                ),
-                Tab(
-                  height: 40,
-                  child: Row(
-                    children: [
-                      const Icon(Icons.document_scanner_outlined, size: 18),
-                      const SizedBox(width: 7),
-                      Text(isEs ? 'Extracción rápida' : 'Quick extraction'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: TabBarView(
-              children: [
-                InvoiceAiChatDialog(
-                  key: const ValueKey('invoice-ai-inline-workspace'),
-                  controller: controller!,
-                  embedded: true,
-                ),
-                extractionPanel,
-              ],
-            ),
-          ),
-        ],
-      ),
+    return InvoiceAiChatDialog(
+      key: const ValueKey('invoice-ai-inline-workspace'),
+      controller: controller!,
+      embedded: true,
     );
   }
 }
