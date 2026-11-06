@@ -4,6 +4,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/s
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
+import 'invoice_ai_chat_dialog.dart';
 
 class InvoicePhotoExtractPanel extends StatelessWidget {
   const InvoicePhotoExtractPanel({
@@ -60,6 +61,15 @@ class InvoicePhotoExtractPanel extends StatelessWidget {
           Text(
             l.invoiceLinesPhotoSubtitle,
             style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: controller == null ? null : () => showDialog<void>(
+              context: context,
+              builder: (_) => InvoiceAiChatDialog(controller: controller!),
+            ),
+            icon: const Icon(Icons.auto_awesome_outlined),
+            label: Text(l.localeName.startsWith('es') ? 'Crear con chat e imagen' : 'Create with chat and image'),
           ),
           const SizedBox(height: 12),
           Row(

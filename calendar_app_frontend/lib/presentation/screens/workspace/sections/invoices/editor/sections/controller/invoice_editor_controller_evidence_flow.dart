@@ -44,6 +44,9 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
     return id;
   }
 
+  Future<String?> ensureDraftIdForAiChat(BuildContext context) =>
+      _ensureDraftIdForOcr(context);
+
   Future<void> extractLinesFromImage(BuildContext context) async {
     if (extractingLinesFromImage) return;
 
@@ -99,8 +102,38 @@ extension InvoiceEditorControllerEvidenceFlow on InvoiceEditorController {
   }
 
   void applyExtractedLinesToDraft() {
-    final extracted = _ocrState.extractedLines;
+    _applySuggestedLines(_ocrState.extractedLines, preserveBlocks: false);
+  }
+
+  void applyAiSuggestedLines(List<OcrExtractedLineDraft> extracted) {
+    _applySuggestedLines(extracted, preserveBlocks: true);
+  }
+
+  void _applySuggestedLines(List<OcrExtractedLineDraft> extracted,
+      {required bool preserveBlocks}) {
     if (extracted.isEmpty) return;
+    if (_useBlocks && preserveBlocks) {
+      if (blocks.length == 1 && _isPlaceholderBlock(blocks.first)) {
+        blocks.first.dispose();
+        blocks.clear();
+      }
+      for (final line in extracted) {
+        blocks.add(InvoiceBlockDraft(
+          type: InvoiceBlockType.item,
+          conceptTitle: line.conceptTitle,
+          conceptItems: line.conceptItems,
+          serviceDate: line.serviceDate,
+          isCompositeConcept: line.isCompositeConcept,
+          description: _optionalDetailText(line.description,
+              conceptTitle: line.conceptTitle, conceptItems: line.conceptItems),
+          qty: line.quantity.toString(),
+          unitPrice: line.unitPrice.toStringAsFixed(2),
+          taxRate: line.taxRate.toStringAsFixed(2),
+        ));
+      }
+      notifyUi();
+      return;
+    }
     if (_useBlocks) {
       _useBlocks = false;
       _resetDraftLines();

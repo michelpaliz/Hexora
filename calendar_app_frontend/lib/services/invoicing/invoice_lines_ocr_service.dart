@@ -35,6 +35,66 @@ class InvoiceLinesOcrService {
         '${ApiConstants.baseUrl}/invoices/$invoiceId/lines/extract-image',
       );
 
+  Future<InvoiceAiChatResponse> chatAboutInvoice({
+    required String invoiceId,
+    required String message,
+    required List<OcrExtractedLineDraft> draftLines,
+    required List<Map<String, String>> history,
+    OcrImageFile? file,
+  }) async {
+    final headers = await AuthenticatedHttpClient.authorizedHeaders(
+      includeJsonContentType: false,
+    );
+    final authorization = headers['Authorization'];
+    if (authorization == null || authorization.isEmpty) {
+      throw const OcrExtractionException(
+        userMessage: 'Please sign in again.',
+        debugMessage: 'Missing access token',
+      );
+    }
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('${ApiConstants.baseUrl}/invoices/$invoiceId/lines/ai-chat'),
+    );
+    request.headers['Authorization'] = authorization;
+    request.fields['message'] = message;
+    request.fields['draftLines'] = jsonEncode(draftLines.map((e) => e.toJson()).toList());
+    request.fields['history'] = jsonEncode(history);
+    if (file != null) {
+      request.files.add(http.MultipartFile.fromBytes(
+        'image',
+        file.bytes,
+        filename: file.fileName,
+      ));
+    }
+    final streamed = await _client.send(request);
+    final response = await http.Response.fromStream(streamed);
+    final decoded = response.body.isEmpty ? null : jsonDecode(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final message = decoded is Map ? decoded['message']?.toString() : null;
+      throw OcrExtractionException(
+        statusCode: response.statusCode,
+        userMessage: message ?? 'Could not prepare the invoice draft.',
+        debugMessage: message ?? response.reasonPhrase ?? 'Request failed',
+      );
+    }
+    final data = decoded is Map ? Map<String, dynamic>.from(decoded) : <String, dynamic>{};
+    final rawLines = data['draftLines'];
+    if (rawLines is! List) {
+      throw const OcrExtractionException(
+        userMessage: 'The AI response could not be read.',
+        debugMessage: 'Missing draftLines',
+      );
+    }
+    return InvoiceAiChatResponse(
+      reply: data['reply']?.toString() ?? '',
+      draftLines: [
+        for (var i = 0; i < rawLines.length; i++)
+          normalizeExtractedLine(rawLines[i], i),
+      ],
+    );
+  }
+
   Future<OcrExtractResponse> extractInvoiceLinesFromImage({
     required String invoiceId,
     required OcrImageFile file,
