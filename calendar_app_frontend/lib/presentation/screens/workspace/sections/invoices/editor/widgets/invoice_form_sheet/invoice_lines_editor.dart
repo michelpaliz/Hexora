@@ -130,6 +130,7 @@ class InvoiceLinesEditor extends StatefulWidget {
   final bool compactable;
   final bool initiallyCollapsed;
   final bool showTax;
+  final bool showDiscount;
 
   const InvoiceLinesEditor({
     super.key,
@@ -138,6 +139,7 @@ class InvoiceLinesEditor extends StatefulWidget {
     this.compactable = false,
     this.initiallyCollapsed = false,
     this.showTax = true,
+    this.showDiscount = true,
   });
 
   @override
@@ -246,13 +248,14 @@ class _InvoiceLinesEditorState extends State<InvoiceLinesEditor> {
               widget.compactable && (_collapsedLines[line.position] ?? false);
           final qty = line.quantity ?? 1;
           final unit = line.unitPrice ?? 0;
-          final discountRate = line.discountRate ?? 0;
+          final discountRate = widget.showDiscount ? line.discountRate ?? 0 : 0;
           final vat = line.taxRate ?? 21;
           final grossBase = qty * unit;
           final subtotal = grossBase - (grossBase * discountRate / 100);
           final total =
               widget.showTax ? subtotal + (subtotal * (vat / 100)) : subtotal;
           return Container(
+            key: ObjectKey(line),
             margin: const EdgeInsets.only(top: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -555,9 +558,11 @@ class _InvoiceLinesEditorState extends State<InvoiceLinesEditor> {
                             const SizedBox(height: 10),
                             Row(
                               children: [
-                                Expanded(child: discountField),
+                                if (widget.showDiscount)
+                                  Expanded(child: discountField),
                                 if (widget.showTax) ...[
-                                  const SizedBox(width: 10),
+                                  if (widget.showDiscount)
+                                    const SizedBox(width: 10),
                                   Expanded(child: taxField),
                                 ],
                               ],
@@ -580,8 +585,10 @@ class _InvoiceLinesEditorState extends State<InvoiceLinesEditor> {
                           SizedBox(width: compactWidth, child: quantityField),
                           const SizedBox(width: 12),
                           SizedBox(width: compactWidth, child: unitPriceField),
-                          const SizedBox(width: 12),
-                          SizedBox(width: compactWidth, child: discountField),
+                          if (widget.showDiscount) ...[
+                            const SizedBox(width: 12),
+                            SizedBox(width: compactWidth, child: discountField),
+                          ],
                           if (widget.showTax) ...[
                             const SizedBox(width: 12),
                             SizedBox(width: compactWidth, child: taxField),

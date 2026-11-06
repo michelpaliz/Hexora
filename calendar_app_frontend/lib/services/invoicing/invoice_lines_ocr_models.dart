@@ -13,6 +13,8 @@ class OcrExtractedLineDraft {
   final String? serviceDate;
   final bool? isCompositeConcept;
   final String? parseMethod;
+  final bool needsPrice;
+  final String? draftId;
 
   const OcrExtractedLineDraft({
     required this.position,
@@ -29,6 +31,8 @@ class OcrExtractedLineDraft {
     this.serviceDate,
     this.isCompositeConcept,
     this.parseMethod,
+    this.needsPrice = false,
+    this.draftId,
   });
 
   OcrExtractedLineDraft copyWith({
@@ -46,6 +50,8 @@ class OcrExtractedLineDraft {
     String? serviceDate,
     bool? isCompositeConcept,
     String? parseMethod,
+    bool? needsPrice,
+    String? draftId,
   }) {
     return OcrExtractedLineDraft(
       position: position ?? this.position,
@@ -62,6 +68,8 @@ class OcrExtractedLineDraft {
       serviceDate: serviceDate ?? this.serviceDate,
       isCompositeConcept: isCompositeConcept ?? this.isCompositeConcept,
       parseMethod: parseMethod ?? this.parseMethod,
+      needsPrice: needsPrice ?? this.needsPrice,
+      draftId: draftId ?? this.draftId,
     );
   }
 
@@ -81,6 +89,8 @@ class OcrExtractedLineDraft {
         if (isCompositeConcept != null)
           'isCompositeConcept': isCompositeConcept,
         if (parseMethod != null) 'parseMethod': parseMethod,
+        if (needsPrice) 'needsPrice': true,
+        if (draftId != null) 'draftId': draftId,
       };
 }
 
@@ -121,10 +131,15 @@ class OcrImageFile {
 }
 
 class InvoiceAiChatResponse {
-  const InvoiceAiChatResponse({required this.reply, required this.draftLines});
+  const InvoiceAiChatResponse({
+    required this.reply,
+    required this.draftLines,
+    this.requiresSingleInvoice = false,
+  });
 
   final String reply;
   final List<OcrExtractedLineDraft> draftLines;
+  final bool requiresSingleInvoice;
 }
 
 class OcrSaveFailure {

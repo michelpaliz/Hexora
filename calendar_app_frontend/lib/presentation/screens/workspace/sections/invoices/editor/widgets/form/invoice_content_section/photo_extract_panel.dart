@@ -64,12 +64,17 @@ class InvoicePhotoExtractPanel extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           OutlinedButton.icon(
-            onPressed: controller == null ? null : () => showDialog<void>(
-              context: context,
-              builder: (_) => InvoiceAiChatDialog(controller: controller!),
-            ),
+            onPressed: controller == null
+                ? null
+                : () => showDialog<void>(
+                      context: context,
+                      builder: (_) =>
+                          InvoiceAiChatDialog(controller: controller!),
+                    ),
             icon: const Icon(Icons.auto_awesome_outlined),
-            label: Text(l.localeName.startsWith('es') ? 'Crear con chat e imagen' : 'Create with chat and image'),
+            label: Text(l.localeName.startsWith('es')
+                ? 'Crear factura con IA'
+                : 'Create invoice with AI'),
           ),
           const SizedBox(height: 12),
           Row(
