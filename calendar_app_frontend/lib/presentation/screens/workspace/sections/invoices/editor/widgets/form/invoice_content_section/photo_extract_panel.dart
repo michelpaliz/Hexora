@@ -40,7 +40,8 @@ class InvoicePhotoExtractPanel extends StatelessWidget {
     final methodUsed = (current?.methodUsed ?? '').trim();
     final hasData = extracted.isNotEmpty;
 
-    return Container(
+    final extractionPanel = Container(
+      key: const ValueKey('invoice-quick-extraction-panel'),
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -61,20 +62,6 @@ class InvoicePhotoExtractPanel extends StatelessWidget {
           Text(
             l.invoiceLinesPhotoSubtitle,
             style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 10),
-          OutlinedButton.icon(
-            onPressed: controller == null
-                ? null
-                : () => showDialog<void>(
-                      context: context,
-                      builder: (_) =>
-                          InvoiceAiChatDialog(controller: controller!),
-                    ),
-            icon: const Icon(Icons.auto_awesome_outlined),
-            label: Text(l.localeName.startsWith('es')
-                ? 'Crear factura con IA'
-                : 'Create invoice with AI'),
           ),
           const SizedBox(height: 12),
           Row(
@@ -160,14 +147,15 @@ class InvoicePhotoExtractPanel extends StatelessWidget {
                   if (diagnostics.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     ...diagnostics.take(6).map(
-                      (diag) => Padding(
-                        padding: const EdgeInsets.only(bottom: 2),
-                        child: Text(
-                          '- $diag',
-                          style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                          (diag) => Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: Text(
+                              '- $diag',
+                              style: t.bodySmall
+                                  .copyWith(color: cs.onSurfaceVariant),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
                   ],
                 ],
               ),
@@ -179,7 +167,8 @@ class InvoicePhotoExtractPanel extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    l.invoiceLinesPhotoExtractedCount(extracted.length.toString()),
+                    l.invoiceLinesPhotoExtractedCount(
+                        extracted.length.toString()),
                     style: t.bodySmall.copyWith(
                       color: cs.onSurfaceVariant,
                       fontWeight: FontWeight.w700,
@@ -202,7 +191,8 @@ class InvoicePhotoExtractPanel extends StatelessWidget {
                 separatorBuilder: (_, __) => const SizedBox(height: 6),
                 itemBuilder: (_, i) {
                   final line = extracted[i];
-                  final descCtrl = TextEditingController(text: line.description);
+                  final descCtrl =
+                      TextEditingController(text: line.description);
                   final qtyCtrl =
                       TextEditingController(text: line.quantity.toString());
                   final unitCtrl = TextEditingController(
@@ -236,7 +226,8 @@ class InvoicePhotoExtractPanel extends StatelessWidget {
                                   labelText: 'Description',
                                   border: OutlineInputBorder(),
                                 ),
-                                onChanged: (v) => controller?.updateOcrExtractedLineField(
+                                onChanged: (v) =>
+                                    controller?.updateOcrExtractedLineField(
                                   i,
                                   description: v,
                                 ),
@@ -247,15 +238,16 @@ class InvoicePhotoExtractPanel extends StatelessWidget {
                                   Expanded(
                                     child: TextField(
                                       controller: qtyCtrl,
-                                      keyboardType: const TextInputType
-                                          .numberWithOptions(decimal: true),
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                              decimal: true),
                                       decoration: const InputDecoration(
                                         isDense: true,
                                         labelText: 'Qty',
                                         border: OutlineInputBorder(),
                                       ),
-                                      onChanged: (v) =>
-                                          controller?.updateOcrExtractedLineField(
+                                      onChanged: (v) => controller
+                                          ?.updateOcrExtractedLineField(
                                         i,
                                         quantity: double.tryParse(
                                           v.replaceAll(',', '.'),
@@ -267,15 +259,16 @@ class InvoicePhotoExtractPanel extends StatelessWidget {
                                   Expanded(
                                     child: TextField(
                                       controller: unitCtrl,
-                                      keyboardType: const TextInputType
-                                          .numberWithOptions(decimal: true),
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                              decimal: true),
                                       decoration: const InputDecoration(
                                         isDense: true,
                                         labelText: 'Unit',
                                         border: OutlineInputBorder(),
                                       ),
-                                      onChanged: (v) =>
-                                          controller?.updateOcrExtractedLineField(
+                                      onChanged: (v) => controller
+                                          ?.updateOcrExtractedLineField(
                                         i,
                                         unitPrice: double.tryParse(
                                           v.replaceAll(',', '.'),
@@ -287,15 +280,16 @@ class InvoicePhotoExtractPanel extends StatelessWidget {
                                   Expanded(
                                     child: TextField(
                                       controller: taxCtrl,
-                                      keyboardType: const TextInputType
-                                          .numberWithOptions(decimal: true),
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                              decimal: true),
                                       decoration: const InputDecoration(
                                         isDense: true,
                                         labelText: 'Tax %',
                                         border: OutlineInputBorder(),
                                       ),
-                                      onChanged: (v) =>
-                                          controller?.updateOcrExtractedLineField(
+                                      onChanged: (v) => controller
+                                          ?.updateOcrExtractedLineField(
                                         i,
                                         taxRate: double.tryParse(
                                           v.replaceAll(',', '.'),
@@ -335,6 +329,48 @@ class InvoicePhotoExtractPanel extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+
+    if (controller == null) return extractionPanel;
+
+    final isEs = l.localeName.startsWith('es');
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TabBar(
+              isScrollable: true,
+              dividerColor: Colors.transparent,
+              tabs: [
+                Tab(
+                  icon: const Icon(Icons.auto_awesome_outlined, size: 18),
+                  text: isEs ? 'Chat IA' : 'AI chat',
+                ),
+                Tab(
+                  icon: const Icon(Icons.document_scanner_outlined, size: 18),
+                  text: isEs ? 'Extracción rápida' : 'Quick extraction',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: TabBarView(
+              children: [
+                InvoiceAiChatDialog(
+                  key: const ValueKey('invoice-ai-inline-workspace'),
+                  controller: controller!,
+                  embedded: true,
+                ),
+                extractionPanel,
+              ],
+            ),
+          ),
         ],
       ),
     );
