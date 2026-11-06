@@ -221,6 +221,11 @@ class _TelegramWorkerDocumentPickerDialogState
     return cleaned.isEmpty ? 'worker-hours' : cleaned;
   }
 
+  String _pdfFileName(Worker worker) {
+    final prefix = _isSpanish ? 'horas-trabajadas' : 'worker-hours';
+    return '$prefix-${_safeFileName(_workerLabel(worker))}-$_monthValue.pdf';
+  }
+
   Future<Uint8List> _loadPdfBytes(Worker worker) async {
     final lang =
         Localizations.localeOf(context).languageCode.toLowerCase() == 'es'
@@ -270,8 +275,7 @@ class _TelegramWorkerDocumentPickerDialogState
       if (!mounted) return;
       await pdf_launcher.launchPdfPreview(
         bytes,
-        fileName:
-            'worker-hours-${_safeFileName(_workerLabel(worker))}-$_monthValue.pdf',
+        fileName: _pdfFileName(worker),
       );
     } catch (e) {
       if (!mounted) return;
@@ -304,8 +308,7 @@ class _TelegramWorkerDocumentPickerDialogState
       if (!mounted) return;
       Navigator.of(context).pop(
         TelegramWorkerDocumentSelection(
-          fileName:
-              'worker-hours-${_safeFileName(_workerLabel(worker))}-$_monthValue.pdf',
+          fileName: _pdfFileName(worker),
           bytes: bytes,
           mimeType: 'application/pdf',
           workerId: worker.id,
