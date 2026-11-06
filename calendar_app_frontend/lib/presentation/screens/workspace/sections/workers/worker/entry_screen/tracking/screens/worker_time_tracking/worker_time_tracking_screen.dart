@@ -240,6 +240,22 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
     return code == 'es' ? 'es' : 'en';
   }
 
+  String _workerPdfFileName(
+      BuildContext context, WorkerTimeTrackingController controller,
+      {bool monthlyCalendar = false}) {
+    final name = (controller.worker.displayName ?? '').trim();
+    final cleanedName = (name.isNotEmpty ? name : controller.worker.id)
+        .replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '-');
+    final safeName =
+        cleanedName.isNotEmpty ? cleanedName : controller.worker.id;
+    final month =
+        '${controller.year}-${controller.month.toString().padLeft(2, '0')}';
+    final prefix = monthlyCalendar
+        ? (_isSpanish(context) ? 'calendario-mensual' : 'monthly-calendar')
+        : (_isSpanish(context) ? 'horas-trabajadas' : 'worker-hours');
+    return '$prefix-$safeName-$month.pdf';
+  }
+
   String _previewPdfErrorMessage(Object error) {
     if (error is BackendApiException) {
       if (error.statusCode == 404) {
@@ -268,9 +284,8 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
     final c = context.read<WorkerTimeTrackingController>();
     setState(() => _previewingPayrollPdf = true);
     try {
+      final fileName = _workerPdfFileName(context, c);
       final bytes = await c.previewPayrollPdf(lang: _langCode(context));
-      final fileName =
-          'payroll_preview_${c.group.id}_${c.year}-${c.month.toString().padLeft(2, '0')}_${c.worker.id}.pdf';
       await launchPdfPreview(bytes, fileName: fileName);
     } catch (e) {
       if (!context.mounted) return;
@@ -287,9 +302,8 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
     final c = context.read<WorkerTimeTrackingController>();
     setState(() => _previewingMonthlyCalendarPdf = true);
     try {
+      final fileName = _workerPdfFileName(context, c, monthlyCalendar: true);
       final bytes = await c.exportMonthlyCalendarPdf(lang: _langCode(context));
-      final fileName =
-          'monthly_calendar_${c.group.id}_${c.year}-${c.month.toString().padLeft(2, '0')}_${c.worker.id}.pdf';
       await launchPdfPreview(bytes, fileName: fileName);
     } catch (e) {
       if (!context.mounted) return;
@@ -314,9 +328,8 @@ class _WorkerTimeTrackingViewState extends State<_WorkerTimeTrackingView> {
     final c = context.read<WorkerTimeTrackingController>();
     setState(() => _downloadingPayrollPdf = true);
     try {
+      final fileName = _workerPdfFileName(context, c);
       final bytes = await c.previewPayrollPdf(lang: _langCode(context));
-      final fileName =
-          'payroll_${c.group.id}_${c.year}-${c.month.toString().padLeft(2, '0')}_${c.worker.id}.pdf';
       await launchFileDownload(
         bytes,
         fileName: fileName,
