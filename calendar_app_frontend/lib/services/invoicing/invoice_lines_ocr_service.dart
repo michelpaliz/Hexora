@@ -40,6 +40,7 @@ class InvoiceLinesOcrService {
     required String message,
     required List<OcrExtractedLineDraft> draftLines,
     required List<Map<String, String>> history,
+    required String locale,
     OcrImageFile? file,
   }) async {
     final headers = await AuthenticatedHttpClient.authorizedHeaders(
@@ -58,7 +59,9 @@ class InvoiceLinesOcrService {
     );
     request.headers['Authorization'] = authorization;
     request.fields['message'] = message;
-    request.fields['draftLines'] = jsonEncode(draftLines.map((e) => e.toJson()).toList());
+    request.fields['locale'] = locale;
+    request.fields['draftLines'] =
+        jsonEncode(draftLines.map((e) => e.toJson()).toList());
     request.fields['history'] = jsonEncode(history);
     if (file != null) {
       request.files.add(http.MultipartFile.fromBytes(
@@ -78,7 +81,9 @@ class InvoiceLinesOcrService {
         debugMessage: message ?? response.reasonPhrase ?? 'Request failed',
       );
     }
-    final data = decoded is Map ? Map<String, dynamic>.from(decoded) : <String, dynamic>{};
+    final data = decoded is Map
+        ? Map<String, dynamic>.from(decoded)
+        : <String, dynamic>{};
     final rawLines = data['draftLines'];
     if (rawLines is! List) {
       throw const OcrExtractionException(
@@ -88,6 +93,7 @@ class InvoiceLinesOcrService {
     }
     return InvoiceAiChatResponse(
       reply: data['reply']?.toString() ?? '',
+      requiresSingleInvoice: data['requiresSingleInvoice'] == true,
       draftLines: [
         for (var i = 0; i < rawLines.length; i++)
           normalizeExtractedLine(rawLines[i], i),

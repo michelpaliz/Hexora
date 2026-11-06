@@ -80,6 +80,8 @@ OcrExtractedLineDraft normalizeExtractedLine(
             ? true
             : null,
     parseMethod: cleanInvoiceText(source['parseMethod']?.toString()),
+    needsPrice: source['needsPrice'] == true,
+    draftId: cleanInvoiceText(source['draftId']?.toString()),
   );
 }
 
