@@ -4,8 +4,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_controller.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_form_sheet/invoice_lines_editor.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/services/invoicing/invoice_lines_ocr_models.dart';
 import 'package:hexora/services/invoicing/invoice_lines_ocr_service.dart';
+import 'package:intl/intl.dart';
 
 class InvoiceAiChatDialog extends StatefulWidget {
   const InvoiceAiChatDialog({
@@ -407,6 +409,13 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
     if (!widget.embedded) Navigator.of(context).pop();
   }
 
+  void _focusAiChat(BuildContext actionContext) {
+    DefaultTabController.maybeOf(actionContext)?.animateTo(0);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _messageFocus.requestFocus();
+    });
+  }
+
   Widget _buildChatPane(BuildContext context, bool isEs) {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -708,133 +717,333 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
     );
   }
 
+  bool _isCompleteLine(OcrExtractedLineDraft line) =>
+      line.description.trim().isNotEmpty &&
+      line.quantity > 0 &&
+      line.unitPrice > 0 &&
+      line.taxRate >= 0 &&
+      !line.needsPrice;
+
+  String _formatMoney(double amount) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final currency = widget.controller.currency.text.trim().toUpperCase();
+    return NumberFormat.simpleCurrency(
+      locale: locale,
+      name: currency.isEmpty ? 'EUR' : currency,
+    ).format(amount);
+  }
+
+  String _formatNumber(double value) => NumberFormat(
+        '0.##',
+        Localizations.localeOf(context).toLanguageTag(),
+      ).format(value);
+
+  Widget _buildProposedLine(OcrExtractedLineDraft line, bool isEs) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final complete = _isCompleteLine(line);
+    final description = line.description.trim().isEmpty
+        ? (isEs ? 'Concepto sin descripción' : 'Description missing')
+        : line.description.trim();
+    final details = <String>[
+      if (line.quantity > 0)
+        '${isEs ? 'Cant.' : 'Qty'} ${_formatNumber(line.quantity)}',
+      if (line.unitPrice > 0) '× ${_formatMoney(line.unitPrice)}',
+      if (line.taxRate == 0)
+        isEs ? 'Exento' : 'Exempt'
+      else if (line.taxRate > 0)
+        '${isEs ? 'IVA' : 'VAT'} ${_formatNumber(line.taxRate)}%',
+    ];
+
+    return SizedBox(
+      height: 48,
+      child: Row(
+        children: [
+          Expanded(
+            child: Tooltip(
+              message: description,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: line.description.trim().isEmpty
+                          ? colors.tertiary
+                          : colors.onSurface,
+                    ),
+                  ),
+                  if (details.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      details.join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.labelSmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          if (complete)
+            Text(
+              _formatMoney(line.lineTotal),
+              textAlign: TextAlign.right,
+              style: textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            )
+          else
+            Tooltip(
+              message: isEs
+                  ? 'Faltan datos para calcular esta línea'
+                  : 'Missing data for this line',
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      size: 15, color: colors.tertiary),
+                  const SizedBox(width: 4),
+                  Text(
+                    isEs ? 'Pendiente' : 'Pending',
+                    style: textTheme.labelMedium?.copyWith(
+                      color: colors.tertiary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _totalRow(String label, double amount, {bool strong = false}) {
+    final colors = Theme.of(context).colorScheme;
+    final style = (strong
+            ? Theme.of(context).textTheme.titleSmall
+            : Theme.of(context).textTheme.bodySmall)
+        ?.copyWith(
+      fontWeight: strong ? FontWeight.w800 : FontWeight.w600,
+      color: strong ? colors.onSurface : colors.onSurfaceVariant,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: style)),
+          Text(_formatMoney(amount), style: style),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInvoicePreview(BuildContext context, bool isEs) {
     final colors = Theme.of(context).colorScheme;
-    final subtotal =
-        _suggestedLines.fold<double>(0, (sum, line) => sum + line.lineSubtotal);
+    final textTheme = Theme.of(context).textTheme;
+    final completeLines = _suggestedLines.where(_isCompleteLine).toList();
+    final hasIncomplete = completeLines.length != _suggestedLines.length;
+    final subtotal = completeLines.fold<double>(
+      0,
+      (sum, line) => sum + line.lineSubtotal,
+    );
     final tax =
-        _suggestedLines.fold<double>(0, (sum, line) => sum + line.lineTax);
+        completeLines.fold<double>(0, (sum, line) => sum + line.lineTax);
     final total =
-        _suggestedLines.fold<double>(0, (sum, line) => sum + line.lineTotal);
-    return Container(
+        completeLines.fold<double>(0, (sum, line) => sum + line.lineTotal);
+    final taxRates = completeLines.map((line) => line.taxRate).toSet().toList()
+      ..sort();
+    final taxLabel = taxRates.isEmpty
+        ? (isEs ? 'IVA' : 'VAT')
+        : '${isEs ? 'IVA' : 'VAT'} (${taxRates.map((rate) => '${_formatNumber(rate)}%').join(', ')})';
+    final viewportHeight = MediaQuery.sizeOf(context).height;
+    final linesMaxHeight = (viewportHeight * .32).clamp(120.0, 320.0);
+    final editorMaxHeight = (viewportHeight * .42).clamp(200.0, 420.0);
+
+    final panel = Container(
+      key: const ValueKey('invoice-ai-summary-panel'),
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: colors.surfaceContainerLow,
-        border: Border.all(color: colors.outlineVariant),
-        borderRadius: BorderRadius.circular(12),
+        color: colors.surface,
+        border: Border.all(
+          color: colors.outlineVariant.withValues(alpha: .75),
+        ),
+        borderRadius: BorderRadius.circular(8),
       ),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(children: [
-            const Icon(Icons.receipt_long_outlined),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
+          Row(
+            children: [
+              Icon(
+                Icons.receipt_long_outlined,
+                size: 18,
+                color: colors.onSurfaceVariant,
+              ),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
                   _showEditor
                       ? (isEs ? 'Editar líneas' : 'Edit invoice lines')
                       : (isEs ? 'Resumen de factura' : 'Invoice summary'),
-                  style: Theme.of(context).textTheme.titleMedium),
+                  style: textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Text(
+                isEs
+                    ? '${_suggestedLines.length} líneas'
+                    : '${_suggestedLines.length} lines',
+                style: textTheme.labelMedium?.copyWith(
+                  color: colors.onSurfaceVariant,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+          if (_sending) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: colors.primaryContainer.withValues(alpha: .35),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 15,
+                    height: 15,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: colors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    isEs ? 'Analizando conceptos...' : 'Analyzing items...',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colors.onPrimaryContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            Text('${_suggestedLines.length}',
-                style: Theme.of(context).textTheme.labelLarge),
-          ]),
-          if (_showEditor)
-            Text(
-              _sending
-                  ? (isEs
-                      ? 'La IA está respondiendo. Puedes seguir editando; conservaré tus cambios.'
-                      : 'AI is responding. You can keep editing; your changes will be preserved.')
-                  : (isEs
-                      ? 'Los cambios de estas líneas se incluyen en tu próximo mensaje al chat.'
-                      : 'Changes to these lines are included in your next chat message.'),
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: colors.onSurfaceVariant),
+          ],
+          if (_error != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: colors.errorContainer.withValues(alpha: .55),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.error_outline, size: 16, color: colors.error),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      _error!,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colors.onErrorContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          const Divider(height: 24),
+          ],
+          const SizedBox(height: 10),
           if (_suggestedLines.isEmpty && !_showEditor)
-            Expanded(
+            SizedBox(
+              height: 116,
               child: Center(
-                child: Text(
-                  _requiresSingleInvoice
-                      ? (isEs
-                          ? 'Envía una sola factura para preparar la vista previa.'
-                          : 'Send one invoice at a time to prepare the preview.')
-                      : (isEs
-                          ? 'Las líneas que proponga la IA aparecerán aquí.'
-                          : 'AI proposed invoice lines will appear here.'),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: colors.onSurfaceVariant),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 340),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.format_list_bulleted_rounded,
+                        size: 24,
+                        color: colors.onSurfaceVariant.withValues(alpha: .7),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        _requiresSingleInvoice
+                            ? (isEs
+                                ? 'Envía una sola factura'
+                                : 'Send one invoice')
+                            : (isEs ? 'Sin líneas todavía' : 'No lines yet'),
+                        textAlign: TextAlign.center,
+                        style: textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _requiresSingleInvoice
+                            ? (isEs
+                                ? 'Procesa una factura cada vez para preparar sus líneas.'
+                                : 'Process one invoice at a time to prepare its lines.')
+                            : (isEs
+                                ? 'Describe los trabajos o adjunta un archivo para generar las líneas.'
+                                : 'Describe the work or attach a file to generate invoice lines.'),
+                        textAlign: TextAlign.center,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             )
-          else if (!_showEditor) ...[
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      isEs
-                          ? 'He preparado ${_suggestedLines.length} líneas. Revisa el resumen antes de abrir el editor.'
-                          : 'I prepared ${_suggestedLines.length} lines. Review the summary before opening the editor.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 14),
-                    for (final line in _suggestedLines.take(3))
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(
-                          '• ${line.description}',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                    if (_suggestedLines.length > 3)
-                      Text(
-                        isEs
-                            ? 'Y ${_suggestedLines.length - 3} líneas más'
-                            : 'And ${_suggestedLines.length - 3} more lines',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    const Divider(height: 24),
-                    _totalRow(isEs ? 'Base imponible' : 'Subtotal', subtotal),
-                    const SizedBox(height: 6),
-                    _totalRow(isEs ? 'Impuestos' : 'Tax', tax),
-                    const SizedBox(height: 8),
-                    _totalRow(isEs ? 'Total' : 'Total', total, strong: true),
-                    if (_suggestedLines.any((line) => line.needsPrice)) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        isEs
-                            ? 'Hay líneas sin precio; el total es parcial.'
-                            : 'Some lines have no price; the total is partial.',
-                        style: TextStyle(color: colors.tertiary),
-                      ),
-                    ],
-                  ],
+          else if (!_showEditor)
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: linesMaxHeight),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: _suggestedLines.length,
+                itemBuilder: (_, index) =>
+                    _buildProposedLine(_suggestedLines[index], isEs),
+                separatorBuilder: (_, __) => Divider(
+                  height: 1,
+                  color: colors.outlineVariant.withValues(alpha: .45),
                 ),
               ),
+            )
+          else ...[
+            Text(
+              isEs
+                  ? 'Revisa y completa las líneas antes de añadirlas al borrador.'
+                  : 'Review and complete the lines before adding them to the draft.',
+              style: textTheme.bodySmall?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
             ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: () => setState(() => _showEditor = true),
-              icon: const Icon(Icons.edit_outlined),
-              label: Text(isEs
-                  ? 'Confirmar y editar líneas'
-                  : 'Confirm and edit lines'),
-            ),
-            TextButton.icon(
-              onPressed: () =>
-                  FocusScope.of(context).requestFocus(_messageFocus),
-              icon: const Icon(Icons.chat_bubble_outline),
-              label: Text(isEs ? 'Corregir con el chat' : 'Correct with chat'),
-            ),
-          ] else ...[
-            Expanded(
+            const SizedBox(height: 8),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: editorMaxHeight),
               child: SingleChildScrollView(
                 child: InvoiceLinesEditor(
                   key: ObjectKey(_editableLines),
@@ -844,41 +1053,86 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                 ),
               ),
             ),
-            const Divider(height: 20),
-            if (_suggestedLines.any((line) => line.needsPrice)) ...[
+          ],
+          if (_suggestedLines.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Divider(
+              height: 12,
+              color: colors.outlineVariant.withValues(alpha: .55),
+            ),
+            if (completeLines.isNotEmpty) ...[
+              if (hasIncomplete)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    isEs
+                        ? 'Importes provisionales · faltan datos en algunas líneas'
+                        : 'Provisional amounts · some lines are incomplete',
+                    style: textTheme.labelSmall?.copyWith(
+                      color: colors.tertiary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              _totalRow(isEs ? 'Base imponible' : 'Subtotal', subtotal),
+              _totalRow(taxLabel, tax),
+              _totalRow(isEs ? 'Total' : 'Total', total, strong: true),
+            ] else
               Text(
                 isEs
-                    ? 'Faltan precios; el total es parcial. Complétalos aquí antes de añadir las líneas.'
-                    : 'Some prices are missing; this total is partial. Fill them in here before adding the lines.',
-                style: TextStyle(
-                    color: colors.tertiary, fontWeight: FontWeight.w600),
+                    ? 'Completa cantidades y precios para calcular los importes.'
+                    : 'Complete quantities and prices to calculate amounts.',
+                style: textTheme.bodySmall?.copyWith(
+                  color: colors.tertiary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              const SizedBox(height: 10),
-            ],
-            _totalRow(isEs ? 'Base imponible' : 'Subtotal', subtotal),
-            const SizedBox(height: 6),
-            _totalRow(isEs ? 'Impuestos' : 'Tax', tax),
             const SizedBox(height: 10),
-            _totalRow(isEs ? 'Total' : 'Total', total, strong: true),
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Builder(
+                  builder: (actionContext) => HexoraButton(
+                    key: const ValueKey('invoice-ai-correct-action'),
+                    onPressed:
+                        _sending ? null : () => _focusAiChat(actionContext),
+                    label: isEs ? 'Corregir con IA' : 'Correct with AI',
+                    icon: Icons.chat_bubble_outline,
+                    variant: HexoraButtonVariant.secondary,
+                    size: HexoraButtonSize.compact,
+                  ),
+                ),
+                if (!_showEditor)
+                  HexoraButton(
+                    key: const ValueKey('invoice-ai-confirm-action'),
+                    onPressed: _sending
+                        ? null
+                        : () => setState(() => _showEditor = true),
+                    label: isEs
+                        ? 'Confirmar y editar líneas'
+                        : 'Confirm and edit lines',
+                    icon: Icons.edit_outlined,
+                    size: HexoraButtonSize.compact,
+                  )
+                else
+                  HexoraButton(
+                    key: const ValueKey('invoice-ai-apply-action'),
+                    onPressed: _sending || !_canApply ? null : _apply,
+                    label: isEs ? 'Añadir al borrador' : 'Add to draft',
+                    icon: Icons.playlist_add_check,
+                    loading: _sending,
+                    size: HexoraButtonSize.compact,
+                  ),
+              ],
+            ),
           ],
         ],
       ),
     );
-  }
 
-  Widget _totalRow(String label, double amount, {bool strong = false}) {
-    final style = strong
-        ? Theme.of(context)
-            .textTheme
-            .titleMedium
-            ?.copyWith(fontWeight: FontWeight.w800)
-        : Theme.of(context).textTheme.bodyMedium;
-    return Row(
-      children: [
-        Expanded(child: Text(label, style: style)),
-        Text('${amount.toStringAsFixed(2)} €', style: style)
-      ],
-    );
+    return Align(alignment: Alignment.topCenter, child: panel);
   }
 
   @override
@@ -953,20 +1207,16 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
               },
             ),
           ),
-          const SizedBox(height: 12),
-          Row(children: [
-            if (!widget.embedded)
-              TextButton(
+          if (!widget.embedded) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
                 onPressed: _sending ? null : () => Navigator.of(context).pop(),
                 child: Text(isEs ? 'Cancelar' : 'Cancel'),
               ),
-            const Spacer(),
-            FilledButton.icon(
-              onPressed: _sending || !_showEditor || !_canApply ? null : _apply,
-              icon: const Icon(Icons.playlist_add_check),
-              label: Text(isEs ? 'Añadir al borrador' : 'Add to draft'),
             ),
-          ]),
+          ],
         ],
       ),
     );

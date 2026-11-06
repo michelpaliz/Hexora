@@ -63,6 +63,26 @@ void main() {
       find.byKey(const ValueKey('invoice-ai-composer')),
       findsOneWidget,
     );
+    final summary = find.byKey(const ValueKey('invoice-ai-summary-panel'));
+    expect(summary, findsOneWidget);
+    expect(find.text('Resumen de factura'), findsOneWidget);
+    expect(find.text('0 líneas'), findsOneWidget);
+    expect(find.text('Sin líneas todavía'), findsOneWidget);
+    expect(
+      find.text(
+        'Describe los trabajos o adjunta un archivo para generar las líneas.',
+      ),
+      findsOneWidget,
+    );
+    expect(tester.getSize(summary).height, lessThan(200));
+    expect(
+      find.byKey(const ValueKey('invoice-ai-confirm-action')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('invoice-ai-apply-action')),
+      findsNothing,
+    );
     expect(find.text('Crear factura con IA'), findsNothing);
     expect(find.text('Cancelar'), findsNothing);
     expect(find.text('Chat IA'), findsNothing);
