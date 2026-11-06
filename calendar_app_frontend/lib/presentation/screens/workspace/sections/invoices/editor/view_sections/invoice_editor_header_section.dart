@@ -13,27 +13,12 @@ class _InvoiceEditorHeaderSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final steps = [
-      l.invoiceCustomerTitle,
-      l.invoiceDatesTitle,
-      l.invoiceLinesTitle,
-      l.invoiceStepPreviewShort,
-    ];
-
-    return AnimatedBuilder(
-      animation: state._tabController,
-      builder: (context, _) {
-        return _InvoiceFlowTopBar(
-          steps: steps,
-          currentStep: state._tabController.index,
-          selectedClientName: selectedClientName,
-          showBack: state.widget.embedded,
-          backLabel: l.budgetBackCta,
-          onBack: () => state._requestClose(),
-          onStepTapped: state._goToStep,
-          onClientTapped: () => state._goToStep(0),
-        );
-      },
+    return _InvoiceFlowTopBar(
+      selectedClientName: selectedClientName,
+      showBack: state.widget.embedded,
+      backLabel: l.budgetBackCta,
+      onBack: () => state._requestClose(),
+      onClientTapped: () => state._goToStep(0),
     );
   }
 }

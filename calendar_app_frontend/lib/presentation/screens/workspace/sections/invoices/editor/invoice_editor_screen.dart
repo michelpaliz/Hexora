@@ -62,6 +62,9 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
   bool _lastReportedUnsaved = false;
   int _lastDataRevision = 0;
   late final TabController _tabController;
+  String _lineInputMode = 'manual';
+  bool _lineMethodsExpanded = false;
+  bool _wizardRailCollapsed = false;
 
   @override
   void initState() {
@@ -73,6 +76,7 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
       initialInvoice: widget.initialInvoice,
     );
     _c.addListener(_handleControllerChange);
+    _lineMethodsExpanded = _c.currentStepIndex == 2;
     _tabController = TabController(
       length: 4,
       vsync: this,
@@ -174,12 +178,32 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
 
   void _goToStep(int index) {
     final next = index.clamp(0, 3);
+    if (next == 2 && !_lineMethodsExpanded) {
+      setState(() => _lineMethodsExpanded = true);
+    }
     _c.setCurrentStepIndex(next);
     _tabController.animateTo(
       next,
       duration: HexoraMotion.duration(context, HexoraMotion.navigation),
       curve: HexoraMotion.enter,
     );
+  }
+
+  void _selectLineInputMode(String mode) {
+    if (!const {'manual', 'photo', 'json'}.contains(mode)) return;
+    setState(() {
+      _lineInputMode = mode;
+      _lineMethodsExpanded = true;
+    });
+    if (_tabController.index != 2) _goToStep(2);
+  }
+
+  void _toggleLineMethods() {
+    setState(() => _lineMethodsExpanded = !_lineMethodsExpanded);
+  }
+
+  void _toggleWizardRail() {
+    setState(() => _wizardRailCollapsed = !_wizardRailCollapsed);
   }
 
   @override

@@ -120,6 +120,9 @@ class _InvoiceEditorView extends StatelessWidget {
                     state._c.extractLinesFromImage(context),
                 onApplyExtractedLines: state._c.applyExtractedLinesToDraft,
                 onClearExtractedLines: state._c.clearExtractedLines,
+                contentMode: state._lineInputMode,
+                onContentModeChanged: state._selectLineInputMode,
+                showModeTabs: false,
               );
 
               final gatedLinesSection = state._c.financialFieldsReadOnly
@@ -908,6 +911,12 @@ class _InvoiceEditorView extends StatelessWidget {
                 2 => step1Complete && !state._c.saving,
                 _ => canCompleteDraft,
               };
+              final wizardSteps = [
+                l.invoiceCustomerTitle,
+                l.invoiceDatesTitle,
+                l.invoiceLinesTitle,
+                l.invoiceStepPreviewShort,
+              ];
 
               return Form(
                 key: state._c.formKey,
@@ -918,88 +927,139 @@ class _InvoiceEditorView extends StatelessWidget {
                       headerBar,
                       const SizedBox(height: 6),
                       Expanded(
-                        child: HexoraStepTransition.indexed(
-                          currentStep: currentEditorStep,
-                          children: [
-                            _buildInvoiceClientStep(context, state, l, t, cs),
-                            SingleChildScrollView(
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                              child: Center(
-                                child: ConstrainedBox(
-                                  constraints:
-                                      const BoxConstraints(maxWidth: 960),
-                                  child: InvoiceDatesStep(
-                                    currencyController: state._c.currency,
-                                    invoiceDate: state._c.invoiceDate,
-                                    dueDate: state._c.dueDate,
-                                    notesController: state._c.notes,
-                                    onPickInvoiceDate: () => state._c.pickDate(
-                                      context,
-                                      state._c.invoiceDate,
+                        child: LayoutBuilder(
+                          builder: (context, wizardConstraints) {
+                            final stepContent = HexoraStepTransition.indexed(
+                              currentStep: currentEditorStep,
+                              children: [
+                                _buildInvoiceClientStep(
+                                    context, state, l, t, cs),
+                                SingleChildScrollView(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                                  child: Center(
+                                    child: ConstrainedBox(
+                                      constraints:
+                                          const BoxConstraints(maxWidth: 960),
+                                      child: InvoiceDatesStep(
+                                        currencyController: state._c.currency,
+                                        invoiceDate: state._c.invoiceDate,
+                                        dueDate: state._c.dueDate,
+                                        notesController: state._c.notes,
+                                        onPickInvoiceDate: () =>
+                                            state._c.pickDate(
+                                          context,
+                                          state._c.invoiceDate,
+                                        ),
+                                        onPickDueDate: () => state._c.pickDate(
+                                          context,
+                                          state._c.dueDate,
+                                          firstAllowedDate:
+                                              state._c.invoiceDate.value,
+                                        ),
+                                        onCurrencyChanged: (_) =>
+                                            state._c.notifyUi(),
+                                        onNotesChanged: (_) =>
+                                            state._c.notifyUi(),
+                                      ),
                                     ),
-                                    onPickDueDate: () => state._c.pickDate(
-                                      context,
-                                      state._c.dueDate,
-                                      firstAllowedDate:
-                                          state._c.invoiceDate.value,
-                                    ),
-                                    onCurrencyChanged: (_) =>
-                                        state._c.notifyUi(),
-                                    onNotesChanged: (_) => state._c.notifyUi(),
                                   ),
                                 ),
-                              ),
-                            ),
-                            gatedLinesSection,
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                              child: LayoutBuilder(
-                                builder: (context, previewConstraints) {
-                                  if (previewConstraints.maxWidth < 860) {
-                                    final previewHeight =
-                                        (MediaQuery.sizeOf(context).height *
-                                                .55)
-                                            .clamp(360.0, 620.0)
-                                            .toDouble();
-                                    return SingleChildScrollView(
-                                      child: Column(
+                                gatedLinesSection,
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                                  child: LayoutBuilder(
+                                    builder: (context, previewConstraints) {
+                                      if (previewConstraints.maxWidth < 860) {
+                                        final previewHeight =
+                                            (MediaQuery.sizeOf(context).height *
+                                                    .55)
+                                                .clamp(360.0, 620.0)
+                                                .toDouble();
+                                        return SingleChildScrollView(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: [
+                                              issuePanel,
+                                              const SizedBox(height: 16),
+                                              SizedBox(
+                                                height: previewHeight,
+                                                child: previewSurface(),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }
+                                      return Row(
                                         crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          issuePanel,
-                                          const SizedBox(height: 16),
-                                          SizedBox(
-                                            height: previewHeight,
+                                          // ── Left: summary + actions ──────────────
+                                          Expanded(
+                                            flex: 4,
+                                            child: SingleChildScrollView(
+                                              child: issuePanel,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 16),
+                                          // ── Right: PDF preview ───────────────────
+                                          Expanded(
+                                            flex: 6,
                                             child: previewSurface(),
                                           ),
                                         ],
-                                      ),
-                                    );
-                                  }
-                                  return Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      // ── Left: summary + actions ──────────────
-                                      Expanded(
-                                        flex: 4,
-                                        child: SingleChildScrollView(
-                                          child: issuePanel,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      // ── Right: PDF preview ───────────────────
-                                      Expanded(
-                                        flex: 6,
-                                        child: previewSurface(),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            );
+                            if (wizardConstraints.maxWidth < 680) {
+                              return Column(
+                                children: [
+                                  _InvoiceWizardMobileSelector(
+                                    steps: wizardSteps,
+                                    currentStep: currentEditorStep,
+                                    lineMode: state._lineInputMode,
+                                    onStepTapped: state._goToStep,
+                                    onLineModeSelected:
+                                        state._selectLineInputMode,
+                                  ),
+                                  Expanded(child: stepContent),
+                                ],
+                              );
+                            }
+                            final forceCollapsed =
+                                wizardConstraints.maxWidth < 980;
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _InvoiceWizardRail(
+                                  steps: wizardSteps,
+                                  currentStep: currentEditorStep,
+                                  lineMode: state._lineInputMode,
+                                  linesExpanded: state._lineMethodsExpanded,
+                                  collapsed: forceCollapsed ||
+                                      state._wizardRailCollapsed,
+                                  onStepTapped: state._goToStep,
+                                  onLineModeSelected:
+                                      state._selectLineInputMode,
+                                  onToggleLines: state._toggleLineMethods,
+                                  onToggleCollapsed: state._toggleWizardRail,
+                                ),
+                                VerticalDivider(
+                                  width: 1,
+                                  thickness: 1,
+                                  color: cs.outlineVariant.withValues(
+                                    alpha: .45,
+                                  ),
+                                ),
+                                Expanded(child: stepContent),
+                              ],
+                            );
+                          },
                         ),
                       ),
                       HexoraDocumentFooter(
