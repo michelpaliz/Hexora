@@ -60,6 +60,11 @@ OcrExtractedLineDraft normalizeExtractedLine(
   final subtotal = quantity * unitPrice;
   final lineTax = subtotal * (taxRate / 100);
   final total = subtotal + lineTax;
+  final rawReference = source['priceReference'];
+  final reference = rawReference is Map
+      ? Map<String, dynamic>.from(rawReference)
+      : null;
+  final referenceId = reference?['invoiceId']?.toString() ?? '';
 
   return OcrExtractedLineDraft(
     position: position,
@@ -82,6 +87,16 @@ OcrExtractedLineDraft normalizeExtractedLine(
     parseMethod: cleanInvoiceText(source['parseMethod']?.toString()),
     needsPrice: source['needsPrice'] == true,
     draftId: cleanInvoiceText(source['draftId']?.toString()),
+    priceReference: referenceId.isEmpty
+        ? null
+        : InvoicePriceReference(
+            invoiceId: referenceId,
+            invoiceNumber: cleanInvoiceText(reference?['invoiceNumber']?.toString()),
+            issueDate: DateTime.tryParse(reference?['issueDate']?.toString() ?? ''),
+            invoiceConcept: reference?['invoiceConcept']?.toString() ?? '',
+            matchedConcept: reference?['matchedConcept']?.toString() ?? '',
+            unitPrice: _finiteNum(reference?['unitPrice'], unitPrice),
+          ),
   );
 }
 

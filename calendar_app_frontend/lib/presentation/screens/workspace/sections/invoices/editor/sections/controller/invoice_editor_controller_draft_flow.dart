@@ -5,6 +5,10 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
     return _saveDraftInternal(context, allowEmptyLines: false);
   }
 
+  Future<Invoice> saveAiDraft(BuildContext context) async {
+    return _saveDraftInternal(context, allowEmptyLines: true);
+  }
+
   Future<Invoice> _saveDraftInternal(
     BuildContext context, {
     required bool allowEmptyLines,
