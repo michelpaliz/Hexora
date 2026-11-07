@@ -6,6 +6,8 @@ import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_ta
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
+import 'package:hexora/models/invoice/invoice_block.dart';
+import 'package:hexora/models/invoice/invoice_line.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/invoicing/invoice_lines_api.dart';
 import 'package:hexora/services/shared/content_disposition.dart';
@@ -124,6 +126,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.invoice.id != widget.invoice.id ||
         oldWidget.invoice.lines.length != widget.invoice.lines.length ||
+        oldWidget.invoice.blocks.length != widget.invoice.blocks.length ||
         oldWidget.invoice.subtotal != widget.invoice.subtotal ||
         oldWidget.invoice.taxTotal != widget.invoice.taxTotal ||
         oldWidget.invoice.total != widget.invoice.total) {
@@ -132,17 +135,72 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     }
   }
 
-  void _seedFromInvoice() {
-    final inv = widget.invoice;
+  void _seedFromInvoice([Invoice? source]) {
+    final inv = source ?? widget.invoice;
     _discountAmount = inv.discountAmount;
     _discountPercent = inv.discountPercent;
-    _lineCount = inv.lines.isEmpty ? null : inv.lines.length;
+    if (inv.lines.isNotEmpty) {
+      _applyLineTotals(inv.lines, invoice: inv);
+      return;
+    }
+
+    final billableBlocks = inv.blocks
+        .where((block) =>
+            block.type.trim().toLowerCase() == InvoiceBlockType.item ||
+            block.isBillable == true)
+        .toList(growable: false);
+    if (billableBlocks.isNotEmpty) {
+      _lineCount = billableBlocks.length;
+      _conceptDescriptions = billableBlocks
+          .map((block) =>
+              (block.description ?? block.title ?? block.text ?? '').trim())
+          .where((description) => description.isNotEmpty)
+          .toList(growable: false);
+      final calculatedSubtotal = billableBlocks.fold<num>(0, (sum, block) {
+        final raw = (block.qty ?? 1) * (block.unitPrice ?? 0);
+        final discount = (block.discountRate ?? 0).clamp(0, 100);
+        return sum + (block.lineSubtotal ?? raw * (1 - discount / 100));
+      });
+      final calculatedTax = billableBlocks.fold<num>(0, (sum, block) {
+        final raw = (block.qty ?? 1) * (block.unitPrice ?? 0);
+        final discount = (block.discountRate ?? 0).clamp(0, 100);
+        final subtotal = block.lineSubtotal ?? raw * (1 - discount / 100);
+        return sum + (block.lineTax ?? subtotal * ((block.taxRate ?? 0) / 100));
+      });
+      _subtotal = inv.subtotal ?? calculatedSubtotal;
+      _taxTotal = inv.taxTotal ?? calculatedTax;
+      _total = inv.total ?? calculatedSubtotal + calculatedTax;
+      return;
+    }
+
+    _lineCount = null;
     _subtotal = inv.subtotal;
     _taxTotal = inv.taxTotal;
     _total = inv.total;
-    _conceptDescriptions = inv.lines
+    _conceptDescriptions = const [];
+  }
+
+  void _applyLineTotals(List<InvoiceLine> lines, {required Invoice invoice}) {
+    num subtotalFor(InvoiceLine line) {
+      final raw = line.quantity * line.unitPrice;
+      final discount = line.discountRate.clamp(0, 100);
+      return line.lineSubtotal ?? raw * (1 - discount / 100);
+    }
+
+    num taxFor(InvoiceLine line) =>
+        line.lineTax ?? subtotalFor(line) * (line.taxRate / 100);
+
+    final calculatedSubtotal =
+        lines.fold<num>(0, (sum, line) => sum + subtotalFor(line));
+    final calculatedTax = lines.fold<num>(0, (sum, line) => sum + taxFor(line));
+    _lineCount = lines.length;
+    _conceptDescriptions = lines
         .map((line) => line.description.trim())
+        .where((description) => description.isNotEmpty)
         .toList(growable: false);
+    _subtotal = invoice.subtotal ?? calculatedSubtotal;
+    _taxTotal = invoice.taxTotal ?? calculatedTax;
+    _total = invoice.total ?? calculatedSubtotal + calculatedTax;
   }
 
   Future<void> _maybeFetchMeta() async {
@@ -153,19 +211,25 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
 
     setState(() => _loadingMeta = true);
     try {
-      final lines = await _linesApi.list(widget.invoice.id);
+      var source = widget.invoice;
+      var lines = await _linesApi.list(widget.invoice.id);
+      if (lines.isEmpty) {
+        try {
+          source = await InvoicesApi().getById(widget.invoice.id);
+          lines = source.lines;
+        } catch (_) {
+          // Keep the list endpoint result when the detailed draft is unavailable.
+        }
+      }
       if (!mounted) return;
-      final inv = widget.invoice;
       setState(() {
-        _lineCount = lines.length;
-        _conceptDescriptions = lines
-            .map((line) => line.description.trim())
-            .toList(growable: false);
-        _subtotal = inv.subtotal;
-        _taxTotal = inv.taxTotal;
-        _total = inv.total;
-        _discountAmount = inv.discountAmount;
-        _discountPercent = inv.discountPercent;
+        if (lines.isNotEmpty) {
+          _applyLineTotals(lines, invoice: source);
+        } else {
+          _seedFromInvoice(source);
+        }
+        _discountAmount = source.discountAmount;
+        _discountPercent = source.discountPercent;
       });
     } catch (_) {
       if (!mounted) return;

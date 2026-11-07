@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
+import 'package:hexora/models/invoice/invoice_block.dart';
 import 'package:hexora/models/invoice/invoice_line.dart';
 import 'package:hexora/services/invoicing/invoice_lines_api.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
@@ -53,6 +54,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.invoice.id != widget.invoice.id ||
         oldWidget.invoice.lines.length != widget.invoice.lines.length ||
+        oldWidget.invoice.blocks.length != widget.invoice.blocks.length ||
         oldWidget.invoice.subtotal != widget.invoice.subtotal ||
         oldWidget.invoice.taxTotal != widget.invoice.taxTotal ||
         oldWidget.invoice.total != widget.invoice.total) {
@@ -69,6 +71,20 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     num lineTotal(InvoiceLine line) =>
         line.lineTotal ?? (lineSubtotal(line) + lineTax(line));
 
+    bool isBillableBlock(InvoiceBlock block) {
+      final type = block.type.trim().toLowerCase();
+      return type == InvoiceBlockType.item || block.isBillable == true;
+    }
+
+    num blockSubtotal(InvoiceBlock block) =>
+        block.lineSubtotal ??
+        ((block.qty ?? 1) * (block.unitPrice ?? 0)) *
+            (1 - ((block.discountRate ?? 0).clamp(0, 100) / 100));
+    num blockTax(InvoiceBlock block) =>
+        block.lineTax ?? (blockSubtotal(block) * ((block.taxRate ?? 0) / 100));
+    num blockTotal(InvoiceBlock block) =>
+        block.lineTotal ?? (blockSubtotal(block) + blockTax(block));
+
     if (widget.invoice.lines.isNotEmpty) {
       _lineCount = widget.invoice.lines.length;
       _subtotal = widget.invoice.subtotal ??
@@ -83,6 +99,16 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
             0,
             (sum, line) => sum + lineTotal(line),
           );
+    } else if (widget.invoice.blocks.any(isBillableBlock)) {
+      final blocks =
+          widget.invoice.blocks.where(isBillableBlock).toList(growable: false);
+      _lineCount = blocks.length;
+      _subtotal = widget.invoice.subtotal ??
+          blocks.fold<num>(0, (sum, block) => sum + blockSubtotal(block));
+      _taxTotal = widget.invoice.taxTotal ??
+          blocks.fold<num>(0, (sum, block) => sum + blockTax(block));
+      _total = widget.invoice.total ??
+          blocks.fold<num>(0, (sum, block) => sum + blockTotal(block));
     } else {
       _lineCount = null;
       _subtotal = widget.invoice.subtotal;
@@ -140,7 +166,9 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
             .format(invoice.registeredAt!.toLocal())
         : null;
     final occurrenceDateLabel = invoice.occurrenceDate != null
-        ? DateFormat.yMMMd(l.localeName).add_Hm().format(invoice.occurrenceDate!)
+        ? DateFormat.yMMMd(l.localeName)
+            .add_Hm()
+            .format(invoice.occurrenceDate!)
         : null;
 
     final money = NumberFormat.currency(locale: l.localeName, symbol: 'â‚¬');
@@ -246,14 +274,14 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                       [
                         if (linesCountLabel != dash)
                           '${l.invoiceLinesTitle}: $linesCountLabel'
-                          '${registeredDateLabel == null ? '' : ' · $registeredDateLabel'}',
+                              '${registeredDateLabel == null ? '' : ' Â· $registeredDateLabel'}',
                         if (linesCountLabel == dash &&
                             registeredDateLabel != null)
                           registeredDateLabel,
                         if (occurrenceDateLabel != null &&
                             occurrenceDateLabel != registeredDateLabel)
                           occurrenceDateLabel,
-                      ].where((e) => e.trim().isNotEmpty).join(' · '),
+                      ].where((e) => e.trim().isNotEmpty).join(' Â· '),
                       style: t.bodySmall.copyWith(
                         color: cs.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
@@ -338,7 +366,9 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                         color: isIssued ? cs.tertiary : cs.onSurfaceVariant,
                       ),
                       _MetaIcon(
-                        icon: isLinked ? Icons.link_rounded : Icons.link_off_rounded,
+                        icon: isLinked
+                            ? Icons.link_rounded
+                            : Icons.link_off_rounded,
                         tooltip: linkedTooltip,
                         color: isLinked ? cs.primary : cs.onSurfaceVariant,
                       ),

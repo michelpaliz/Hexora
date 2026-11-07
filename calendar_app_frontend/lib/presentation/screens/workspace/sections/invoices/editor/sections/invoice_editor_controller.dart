@@ -407,6 +407,7 @@ class InvoiceEditorController extends ChangeNotifier {
           description: desc,
           quantity: block.qty ?? 1,
           unitPrice: block.unitPrice ?? 0,
+          discountRate: block.discountRate ?? 0,
           taxRate: block.taxRate ?? 0,
           sku: block.sku.text.trim().isEmpty ? null : block.sku.text.trim(),
           conceptItems: block.conceptItems,
@@ -437,7 +438,7 @@ class InvoiceEditorController extends ChangeNotifier {
     return lines.where(_isBillableLineDraft).toList(growable: false);
   }
 
-  Future<int> _syncLinesForInvoice(String invoiceId) async {
+  Future<List<InvoiceLine>> _replaceLinesForInvoice(String invoiceId) async {
     final draftLines = _draftLinesForInvoice(invoiceId);
     final existing = await _linesApi.list(invoiceId);
     for (final line in existing) {
@@ -446,9 +447,15 @@ class InvoiceEditorController extends ChangeNotifier {
         await _linesApi.delete(invoiceId, id);
       }
     }
+    final savedLines = <InvoiceLine>[];
     for (final line in draftLines) {
-      await _linesApi.create(invoiceId, line);
+      savedLines.add(await _linesApi.create(invoiceId, line));
     }
+    return savedLines;
+  }
+
+  Future<int> _syncLinesForInvoice(String invoiceId) async {
+    await _replaceLinesForInvoice(invoiceId);
     final verified = await _linesApi.list(invoiceId);
     return verified.length;
   }
