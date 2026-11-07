@@ -6,6 +6,8 @@ import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_actions.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/layout/download_jobs_top_menu.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/panels/settings/sections/settings_generated_files_section.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/overview/group_dashboard_body_admin.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/overview/group_dashboard_body_member.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/access/role_resolver.dart';
@@ -386,6 +388,29 @@ class GroupDashboardState extends ChangeNotifier {
               overflow: TextOverflow.ellipsis,
             ),
       actions: [
+        if (!isWide)
+          DownloadJobsTopMenu(
+            groupId: group.id,
+            onViewAllDownloads: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (routeContext) => Scaffold(
+                  appBar: AppBar(
+                    title: Text(
+                      Localizations.localeOf(routeContext).languageCode == 'es'
+                          ? 'Descargas'
+                          : 'Downloads',
+                    ),
+                  ),
+                  body: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: SettingsGeneratedFilesSection(group: group),
+                  ),
+                ),
+              ),
+            ),
+            compact: true,
+            openInNotifications: false,
+          ),
         if (!isWide)
           IconButton(
             tooltip: l.groupNotificationsSectionTitle,

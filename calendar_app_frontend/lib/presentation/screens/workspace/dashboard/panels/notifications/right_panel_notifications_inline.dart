@@ -58,6 +58,32 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
   bool _initialized = false;
   List<JobNotification> _jobNotifications = const [];
 
+  @override
+  void initState() {
+    super.initState();
+    final store = DownloadJobsStore.instance;
+    _downloadsMode = store.takeOpenDownloadsRequest();
+    if (_downloadsMode) {
+      _selectedWorkflow = NotificationWorkflowFilter.automations;
+    }
+    store.addListener(_onDownloadsChanged);
+  }
+
+  void _onDownloadsChanged() {
+    if (!DownloadJobsStore.instance.takeOpenDownloadsRequest() || !mounted) return;
+    setState(() {
+      _downloadsMode = true;
+      _ocrJobsMode = false;
+      _selectedWorkflow = NotificationWorkflowFilter.automations;
+    });
+  }
+
+  @override
+  void dispose() {
+    DownloadJobsStore.instance.removeListener(_onDownloadsChanged);
+    super.dispose();
+  }
+
   List<NotificationUser> get _filteredNotifications {
     return _notifications.where((notification) {
       if (_selectedCategory != null &&
@@ -192,7 +218,6 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
       notificationDomain: context.read<NotificationDomain>(),
       notificationService: NotificationApiClient(),
     );
-    DownloadJobsStore.instance.bindGroup(widget.group.id);
     _load();
   }
 
@@ -202,7 +227,13 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
       _error = null;
     });
     try {
-      await DownloadJobsStore.instance.bindGroup(widget.group.id);
+      final downloadsStore = DownloadJobsStore.instance;
+      if (downloadsStore.boundGroupId == widget.group.id &&
+          downloadsStore.loadedOnce) {
+        await downloadsStore.refresh();
+      } else {
+        await downloadsStore.bindGroup(widget.group.id);
+      }
       await OcrImportJobsStore.instance.refresh();
       var jobNotifications = const <JobNotification>[];
       try {

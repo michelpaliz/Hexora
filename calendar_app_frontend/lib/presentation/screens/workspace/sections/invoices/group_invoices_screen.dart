@@ -17,6 +17,7 @@ import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/models/presupuesto/presupuesto_kind.dart';
+import 'package:hexora/presentation/shared/downloads/download_jobs_store.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/invoicing/billing_profile_api.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
@@ -772,6 +773,9 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       _lastExportFileUrl =
           job.fileUrl?.trim().isEmpty == true ? null : job.fileUrl?.trim();
     });
+    unawaited(DownloadJobsStore.instance
+        .bindGroup(widget.group.id)
+        .then((_) => DownloadJobsStore.instance.refresh()));
   }
 
   String _zipJobQueuedMessage() {

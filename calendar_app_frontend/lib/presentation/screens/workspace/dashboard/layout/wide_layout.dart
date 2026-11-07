@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/layout/download_jobs_top_menu.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/layout/group_dashboard_content.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/group_dashboard_right_panel.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/enable_banking_screen.dart';
@@ -500,6 +501,11 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
                           ),
                       ],
                     ),
+                  ),
+                  DownloadJobsTopMenu(
+                    groupId: state.group.id,
+                    onViewAllDownloads: () => state.openSection(Sections.notifications),
+                    compact: _compact,
                   ),
                   Tooltip(
                     message: _compact
