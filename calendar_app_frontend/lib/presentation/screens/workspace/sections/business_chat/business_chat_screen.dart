@@ -506,7 +506,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     }
   }
 
-  Future<void> _shareBankTransactionFromChat() async {
+  Future<void> _shareBankTransactionFromChat({bool requestReview = false}) async {
     if (!_canShareBankTransactions) return;
     final destinations = _conversations
         .where((conversation) => conversation.canShareBankTransaction)
@@ -524,6 +524,11 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     if (!mounted || entry == null) return;
     final destinationId = await BankTransactionShareDialog.show(
         context, widget.groupId, entry,
+        initialMessage: requestReview
+            ? (_es
+                ? '¿Podéis revisar este movimiento y confirmar si está vinculado correctamente?'
+                : 'Could you review this transaction and confirm its link is correct?')
+            : null,
         initialConversationId:
             _selected?.canShareBankTransaction == true ? _selected!.id : null);
     if (!mounted || destinationId == null) return;
@@ -1455,6 +1460,14 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                     ? 'Ver miembros y conexión'
                     : 'View members and presence',
                 icon: const Icon(Icons.people_alt_outlined)),
+            if (_canShareBankTransactions)
+              IconButton(
+                  onPressed: () => _shareBankTransactionFromChat(
+                      requestReview: true),
+                  tooltip: _es
+                      ? 'Pedir revisión de un movimiento bancario'
+                      : 'Request bank transaction review',
+                  icon: const Icon(Icons.account_balance_outlined)),
             if (_canCreateIssues)
               IconButton(
                   onPressed: _createIssue,
@@ -2061,6 +2074,18 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                       label: Text(_es
                                           ? 'Compartir movimiento bancario'
                                           : 'Share bank transaction'),
+                                    ),
+                                  if (_canShareBankTransactions)
+                                    TextButton.icon(
+                                      onPressed: () =>
+                                          _shareBankTransactionFromChat(
+                                              requestReview: true),
+                                      icon: const Icon(
+                                          Icons.rate_review_outlined,
+                                          size: 17),
+                                      label: Text(_es
+                                          ? 'Pedir revisión'
+                                          : 'Request review'),
                                     ),
                                   Text(
                                     _es
