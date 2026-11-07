@@ -8,17 +8,20 @@ class BankTransactionShareDialog extends StatefulWidget {
     required this.groupId,
     required this.entry,
     this.initialConversationId,
+    this.initialMessage,
   });
 
   final String groupId;
   final Map<String, dynamic> entry;
   final String? initialConversationId;
+  final String? initialMessage;
 
   static Future<String?> show(
     BuildContext context,
     String groupId,
     Map<String, dynamic> entry, {
     String? initialConversationId,
+    String? initialMessage,
   }) =>
       showDialog<String>(
         context: context,
@@ -26,6 +29,7 @@ class BankTransactionShareDialog extends StatefulWidget {
           groupId: groupId,
           entry: entry,
           initialConversationId: initialConversationId,
+          initialMessage: initialMessage,
         ),
       );
 
@@ -54,9 +58,10 @@ class _BankTransactionShareDialogState
   void initState() {
     super.initState();
     _message = TextEditingController(
-        text: _amount < 0
-            ? '¿Alguien sabe a qué corresponde este gasto?'
-            : '¿Alguien sabe de dónde viene este ingreso?');
+        text: widget.initialMessage ??
+            (_amount < 0
+                ? '¿Alguien sabe a qué corresponde este gasto?'
+                : '¿Alguien sabe de dónde viene este ingreso?'));
     _loadChats();
   }
 

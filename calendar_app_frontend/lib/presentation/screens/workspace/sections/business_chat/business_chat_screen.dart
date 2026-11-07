@@ -512,7 +512,8 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     }
   }
 
-  Future<void> _shareBankTransactionFromChat() async {
+  Future<void> _shareBankTransactionFromChat(
+      {bool requestReview = false}) async {
     if (!_canShareBankTransactions) return;
     final destinations = _conversations
         .where((conversation) => conversation.canShareBankTransaction)
@@ -530,6 +531,11 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     if (!mounted || entry == null) return;
     final destinationId = await BankTransactionShareDialog.show(
         context, widget.groupId, entry,
+        initialMessage: requestReview
+            ? (_es
+                ? '¿Podéis revisar este movimiento y confirmar si está vinculado correctamente?'
+                : 'Could you review this transaction and confirm its link is correct?')
+            : null,
         initialConversationId:
             _selected?.canShareBankTransaction == true ? _selected!.id : null);
     if (!mounted || destinationId == null) return;
@@ -1824,6 +1830,16 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
             _es ? 'Compartir movimiento bancario' : 'Share bank transaction',
         onPressed: enabled ? _shareBankTransactionFromChat : null,
       ));
+      widgets.add(_composerAction(
+        icon: Icons.rate_review_outlined,
+        label: _es ? 'Pedir revisión' : 'Request review',
+        tooltip: _es
+            ? 'Compartir un movimiento para revisar su vínculo'
+            : 'Share a transaction to review its link',
+        onPressed: enabled
+            ? () => _shareBankTransactionFromChat(requestReview: true)
+            : null,
+      ));
     }
     return widgets;
   }
@@ -1877,6 +1893,14 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                     ? 'Ver miembros y conexión'
                     : 'View members and presence',
                 icon: const Icon(Icons.people_alt_outlined)),
+            if (_canShareBankTransactions)
+              IconButton(
+                  onPressed: () =>
+                      _shareBankTransactionFromChat(requestReview: true),
+                  tooltip: _es
+                      ? 'Pedir revisión de un movimiento bancario'
+                      : 'Request bank transaction review',
+                  icon: const Icon(Icons.account_balance_outlined)),
             if (_canCreateIssues)
               IconButton(
                   onPressed: _createIssue,
