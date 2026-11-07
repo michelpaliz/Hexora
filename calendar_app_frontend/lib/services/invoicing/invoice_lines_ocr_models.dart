@@ -1,3 +1,30 @@
+class InvoicePriceReference {
+  const InvoicePriceReference({
+    required this.invoiceId,
+    required this.invoiceNumber,
+    required this.issueDate,
+    required this.invoiceConcept,
+    required this.matchedConcept,
+    required this.unitPrice,
+  });
+
+  final String invoiceId;
+  final String? invoiceNumber;
+  final DateTime? issueDate;
+  final String invoiceConcept;
+  final String matchedConcept;
+  final double unitPrice;
+
+  Map<String, dynamic> toJson() => {
+        'invoiceId': invoiceId,
+        'invoiceNumber': invoiceNumber,
+        'issueDate': issueDate?.toIso8601String(),
+        'invoiceConcept': invoiceConcept,
+        'matchedConcept': matchedConcept,
+        'unitPrice': unitPrice,
+      };
+}
+
 class OcrExtractedLineDraft {
   final int position;
   final String description;
@@ -15,6 +42,7 @@ class OcrExtractedLineDraft {
   final String? parseMethod;
   final bool needsPrice;
   final String? draftId;
+  final InvoicePriceReference? priceReference;
 
   const OcrExtractedLineDraft({
     required this.position,
@@ -33,6 +61,7 @@ class OcrExtractedLineDraft {
     this.parseMethod,
     this.needsPrice = false,
     this.draftId,
+    this.priceReference,
   });
 
   OcrExtractedLineDraft copyWith({
@@ -52,6 +81,7 @@ class OcrExtractedLineDraft {
     String? parseMethod,
     bool? needsPrice,
     String? draftId,
+    InvoicePriceReference? priceReference,
   }) {
     return OcrExtractedLineDraft(
       position: position ?? this.position,
@@ -70,6 +100,7 @@ class OcrExtractedLineDraft {
       parseMethod: parseMethod ?? this.parseMethod,
       needsPrice: needsPrice ?? this.needsPrice,
       draftId: draftId ?? this.draftId,
+      priceReference: priceReference ?? this.priceReference,
     );
   }
 
@@ -91,6 +122,7 @@ class OcrExtractedLineDraft {
         if (parseMethod != null) 'parseMethod': parseMethod,
         if (needsPrice) 'needsPrice': true,
         if (draftId != null) 'draftId': draftId,
+        if (priceReference != null) 'priceReference': priceReference!.toJson(),
       };
 }
 

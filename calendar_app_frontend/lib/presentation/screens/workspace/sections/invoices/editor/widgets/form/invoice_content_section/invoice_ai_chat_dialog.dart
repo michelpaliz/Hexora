@@ -2,8 +2,12 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_controller.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_form_sheet/invoice_lines_editor.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
+    as pdf_launcher;
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/invoicing/invoice_lines_ocr_models.dart';
 import 'package:hexora/services/invoicing/invoice_lines_ocr_service.dart';
 import 'package:intl/intl.dart';
@@ -41,8 +45,13 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
   bool _requiresSingleInvoice = false;
   bool _showEditor = false;
   bool _conversationNearBottom = true;
+  bool _savingDraft = false;
+  bool _draftSaved = false;
+  bool _appliedToEditor = false;
+  String? _previewingInvoiceId;
 
   bool get _isSpanish => Localizations.localeOf(context).languageCode == 'es';
+  bool get _chatLocked => _sending || _savingDraft || _appliedToEditor;
 
   @override
   void initState() {
@@ -184,7 +193,13 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
       } else {
         _mergeLine(draft, line, sentValues[draft] ?? _fieldValues(draft));
       }
-      _lineSources[draft] = line;
+      final prior = _lineSources[draft];
+      _lineSources[draft] = line.priceReference == null &&
+              prior?.priceReference != null &&
+              prior?.description == line.description &&
+              prior?.unitPrice == line.unitPrice
+          ? line.copyWith(priceReference: prior!.priceReference)
+          : line;
       next.add(draft);
       used.add(draft);
     }
@@ -290,6 +305,10 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
       parseMethod: draft.parseMethod,
       needsPrice: unitPrice <= 0,
       draftId: _draftIds.putIfAbsent(draft, _newDraftId),
+      priceReference: source?.description == edited.description &&
+              source?.unitPrice == unitPrice
+          ? source?.priceReference
+          : null,
     );
   }
 
@@ -298,8 +317,11 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
       _editableLines.every((line) =>
           line.toLine().description.trim().isNotEmpty &&
           (line.quantity ?? 0) > 0 &&
-          (line.unitPrice ?? 0) > 0 &&
-          (line.taxRate ?? -1) >= 0);
+          (widget.controller.useBlocks
+              ? (line.unitPrice ?? 0) >= 0
+              : (line.unitPrice ?? 0) > 0) &&
+          (line.taxRate ?? -1) >= 0 &&
+          (line.taxRate ?? 101) <= 100);
 
   Future<void> _pickFile() async {
     final picked = await FilePicker.platform.pickFiles(
@@ -338,7 +360,7 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
 
   Future<void> _send() async {
     final text = _message.text.trim();
-    if (_sending || (text.isEmpty && _file == null)) return;
+    if (_chatLocked || (text.isEmpty && _file == null)) return;
     final followConversation = _conversationNearBottom;
     if (text.length > 2000) {
       setState(() => _error = _isSpanish
@@ -425,6 +447,8 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
         if (!response.requiresSingleInvoice) {
           _reconcileSuggestedLines(
               response.draftLines, sentDrafts, sentValues, sentIds, sentLines);
+          _draftSaved = false;
+          _appliedToEditor = false;
         }
         _messages.add({
           'role': 'assistant',
@@ -453,17 +477,38 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
     }
   }
 
-  void _apply() {
-    if (!_showEditor || !_canApply) return;
-    widget.controller.applyAiSuggestedLines(_suggestedLines);
-    if (!widget.embedded) Navigator.of(context).pop();
-  }
-
-  void _focusAiChat(BuildContext actionContext) {
-    DefaultTabController.maybeOf(actionContext)?.animateTo(0);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _messageFocus.requestFocus();
+  Future<void> _apply() async {
+    if (!_showEditor || !_canApply || _savingDraft || _draftSaved) return;
+    final isEs = _isSpanish;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() {
+      _savingDraft = true;
+      _error = null;
     });
+    try {
+      if (!_appliedToEditor) {
+        widget.controller.applyAiSuggestedLines(_suggestedLines);
+        _appliedToEditor = true;
+      }
+      await widget.controller.saveAiDraft(context);
+      if (!mounted) return;
+      setState(() => _draftSaved = true);
+      if (!widget.embedded) Navigator.of(context).pop();
+      messenger.showSnackBar(SnackBar(
+        content: Text(isEs ? 'Borrador guardado.' : 'Draft saved.'),
+      ));
+    } catch (error) {
+      if (!mounted) return;
+      final message = _appliedToEditor
+          ? (isEs
+              ? 'Las líneas están en el editor, pero no se guardó el borrador. Corrige los datos y vuelve a guardar: $error'
+              : 'The lines are in the editor, but the draft was not saved. Correct the details and save again: $error')
+          : error.toString();
+      setState(() => _error = message);
+      messenger.showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) setState(() => _savingDraft = false);
+    }
   }
 
   Widget _buildInitialChatState(bool isEs) {
@@ -517,7 +562,7 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                 ActionChip(
                   visualDensity: VisualDensity.compact,
                   label: Text(prompt),
-                  onPressed: _sending
+                  onPressed: _chatLocked
                       ? null
                       : () {
                           _message.text = prompt;
@@ -746,7 +791,7 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                       ),
                       if (_message.text.trim().isNotEmpty || _file != null)
                         TextButton(
-                          onPressed: _sending ? null : _send,
+                          onPressed: _chatLocked ? null : _send,
                           child: Text(isEs ? 'Reintentar' : 'Retry'),
                         ),
                     ],
@@ -811,7 +856,7 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                           ),
                           IconButton(
                             tooltip: isEs ? 'Quitar archivo' : 'Remove file',
-                            onPressed: _sending
+                            onPressed: _chatLocked
                                 ? null
                                 : () => setState(() => _file = null),
                             icon: const Icon(Icons.close, size: 18),
@@ -825,7 +870,7 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                           tooltip: isEs
                               ? 'Adjuntar imagen o PDF'
                               : 'Attach image or PDF',
-                          onPressed: _sending ? null : _pickFile,
+                          onPressed: _chatLocked ? null : _pickFile,
                           icon: const Icon(Icons.attach_file_rounded, size: 19),
                           constraints: const BoxConstraints.tightFor(
                             width: 36,
@@ -843,6 +888,7 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                             child: TextField(
                               controller: _message,
                               focusNode: _messageFocus,
+                              enabled: !_chatLocked,
                               minLines: 1,
                               maxLines: 5,
                               keyboardType: TextInputType.multiline,
@@ -880,7 +926,7 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                         const SizedBox(width: 4),
                         IconButton.filled(
                           tooltip: isEs ? 'Enviar' : 'Send',
-                          onPressed: _sending ? null : _send,
+                          onPressed: _chatLocked ? null : _send,
                           constraints: const BoxConstraints.tightFor(
                             width: 36,
                             height: 36,
@@ -932,6 +978,104 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
         Localizations.localeOf(context).toLanguageTag(),
       ).format(value);
 
+  Future<void> _previewReference(InvoicePriceReference reference) async {
+    setState(() => _previewingInvoiceId = reference.invoiceId);
+    try {
+      final response = await InvoicesApi().previewPdf(reference.invoiceId);
+      final bytes = InvoiceEditorPdf.validatePdf(response);
+      await pdf_launcher.launchPdfPreview(
+        bytes,
+        fileName:
+            'invoice-${reference.invoiceNumber ?? reference.invoiceId}.pdf',
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_isSpanish
+              ? 'No se pudo abrir la factura de referencia.'
+              : 'Could not open the reference invoice.'),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _previewingInvoiceId = null);
+    }
+  }
+
+  Widget _referenceDetails(InvoicePriceReference reference, bool isEs) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final date = reference.issueDate;
+    final dateLabel = date == null
+        ? ''
+        : '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+    final number = reference.invoiceNumber;
+    final invoiceLabel = number == null || number.isEmpty
+        ? (isEs ? 'Factura anterior' : 'Earlier invoice')
+        : '${isEs ? 'Factura' : 'Invoice'} $number';
+    final source = <String>[
+      invoiceLabel,
+      if (dateLabel.isNotEmpty) dateLabel,
+      if (reference.invoiceConcept.trim().isNotEmpty)
+        reference.invoiceConcept.trim(),
+      _formatMoney(reference.unitPrice),
+    ].join(' · ');
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 5, bottom: 3),
+      padding: const EdgeInsets.fromLTRB(9, 7, 5, 5),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow,
+        border: Border.all(
+          color: colors.outlineVariant.withValues(alpha: .65),
+        ),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            isEs
+                ? 'Precio sugerido por coincidencia con «${reference.matchedConcept}» en una factura emitida del mismo cliente.'
+                : 'Price suggested because “${reference.matchedConcept}” matches an issued invoice for this client.',
+            style: textTheme.labelSmall?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            source,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: textTheme.labelSmall?.copyWith(
+              color: colors.onSurface,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          TextButton.icon(
+            onPressed: _previewingInvoiceId == null
+                ? () => _previewReference(reference)
+                : null,
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              minimumSize: const Size(0, 28),
+            ),
+            icon: _previewingInvoiceId == reference.invoiceId
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.picture_as_pdf_outlined, size: 16),
+            label: Text(
+                isEs ? 'Ver factura de referencia' : 'Preview source invoice'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProposedLine(OcrExtractedLineDraft line, bool isEs) {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -949,7 +1093,7 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
         '${isEs ? 'IVA' : 'VAT'} ${_formatNumber(line.taxRate)}%',
     ];
 
-    return SizedBox(
+    final lineSummary = SizedBox(
       height: 48,
       child: Row(
         children: [
@@ -1019,6 +1163,14 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
             ),
         ],
       ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        lineSummary,
+        if (line.priceReference != null)
+          _referenceDetails(line.priceReference!, isEs),
+      ],
     );
   }
 
@@ -1239,11 +1391,29 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
             ConstrainedBox(
               constraints: BoxConstraints(maxHeight: editorMaxHeight),
               child: SingleChildScrollView(
-                child: InvoiceLinesEditor(
-                  key: ObjectKey(_editableLines),
-                  lines: _editableLines,
-                  onChanged: _syncEditedLines,
-                  showDiscount: false,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    InvoiceLinesEditor(
+                      key: ObjectKey(_editableLines),
+                      lines: _editableLines,
+                      onChanged: _syncEditedLines,
+                      showDiscount: false,
+                    ),
+                    for (final line in _suggestedLines)
+                      if (line.priceReference != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          '${isEs ? 'Línea' : 'Line'} ${line.position}: ${line.description}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        _referenceDetails(line.priceReference!, isEs),
+                      ],
+                  ],
                 ),
               ),
             ),
@@ -1287,21 +1457,10 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                Builder(
-                  builder: (actionContext) => HexoraButton(
-                    key: const ValueKey('invoice-ai-correct-action'),
-                    onPressed:
-                        _sending ? null : () => _focusAiChat(actionContext),
-                    label: isEs ? 'Corregir con IA' : 'Correct with AI',
-                    icon: Icons.chat_bubble_outline,
-                    variant: HexoraButtonVariant.secondary,
-                    size: HexoraButtonSize.compact,
-                  ),
-                ),
                 if (!_showEditor)
                   HexoraButton(
                     key: const ValueKey('invoice-ai-confirm-action'),
-                    onPressed: _sending
+                    onPressed: _sending || _savingDraft
                         ? null
                         : () => setState(() => _showEditor = true),
                     label: isEs
@@ -1313,10 +1472,16 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                 else
                   HexoraButton(
                     key: const ValueKey('invoice-ai-apply-action'),
-                    onPressed: _sending || !_canApply ? null : _apply,
-                    label: isEs ? 'Añadir al borrador' : 'Add to draft',
-                    icon: Icons.playlist_add_check,
-                    loading: _sending,
+                    onPressed:
+                        _sending || _savingDraft || _draftSaved || !_canApply
+                            ? null
+                            : _apply,
+                    label: _draftSaved
+                        ? (isEs ? 'Borrador guardado' : 'Draft saved')
+                        : (isEs ? 'Guardar como borrador' : 'Save as draft'),
+                    icon:
+                        _draftSaved ? Icons.check_rounded : Icons.save_outlined,
+                    loading: _savingDraft,
                     size: HexoraButtonSize.compact,
                   ),
               ],
@@ -1349,7 +1514,9 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
               ),
               IconButton(
                 tooltip: isEs ? 'Cerrar' : 'Close',
-                onPressed: _sending ? null : () => Navigator.of(context).pop(),
+                onPressed: _sending || _savingDraft
+                    ? null
+                    : () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.close),
               ),
             ]),
@@ -1406,7 +1573,9 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton(
-                onPressed: _sending ? null : () => Navigator.of(context).pop(),
+                onPressed: _sending || _savingDraft
+                    ? null
+                    : () => Navigator.of(context).pop(),
                 child: Text(isEs ? 'Cancelar' : 'Cancel'),
               ),
             ),
