@@ -1,7 +1,6 @@
-import 'dart:typed_data';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_controller.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_form_sheet/invoice_lines_editor.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
@@ -27,6 +26,7 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
   final _service = InvoiceLinesOcrService();
   final _message = TextEditingController();
   final _messageFocus = FocusNode();
+  final _conversationScroll = ScrollController();
   final _messages = <Map<String, String>>[];
   List<OcrExtractedLineDraft> _suggestedLines = [];
   final List<LineDraft> _editableLines = [];
@@ -40,17 +40,46 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
   bool _sending = false;
   bool _requiresSingleInvoice = false;
   bool _showEditor = false;
+  bool _conversationNearBottom = true;
 
   bool get _isSpanish => Localizations.localeOf(context).languageCode == 'es';
+
+  @override
+  void initState() {
+    super.initState();
+    _conversationScroll.addListener(_trackConversationPosition);
+  }
 
   @override
   void dispose() {
     _message.dispose();
     _messageFocus.dispose();
+    _conversationScroll
+      ..removeListener(_trackConversationPosition)
+      ..dispose();
     for (final line in _ownedLines) {
       line.dispose();
     }
     super.dispose();
+  }
+
+  void _trackConversationPosition() {
+    if (!_conversationScroll.hasClients) return;
+    _conversationNearBottom = _conversationScroll.position.maxScrollExtent -
+            _conversationScroll.position.pixels <
+        96;
+  }
+
+  void _scrollToLatestIfNeeded(bool wasNearBottom) {
+    if (!wasNearBottom) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_conversationScroll.hasClients) return;
+      _conversationScroll.animateTo(
+        _conversationScroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
+    });
   }
 
   String _newDraftId() =>
@@ -294,9 +323,23 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
     });
   }
 
+  List<Map<String, String>> _apiConversationHistory() {
+    final recent = _messages.length <= 12
+        ? _messages
+        : _messages.sublist(_messages.length - 12);
+    return [
+      for (final message in recent)
+        {
+          'role': message['role'] ?? 'assistant',
+          'text': message['text'] ?? '',
+        },
+    ];
+  }
+
   Future<void> _send() async {
     final text = _message.text.trim();
     if (_sending || (text.isEmpty && _file == null)) return;
+    final followConversation = _conversationNearBottom;
     if (text.length > 2000) {
       setState(() => _error = _isSpanish
           ? 'El mensaje no puede superar 2000 caracteres.'
@@ -319,16 +362,19 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
           'text': _isSpanish
               ? 'Veo más de una factura en el texto. Envíame una factura por vez y prepararé sus líneas.'
               : 'I found more than one invoice in the text. Please send one invoice at a time and I’ll prepare its lines.',
+          'status': 'warning',
         });
         _message.clear();
         _requiresSingleInvoice = true;
       });
+      _scrollToLatestIfNeeded(followConversation);
       return;
     }
     setState(() {
       _sending = true;
       _error = null;
     });
+    _scrollToLatestIfNeeded(followConversation);
     try {
       final draftId =
           _draftId ?? await widget.controller.ensureDraftIdForAiChat(context);
@@ -350,9 +396,7 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
         invoiceId: draftId,
         message: text,
         draftLines: sentLines,
-        history: _messages.length <= 12
-            ? _messages
-            : _messages.sublist(_messages.length - 12),
+        history: _apiConversationHistory(),
         locale: _isSpanish ? 'es' : 'en',
         file: _file,
       );
@@ -362,6 +406,13 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
               !_sameFields(_fieldValues(entry.key), entry.value)) ||
           _editableLines.any((draft) => !sentValues.containsKey(draft)) ||
           sentDrafts.any((draft) => !_editableLines.contains(draft));
+      final reviewCount = response.draftLines.where((line) {
+        return line.description.trim().isEmpty ||
+            line.quantity <= 0 ||
+            line.unitPrice <= 0 ||
+            line.taxRate < 0 ||
+            line.needsPrice;
+      }).length;
       setState(() {
         _draftId = draftId;
         _messages.add({
@@ -375,29 +426,28 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
           _reconcileSuggestedLines(
               response.draftLines, sentDrafts, sentValues, sentIds, sentLines);
         }
-        if (response.draftLines.isNotEmpty &&
-            !_showEditor &&
-            !response.requiresSingleInvoice) {
-          _messages.add({
-            'role': 'assistant',
-            'text':
-                '${response.reply}\n\n${_isSpanish ? 'He preparado un resumen a la derecha. Confírmalo para abrir y editar las líneas, o dime aquí qué debo corregir.' : 'I’ve prepared a summary on the right. Confirm it to open and edit the lines, or tell me here what to correct.'}${concurrentEdits ? (_isSpanish ? '\n\nConservé los cambios que hiciste mientras respondía.' : '\n\nI kept the changes you made while I was responding.') : ''}',
-          });
-        } else {
-          _messages.add({
-            'role': 'assistant',
-            'text':
-                '${response.reply}${concurrentEdits ? (_isSpanish ? '\n\nConservé los cambios que hiciste mientras respondía.' : '\n\nI kept the changes you made while I was responding.') : ''}',
-          });
-        }
+        _messages.add({
+          'role': 'assistant',
+          'text': response.reply,
+          'status': response.requiresSingleInvoice || reviewCount > 0
+              ? 'warning'
+              : 'processed',
+          if (!response.requiresSingleInvoice)
+            'lineCount': response.draftLines.length.toString(),
+          if (!response.requiresSingleInvoice)
+            'reviewCount': reviewCount.toString(),
+          if (concurrentEdits) 'concurrentEdits': 'true',
+        });
         _message.clear();
         _file = null;
       });
+      _scrollToLatestIfNeeded(followConversation);
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = error is OcrExtractionException
           ? error.userMessage
           : error.toString().replaceFirst('Exception: ', ''));
+      _scrollToLatestIfNeeded(followConversation);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -416,7 +466,7 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
     });
   }
 
-  Widget _buildChatPane(BuildContext context, bool isEs) {
+  Widget _buildInitialChatState(bool isEs) {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final prompts = isEs
@@ -431,8 +481,199 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
             'Review and correct my draft',
           ];
 
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 18, 12, 10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.auto_awesome_rounded, size: 26, color: colors.primary),
+          const SizedBox(height: 10),
+          Text(
+            isEs
+                ? '¿Qué quieres incluir en la factura?'
+                : 'What would you like to include in the invoice?',
+            textAlign: TextAlign.center,
+            style: textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            isEs
+                ? 'Describe los trabajos o adjunta una imagen o PDF.'
+                : 'Describe the work or attach an image or PDF.',
+            textAlign: TextAlign.center,
+            style: textTheme.bodySmall?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 7,
+            runSpacing: 7,
+            children: [
+              for (final prompt in prompts)
+                ActionChip(
+                  visualDensity: VisualDensity.compact,
+                  label: Text(prompt),
+                  onPressed: _sending
+                      ? null
+                      : () {
+                          _message.text = prompt;
+                          _message.selection = TextSelection.collapsed(
+                            offset: _message.text.length,
+                          );
+                          _messageFocus.requestFocus();
+                        },
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAssistantMessage(Map<String, String> item, bool isEs) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final status = item['status'];
+    final lineCount = int.tryParse(item['lineCount'] ?? '');
+    final reviewCount = int.tryParse(item['reviewCount'] ?? '') ?? 0;
+    final warning = status == 'warning';
+    final processed = status == 'processed';
+    final statusColor =
+        warning ? const Color(0xFFD97706) : const Color(0xFF15803D);
+    final statusLabel = warning
+        ? (isEs ? 'Requiere revisión' : 'Needs review')
+        : (isEs ? 'Procesado' : 'Processed');
+    final statusIcon = warning
+        ? Icons.warning_amber_rounded
+        : Icons.check_circle_outline_rounded;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child:
+              Icon(Icons.auto_awesome_rounded, size: 18, color: colors.primary),
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (warning || processed)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: .1),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(statusIcon, size: 13, color: statusColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        statusLabel,
+                        style: textTheme.labelSmall?.copyWith(
+                          color: statusColor,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (lineCount != null) ...[
+                const SizedBox(height: 7),
+                Text(
+                  isEs
+                      ? 'Factura procesada · $lineCount conceptos detectados'
+                      : 'Invoice processed · $lineCount items detected',
+                  style: textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (reviewCount > 0) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    isEs
+                        ? '$reviewCount conceptos necesitan revisión por falta de datos.'
+                        : '$reviewCount items need review because data is missing.',
+                    style: textTheme.bodySmall?.copyWith(color: statusColor),
+                  ),
+                ],
+                if (lineCount > 0) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    isEs
+                        ? 'Revisa las líneas en el panel derecho o indícame qué deseas corregir.'
+                        : 'Review the lines in the right panel or tell me what to correct.',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
+              if (item['concurrentEdits'] == 'true') ...[
+                const SizedBox(height: 4),
+                Text(
+                  isEs
+                      ? 'Se conservaron tus cambios mientras respondía.'
+                      : 'Your edits were preserved while the AI responded.',
+                  style: textTheme.labelSmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              if ((item['text'] ?? '').trim().isNotEmpty) ...[
+                SizedBox(height: lineCount == null ? 5 : 3),
+                InvoiceAiAssistantDetail(
+                  text: item['text']!,
+                  isSpanish: isEs,
+                  initiallyExpanded: lineCount == null,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProcessingIndicator(bool isEs) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Row(
+      key: const ValueKey('invoice-ai-processing-indicator'),
+      children: [
+        SizedBox(
+          width: 14,
+          height: 14,
+          child:
+              CircularProgressIndicator(strokeWidth: 2, color: colors.primary),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          isEs ? 'Analizando...' : 'Analyzing...',
+          style: textTheme.bodySmall?.copyWith(
+            color: colors.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChatPane(BuildContext context, bool isEs) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return LayoutBuilder(
-      builder: (context, constraints) => Column(
+      builder: (context, _) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
@@ -442,121 +683,25 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                 constraints: const BoxConstraints(maxWidth: 760),
                 child: ListView(
                   key: const ValueKey('invoice-ai-conversation'),
-                  padding: const EdgeInsets.fromLTRB(12, 20, 12, 24),
+                  controller: _conversationScroll,
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                   children: [
-                    if (_messages.isEmpty) ...[
-                      SizedBox(
-                          height: (constraints.maxHeight * .13).clamp(8, 72)),
-                      Center(
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: colors.primaryContainer,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.auto_awesome_rounded,
-                            color: colors.primary,
-                          ),
-                        ),
+                    if (_messages.isEmpty) _buildInitialChatState(isEs),
+                    for (final item in _messages)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: item['role'] == 'user'
+                            ? InvoiceAiUserMessageBubble(
+                                text: item['text'] ?? '',
+                                isSpanish: isEs,
+                              )
+                            : _buildAssistantMessage(item, isEs),
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        isEs
-                            ? '¿Qué quieres incluir en la factura?'
-                            : 'What would you like to include in the invoice?',
-                        textAlign: TextAlign.center,
-                        style: textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                    if (_sending)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2, bottom: 8),
+                        child: _buildProcessingIndicator(isEs),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        isEs
-                            ? 'Describe el trabajo o adjunta una imagen o PDF. Podrás revisar cada línea antes de añadirla.'
-                            : 'Describe the work or attach an image or PDF. You can review every line before adding it.',
-                        textAlign: TextAlign.center,
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final prompt in prompts)
-                            ActionChip(
-                              label: Text(prompt),
-                              onPressed: _sending
-                                  ? null
-                                  : () {
-                                      _message.text = prompt;
-                                      _message.selection =
-                                          TextSelection.collapsed(
-                                        offset: _message.text.length,
-                                      );
-                                      _messageFocus.requestFocus();
-                                    },
-                            ),
-                        ],
-                      ),
-                    ] else
-                      for (final item in _messages)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 18),
-                          child: item['role'] == 'user'
-                              ? Align(
-                                  alignment: Alignment.centerRight,
-                                  child: ConstrainedBox(
-                                    constraints:
-                                        const BoxConstraints(maxWidth: 560),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 11,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: colors.surfaceContainerHigh,
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(item['text'] ?? ''),
-                                    ),
-                                  ),
-                                )
-                              : Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      width: 30,
-                                      height: 30,
-                                      decoration: BoxDecoration(
-                                        color: colors.primaryContainer,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        Icons.auto_awesome_rounded,
-                                        size: 16,
-                                        color: colors.primary,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(top: 4),
-                                        child: SelectableText(
-                                          item['text'] ?? '',
-                                          style: textTheme.bodyMedium?.copyWith(
-                                            height: 1.5,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                        ),
                   ],
                 ),
               ),
@@ -574,12 +719,37 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: colors.errorContainer,
-                    borderRadius: BorderRadius.circular(10),
+                    color: colors.errorContainer.withValues(alpha: .65),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(
-                    _error!,
-                    style: TextStyle(color: colors.onErrorContainer),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline, size: 17, color: colors.error),
+                      const SizedBox(width: 7),
+                      Text(
+                        isEs ? 'Error' : 'Error',
+                        style: textTheme.labelMedium?.copyWith(
+                          color: colors.error,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: Text(
+                          _error!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colors.onErrorContainer,
+                          ),
+                        ),
+                      ),
+                      if (_message.text.trim().isNotEmpty || _file != null)
+                        TextButton(
+                          onPressed: _sending ? null : _send,
+                          child: Text(isEs ? 'Reintentar' : 'Retry'),
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -589,19 +759,19 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
               constraints: const BoxConstraints(maxWidth: 760),
               child: Container(
                 key: const ValueKey('invoice-ai-composer'),
-                margin: const EdgeInsets.symmetric(horizontal: 8),
-                padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: colors.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(24),
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: colors.outlineVariant.withValues(alpha: .7),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: colors.shadow.withValues(alpha: .08),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
+                      color: colors.shadow.withValues(alpha: .05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
@@ -648,68 +818,92 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
                           ),
                         ]),
                       ),
-                    TextField(
-                      controller: _message,
-                      focusNode: _messageFocus,
-                      minLines: 1,
-                      maxLines: 5,
-                      decoration: InputDecoration(
-                        isDense: true,
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        filled: false,
-                        hintText: isEs
-                            ? 'Escribe cómo quieres crear la factura...'
-                            : 'Describe how you want to create the invoice...',
-                        contentPadding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
-                      ),
-                      onSubmitted: (_) => _send(),
-                    ),
-                    Row(children: [
-                      IconButton(
-                        tooltip: isEs
-                            ? 'Adjuntar imagen o PDF'
-                            : 'Attach image or PDF',
-                        onPressed: _sending ? null : _pickFile,
-                        icon: const Icon(Icons.add_rounded),
-                      ),
-                      if (_file == null)
-                        Text(
-                          isEs ? 'Imagen o PDF' : 'Image or PDF',
-                          style: textTheme.labelMedium?.copyWith(
-                            color: colors.onSurfaceVariant,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          tooltip: isEs
+                              ? 'Adjuntar imagen o PDF'
+                              : 'Attach image or PDF',
+                          onPressed: _sending ? null : _pickFile,
+                          icon: const Icon(Icons.attach_file_rounded, size: 19),
+                          constraints: const BoxConstraints.tightFor(
+                            width: 36,
+                            height: 36,
+                          ),
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        Expanded(
+                          child: CallbackShortcuts(
+                            bindings: {
+                              const SingleActivator(LogicalKeyboardKey.enter):
+                                  _send,
+                            },
+                            child: TextField(
+                              controller: _message,
+                              focusNode: _messageFocus,
+                              minLines: 1,
+                              maxLines: 5,
+                              keyboardType: TextInputType.multiline,
+                              textInputAction: TextInputAction.newline,
+                              style: textTheme.bodySmall,
+                              decoration: InputDecoration(
+                                isDense: true,
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                filled: false,
+                                hintText: isEs
+                                    ? 'Escribe cómo quieres crear la factura...'
+                                    : 'Describe how you want to create the invoice...',
+                                contentPadding:
+                                    const EdgeInsets.fromLTRB(4, 7, 4, 7),
+                              ),
+                            ),
                           ),
                         ),
-                      const Spacer(),
-                      IconButton.filled(
-                        tooltip: isEs ? 'Enviar' : 'Send',
-                        onPressed: _sending ? null : _send,
-                        icon: _sending
-                            ? SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: colors.onPrimary,
-                                ),
-                              )
-                            : const Icon(Icons.arrow_upward_rounded),
-                      ),
-                    ]),
+                        if (_suggestedLines.isNotEmpty)
+                          Tooltip(
+                            message: isEs
+                                ? 'Revisa las líneas antes de añadirlas al borrador.'
+                                : 'Review the lines before adding them to the draft.',
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Icon(
+                                Icons.info_outline_rounded,
+                                size: 16,
+                                color: colors.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        const SizedBox(width: 4),
+                        IconButton.filled(
+                          tooltip: isEs ? 'Enviar' : 'Send',
+                          onPressed: _sending ? null : _send,
+                          constraints: const BoxConstraints.tightFor(
+                            width: 36,
+                            height: 36,
+                          ),
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          icon: _sending
+                              ? SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: colors.onPrimary,
+                                  ),
+                                )
+                              : const Icon(Icons.arrow_upward_rounded,
+                                  size: 19),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            isEs
-                ? 'Revisa siempre las líneas antes de añadirlas al borrador.'
-                : 'Always review the lines before adding them to the draft.',
-            textAlign: TextAlign.center,
-            style: textTheme.bodySmall?.copyWith(
-              color: colors.onSurfaceVariant,
             ),
           ),
         ],
@@ -1237,6 +1431,154 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
         ),
         child: content,
       ),
+    );
+  }
+}
+
+class InvoiceAiUserMessageBubble extends StatefulWidget {
+  const InvoiceAiUserMessageBubble({
+    super.key,
+    required this.text,
+    required this.isSpanish,
+  });
+
+  final String text;
+  final bool isSpanish;
+
+  @override
+  State<InvoiceAiUserMessageBubble> createState() =>
+      _InvoiceAiUserMessageBubbleState();
+}
+
+class _InvoiceAiUserMessageBubbleState
+    extends State<InvoiceAiUserMessageBubble> {
+  bool _expanded = false;
+
+  bool get _isLong =>
+      widget.text.length > 300 || '\n'.allMatches(widget.text).length > 7;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final showFull = !_isLong || _expanded;
+
+    return Align(
+      alignment: Alignment.centerRight,
+      heightFactor: 1,
+      child: FractionallySizedBox(
+        widthFactor: .82,
+        alignment: Alignment.centerRight,
+        child: Container(
+          key: const ValueKey('invoice-ai-user-message'),
+          padding: const EdgeInsets.fromLTRB(11, 8, 9, 7),
+          decoration: BoxDecoration(
+            color: colors.primaryContainer.withValues(alpha: .32),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(12),
+              topRight: Radius.circular(12),
+              bottomLeft: Radius.circular(12),
+              bottomRight: Radius.circular(4),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AnimatedSize(
+                duration: const Duration(milliseconds: 160),
+                alignment: Alignment.topCenter,
+                child: Text(
+                  widget.text,
+                  maxLines: showFull ? null : 7,
+                  overflow:
+                      showFull ? TextOverflow.visible : TextOverflow.ellipsis,
+                  style: textTheme.bodySmall?.copyWith(
+                    height: 1.4,
+                    color: colors.onSurface,
+                  ),
+                ),
+              ),
+              if (_isLong)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    key: const ValueKey('invoice-ai-user-message-toggle'),
+                    onPressed: () => setState(() => _expanded = !_expanded),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      minimumSize: const Size(0, 28),
+                    ),
+                    child: Text(
+                      _expanded
+                          ? (widget.isSpanish ? 'Ver menos' : 'Show less')
+                          : (widget.isSpanish ? 'Ver más' : 'Show more'),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class InvoiceAiAssistantDetail extends StatefulWidget {
+  const InvoiceAiAssistantDetail({
+    super.key,
+    required this.text,
+    required this.isSpanish,
+    required this.initiallyExpanded,
+  });
+
+  final String text;
+  final bool isSpanish;
+  final bool initiallyExpanded;
+
+  @override
+  State<InvoiceAiAssistantDetail> createState() =>
+      _InvoiceAiAssistantDetailState();
+}
+
+class _InvoiceAiAssistantDetailState extends State<InvoiceAiAssistantDetail> {
+  late bool _expanded = widget.initiallyExpanded;
+
+  bool get _canToggle => !widget.initiallyExpanded || widget.text.length > 260;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_expanded)
+          SelectableText(
+            widget.text,
+            style: textTheme.bodySmall?.copyWith(
+              height: 1.45,
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+        if (_canToggle)
+          TextButton(
+            key: const ValueKey('invoice-ai-assistant-detail-toggle'),
+            onPressed: () => setState(() => _expanded = !_expanded),
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(0, 28),
+            ),
+            child: Text(
+              _expanded
+                  ? (widget.isSpanish ? 'Ocultar detalle' : 'Hide detail')
+                  : (widget.isSpanish ? 'Ver detalle' : 'View detail'),
+            ),
+          ),
+      ],
     );
   }
 }
