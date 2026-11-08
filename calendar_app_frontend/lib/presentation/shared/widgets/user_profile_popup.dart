@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/user/user.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/services/auth/auth_service.dart';
 import 'package:hexora/services/auth/token/authenticated_http_client.dart';
@@ -24,11 +25,23 @@ import 'package:provider/provider.dart';
 
 /// Circular avatar button.  Tap → shows a profile card popup anchored
 /// to the top-right of the screen (near the nav bar).
+enum UserProfilePopupPlacement { topBar, sidebar }
+
 class UserProfilePopup extends StatefulWidget {
-  const UserProfilePopup({super.key, required this.user, this.onSettings});
+  const UserProfilePopup({
+    super.key,
+    required this.user,
+    this.onSettings,
+    this.placement = UserProfilePopupPlacement.topBar,
+    this.expanded = false,
+    this.roleLabel,
+  });
 
   final User? user;
   final VoidCallback? onSettings;
+  final UserProfilePopupPlacement placement;
+  final bool expanded;
+  final String? roleLabel;
 
   @override
   State<UserProfilePopup> createState() => _UserProfilePopupState();
@@ -57,11 +70,17 @@ class _UserProfilePopupState extends State<UserProfilePopup> {
     final anchor = renderBox?.localToGlobal(Offset.zero) ?? Offset.zero;
     final anchorSize = renderBox?.size ?? Size.zero;
     final overlay = Overlay.of(context, rootOverlay: true);
+    final viewport = MediaQuery.sizeOf(context);
+    final sidebarBottom =
+        (viewport.height - anchor.dy - anchorSize.height).clamp(8.0, 48.0);
+    final desiredSidebarLeft = anchor.dx + anchorSize.width + 8;
+    final maxSidebarLeft = viewport.width - 312;
+    final sidebarLeft = maxSidebarLeft <= 8
+        ? 8.0
+        : desiredSidebarLeft.clamp(8.0, maxSidebarLeft).toDouble();
     _popupEntry = OverlayEntry(
-      builder: (overlayContext) => PositionedDirectional(
-        top: anchor.dy + anchorSize.height + 8,
-        end: 16,
-        child: TapRegion(
+      builder: (overlayContext) {
+        final popup = TapRegion(
           onTapOutside: (_) => _dismissPopup(),
           child: Focus(
             autofocus: true,
@@ -83,8 +102,20 @@ class _UserProfilePopupState extends State<UserProfilePopup> {
               ),
             ),
           ),
-        ),
-      ),
+        );
+        if (widget.placement == UserProfilePopupPlacement.sidebar) {
+          return Positioned(
+            left: sidebarLeft,
+            bottom: sidebarBottom,
+            child: popup,
+          );
+        }
+        return PositionedDirectional(
+          top: anchor.dy + anchorSize.height + 8,
+          end: 16,
+          child: popup,
+        );
+      },
     );
     overlay.insert(_popupEntry!);
   }
@@ -94,17 +125,435 @@ class _UserProfilePopupState extends State<UserProfilePopup> {
     final liveUser = context.watch<UserDomain>().user;
     final u = liveUser ?? widget.user;
     if (u == null) return const SizedBox(width: 32, height: 32);
+    final displayName = u.displayName?.trim().isNotEmpty == true
+        ? u.displayName!.trim()
+        : u.name;
+
+    // In the expanded sidebar the account menu lives inside the sidebar and
+    // expands upward from the profile row — no floating overlay. The collapsed
+    // rail keeps the compact avatar + anchored popup (there is no room inline).
+    if (widget.placement == UserProfilePopupPlacement.sidebar &&
+        widget.expanded) {
+      return _SidebarAccountMenu(
+        user: u,
+        displayName: displayName,
+        roleLabel: widget.roleLabel,
+        onSettings: widget.onSettings,
+      );
+    }
+
+    final avatar = HexoraUserAvatar(
+      userId: u.id,
+      displayName: displayName,
+      username: u.userName,
+      photoUrl: u.photoUrl,
+      size: HexoraUserAvatar.compactSize,
+    );
 
     return Tooltip(
-      message: u.displayName?.isNotEmpty == true ? u.displayName! : u.name,
-      child: GestureDetector(
-        onTap: () => _togglePopup(u),
-        child: HexoraUserAvatar(
-          userId: u.id,
-          displayName: u.displayName ?? u.name,
-          username: u.userName,
-          photoUrl: u.photoUrl,
-          size: 32,
+      message: displayName,
+      child: Semantics(
+        button: true,
+        label: displayName,
+        child: InkWell(
+          onTap: () => _togglePopup(u),
+          borderRadius: BorderRadius.circular(10),
+          child: SizedBox(
+            height: 44,
+            child: Padding(
+              padding:
+                  EdgeInsets.symmetric(horizontal: widget.expanded ? 8 : 6),
+              child: Row(
+                mainAxisAlignment: widget.expanded
+                    ? MainAxisAlignment.start
+                    : MainAxisAlignment.center,
+                children: [
+                  avatar,
+                  if (widget.expanded) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.of(context).bodySmall.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                          if ((widget.roleLabel ?? '').trim().isNotEmpty)
+                            Text(
+                              widget.roleLabel!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.of(context).caption.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.unfold_more_rounded, size: 16),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// In-sidebar account menu (expands upward from the profile row)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SidebarAccountMenu extends StatefulWidget {
+  const _SidebarAccountMenu({
+    required this.user,
+    required this.displayName,
+    required this.roleLabel,
+    required this.onSettings,
+  });
+
+  final User user;
+  final String displayName;
+  final String? roleLabel;
+  final VoidCallback? onSettings;
+
+  @override
+  State<_SidebarAccountMenu> createState() => _SidebarAccountMenuState();
+}
+
+class _SidebarAccountMenuState extends State<_SidebarAccountMenu> {
+  final FocusNode _focusNode = FocusNode(debugLabel: 'sidebarAccountMenu');
+  bool _open = false;
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() => _open = !_open);
+    if (_open) {
+      _focusNode.requestFocus();
+    }
+  }
+
+  void _close() {
+    if (!_open) return;
+    setState(() => _open = false);
+  }
+
+  void _runAndClose(VoidCallback action) {
+    _close();
+    action();
+  }
+
+  Future<void> _logout() async {
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final auth = context.read<AuthService>();
+    _close();
+    final confirmed = await showLogoutDialog(navigator.context);
+    if (confirmed != true || !navigator.mounted) return;
+    try {
+      await auth.logOut();
+    } catch (_) {
+      if (navigator.mounted) {
+        ScaffoldMessenger.of(navigator.context).showSnackBar(
+          const SnackBar(content: Text('No se pudo cerrar la sesión.')),
+        );
+      }
+      return;
+    }
+    if (!navigator.mounted) return;
+    navigator.pushNamedAndRemoveUntil(AppRoutes.loginRoute, (_) => false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    // Cap the expanded menu so it never pushes past the sidebar; its content
+    // scrolls internally when space is tight.
+    final maxMenuHeight = (MediaQuery.sizeOf(context).height * 0.5).clamp(
+      180.0,
+      360.0,
+    );
+
+    return TapRegion(
+      onTapOutside: (_) => _close(),
+      child: Focus(
+        focusNode: _focusNode,
+        onKeyEvent: (_, event) {
+          if (_open && event.logicalKey == LogicalKeyboardKey.escape) {
+            _close();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.bottomCenter,
+              child: _open
+                  ? ConstrainedBox(
+                      constraints: BoxConstraints(maxHeight: maxMenuHeight),
+                      child: _buildMenuPanel(context, l, cs, isEs),
+                    )
+                  : const SizedBox(width: double.infinity),
+            ),
+            _buildProfileRow(context, cs),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuPanel(
+    BuildContext context,
+    AppLocalizations l,
+    ColorScheme cs,
+    bool isEs,
+  ) {
+    final t = AppTypography.of(context);
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Identity header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+            child: Row(
+              children: [
+                HexoraUserAvatar(
+                  userId: widget.user.id,
+                  displayName: widget.displayName,
+                  username: widget.user.userName,
+                  photoUrl: widget.user.photoUrl,
+                  size: HexoraUserAvatar.menuSize,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      Text(
+                        '@${widget.user.userName}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.caption.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (widget.user.email.trim().isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: Row(
+                children: [
+                  Icon(Icons.email_outlined,
+                      size: 14, color: cs.onSurfaceVariant),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.user.email.trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.caption.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Divider(
+            height: 1,
+            thickness: 0.6,
+            indent: 10,
+            endIndent: 10,
+            color: cs.outlineVariant.withValues(alpha: 0.4),
+          ),
+          const SizedBox(height: 4),
+          _MenuItem(
+            icon: Icons.tune_rounded,
+            label: l.preferencesTitle,
+            onTap: () => _runAndClose(() {
+              Navigator.of(context, rootNavigator: true)
+                  .pushNamed(AppRoutes.preferences);
+            }),
+          ),
+          _MenuItem(
+            icon: Icons.settings_outlined,
+            label: l.settings,
+            onTap: () => _runAndClose(() {
+              final onSettings = widget.onSettings;
+              if (onSettings != null) {
+                onSettings();
+              } else {
+                Navigator.of(context).pushNamed(AppRoutes.settings);
+              }
+            }),
+          ),
+          _MenuItem(
+            icon: Icons.logout_rounded,
+            label: isEs ? 'Cerrar sesión' : 'Log out',
+            danger: true,
+            onTap: _logout,
+          ),
+          const SizedBox(height: 4),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileRow(BuildContext context, ColorScheme cs) {
+    final t = AppTypography.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Subtle divider between the expanded menu and the profile selector.
+        AnimatedOpacity(
+          duration: const Duration(milliseconds: 150),
+          opacity: _open ? 1 : 0,
+          child: Divider(
+            height: 1,
+            thickness: 0.6,
+            indent: 8,
+            endIndent: 8,
+            color: cs.outlineVariant.withValues(alpha: 0.4),
+          ),
+        ),
+        Semantics(
+          button: true,
+          expanded: _open,
+          label: widget.displayName,
+          child: InkWell(
+            onTap: _toggle,
+            borderRadius: BorderRadius.circular(10),
+            child: SizedBox(
+              height: 52,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: [
+                    HexoraUserAvatar(
+                      userId: widget.user.id,
+                      displayName: widget.displayName,
+                      username: widget.user.userName,
+                      photoUrl: widget.user.photoUrl,
+                      size: HexoraUserAvatar.compactSize,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.bodySmall
+                                .copyWith(fontWeight: FontWeight.w600),
+                          ),
+                          if ((widget.roleLabel ?? '').trim().isNotEmpty)
+                            Text(
+                              widget.roleLabel!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.caption
+                                  .copyWith(color: cs.onSurfaceVariant),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      _open
+                          ? Icons.keyboard_arrow_down_rounded
+                          : Icons.keyboard_arrow_up_rounded,
+                      size: 18,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MenuItem extends StatelessWidget {
+  const _MenuItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.danger = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    final color = danger ? cs.error : cs.onSurface;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        hoverColor: cs.onSurface.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          height: 38,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: color),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.bodySmall.copyWith(color: color),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -490,10 +939,9 @@ class _UserProfileCardState extends State<_UserProfileCard> {
 // The popup intentionally keeps profile editing in account settings.
 extension _CompactProfileCard on _UserProfileCardState {
   Widget buildCompact(BuildContext context) {
-    final theme = context.watch<ThemeModeProvider>();
+    final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final name = _user.displayName?.trim().isNotEmpty == true
         ? _user.displayName!.trim()
         : _user.name;
@@ -556,8 +1004,18 @@ extension _CompactProfileCard on _UserProfileCardState {
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Divider(
                 height: 1, color: cs.outlineVariant.withValues(alpha: .45))),
+        _compactMenuRow(
+          context,
+          icon: Icons.tune_rounded,
+          label: l.preferencesTitle,
+          onTap: () {
+            final navigator = Navigator.of(context, rootNavigator: true);
+            widget.onClose();
+            navigator.pushNamed(AppRoutes.preferences);
+          },
+        ),
         _compactMenuRow(context,
-            icon: Icons.settings_outlined, label: 'Configuración', onTap: () {
+            icon: Icons.settings_outlined, label: l.settings, onTap: () {
           widget.onClose();
           if (widget.onSettings != null) {
             widget.onSettings!();
@@ -565,15 +1023,6 @@ extension _CompactProfileCard on _UserProfileCardState {
             Navigator.of(context).pushNamed(AppRoutes.settings);
           }
         }),
-        _compactMenuRow(context,
-            icon: isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-            label: 'Modo oscuro',
-            trailing: Switch(
-                value: isDark,
-                onChanged: (_) =>
-                    theme.setMode(isDark ? ThemeMode.light : ThemeMode.dark)),
-            onTap: () =>
-                theme.setMode(isDark ? ThemeMode.light : ThemeMode.dark)),
         _compactMenuRow(context,
             icon: Icons.logout_rounded,
             label: 'Cerrar sesión',

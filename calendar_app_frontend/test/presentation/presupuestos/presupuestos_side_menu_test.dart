@@ -32,7 +32,7 @@ void main() {
       ),
     ));
 
-    expect(find.text('Propuestas'), findsOneWidget);
+    expect(find.text('Propuestas'), findsNothing);
     expect(find.text('Todas las propuestas'), findsOneWidget);
     expect(find.text('RECURSOS'), findsOneWidget);
     expect(find.text('Plantillas'), findsOneWidget);
@@ -46,7 +46,6 @@ void main() {
 
     double top(String label) => tester.getTopLeft(find.text(label)).dy;
 
-    expect(top('Todas las propuestas'), greaterThan(top('Propuestas')));
     expect(top('Plantillas'), greaterThan(top('RECURSOS')));
     expect(top('Biblioteca de imágenes'), greaterThan(top('Plantillas')));
     expect(tester.takeException(), isNull);

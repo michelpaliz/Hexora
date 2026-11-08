@@ -8,6 +8,7 @@ import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/navigation/shell/worker_status_indicator.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
+import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
@@ -16,6 +17,8 @@ import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashb
 import 'package:hexora/presentation/screens/workspace/dashboard/layout/download_jobs_top_menu.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/layout/group_dashboard_content.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/group_dashboard_right_panel.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/enable_banking_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/gastos_module_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
@@ -25,12 +28,11 @@ import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_s
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
 import 'package:hexora/presentation/screens/calendar/screens/calendar/screen/main_calendar_view.dart';
 import 'package:hexora/presentation/shared/widgets/user_profile_popup.dart';
-import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:hexora/presentation/utils/roles/group_role_labels.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../state/group_dashboard_state.dart';
 
@@ -41,42 +43,77 @@ class WideLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-
-    String? moduleLabel;
-    for (final d in _dashboardDestinations(
+    final preferences = context.watch<UserPreferencesProvider>();
+    final destinations = _dashboardDestinations(
       l,
       canSeeAdmin: state.canSeeAdmin,
       canSeeWorkers: state.canSeeAdmin,
-    )) {
-      if (d.id == state.activeSection) moduleLabel = d.label;
-    }
+    );
+    final workspace = SidebarFooterScope(
+      builder: (footerContext, collapsed) => UserProfilePopup(
+        user: state.user,
+        onSettings: () => state.openSection(Sections.settings),
+        placement: UserProfilePopupPlacement.sidebar,
+        expanded: !collapsed,
+        roleLabel:
+            state.role == null ? null : roleLabelOf(footerContext, state.role!),
+      ),
+      child: WorkspaceContent(
+        manager: state.workspaceTabs,
+        builder: (context, tab) => _buildContent(state, context, l, tab),
+      ),
+    );
 
     return HexoraAppShell(
       globalNav: _DashboardTopNav(state: state, l: l, user: state.user),
-      moduleLabel: moduleLabel,
-      body: HexoraMenuContentTransition.module(
-        transitionKey: state.activeSection,
-        child: _buildContent(state, context, l),
+      globalNavigationCollapsed: preferences.topNavCollapsed,
+      onRestoreGlobalNavigation: () =>
+          context.read<UserPreferencesProvider>().setTopNavCollapsed(false),
+      body: ListenableBuilder(
+        listenable: state.workspaceTabs,
+        child: workspace,
+        builder: (context, child) {
+          final activeSection =
+              state.workspaceTabs.activeTab?.section ?? state.activeSection;
+          String? moduleLabel;
+          for (final destination in destinations) {
+            if (destination.id == activeSection) {
+              moduleLabel = destination.label;
+              break;
+            }
+          }
+          return moduleLabel == null
+              ? child!
+              : HexoraNavContext(
+                  moduleLabel: moduleLabel,
+                  child: child!,
+                );
+        },
       ),
     );
   }
 
   Widget _buildContent(
-      GroupDashboardState state, BuildContext context, AppLocalizations l) {
+    GroupDashboardState state,
+    BuildContext context,
+    AppLocalizations l,
+    WorkspaceTab tab,
+  ) {
+    final section = tab.section;
     const showMainBody = !kIsWeb;
-    final showCalendarInline = kIsWeb && state.activeSection == 'calendar';
-    final showInvoicesInline = kIsWeb && state.activeSection == 'invoices';
-    final showBudgetsInline = kIsWeb && state.activeSection == Sections.budgets;
-    final showExpensesInline =
-        kIsWeb && state.activeSection == Sections.expenses;
-    final showMapInline = state.activeSection == Sections.maps;
-    final showEmailsInline = state.activeSection == 'emails';
-    final showEnableBankingInline =
-        kIsWeb && state.activeSection == 'enableBanking';
-    final showTelegramInline = state.activeSection == 'telegram';
+    final showCalendarInline = kIsWeb && section == Sections.calendar;
+    final showInvoicesInline = kIsWeb && section == Sections.invoices;
+    final showBudgetsInline = kIsWeb && section == Sections.budgets;
+    final showExpensesInline = kIsWeb && section == Sections.expenses;
+    final showMapInline = section == Sections.maps;
+    final showEmailsInline = section == Sections.emails;
+    final showEnableBankingInline = kIsWeb && section == Sections.enableBanking;
+    final showTelegramInline = section == Sections.telegram;
 
-    if (state.activeSection == Sections.agenda) {
-      return AgendaScreen(groupId: state.group.id, embedded: true);
+    if (section == Sections.agenda) {
+      return WorkspaceMainContent(
+        child: AgendaScreen(groupId: state.group.id, embedded: true),
+      );
     }
 
     if (showEmailsInline) {
@@ -111,19 +148,21 @@ class WideLayout extends StatelessWidget {
               : showInvoicesInline
                   ? GroupInvoicesScreen(
                       key: ValueKey(
-                        'group-invoices-${state.group.id}-${state.invoicesNavigationRevision}',
+                        'group-invoices-${state.group.id}-${tab.identity.value}-${tab.arguments['navigationRevision'] ?? 'initial'}',
                       ),
                       group: state.group,
                       embedded: true,
-                      initialMenu: state.invoicesInitialMenu,
-                      initialInvoiceId: state.invoicesInitialInvoiceId,
-                      initialReceiptId: state.invoicesInitialReceiptId,
-                      initialBudgetId: state.invoicesInitialBudgetId,
+                      initialMenu:
+                          tab.arguments['initialMenu'] ?? 'invoices_issued',
+                      initialInvoiceId: tab.arguments['initialInvoiceId'],
+                      initialReceiptId: tab.arguments['initialReceiptId'],
+                      initialBudgetId: tab.arguments['initialBudgetId'],
+                      onOpenWorkspace: state.openInvoicesWorkspace,
                     )
                   : showBudgetsInline
                       ? PresupuestosModuleScreen(
                           key: ValueKey(
-                            'group-budgets-${state.group.id}-${state.activeSection}',
+                            'group-budgets-${state.group.id}-${tab.identity.value}',
                           ),
                           group: state.group,
                           embedded: true,
@@ -136,7 +175,7 @@ class WideLayout extends StatelessWidget {
                           : showMapInline
                               ? ClientMapScreen(
                                   key: ValueKey(
-                                    'group-map-${state.group.id}-${state.activeSection}',
+                                    'group-map-${state.group.id}-${tab.identity.value}',
                                   ),
                                   group: state.group,
                                   embedded: true,
@@ -149,24 +188,32 @@ class WideLayout extends StatelessWidget {
                                           group: state.group,
                                           embedded: true,
                                         )
-                                      : GroupDashboardRightPanel(
-                                          activeAnchor: state.activeSection,
-                                          counts: state.counts,
-                                          group: state.group,
-                                          user: state.user,
-                                          role: state.role,
-                                          fetchReadSas: state.fetchReadSas,
-                                          usersInGroup: const [],
-                                          onOpenCalendar: () =>
-                                              state.openSection('calendar'),
-                                          onOpenNotifications: () => state
-                                              .openSection('notifications'),
-                                          onOpenSettings: () =>
-                                              state.openSection('settings'),
-                                        ),
+                                      : _fallbackPanel(state, section),
         ),
       ],
     );
+  }
+
+  Widget _fallbackPanel(GroupDashboardState state, String section) {
+    final panel = GroupDashboardRightPanel(
+      activeAnchor: section,
+      counts: state.counts,
+      group: state.group,
+      user: state.user,
+      role: state.role,
+      fetchReadSas: state.fetchReadSas,
+      usersInGroup: const [],
+      onOpenCalendar: () => state.openSection('calendar'),
+      onOpenNotifications: () => state.openSection('notifications'),
+      onOpenSettings: () => state.openSection('settings'),
+    );
+    if (section == Sections.settings ||
+        section == Sections.workers ||
+        section == Sections.notifications ||
+        section == Sections.businessChat) {
+      return panel;
+    }
+    return WorkspaceMainContent(child: panel);
   }
 }
 
@@ -206,11 +253,6 @@ List<HexoraNavDestination> _dashboardDestinations(
       label: l.calendar,
     ),
     if (canSeeAdmin) ...[
-      HexoraNavDestination(
-        id: Sections.services,
-        icon: Icons.design_services_outlined,
-        label: es ? 'Operaciones' : 'Operations',
-      ),
       HexoraNavDestination(
         id: Sections.budgets,
         icon: Icons.description_outlined,
@@ -287,118 +329,77 @@ class _DashboardTopNav extends StatefulWidget {
 }
 
 class _DashboardTopNavState extends State<_DashboardTopNav> {
-  static const _compactPreferenceKey = 'dashboard_top_nav_compact_v2';
-  bool _compact = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCompactPreference();
-  }
-
-  Future<void> _loadCompactPreference() async {
-    final preferences = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() {
-      _compact = preferences.getBool(_compactPreferenceKey) ?? false;
-    });
-  }
-
-  void _toggleCompact() {
-    final next = !_compact;
-    setState(() => _compact = next);
-    SharedPreferences.getInstance().then(
-      (preferences) => preferences.setBool(_compactPreferenceKey, next),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
     final l = widget.l;
     final user = widget.user;
     final es = l.localeName.startsWith('es');
-    const textColor = HexoraGlobalNavColors.foreground;
     final unreadNotifications = context
         .watch<NotificationDomain>()
         .notifications
         .where((n) => n.groupId == state.group.id && !n.isRead)
         .length;
     final memberIds = {...state.group.userIds, state.group.ownerId}..remove('');
+    final preferences = context.watch<UserPreferencesProvider>();
+    final navigationMode = preferences.navigationDisplayMode;
 
-    return HexoraGlobalNavBar(
-      destinations: _dashboardDestinations(
-        l,
-        canSeeAdmin: state.canSeeAdmin,
-        canSeeWorkers: state.canSeeAdmin,
-      ),
-      activeId: state.activeSection,
-      onSelected: state.openSection,
-      onBrandTap:
-          state.canSeeAdmin ? () => state.openSection(Sections.settings) : null,
-      brandTooltip: es ? 'Ajustes del espacio' : 'Workspace settings',
-      groupSwitcher: _GroupSwitcherChip(
-        activeGroup: state.group,
-        userId: user?.id ?? '',
-        onOpenGroupSettings: () => state.openSection(Sections.settings),
-      ),
-      compact: _compact,
-      onToggleCompact: _toggleCompact,
-      notificationCount: unreadNotifications,
-      notificationsSelected: state.activeSection == Sections.notifications,
-      onOpenNotifications: () => state.openSection(Sections.notifications),
-      downloads: IconTheme(
-        data: const IconThemeData(color: HexoraGlobalNavColors.foreground),
-        child: DefaultTextStyle.merge(
-          style: const TextStyle(color: HexoraGlobalNavColors.foreground),
-          child: DownloadJobsTopMenu(
-            groupId: state.group.id,
-            onViewAllDownloads: () => state.openSection(Sections.notifications),
-            compact: _compact,
+    return ListenableBuilder(
+      listenable: state.workspaceTabs,
+      builder: (context, _) {
+        final activeSection =
+            state.workspaceTabs.activeTab?.section ?? state.activeSection;
+        return HexoraGlobalNavBar(
+          destinations: _dashboardDestinations(
+            l,
+            canSeeAdmin: state.canSeeAdmin,
+            canSeeWorkers: state.canSeeAdmin,
           ),
-        ),
-      ),
-      onlineMembers: state.canSeeAdmin
-          ? WorkerStatusIndicator(
-              groupId: state.group.id,
-              memberIds: memberIds.toList(),
-              groupRoles: state.group.userRoles,
-              onOpenWorkers: () => state.openSection(Sections.workers),
-            )
-          : null,
-      profile: UserProfilePopup(
-        user: user,
-        onSettings: () => state.openSection('settings'),
-      ),
-      profileDetails: user == null
-          ? null
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  user.displayName?.isNotEmpty == true
-                      ? user.displayName!
-                      : user.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.of(context)
-                      .bodySmall
-                      .copyWith(color: textColor, fontWeight: FontWeight.w600),
-                ),
-                if (state.role != null)
-                  Text(
-                    roleLabelOf(context, state.role!),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.of(context)
-                        .caption
-                        .copyWith(color: textColor.withValues(alpha: 0.7)),
-                  ),
-              ],
+          activeId: activeSection,
+          onSelected: state.openSection,
+          onBrandTap: state.canSeeAdmin
+              ? () => state.openSection(Sections.settings)
+              : null,
+          brandTooltip: es ? 'Ajustes del espacio' : 'Workspace settings',
+          groupSwitcher: _GroupSwitcherChip(
+            activeGroup: state.group,
+            userId: user?.id ?? '',
+            onOpenGroupSettings: () => state.openSection(Sections.settings),
+          ),
+          navigationDisplayMode: navigationMode,
+          collapsed: preferences.topNavCollapsed,
+          onToggleCollapsed: () {
+            final provider = context.read<UserPreferencesProvider>();
+            provider.setTopNavCollapsed(!provider.topNavCollapsed);
+          },
+          notificationCount: unreadNotifications,
+          notificationsSelected: activeSection == Sections.notifications,
+          onOpenNotifications: () => state.openSection(Sections.notifications),
+          downloads: IconTheme(
+            data: const IconThemeData(color: HexoraGlobalNavColors.foreground),
+            child: DefaultTextStyle.merge(
+              style: const TextStyle(color: HexoraGlobalNavColors.foreground),
+              child: DownloadJobsTopMenu(
+                groupId: state.group.id,
+                onViewAllDownloads: () =>
+                    state.openSection(Sections.notifications),
+                compact: navigationMode == NavigationDisplayMode.iconsOnly,
+              ),
             ),
-      onBack: () => Navigator.of(context).maybePop(),
-      backTooltip: l.groupSectionTitle,
+          ),
+          onlineMembers: state.canSeeAdmin
+              ? WorkerStatusIndicator(
+                  groupId: state.group.id,
+                  memberIds: memberIds.toList(),
+                  groupRoles: state.group.userRoles,
+                  onOpenWorkers: () => state.openSection(Sections.workers),
+                  compact: navigationMode == NavigationDisplayMode.iconsOnly,
+                )
+              : null,
+          onBack: () => Navigator.of(context).maybePop(),
+          backTooltip: l.groupSectionTitle,
+        );
+      },
     );
   }
 }
@@ -427,7 +428,9 @@ class _GroupSwitcherChip extends StatelessWidget {
         : (parts.first[0] + parts.last[0]).toUpperCase();
   }
 
-  Widget _avatar(Group group, double size) {
+  /// [bg]/[fg] let the dropdown rows use theme colors (legible on a light
+  /// surface), while the trigger keeps its white-on-navy look by default.
+  Widget _avatar(Group group, double size, {Color? bg, Color? fg}) {
     final photoUrl = group.computedPhotoUrl ?? group.photoUrl;
     if (photoUrl != null && photoUrl.isNotEmpty) {
       return ClipOval(
@@ -436,20 +439,20 @@ class _GroupSwitcherChip extends StatelessWidget {
           width: size,
           height: size,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _initialsAvatar(group, size),
+          errorBuilder: (_, __, ___) => _initialsAvatar(group, size, bg, fg),
         ),
       );
     }
-    return _initialsAvatar(group, size);
+    return _initialsAvatar(group, size, bg, fg);
   }
 
-  Widget _initialsAvatar(Group group, double size) {
+  Widget _initialsAvatar(Group group, double size, [Color? bg, Color? fg]) {
     return Container(
       width: size,
       height: size,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Color(0x26FFFFFF), // foreground @ 15 % alpha
+        color: bg ?? const Color(0x26FFFFFF), // foreground @ 15 % alpha
       ),
       alignment: Alignment.center,
       child: Text(
@@ -457,9 +460,82 @@ class _GroupSwitcherChip extends StatelessWidget {
         style: TextStyle(
           fontSize: size * 0.38,
           fontWeight: FontWeight.w700,
-          color: HexoraGlobalNavColors.foreground,
+          color: fg ?? HexoraGlobalNavColors.foreground,
           fontFamily: 'Inter',
         ),
+      ),
+    );
+  }
+
+  /// Theme-aware dropdown surface: clean white in light mode, a slate slightly
+  /// lighter than the navy nav bar in dark mode — never the top-bar color.
+  MenuStyle _menuStyle(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final surface = isDark ? cs.surfaceContainerHigh : cs.surface;
+    return MenuStyle(
+      backgroundColor: WidgetStatePropertyAll(surface),
+      surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+      shadowColor: WidgetStatePropertyAll(Colors.black.withValues(alpha: 0.22)),
+      elevation: const WidgetStatePropertyAll(8),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 6)),
+      minimumSize: const WidgetStatePropertyAll(Size(264, 0)),
+      maximumSize: const WidgetStatePropertyAll(Size(320, 440)),
+      visualDensity: VisualDensity.compact,
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: isDark ? 0.4 : 0.6),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Compact workspace row: avatar · name · selected checkmark.
+  MenuItemButton _groupRow(
+    BuildContext context,
+    Group group,
+    bool selected,
+    VoidCallback onPressed,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    return MenuItemButton(
+      style: MenuItemButton.styleFrom(
+        minimumSize: const Size(0, 42),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        backgroundColor:
+            selected ? cs.primary.withValues(alpha: 0.10) : Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      onPressed: onPressed,
+      child: Row(
+        children: [
+          _avatar(group, 26,
+              bg: cs.primary.withValues(alpha: 0.12), fg: cs.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Tooltip(
+              message: group.name,
+              waitDuration: const Duration(milliseconds: 500),
+              child: Text(
+                group.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: NavigationTokens.label(context).copyWith(
+                  color: cs.onSurface,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+          if (selected) ...[
+            const SizedBox(width: 8),
+            Icon(Icons.check_rounded, size: 16, color: cs.primary),
+          ],
+        ],
       ),
     );
   }
@@ -478,42 +554,43 @@ class _GroupSwitcherChip extends StatelessWidget {
         final groups = snap.data ?? [activeGroup];
         final cs = Theme.of(context).colorScheme;
 
+        void selectGroup(Group g) {
+          if (g.id == activeGroup.id) return;
+          groupDomain.currentGroup = g;
+          Navigator.of(context).pushNamed(
+            AppRoutes.groupDashboard,
+            arguments: g,
+          );
+        }
+
         return MenuAnchor(
           alignmentOffset: const Offset(0, 6),
-          style: hexoraDropdownMenuStyle(),
-          menuChildren: [
-            for (final g in groups)
-              MenuItemButton(
-                style: MenuItemButton.styleFrom(
-                  backgroundColor: g.id == activeGroup.id
-                      ? cs.primary.withValues(alpha: 0.10)
-                      : null,
-                ),
-                leadingIcon: _avatar(g, 20),
-                trailingIcon: g.id == activeGroup.id
-                    ? Icon(Icons.check_rounded, size: 16, color: cs.primary)
-                    : null,
-                onPressed: g.id == activeGroup.id
-                    ? () {}
-                    : () {
-                        groupDomain.currentGroup = g;
-                        Navigator.of(context).pushNamed(
-                          AppRoutes.groupDashboard,
-                          arguments: g,
-                        );
-                      },
-                child: Tooltip(
-                  message: g.name,
-                  waitDuration: const Duration(milliseconds: 500),
-                  child: Text(
-                    g.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: NavigationTokens.label(context),
+          style: _menuStyle(context),
+          // A compact search appears only for users with many workspaces.
+          menuChildren: groups.length > 7
+              ? [
+                  _SearchableWorkspaceList(
+                    groups: groups,
+                    activeId: activeGroup.id,
+                    isSpanish: es,
+                    onSelect: selectGroup,
+                    avatarBuilder: (g, size) => _avatar(
+                      g,
+                      size,
+                      bg: cs.primary.withValues(alpha: 0.12),
+                      fg: cs.primary,
+                    ),
                   ),
-                ),
-              ),
-          ],
+                ]
+              : [
+                  for (final g in groups)
+                    _groupRow(
+                      context,
+                      g,
+                      g.id == activeGroup.id,
+                      () => selectGroup(g),
+                    ),
+                ],
           builder: (context, controller, _) {
             void switchWorkspace() {
               if (controller.isOpen) {
@@ -572,10 +649,16 @@ class _GroupSwitcherChip extends StatelessWidget {
                     minWidth: 24,
                     padding: EdgeInsets.zero,
                     onTap: switchWorkspace,
-                    builder: (context, fg) => Icon(
-                      Icons.expand_more_rounded,
-                      size: 14,
-                      color: fg,
+                    builder: (context, fg) => AnimatedRotation(
+                      turns: controller.isOpen ? 0.5 : 0,
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 180),
+                      child: Icon(
+                        Icons.expand_more_rounded,
+                        size: 14,
+                        color: fg,
+                      ),
                     ),
                   ),
                 ],
@@ -584,6 +667,103 @@ class _GroupSwitcherChip extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+class _SearchableWorkspaceList extends StatefulWidget {
+  const _SearchableWorkspaceList({
+    required this.groups,
+    required this.activeId,
+    required this.isSpanish,
+    required this.onSelect,
+    required this.avatarBuilder,
+  });
+
+  final List<Group> groups;
+  final String activeId;
+  final bool isSpanish;
+  final ValueChanged<Group> onSelect;
+  final Widget Function(Group group, double size) avatarBuilder;
+
+  @override
+  State<_SearchableWorkspaceList> createState() =>
+      _SearchableWorkspaceListState();
+}
+
+class _SearchableWorkspaceListState extends State<_SearchableWorkspaceList> {
+  final TextEditingController _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final query = _search.text.trim().toLowerCase();
+    final visible = query.isEmpty
+        ? widget.groups
+        : widget.groups
+            .where((group) => group.name.toLowerCase().contains(query))
+            .toList(growable: false);
+    return SizedBox(
+      width: 280,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 2, 10, 8),
+            child: SizedBox(
+              height: 36,
+              child: TextField(
+                controller: _search,
+                autofocus: true,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  isDense: true,
+                  prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                  hintText: widget.isSpanish
+                      ? 'Buscar espacio...'
+                      : 'Search workspace...',
+                ),
+              ),
+            ),
+          ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 300),
+            child: ListView.builder(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: 6),
+              itemCount: visible.length,
+              itemBuilder: (context, index) {
+                final group = visible[index];
+                final selected = group.id == widget.activeId;
+                return MenuItemButton(
+                  style: MenuItemButton.styleFrom(
+                    backgroundColor: selected
+                        ? cs.primary.withValues(alpha: 0.10)
+                        : Colors.transparent,
+                  ),
+                  leadingIcon: widget.avatarBuilder(group, 20),
+                  trailingIcon: selected
+                      ? Icon(Icons.check_rounded, size: 16, color: cs.primary)
+                      : null,
+                  onPressed: () => widget.onSelect(group),
+                  child: Text(
+                    group.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: NavigationTokens.label(context),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

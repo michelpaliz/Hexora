@@ -1,6 +1,5 @@
-import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/presentation/shared/widgets/navigation_popup_menu_item.dart';
-import 'package:hexora/theme/themes/navigation_tokens.dart';
+import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -19,6 +18,7 @@ import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/w
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker_account_setup_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/worker_time_tracking_screen.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -99,60 +99,48 @@ class _WorkersHubScreenState extends State<WorkersHubScreen> {
             })>
         navItems,
   ) {
-    final cs = Theme.of(context).colorScheme;
-
     return Row(
       children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          width: _sideMenuCollapsed ? _collapsedMenuWidth : _expandedMenuWidth,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-                child: Align(
-                  alignment: _sideMenuCollapsed
-                      ? Alignment.center
-                      : Alignment.centerRight,
-                  child: SidebarCollapseToggle(
-                    collapsed: _sideMenuCollapsed,
-                    onPressed: () => setState(
-                      () => _sideMenuCollapsed = !_sideMenuCollapsed,
-                    ),
-                  ),
-                ),
+        Theme(
+          data: navigationTheme(Theme.of(context)),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            width:
+                _sideMenuCollapsed ? _collapsedMenuWidth : _expandedMenuWidth,
+            child: SidebarEdgeShell(
+              collapsed: _sideMenuCollapsed,
+              onToggle: () => setState(
+                () => _sideMenuCollapsed = !_sideMenuCollapsed,
               ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
-                  children: [
-                    ...navItems.map(
-                      (item) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: SidebarItem(
-                          icon: item.icon,
-                          label: item.label,
-                          isSelected: _section == item.section,
-                          collapsed: _sideMenuCollapsed,
-                          onTap: () => setState(
-                            () => _section = item.section,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
+                      children: [
+                        ...navItems.map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: SidebarItem(
+                              icon: item.icon,
+                              label: item.label,
+                              isSelected: _section == item.section,
+                              collapsed: _sideMenuCollapsed,
+                              onTap: () => setState(
+                                () => _section = item.section,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-        VerticalDivider(
-          width: 1,
-          thickness: 1,
-          color: cs.outlineVariant.withValues(alpha: 0.4),
         ),
         Expanded(child: _buildSectionContent()),
       ],

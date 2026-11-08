@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 
@@ -45,8 +46,7 @@ class HexoraGlobalNavBar extends StatelessWidget {
     required this.onSelected,
     this.onBrandTap,
     this.brandTooltip,
-    this.compact = false,
-    this.onToggleCompact,
+    this.navigationDisplayMode = NavigationDisplayMode.automatic,
     this.notificationCount = 0,
     this.notificationsSelected = false,
     this.onOpenNotifications,
@@ -57,6 +57,8 @@ class HexoraGlobalNavBar extends StatelessWidget {
     this.onBack,
     this.backTooltip,
     this.groupSwitcher,
+    this.collapsed = false,
+    this.onToggleCollapsed,
   });
 
   final List<HexoraNavDestination> destinations;
@@ -64,8 +66,7 @@ class HexoraGlobalNavBar extends StatelessWidget {
   final ValueChanged<String> onSelected;
   final VoidCallback? onBrandTap;
   final String? brandTooltip;
-  final bool compact;
-  final VoidCallback? onToggleCompact;
+  final NavigationDisplayMode navigationDisplayMode;
   final int notificationCount;
   final bool notificationsSelected;
   final VoidCallback? onOpenNotifications;
@@ -80,9 +81,52 @@ class HexoraGlobalNavBar extends StatelessWidget {
   /// group/workspace switcher).
   final Widget? groupSwitcher;
 
-  static const double _labelsBreakpoint = 1440;
-  static const double _brandTextBreakpoint = 1100;
+  /// Distraction-free state: this bar collapses to zero height. The shared
+  /// sidebar shell supplies the HEXORA restore header beside workspace tabs.
+  final bool collapsed;
+
+  /// Toggles [collapsed]. When provided, clicking the HEXORA brand calls this
+  /// instead of [onBrandTap].
+  final VoidCallback? onToggleCollapsed;
+
+  // The wordmark drops before the company name, so the active workspace stays
+  // identifiable longer than the Hexora brand text (responsive priority).
+  static const double _brandTextBreakpoint = 1280;
+  static const double _companyNameBreakpoint = 1100;
   static const double _profileDetailsBreakpoint = 1600;
+
+  /// Subtle branded texture reused from the home page's dark background. Held
+  /// as a const so the decoded image is cached and never reloaded on rebuilds.
+  static const DecorationImage _brandedBackground = DecorationImage(
+    image: AssetImage('assets/images/home_page/dark_bg_color.png'),
+    fit: BoxFit.cover,
+    alignment: Alignment.centerRight,
+    opacity: 0.22,
+  );
+
+  double _destinationWidth(HexoraNavDestination destination) {
+    final labelWidth =
+        (destination.label.characters.length * 7.0).clamp(34.0, 126.0);
+    return NavigationTokens.globalItemHeight + labelWidth + 8;
+  }
+
+  double _reservedActionWidth(double viewportWidth) {
+    final compactActions =
+        navigationDisplayMode == NavigationDisplayMode.iconsOnly ||
+            viewportWidth < 1200;
+    var width = 12.0;
+    if (downloads != null) width += compactActions ? 44 : 112;
+    if (onlineMembers != null) width += compactActions ? 44 : 136;
+    if (onOpenNotifications != null) width += 44;
+    if (profile != null) width += 50;
+    if (profileDetails != null &&
+        navigationDisplayMode != NavigationDisplayMode.iconsOnly &&
+        viewportWidth >= _profileDetailsBreakpoint) {
+      width += 148;
+    }
+    if (onBack != null) width += 46;
+    return width;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,27 +141,64 @@ class HexoraGlobalNavBar extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final showLabels = !compact && width >= _labelsBreakpoint;
+        final showWordmark = width >= _brandTextBreakpoint;
+        // Left cluster = Hexora brand (logo [+ wordmark]) then the company
+        // selector. Both stay; the module strip takes the remaining width.
+        final brandWidth = showWordmark ? 120.0 : 40.0;
+        final companyWidth = groupSwitcher == null
+            ? 0.0
+            : (width >= _companyNameBreakpoint ? 196.0 : 52.0);
+        final leftWidth =
+            brandWidth + (groupSwitcher == null ? 0.0 : 8.0 + companyWidth);
+        final availableModuleWidth =
+            width - 24 - leftWidth - 25 - _reservedActionWidth(width);
+        final labeledModuleWidth = primary.fold<double>(
+              0,
+              (sum, destination) => sum + _destinationWidth(destination),
+            ) +
+            (grouped.isNotEmpty ? 76 : 0);
+        final showLabels = switch (navigationDisplayMode) {
+          NavigationDisplayMode.automatic =>
+            availableModuleWidth >= labeledModuleWidth,
+          NavigationDisplayMode.iconsAndText => true,
+          NavigationDisplayMode.iconsOnly => false,
+        };
+        final iconsOnly =
+            navigationDisplayMode == NavigationDisplayMode.iconsOnly;
 
+        final toggleTooltip = collapsed
+            ? (es ? 'Mostrar menú principal' : 'Show main menu')
+            : (es ? 'Ocultar menú principal' : 'Hide main menu');
+        // Shell geometry is animated by HexoraAppShell. This surface always
+        // keeps its natural height so its controls are clipped as a whole
+        // instead of being squeezed into intermediate constraints.
         return Container(
+          key: const ValueKey('global-nav-surface'),
           height: NavigationTokens.globalBarHeight,
           padding: const EdgeInsets.symmetric(horizontal: 12),
+          clipBehavior: Clip.hardEdge,
           decoration: BoxDecoration(
+            // Navy stays the fallback/base; the branded texture sits subtly
+            // on top so labels and icons remain readable.
             color: HexoraGlobalNavColors.background,
+            image: _brandedBackground,
             border: Border(
               bottom: BorderSide(color: HexoraGlobalNavColors.divider),
             ),
           ),
           child: Row(
             children: [
+              _Brand(
+                onTap: onToggleCollapsed ?? onBrandTap,
+                collapsed: false,
+                showText: showWordmark,
+                tooltip:
+                    onToggleCollapsed == null ? brandTooltip : toggleTooltip,
+              ),
               if (groupSwitcher != null) ...[
+                const SizedBox(width: 8),
                 groupSwitcher!,
-              ] else
-                _Brand(
-                  onTap: onBrandTap,
-                  tooltip: brandTooltip,
-                  showText: width >= _brandTextBreakpoint,
-                ),
+              ],
               Container(
                 width: 1,
                 height: 24,
@@ -132,17 +213,17 @@ class HexoraGlobalNavBar extends StatelessWidget {
                       _DestinationItem(
                         destination: d,
                         selected: d.id == activeId,
-                        showLabel: showLabels || d.id == activeId,
+                        showLabel:
+                            showLabels || (!iconsOnly && d.id == activeId),
                         onTap: () => onSelected(d.id),
                       ),
-                    if (grouped.isNotEmpty || onToggleCompact != null)
+                    if (grouped.isNotEmpty)
                       _MoreMenu(
                         items: grouped,
                         activeId: activeId,
                         showLabel: showLabels,
-                        compact: compact,
+                        iconsOnly: iconsOnly,
                         onSelected: onSelected,
-                        onToggleCompact: onToggleCompact,
                       ),
                   ],
                 ),
@@ -177,7 +258,7 @@ class HexoraGlobalNavBar extends StatelessWidget {
                 profile!,
               ],
               if (profileDetails != null &&
-                  !compact &&
+                  !iconsOnly &&
                   width >= _profileDetailsBreakpoint) ...[
                 const SizedBox(width: 8),
                 ConstrainedBox(
@@ -202,53 +283,83 @@ class HexoraGlobalNavBar extends StatelessWidget {
 }
 
 class _Brand extends StatelessWidget {
-  const _Brand(
-      {required this.onTap, required this.tooltip, required this.showText});
+  const _Brand({
+    required this.onTap,
+    required this.tooltip,
+    required this.showText,
+    required this.collapsed,
+  });
 
   final VoidCallback? onTap;
   final String? tooltip;
   final bool showText;
+  final bool collapsed;
 
   @override
   Widget build(BuildContext context) {
-    final content = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(7),
-            child: Image.asset(
-              'assets/images/branding/logo_icon.png',
-              width: 28,
-              height: 28,
-            ),
-          ),
-          if (showText) ...[
-            const SizedBox(width: 8),
-            Text(
-              'HEXORA',
-              style: NavigationTokens.title(context).copyWith(
-                color: HexoraGlobalNavColors.foreground,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
+    final content = DecoratedBox(
+      decoration: collapsed
+          ? BoxDecoration(
+              color: HexoraGlobalNavColors.background,
+              borderRadius: BorderRadius.circular(NavigationTokens.radius),
+            )
+          : const BoxDecoration(),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(7),
+              child: Image.asset(
+                'assets/images/branding/logo_icon.png',
+                width: 28,
+                height: 28,
               ),
             ),
+            if (showText) ...[
+              const SizedBox(width: 8),
+              Text(
+                'HEXORA',
+                style: NavigationTokens.title(context).copyWith(
+                  color: HexoraGlobalNavColors.foreground,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ],
+            if (onTap != null) ...[
+              const SizedBox(width: 3),
+              Icon(
+                collapsed
+                    ? Icons.keyboard_arrow_down_rounded
+                    : Icons.keyboard_arrow_up_rounded,
+                size: 16,
+                color: HexoraGlobalNavColors.foreground.withValues(alpha: 0.72),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
     if (onTap == null) {
       return Semantics(label: 'Hexora', child: content);
     }
-    return Tooltip(
-      message: tooltip ?? 'Hexora',
-      waitDuration: const Duration(milliseconds: 350),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(NavigationTokens.radius),
-        hoverColor: HexoraGlobalNavColors.foreground.withValues(alpha: 0.06),
-        child: content,
+    final accessibleLabel = tooltip ?? 'Hexora';
+    return Semantics(
+      button: true,
+      expanded: !collapsed,
+      label: accessibleLabel,
+      child: Tooltip(
+        message: accessibleLabel,
+        waitDuration: const Duration(milliseconds: 350),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(NavigationTokens.radius),
+          hoverColor: HexoraGlobalNavColors.foreground.withValues(alpha: 0.06),
+          focusColor: HexoraGlobalNavColors.foreground.withValues(alpha: 0.14),
+          child: ExcludeSemantics(child: content),
+        ),
       ),
     );
   }
@@ -304,17 +415,15 @@ class _MoreMenu extends StatelessWidget {
     required this.items,
     required this.activeId,
     required this.showLabel,
-    required this.compact,
+    required this.iconsOnly,
     required this.onSelected,
-    required this.onToggleCompact,
   });
 
   final List<HexoraNavDestination> items;
   final String activeId;
   final bool showLabel;
-  final bool compact;
+  final bool iconsOnly;
   final ValueChanged<String> onSelected;
-  final VoidCallback? onToggleCompact;
 
   @override
   Widget build(BuildContext context) {
@@ -326,7 +435,7 @@ class _MoreMenu extends StatelessWidget {
       if (d.id == activeId) active = d;
     }
     final labelText = active?.label ?? moreLabel;
-    final hasLabel = active != null || showLabel;
+    final hasLabel = showLabel || (active != null && !iconsOnly);
 
     return MenuAnchor(
       alignmentOffset: const Offset(0, 6),
@@ -340,22 +449,6 @@ class _MoreMenu extends StatelessWidget {
                 : null,
             onPressed: () => onSelected(d.id),
             child: Text(d.label, style: NavigationTokens.label(context)),
-          ),
-        if (items.isNotEmpty && onToggleCompact != null)
-          const Divider(height: 8),
-        if (onToggleCompact != null)
-          MenuItemButton(
-            leadingIcon: Icon(
-              compact ? Icons.label_outline_rounded : Icons.label_off_outlined,
-              size: NavigationTokens.iconSize,
-            ),
-            onPressed: onToggleCompact,
-            child: Text(
-              compact
-                  ? (es ? 'Mostrar etiquetas' : 'Show labels')
-                  : (es ? 'Solo iconos' : 'Icons only'),
-              style: NavigationTokens.label(context),
-            ),
           ),
       ],
       builder: (context, controller, _) => HexoraNavTile(

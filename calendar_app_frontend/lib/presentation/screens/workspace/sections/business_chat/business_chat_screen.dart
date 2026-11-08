@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/components/telegram_client_document_picker_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/components/telegram_worker_document_picker_dialog.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
+import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/services/auth/token/token_service.dart';
 import 'package:hexora/services/business_chat/business_chat_api.dart';
 import 'package:hexora/services/business_chat/business_chat_drafts.dart';
@@ -67,6 +71,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
   bool _canAssignIssues = false;
   bool _canShareBankTransactions = false;
   bool _showChatOnNarrow = false;
+  bool _menuCollapsed = false;
   String? _error;
   String? _pendingConversationId;
   bool get _es => Localizations.localeOf(context).languageCode == 'es';
@@ -1844,6 +1849,96 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     return widgets;
   }
 
+  Widget _buildChatMenuHeader(
+    ColorScheme colors, {
+    required bool dark,
+    bool showTitle = true,
+  }) {
+    final foreground =
+        dark ? HexoraGlobalNavColors.foreground : colors.onSurfaceVariant;
+    final unread = _conversations.fold<int>(
+        0, (sum, conversation) => sum + conversation.unreadCount);
+    final buttonStyle = IconButton.styleFrom(
+      foregroundColor: foreground,
+      minimumSize: const Size.square(36),
+      fixedSize: const Size.square(36),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+    );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 12, 10, 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (showTitle) ...[
+          Row(children: [
+            Badge(
+                isLabelVisible: unread > 0,
+                label: Text('$unread'),
+                child: Icon(Icons.forum_outlined, color: foreground)),
+            const SizedBox(width: 10),
+            Expanded(
+                child: Text('Hexora Chat',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: foreground, fontWeight: FontWeight.w700))),
+          ]),
+          const SizedBox(height: 6),
+        ],
+        Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 2,
+            runSpacing: 2,
+            children: [
+              Tooltip(
+                  message: _liveConnected
+                      ? (_es ? 'Actualizaciones en directo' : 'Live updates')
+                      : (_es
+                          ? 'Sin conexión en directo; se actualiza cada minuto'
+                          : 'Live connection unavailable; checks every minute'),
+                  child: SizedBox.square(
+                      dimension: 36,
+                      child: Icon(_liveConnected ? Icons.wifi : Icons.wifi_off,
+                          size: 18,
+                          color: _liveConnected
+                              ? (dark ? Colors.white : colors.primary)
+                              : foreground.withValues(alpha: 0.58)))),
+              IconButton(
+                  style: buttonStyle,
+                  onPressed: _loading ? null : _refresh,
+                  tooltip: _es ? 'Actualizar' : 'Refresh',
+                  icon: const Icon(Icons.refresh, size: 19)),
+              IconButton(
+                  style: buttonStyle,
+                  onPressed: _showMemberPresence,
+                  tooltip: _es
+                      ? 'Ver miembros y conexión'
+                      : 'View members and presence',
+                  icon: const Icon(Icons.people_alt_outlined, size: 19)),
+              if (_canShareBankTransactions)
+                IconButton(
+                    style: buttonStyle,
+                    onPressed: () =>
+                        _shareBankTransactionFromChat(requestReview: true),
+                    tooltip: _es
+                        ? 'Pedir revisión de un movimiento bancario'
+                        : 'Request bank transaction review',
+                    icon: const Icon(Icons.account_balance_outlined, size: 19)),
+              if (_canCreateIssues)
+                IconButton(
+                    style: buttonStyle,
+                    onPressed: _createIssue,
+                    tooltip: _es ? 'Nueva incidencia' : 'New incident',
+                    icon: const Icon(Icons.report_gmailerrorred_outlined,
+                        size: 19)),
+              if (_canCreateTeam)
+                IconButton(
+                    style: buttonStyle,
+                    onPressed: _createTeam,
+                    tooltip: _es ? 'Nuevo chat de equipo' : 'New team chat',
+                    icon: const Icon(Icons.group_add_outlined, size: 19)),
+            ]),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -1858,654 +1953,635 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                   conversation.lastMessage?.body ?? '',
                 ].join(' ').toLowerCase().contains(query))
             .toList();
-    return Column(children: [
-      Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Row(children: [
-            Badge(
-                isLabelVisible: _conversations.fold<int>(
-                        0, (sum, item) => sum + item.unreadCount) >
-                    0,
-                label: Text(
-                    '${_conversations.fold<int>(0, (sum, item) => sum + item.unreadCount)}'),
-                child: Icon(Icons.forum_outlined, color: colors.primary)),
-            const SizedBox(width: 10),
-            Expanded(
-                child: Text(_es ? 'Hexora Chat' : 'Hexora Chat',
-                    style: Theme.of(context).textTheme.titleMedium)),
-            Tooltip(
-                message: _liveConnected
-                    ? (_es ? 'Actualizaciones en directo' : 'Live updates')
-                    : (_es
-                        ? 'Sin conexión en directo; se actualiza cada minuto'
-                        : 'Live connection unavailable; checks every minute'),
-                child: Icon(_liveConnected ? Icons.wifi : Icons.wifi_off,
-                    size: 18,
-                    color: _liveConnected ? colors.primary : colors.outline)),
-            const SizedBox(width: 8),
-            IconButton(
-                onPressed: _loading ? null : _refresh,
-                tooltip: _es ? 'Actualizar' : 'Refresh',
-                icon: const Icon(Icons.refresh)),
-            IconButton(
-                onPressed: _showMemberPresence,
-                tooltip: _es
-                    ? 'Ver miembros y conexión'
-                    : 'View members and presence',
-                icon: const Icon(Icons.people_alt_outlined)),
-            if (_canShareBankTransactions)
-              IconButton(
-                  onPressed: () =>
-                      _shareBankTransactionFromChat(requestReview: true),
-                  tooltip: _es
-                      ? 'Pedir revisión de un movimiento bancario'
-                      : 'Request bank transaction review',
-                  icon: const Icon(Icons.account_balance_outlined)),
-            if (_canCreateIssues)
-              IconButton(
-                  onPressed: _createIssue,
-                  tooltip: _es ? 'Nueva incidencia' : 'New incident',
-                  icon: const Icon(Icons.report_gmailerrorred_outlined)),
-            if (_canCreateTeam)
-              IconButton(
-                  onPressed: _createTeam,
-                  tooltip: _es ? 'Nuevo chat de equipo' : 'New team chat',
-                  icon: const Icon(Icons.group_add_outlined)),
-          ])),
-      const Divider(height: 1),
-      Expanded(child: LayoutBuilder(builder: (context, constraints) {
-        final narrow = constraints.maxWidth < 700;
-        return Row(children: [
-          if (!narrow || !_showChatOnNarrow)
-            SizedBox(
-                width: narrow ? constraints.maxWidth : 250,
-                child: Column(children: [
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: TextField(
-                      controller: _conversationSearch,
-                      onChanged: (_) => setState(() {}),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        prefixIcon: const Icon(Icons.search),
-                        hintText: _es
-                            ? 'Buscar conversaciones'
-                            : 'Search conversations',
-                        suffixIcon: query.isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip:
-                                    _es ? 'Borrar búsqueda' : 'Clear search',
-                                icon: const Icon(Icons.close),
-                                onPressed: () =>
-                                    setState(_conversationSearch.clear),
-                              ),
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                      child: visibleConversations.isEmpty
-                          ? Center(
-                              child: _loading
-                                  ? const CircularProgressIndicator()
-                                  : Padding(
-                                      padding: const EdgeInsets.all(20),
-                                      child: Text(
-                                          _error ??
-                                              (query.isNotEmpty
-                                                  ? (_es
-                                                      ? 'Sin resultados'
-                                                      : 'No results')
-                                                  : (_es
-                                                      ? 'No hay conversaciones'
-                                                      : 'No conversations')),
-                                          textAlign: TextAlign.center)))
-                          : ListView.builder(
-                              itemCount: visibleConversations.length,
-                              itemBuilder: (context, index) {
-                                final conversation =
-                                    visibleConversations[index];
-                                final selected =
-                                    _selected?.id == conversation.id;
-                                final status = conversation.issue?['status'];
-                                final lastMessage = conversation.lastMessage;
-                                final preview = lastMessage == null
-                                    ? (status == null
-                                        ? _typeLabel(conversation.type)
-                                        : _statusLabel(status.toString()))
-                                    : lastMessage.isDeleted
-                                        ? (_es
-                                            ? 'Mensaje eliminado'
-                                            : 'Message deleted')
-                                        : lastMessage.bankTransaction != null
+    const menuForeground = HexoraGlobalNavColors.foreground;
+    return LayoutBuilder(builder: (context, constraints) {
+      final narrow = constraints.maxWidth < 700;
+      return Row(children: [
+        if (!narrow || !_showChatOnNarrow)
+          SizedBox(
+            width: narrow ? constraints.maxWidth : null,
+            child: CollapsibleSidebarShell(
+                title: 'Hexora Chat',
+                collapsed: !narrow && _menuCollapsed,
+                drawer: narrow,
+                onToggleCollapsed: narrow
+                    ? null
+                    : () => setState(() => _menuCollapsed = !_menuCollapsed),
+                secondaryHeader: false,
+                expandTooltip: _es ? 'Expandir menú' : 'Expand menu',
+                collapseTooltip: _es ? 'Contraer menú' : 'Collapse menu',
+                builder: (navigationContext, layoutCollapsed) =>
+                    Column(children: [
+                      if (!layoutCollapsed)
+                        _buildChatMenuHeader(
+                            Theme.of(navigationContext).colorScheme,
+                            dark: true,
+                            showTitle: narrow),
+                      if (!layoutCollapsed)
+                        Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: TextField(
+                            controller: _conversationSearch,
+                            onChanged: (_) => setState(() {}),
+                            style: const TextStyle(color: menuForeground),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              filled: true,
+                              fillColor: menuForeground.withValues(alpha: 0.08),
+                              prefixIcon: const Icon(Icons.search),
+                              prefixIconColor:
+                                  menuForeground.withValues(alpha: 0.72),
+                              suffixIconColor:
+                                  menuForeground.withValues(alpha: 0.72),
+                              hintText: _es
+                                  ? 'Buscar conversaciones'
+                                  : 'Search conversations',
+                              hintStyle: TextStyle(
+                                  color:
+                                      menuForeground.withValues(alpha: 0.64)),
+                              suffixIcon: query.isEmpty
+                                  ? null
+                                  : IconButton(
+                                      tooltip: _es
+                                          ? 'Borrar búsqueda'
+                                          : 'Clear search',
+                                      icon: const Icon(Icons.close),
+                                      onPressed: () =>
+                                          setState(_conversationSearch.clear),
+                                    ),
+                              enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(9),
+                                  borderSide: BorderSide(
+                                      color: menuForeground.withValues(
+                                          alpha: 0.16))),
+                              focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(9),
+                                  borderSide: const BorderSide(
+                                      color: HexoraGlobalNavColors.active)),
+                            ),
+                          ),
+                        ),
+                      Expanded(
+                          child: visibleConversations.isEmpty
+                              ? Center(
+                                  child: _loading
+                                      ? const CircularProgressIndicator()
+                                      : Padding(
+                                          padding: const EdgeInsets.all(20),
+                                          child: Text(
+                                              _error ??
+                                                  (query.isNotEmpty
+                                                      ? (_es
+                                                          ? 'Sin resultados'
+                                                          : 'No results')
+                                                      : (_es
+                                                          ? 'No hay conversaciones'
+                                                          : 'No conversations')),
+                                              textAlign: TextAlign.center)))
+                              : ListView.builder(
+                                  itemCount: visibleConversations.length,
+                                  itemBuilder: (context, index) {
+                                    final conversation =
+                                        visibleConversations[index];
+                                    final selected =
+                                        _selected?.id == conversation.id;
+                                    final status =
+                                        conversation.issue?['status'];
+                                    final lastMessage =
+                                        conversation.lastMessage;
+                                    final preview = lastMessage == null
+                                        ? (status == null
+                                            ? _typeLabel(conversation.type)
+                                            : _statusLabel(status.toString()))
+                                        : lastMessage.isDeleted
                                             ? (_es
-                                                ? 'Movimiento bancario compartido'
-                                                : 'Shared bank transaction')
-                                            : lastMessage.body.trim().isNotEmpty
-                                                ? lastMessage.body
-                                                : (lastMessage.attachment?[
-                                                            'fileName'] ??
-                                                        (_es
-                                                            ? 'Archivo adjunto'
-                                                            : 'Attachment'))
-                                                    .toString();
-                                return ListTile(
-                                    selected: selected,
-                                    leading: Icon(conversation.type == 'issue'
-                                        ? Icons.report_outlined
-                                        : conversation.type == 'team'
-                                            ? Icons.groups_outlined
-                                            : Icons.campaign_outlined),
-                                    title: Text(
-                                        conversation.issue?['title']
+                                                ? 'Mensaje eliminado'
+                                                : 'Message deleted')
+                                            : lastMessage.bankTransaction !=
+                                                    null
+                                                ? (_es
+                                                    ? 'Movimiento bancario compartido'
+                                                    : 'Shared bank transaction')
+                                                : lastMessage.body
+                                                        .trim()
+                                                        .isNotEmpty
+                                                    ? lastMessage.body
+                                                    : (lastMessage.attachment?[
+                                                                'fileName'] ??
+                                                            (_es
+                                                                ? 'Archivo adjunto'
+                                                                : 'Attachment'))
+                                                        .toString();
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 2),
+                                      child: SidebarItem(
+                                        icon: conversation.type == 'issue'
+                                            ? Icons.report_outlined
+                                            : conversation.type == 'team'
+                                                ? Icons.groups_outlined
+                                                : Icons.campaign_outlined,
+                                        label: conversation.issue?['title']
                                                 ?.toString() ??
                                             conversation.title,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis),
-                                    subtitle: Text(preview,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis),
-                                    trailing: conversation.unreadCount > 0
-                                        ? Badge(
-                                            label: Text(
-                                                '${conversation.unreadCount}'))
-                                        : conversation.muted
+                                        subtitle:
+                                            layoutCollapsed ? null : preview,
+                                        isSelected: selected,
+                                        collapsed: layoutCollapsed,
+                                        count: conversation.unreadCount > 0
+                                            ? conversation.unreadCount
+                                            : null,
+                                        trailing: conversation.muted
                                             ? const Icon(
                                                 Icons
                                                     .notifications_off_outlined,
                                                 size: 17)
                                             : null,
-                                    onTap: () {
-                                      final oldId = _selected?.id;
-                                      setState(() {
-                                        _selected = conversation;
-                                        _messages = const [];
-                                        _showChatOnNarrow = true;
-                                      });
-                                      _switchDraft(oldId, conversation.id);
-                                      _loadMessages(conversation,
-                                          forceScroll: true);
-                                    });
-                              })),
-                ])),
-          if (!narrow) const VerticalDivider(width: 1),
-          if (!narrow || _showChatOnNarrow)
-            Expanded(
-                child: Column(children: [
-              if (_selected != null)
-                Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(10),
-                    color: colors.surfaceContainerLow,
-                    child: Row(children: [
-                      if (narrow)
-                        IconButton(
-                            tooltip: _es ? 'Conversaciones' : 'Conversations',
-                            onPressed: () =>
-                                setState(() => _showChatOnNarrow = false),
-                            icon: const Icon(Icons.arrow_back)),
-                      Expanded(
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                            Text(
-                                _selected!.issue?['title']?.toString() ??
-                                    _selected!.title,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600)),
-                            if (_selected!.type == 'issue')
-                              Text(
-                                  _selected!.issue?['assigneeName'] == null
-                                      ? (_es ? 'Sin asignar' : 'Unassigned')
-                                      : '${_es ? 'Asignada a' : 'Assigned to'} ${_selected!.issue!['assigneeName']}',
-                                  style: Theme.of(context).textTheme.bodySmall),
-                            if (_selected!.type == 'team' ||
-                                _selected!.type == 'issue')
-                              Text(
-                                  _es
-                                      ? '${_selected!.participantIds.length} participantes'
-                                      : '${_selected!.participantIds.length} participants',
-                                  style: Theme.of(context).textTheme.bodySmall),
-                            if (_selected!.issue?['clientName'] != null ||
-                                _selected!.issue?['eventTitle'] != null)
-                              Text(
-                                  [
-                                    _selected!.issue?['clientName'],
-                                    _selected!.issue?['eventTitle']
-                                  ].whereType<String>().join(' · '),
-                                  style: Theme.of(context).textTheme.bodySmall)
-                          ])),
-                      if (!narrow) Text(_typeLabel(_selected!.type)),
-                      IconButton(
-                          tooltip: _es ? 'Buscar mensajes' : 'Search messages',
-                          onPressed: _searchHistory,
-                          icon: const Icon(Icons.search)),
-                      if (_selected!.type == 'general')
-                        IconButton(
-                            tooltip: _es
-                                ? 'Miembros de General (se gestionan en Miembros)'
-                                : 'General members (managed in Business Members)',
-                            onPressed: _showGeneralMembers,
-                            icon: const Icon(Icons.groups_outlined)),
-                      if ((_selected!.type == 'team' ||
-                              _selected!.type == 'issue') &&
-                          _selected!.canManageParticipants)
-                        narrow
-                            ? IconButton(
-                                tooltip: _es
-                                    ? 'Añadir o quitar participantes'
-                                    : 'Add or remove participants',
-                                onPressed: () =>
-                                    _manageParticipants(_selected!),
-                                icon:
-                                    const Icon(Icons.manage_accounts_outlined))
-                            : TextButton.icon(
-                                onPressed: () =>
-                                    _manageParticipants(_selected!),
-                                icon:
-                                    const Icon(Icons.manage_accounts_outlined),
-                                label: Text(
-                                    _es ? 'Participantes' : 'Participants')),
-                      if (_selected!.type != 'general' &&
-                          widget.currentUserId != null &&
-                          _selected!.participantIds
-                              .contains(widget.currentUserId))
-                        IconButton(
-                            tooltip: _es ? 'Salir del chat' : 'Leave chat',
-                            onPressed: () => _leaveConversation(_selected!),
-                            icon: const Icon(Icons.exit_to_app_outlined)),
-                      if (_selected!.type == 'issue')
-                        IconButton(
-                            tooltip: _es ? 'Ver incidencia' : 'View incident',
-                            onPressed: () => _showIssueDetails(_selected!),
-                            icon: const Icon(Icons.info_outline)),
-                      IconButton(
-                          tooltip: _selected!.muted
-                              ? (_es
-                                  ? 'Activar avisos de mensajes'
-                                  : 'Unmute messages')
-                              : (_es
-                                  ? 'Silenciar avisos de mensajes'
-                                  : 'Mute messages'),
-                          onPressed: () => _toggleMute(_selected!),
-                          icon: Icon(_selected!.muted
-                              ? Icons.notifications_off_outlined
-                              : Icons.notifications_active_outlined)),
-                      if (_selected!.issue?['status'] != null &&
-                          _canAssignIssues)
-                        IconButton(
-                            tooltip:
-                                _es ? 'Cambiar responsable' : 'Change assignee',
-                            onPressed: () => _assignIssue(_selected!),
-                            icon: const Icon(Icons.assignment_ind_outlined)),
-                      if (_selected!.issue?['status'] != null)
-                        Padding(
-                            padding: const EdgeInsets.only(left: 8),
-                            child: _canManageIssues
-                                ? DropdownButton<String>(
-                                    value:
-                                        _selected!.issue!['status'].toString(),
-                                    items: [
-                                      DropdownMenuItem(
-                                          value: 'open',
-                                          child: Text(_statusLabel('open'))),
-                                      DropdownMenuItem(
-                                          value: 'in_progress',
-                                          child: Text(
-                                              _statusLabel('in_progress'))),
-                                      DropdownMenuItem(
-                                          value: 'review',
-                                          child: Text(_statusLabel('review'))),
-                                      DropdownMenuItem(
-                                          value: 'resolved',
-                                          child:
-                                              Text(_statusLabel('resolved'))),
-                                      DropdownMenuItem(
-                                          value: 'closed',
-                                          child: Text(_statusLabel('closed')))
-                                    ],
-                                    onChanged: (value) {
-                                      if (value != null) _setIssueStatus(value);
-                                    })
-                                : Chip(
-                                    label: Text(_statusLabel(_selected!
-                                        .issue!['status']
-                                        .toString()))))
+                                        onTap: () {
+                                          final oldId = _selected?.id;
+                                          setState(() {
+                                            _selected = conversation;
+                                            _messages = const [];
+                                            _showChatOnNarrow = true;
+                                          });
+                                          _switchDraft(oldId, conversation.id);
+                                          _loadMessages(conversation,
+                                              forceScroll: true);
+                                        },
+                                      ),
+                                    );
+                                  })),
                     ])),
-              Expanded(
-                  child: _error != null && _messages.isEmpty
-                      ? Center(
-                          child:
-                              Column(mainAxisSize: MainAxisSize.min, children: [
-                          Padding(
-                              padding: const EdgeInsets.all(16),
-                              child:
-                                  Text(_error!, textAlign: TextAlign.center)),
-                          TextButton(
-                              onPressed: _refresh,
-                              child: Text(_es ? 'Reintentar' : 'Retry'))
-                        ]))
-                      : _selected == null
-                          ? Center(
-                              child: _loading
-                                  ? const CircularProgressIndicator()
-                                  : Text(_es
-                                      ? 'Selecciona una conversación.'
-                                      : 'Select a conversation.'))
-                          : _messages.isEmpty
-                              ? Center(
-                                  child: Text(_es
-                                      ? 'Todavía no hay mensajes.'
-                                      : 'No messages yet.'))
-                              : ListView.builder(
-                                  controller: _scroll,
-                                  padding: const EdgeInsets.all(14),
-                                  itemCount: _messages.length +
-                                      (_hasOlderMessages ? 1 : 0),
-                                  itemBuilder: (context, index) {
-                                    if (_hasOlderMessages && index == 0) {
-                                      return Center(
-                                          child: TextButton.icon(
-                                        onPressed: _loadingOlderMessages
-                                            ? null
-                                            : _loadOlderMessages,
-                                        icon: _loadingOlderMessages
-                                            ? const SizedBox(
-                                                width: 16,
-                                                height: 16,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                        strokeWidth: 2))
-                                            : const Icon(Icons.history),
-                                        label: Text(_es
-                                            ? 'Cargar mensajes anteriores'
-                                            : 'Load older messages'),
-                                      ));
-                                    }
-                                    final message = _messages[
-                                        index - (_hasOlderMessages ? 1 : 0)];
-                                    final mine = message.senderId ==
-                                        widget.currentUserId;
-                                    final canEdit = mine &&
-                                        !message.isDeleted &&
-                                        DateTime.now()
-                                                .difference(
-                                                    message.createdAt.toLocal())
-                                                .inMinutes <
-                                            15;
-                                    final canDelete = !message.isDeleted &&
-                                        (mine ||
-                                            (_selected?.canModerateMessages ==
-                                                true));
-                                    return Align(
-                                        alignment: mine
-                                            ? Alignment.centerRight
-                                            : Alignment.centerLeft,
-                                        child: ConstrainedBox(
-                                            constraints: const BoxConstraints(
-                                                maxWidth: 520),
-                                            child: Card(
-                                                color: mine
-                                                    ? colors.primaryContainer
-                                                    : colors
-                                                        .surfaceContainerHighest,
-                                                child: Padding(
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                            10),
-                                                    child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          Row(children: [
-                                                            Expanded(
-                                                                child: Text(
-                                                                    message
-                                                                        .senderName,
-                                                                    style: const TextStyle(
-                                                                        fontWeight:
-                                                                            FontWeight.w700))),
-                                                            if (!message
-                                                                .isDeleted)
-                                                              IconButton(
-                                                                  visualDensity:
-                                                                      VisualDensity
-                                                                          .compact,
-                                                                  tooltip: _es
-                                                                      ? 'Responder a este mensaje'
-                                                                      : 'Reply to this message',
-                                                                  onPressed: () =>
-                                                                      setState(() =>
-                                                                          _replyingTo =
-                                                                              message),
-                                                                  icon: const Icon(
-                                                                      Icons
-                                                                          .reply,
-                                                                      size:
-                                                                          18)),
-                                                            if (canEdit ||
-                                                                canDelete)
-                                                              PopupMenuButton<
-                                                                      String>(
-                                                                  onSelected: (value) =>
-                                                                      _messageAction(
-                                                                          message,
-                                                                          value),
-                                                                  itemBuilder:
-                                                                      (_) => [
-                                                                            if (canEdit)
-                                                                              PopupMenuItem(value: 'edit', child: Text(_es ? 'Editar' : 'Edit')),
-                                                                            if (canDelete)
-                                                                              PopupMenuItem(value: 'delete', child: Text(_es ? 'Eliminar' : 'Delete'))
-                                                                          ])
-                                                          ]),
-                                                          if (message.replyTo !=
-                                                              null)
-                                                            Container(
-                                                              width: double
-                                                                  .infinity,
-                                                              margin:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      bottom:
-                                                                          6),
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(6),
-                                                              decoration:
-                                                                  BoxDecoration(
-                                                                color: colors
-                                                                    .surface
-                                                                    .withValues(
-                                                                        alpha:
-                                                                            0.55),
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            6),
-                                                              ),
+          ),
+        if (!narrow || _showChatOnNarrow)
+          Expanded(
+              child: WorkspaceMainContent(
+                  child: Column(children: [
+            if (narrow) ...[
+              _buildChatMenuHeader(colors, dark: false),
+              const Divider(height: 1),
+            ],
+            if (_selected != null)
+              Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  color: colors.surfaceContainerLow,
+                  child: Row(children: [
+                    if (narrow)
+                      IconButton(
+                          tooltip: _es ? 'Conversaciones' : 'Conversations',
+                          onPressed: () =>
+                              setState(() => _showChatOnNarrow = false),
+                          icon: const Icon(Icons.arrow_back)),
+                    Expanded(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                          Text(
+                              _selected!.issue?['title']?.toString() ??
+                                  _selected!.title,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w600)),
+                          if (_selected!.type == 'issue')
+                            Text(
+                                _selected!.issue?['assigneeName'] == null
+                                    ? (_es ? 'Sin asignar' : 'Unassigned')
+                                    : '${_es ? 'Asignada a' : 'Assigned to'} ${_selected!.issue!['assigneeName']}',
+                                style: Theme.of(context).textTheme.bodySmall),
+                          if (_selected!.type == 'team' ||
+                              _selected!.type == 'issue')
+                            Text(
+                                _es
+                                    ? '${_selected!.participantIds.length} participantes'
+                                    : '${_selected!.participantIds.length} participants',
+                                style: Theme.of(context).textTheme.bodySmall),
+                          if (_selected!.issue?['clientName'] != null ||
+                              _selected!.issue?['eventTitle'] != null)
+                            Text(
+                                [
+                                  _selected!.issue?['clientName'],
+                                  _selected!.issue?['eventTitle']
+                                ].whereType<String>().join(' · '),
+                                style: Theme.of(context).textTheme.bodySmall)
+                        ])),
+                    if (!narrow) Text(_typeLabel(_selected!.type)),
+                    IconButton(
+                        tooltip: _es ? 'Buscar mensajes' : 'Search messages',
+                        onPressed: _searchHistory,
+                        icon: const Icon(Icons.search)),
+                    if (_selected!.type == 'general')
+                      IconButton(
+                          tooltip: _es
+                              ? 'Miembros de General (se gestionan en Miembros)'
+                              : 'General members (managed in Business Members)',
+                          onPressed: _showGeneralMembers,
+                          icon: const Icon(Icons.groups_outlined)),
+                    if ((_selected!.type == 'team' ||
+                            _selected!.type == 'issue') &&
+                        _selected!.canManageParticipants)
+                      narrow
+                          ? IconButton(
+                              tooltip: _es
+                                  ? 'Añadir o quitar participantes'
+                                  : 'Add or remove participants',
+                              onPressed: () => _manageParticipants(_selected!),
+                              icon: const Icon(Icons.manage_accounts_outlined))
+                          : TextButton.icon(
+                              onPressed: () => _manageParticipants(_selected!),
+                              icon: const Icon(Icons.manage_accounts_outlined),
+                              label:
+                                  Text(_es ? 'Participantes' : 'Participants')),
+                    if (_selected!.type != 'general' &&
+                        widget.currentUserId != null &&
+                        _selected!.participantIds
+                            .contains(widget.currentUserId))
+                      IconButton(
+                          tooltip: _es ? 'Salir del chat' : 'Leave chat',
+                          onPressed: () => _leaveConversation(_selected!),
+                          icon: const Icon(Icons.exit_to_app_outlined)),
+                    if (_selected!.type == 'issue')
+                      IconButton(
+                          tooltip: _es ? 'Ver incidencia' : 'View incident',
+                          onPressed: () => _showIssueDetails(_selected!),
+                          icon: const Icon(Icons.info_outline)),
+                    IconButton(
+                        tooltip: _selected!.muted
+                            ? (_es
+                                ? 'Activar avisos de mensajes'
+                                : 'Unmute messages')
+                            : (_es
+                                ? 'Silenciar avisos de mensajes'
+                                : 'Mute messages'),
+                        onPressed: () => _toggleMute(_selected!),
+                        icon: Icon(_selected!.muted
+                            ? Icons.notifications_off_outlined
+                            : Icons.notifications_active_outlined)),
+                    if (_selected!.issue?['status'] != null && _canAssignIssues)
+                      IconButton(
+                          tooltip:
+                              _es ? 'Cambiar responsable' : 'Change assignee',
+                          onPressed: () => _assignIssue(_selected!),
+                          icon: const Icon(Icons.assignment_ind_outlined)),
+                    if (_selected!.issue?['status'] != null)
+                      Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: _canManageIssues
+                              ? DropdownButton<String>(
+                                  value: _selected!.issue!['status'].toString(),
+                                  items: [
+                                    DropdownMenuItem(
+                                        value: 'open',
+                                        child: Text(_statusLabel('open'))),
+                                    DropdownMenuItem(
+                                        value: 'in_progress',
+                                        child:
+                                            Text(_statusLabel('in_progress'))),
+                                    DropdownMenuItem(
+                                        value: 'review',
+                                        child: Text(_statusLabel('review'))),
+                                    DropdownMenuItem(
+                                        value: 'resolved',
+                                        child: Text(_statusLabel('resolved'))),
+                                    DropdownMenuItem(
+                                        value: 'closed',
+                                        child: Text(_statusLabel('closed')))
+                                  ],
+                                  onChanged: (value) {
+                                    if (value != null) _setIssueStatus(value);
+                                  })
+                              : Chip(
+                                  label: Text(_statusLabel(
+                                      _selected!.issue!['status'].toString()))))
+                  ])),
+            Expanded(
+                child: _error != null && _messages.isEmpty
+                    ? Center(
+                        child:
+                            Column(mainAxisSize: MainAxisSize.min, children: [
+                        Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(_error!, textAlign: TextAlign.center)),
+                        TextButton(
+                            onPressed: _refresh,
+                            child: Text(_es ? 'Reintentar' : 'Retry'))
+                      ]))
+                    : _selected == null
+                        ? Center(
+                            child: _loading
+                                ? const CircularProgressIndicator()
+                                : Text(_es
+                                    ? 'Selecciona una conversación.'
+                                    : 'Select a conversation.'))
+                        : _messages.isEmpty
+                            ? Center(
+                                child: Text(_es
+                                    ? 'Todavía no hay mensajes.'
+                                    : 'No messages yet.'))
+                            : ListView.builder(
+                                controller: _scroll,
+                                padding: const EdgeInsets.all(14),
+                                itemCount: _messages.length +
+                                    (_hasOlderMessages ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (_hasOlderMessages && index == 0) {
+                                    return Center(
+                                        child: TextButton.icon(
+                                      onPressed: _loadingOlderMessages
+                                          ? null
+                                          : _loadOlderMessages,
+                                      icon: _loadingOlderMessages
+                                          ? const SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                  strokeWidth: 2))
+                                          : const Icon(Icons.history),
+                                      label: Text(_es
+                                          ? 'Cargar mensajes anteriores'
+                                          : 'Load older messages'),
+                                    ));
+                                  }
+                                  final message = _messages[
+                                      index - (_hasOlderMessages ? 1 : 0)];
+                                  final mine =
+                                      message.senderId == widget.currentUserId;
+                                  final canEdit = mine &&
+                                      !message.isDeleted &&
+                                      DateTime.now()
+                                              .difference(
+                                                  message.createdAt.toLocal())
+                                              .inMinutes <
+                                          15;
+                                  final canDelete = !message.isDeleted &&
+                                      (mine ||
+                                          (_selected?.canModerateMessages ==
+                                              true));
+                                  return Align(
+                                      alignment: mine
+                                          ? Alignment.centerRight
+                                          : Alignment.centerLeft,
+                                      child: ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                              maxWidth: 520),
+                                          child: Card(
+                                              color: mine
+                                                  ? colors.primaryContainer
+                                                  : colors
+                                                      .surfaceContainerHighest,
+                                              child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.all(10),
+                                                  child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Row(children: [
+                                                          Expanded(
                                                               child: Text(
-                                                                message.replyTo![
-                                                                            'unavailable'] ==
-                                                                        true
-                                                                    ? (_es
-                                                                        ? 'Mensaje original no disponible'
-                                                                        : 'Original message unavailable')
-                                                                    : '${message.replyTo!['senderName'] ?? ''}: ${message.replyTo!['body']?.toString().isNotEmpty == true ? message.replyTo!['body'] : (_es ? 'Adjunto o referencia' : 'Attachment or reference')}',
-                                                                maxLines: 2,
-                                                                overflow:
-                                                                    TextOverflow
-                                                                        .ellipsis,
+                                                                  message
+                                                                      .senderName,
+                                                                  style: const TextStyle(
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w700))),
+                                                          if (!message
+                                                              .isDeleted)
+                                                            IconButton(
+                                                                visualDensity:
+                                                                    VisualDensity
+                                                                        .compact,
+                                                                tooltip: _es
+                                                                    ? 'Responder a este mensaje'
+                                                                    : 'Reply to this message',
+                                                                onPressed: () =>
+                                                                    setState(() =>
+                                                                        _replyingTo =
+                                                                            message),
+                                                                icon: const Icon(
+                                                                    Icons.reply,
+                                                                    size: 18)),
+                                                          if (canEdit ||
+                                                              canDelete)
+                                                            PopupMenuButton<
+                                                                    String>(
+                                                                onSelected: (value) =>
+                                                                    _messageAction(
+                                                                        message,
+                                                                        value),
+                                                                itemBuilder:
+                                                                    (_) => [
+                                                                          if (canEdit)
+                                                                            PopupMenuItem(
+                                                                                value: 'edit',
+                                                                                child: Text(_es ? 'Editar' : 'Edit')),
+                                                                          if (canDelete)
+                                                                            PopupMenuItem(
+                                                                                value: 'delete',
+                                                                                child: Text(_es ? 'Eliminar' : 'Delete'))
+                                                                        ])
+                                                        ]),
+                                                        if (message.replyTo !=
+                                                            null)
+                                                          Container(
+                                                            width:
+                                                                double.infinity,
+                                                            margin:
+                                                                const EdgeInsets
+                                                                    .only(
+                                                                    bottom: 6),
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .all(6),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: colors
+                                                                  .surface
+                                                                  .withValues(
+                                                                      alpha:
+                                                                          0.55),
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          6),
+                                                            ),
+                                                            child: Text(
+                                                              message.replyTo![
+                                                                          'unavailable'] ==
+                                                                      true
+                                                                  ? (_es
+                                                                      ? 'Mensaje original no disponible'
+                                                                      : 'Original message unavailable')
+                                                                  : '${message.replyTo!['senderName'] ?? ''}: ${message.replyTo!['body']?.toString().isNotEmpty == true ? message.replyTo!['body'] : (_es ? 'Adjunto o referencia' : 'Attachment or reference')}',
+                                                              maxLines: 2,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
+                                                              style: Theme.of(
+                                                                      context)
+                                                                  .textTheme
+                                                                  .labelSmall,
+                                                            ),
+                                                          ),
+                                                        if (message.isDeleted ||
+                                                            message.body
+                                                                .isNotEmpty)
+                                                          Text(message.isDeleted
+                                                              ? (_es
+                                                                  ? 'Mensaje eliminado'
+                                                                  : 'Message deleted')
+                                                              : message.body),
+                                                        if (!message
+                                                                .isDeleted &&
+                                                            message.bankTransaction !=
+                                                                null)
+                                                          BankTransactionChatCard(
+                                                            transaction: message
+                                                                .bankTransaction!,
+                                                            onOpen: () =>
+                                                                _openBankTransaction(
+                                                                    message
+                                                                        .bankTransaction!),
+                                                            onReview: () =>
+                                                                _openBankTransaction(
+                                                                    message
+                                                                        .bankTransaction!,
+                                                                    reviewLink:
+                                                                        true),
+                                                            onRequestReview:
+                                                                () {
+                                                              setState(() {
+                                                                _replyingTo =
+                                                                    message;
+                                                                if (_composer
+                                                                    .text
+                                                                    .trim()
+                                                                    .isEmpty) {
+                                                                  _composer.text = _es
+                                                                      ? '¿Podéis revisar este movimiento y confirmar si está vinculado correctamente?'
+                                                                      : 'Could you review this transaction and confirm its link is correct?';
+                                                                }
+                                                              });
+                                                            },
+                                                            sharedBy: message
+                                                                .senderName,
+                                                            sharedAt: message
+                                                                .createdAt,
+                                                          ),
+                                                        if (!message
+                                                                .isDeleted &&
+                                                            message.businessRecord !=
+                                                                null)
+                                                          _businessRecordCard(
+                                                              message),
+                                                        if (!message.isDeleted &&
+                                                            message.attachment !=
+                                                                null &&
+                                                            message.businessRecord ==
+                                                                null)
+                                                          TextButton.icon(
+                                                              onPressed: () =>
+                                                                  _openAttachment(
+                                                                      message),
+                                                              icon: Icon((message.attachment!['mimeType'] ?? '')
+                                                                      .toString()
+                                                                      .startsWith(
+                                                                          'image/')
+                                                                  ? Icons
+                                                                      .image_outlined
+                                                                  : Icons
+                                                                      .attach_file),
+                                                              label: Text((message.attachment!['fileName'] ??
+                                                                      (_es ? 'Adjunto' : 'Attachment'))
+                                                                  .toString())),
+                                                        Align(
+                                                            alignment: Alignment
+                                                                .centerRight,
+                                                            child: Text(
+                                                                '${DateFormat('HH:mm').format(message.createdAt.toLocal())}${message.editedAt != null ? (_es ? ' · Editado' : ' · Edited') : ''}',
                                                                 style: Theme.of(
                                                                         context)
                                                                     .textTheme
-                                                                    .labelSmall,
-                                                              ),
-                                                            ),
-                                                          if (message
-                                                                  .isDeleted ||
-                                                              message.body
-                                                                  .isNotEmpty)
-                                                            Text(message
-                                                                    .isDeleted
-                                                                ? (_es
-                                                                    ? 'Mensaje eliminado'
-                                                                    : 'Message deleted')
-                                                                : message.body),
-                                                          if (!message
-                                                                  .isDeleted &&
-                                                              message.bankTransaction !=
-                                                                  null)
-                                                            BankTransactionChatCard(
-                                                              transaction: message
-                                                                  .bankTransaction!,
-                                                              onOpen: () =>
-                                                                  _openBankTransaction(
-                                                                      message
-                                                                          .bankTransaction!),
-                                                              onReview: () =>
-                                                                  _openBankTransaction(
-                                                                      message
-                                                                          .bankTransaction!,
-                                                                      reviewLink:
-                                                                          true),
-                                                              onRequestReview:
-                                                                  () {
-                                                                setState(() {
-                                                                  _replyingTo =
-                                                                      message;
-                                                                  if (_composer
-                                                                      .text
-                                                                      .trim()
-                                                                      .isEmpty) {
-                                                                    _composer.text = _es
-                                                                        ? '¿Podéis revisar este movimiento y confirmar si está vinculado correctamente?'
-                                                                        : 'Could you review this transaction and confirm its link is correct?';
-                                                                  }
-                                                                });
-                                                              },
-                                                              sharedBy: message
-                                                                  .senderName,
-                                                              sharedAt: message
-                                                                  .createdAt,
-                                                            ),
-                                                          if (!message
-                                                                  .isDeleted &&
-                                                              message.businessRecord !=
-                                                                  null)
-                                                            _businessRecordCard(
-                                                                message),
-                                                          if (!message.isDeleted &&
-                                                              message.attachment !=
-                                                                  null &&
-                                                              message.businessRecord ==
-                                                                  null)
-                                                            TextButton.icon(
-                                                                onPressed: () =>
-                                                                    _openAttachment(
-                                                                        message),
-                                                                icon: Icon((message.attachment!['mimeType'] ?? '')
-                                                                        .toString()
-                                                                        .startsWith(
-                                                                            'image/')
-                                                                    ? Icons
-                                                                        .image_outlined
-                                                                    : Icons
-                                                                        .attach_file),
-                                                                label: Text((message.attachment!['fileName'] ??
-                                                                        (_es ? 'Adjunto' : 'Attachment'))
-                                                                    .toString())),
-                                                          Align(
-                                                              alignment: Alignment
-                                                                  .centerRight,
-                                                              child: Text(
-                                                                  '${DateFormat('HH:mm').format(message.createdAt.toLocal())}${message.editedAt != null ? (_es ? ' · Editado' : ' · Edited') : ''}',
-                                                                  style: Theme.of(
-                                                                          context)
-                                                                      .textTheme
-                                                                      .labelSmall)),
-                                                        ])))));
-                                  })),
-              const Divider(height: 1),
-              Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: SafeArea(
-                      top: false,
-                      child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        if (_replyingTo != null)
-                          Card(
-                            child: ListTile(
-                              dense: true,
-                              leading: const Icon(Icons.reply),
-                              title: Text(_es
-                                  ? 'Respondiendo a ${_replyingTo!.senderName}'
-                                  : 'Replying to ${_replyingTo!.senderName}'),
-                              subtitle: Text(
-                                _replyingTo!.body.isNotEmpty
-                                    ? _replyingTo!.body
-                                    : (_es
-                                        ? 'Adjunto o referencia'
-                                        : 'Attachment or reference'),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: IconButton(
-                                tooltip:
-                                    _es ? 'Cancelar respuesta' : 'Cancel reply',
-                                onPressed: () =>
-                                    setState(() => _replyingTo = null),
-                                icon: const Icon(Icons.close),
-                              ),
+                                                                    .labelSmall)),
+                                                      ])))));
+                                })),
+            const Divider(height: 1),
+            Padding(
+                padding: const EdgeInsets.all(10),
+                child: SafeArea(
+                    top: false,
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      if (_replyingTo != null)
+                        Card(
+                          child: ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.reply),
+                            title: Text(_es
+                                ? 'Respondiendo a ${_replyingTo!.senderName}'
+                                : 'Replying to ${_replyingTo!.senderName}'),
+                            subtitle: Text(
+                              _replyingTo!.body.isNotEmpty
+                                  ? _replyingTo!.body
+                                  : (_es
+                                      ? 'Adjunto o referencia'
+                                      : 'Attachment or reference'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: IconButton(
+                              tooltip:
+                                  _es ? 'Cancelar respuesta' : 'Cancel reply',
+                              onPressed: () =>
+                                  setState(() => _replyingTo = null),
+                              icon: const Icon(Icons.close),
                             ),
                           ),
-                        if (_selected != null)
-                          Builder(builder: (context) {
-                            final actions = _buildComposerActions();
-                            return SizedBox(
-                              height: 38,
-                              child: ListView.separated(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: actions.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(width: 2),
-                                itemBuilder: (_, index) => actions[index],
-                              ),
-                            );
-                          }),
-                        Row(children: [
-                          Expanded(
-                              child: TextField(
-                                  controller: _composer,
-                                  focusNode: _composerFocus,
-                                  enabled: _selected != null && !_sending,
-                                  maxLength: 2000,
-                                  minLines: 1,
-                                  maxLines: 4,
-                                  decoration: InputDecoration(
-                                      hintText: _es
-                                          ? 'Escribe un mensaje…'
-                                          : 'Write a message…',
-                                      counterText: '',
-                                      border: const OutlineInputBorder()))),
-                          const SizedBox(width: 8),
-                          IconButton.filled(
-                              onPressed:
-                                  _sending || _selected == null ? null : _send,
-                              icon: _sending
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2))
-                                  : const Icon(Icons.send))
-                        ]),
-                      ]))),
-            ])),
-        ]);
-      })),
-    ]);
+                        ),
+                      if (_selected != null)
+                        Builder(builder: (context) {
+                          final actions = _buildComposerActions();
+                          return SizedBox(
+                            height: 38,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: actions.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(width: 2),
+                              itemBuilder: (_, index) => actions[index],
+                            ),
+                          );
+                        }),
+                      Row(children: [
+                        Expanded(
+                            child: TextField(
+                                controller: _composer,
+                                focusNode: _composerFocus,
+                                enabled: _selected != null && !_sending,
+                                maxLength: 2000,
+                                minLines: 1,
+                                maxLines: 4,
+                                decoration: InputDecoration(
+                                    hintText: _es
+                                        ? 'Escribe un mensaje…'
+                                        : 'Write a message…',
+                                    counterText: '',
+                                    border: const OutlineInputBorder()))),
+                        const SizedBox(width: 8),
+                        IconButton.filled(
+                            onPressed:
+                                _sending || _selected == null ? null : _send,
+                            icon: _sending
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2))
+                                : const Icon(Icons.send))
+                      ]),
+                    ]))),
+          ]))),
+      ]);
+    });
   }
 }
 

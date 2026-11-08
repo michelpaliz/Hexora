@@ -1,4 +1,4 @@
-import 'package:hexora/presentation/shared/widgets/navigation_menu_header.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +23,76 @@ class CollapsibleSidebarItem {
   final int? count;
 }
 
+typedef CollapsibleSidebarBuilder = Widget Function(
+  BuildContext context,
+  bool collapsed,
+);
+
+/// Canonical width, theme, edge and collapse behavior for module sidebars.
+/// Use this shell when a module needs custom sidebar content such as search.
+class CollapsibleSidebarShell extends StatelessWidget {
+  const CollapsibleSidebarShell({
+    super.key,
+    required this.title,
+    required this.collapsed,
+    required this.onToggleCollapsed,
+    required this.builder,
+    this.drawer = false,
+    this.secondaryHeader = false,
+    this.expandTooltip = 'Expand menu',
+    this.collapseTooltip = 'Collapse menu',
+  });
+
+  final String title;
+  final bool collapsed;
+  final VoidCallback? onToggleCollapsed;
+  final CollapsibleSidebarBuilder builder;
+  final bool drawer;
+  final bool secondaryHeader;
+  final String expandTooltip;
+  final String collapseTooltip;
+
+  @override
+  Widget build(BuildContext context) => Theme(
+        data: navigationTheme(Theme.of(context)),
+        child: Builder(
+          builder: (navigationContext) {
+            final width = drawer
+                ? double.infinity
+                : collapsed
+                    ? CollapsibleSidebar.collapsedWidth
+                    : CollapsibleSidebar.expandedWidth;
+            return AnimatedContainer(
+              key: const ValueKey('collapsible-sidebar'),
+              duration: HexoraMotion.duration(context, HexoraMotion.layout),
+              curve: HexoraMotion.emphasized,
+              width: width,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final layoutCollapsed = !drawer &&
+                      constraints.maxWidth <
+                          CollapsibleSidebar.expandedWidth * 0.56;
+                  final cs = Theme.of(context).colorScheme;
+                  return SidebarEdgeShell(
+                    collapsed: layoutCollapsed,
+                    onToggle: drawer ? null : onToggleCollapsed,
+                    showHandle: !drawer,
+                    expandTooltip: expandTooltip,
+                    collapseTooltip: collapseTooltip,
+                    toggleKey: const ValueKey('collapsible-sidebar-toggle'),
+                    headerTitle: secondaryHeader ? title : null,
+                    collapseInHeader: secondaryHeader,
+                    backgroundColor: cs.surface,
+                    child: builder(context, layoutCollapsed),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      );
+}
+
 /// Shared application-module navigation used by Maps, Mail, and other hubs.
 ///
 /// The dimensions and motion here are the canonical values for module menus.
@@ -44,6 +114,7 @@ class CollapsibleSidebar extends StatelessWidget {
     this.titleTextStyle,
     this.itemTextStyle,
     this.selectedItemTextStyle,
+    this.secondaryHeader = false,
   });
 
   static const double expandedWidth = NavigationTokens.sidebarWidth;
@@ -64,91 +135,49 @@ class CollapsibleSidebar extends StatelessWidget {
   final TextStyle? titleTextStyle;
   final TextStyle? itemTextStyle;
   final TextStyle? selectedItemTextStyle;
+  final bool secondaryHeader;
 
   @override
-  Widget build(BuildContext context) =>
-      NavigationSurface(builder: _buildNavigation);
-
-  Widget _buildNavigation(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isCollapsed = collapsed && !drawer;
-    final width = drawer
-        ? double.infinity
-        : isCollapsed
-            ? collapsedWidth
-            : expandedWidth;
-
-    return AnimatedContainer(
-      key: const ValueKey('collapsible-sidebar'),
-      duration: animationDuration,
-      curve: HexoraMotion.enter,
-      width: width,
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.zero,
-        border: Border(
-          right: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4)),
-        ),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // Keep compact children until the animated rail is wide enough for
-          // expanded content. This prevents a one-frame flex overflow while
-          // expanding from the 64 px state.
-          final layoutCollapsed =
-              !drawer && constraints.maxWidth < expandedWidth * 0.56;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              NavigationMenuHeader(
-                title: title,
-                icon: headerIcon,
-                collapsed: layoutCollapsed,
-                onToggle: drawer ? null : onToggleCollapsed,
-                toggleKey: const ValueKey('collapsible-sidebar-toggle'),
-                expandTooltip: expandTooltip,
-                collapseTooltip: collapseTooltip,
-              ),
-              Divider(
-                height: 1,
-                color: cs.outlineVariant.withValues(alpha: 0.45),
-              ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
-                  children: [
-                    if (primaryAction != null) ...[
-                      _primaryEntry(
-                        context,
-                        primaryAction!,
-                        layoutCollapsed,
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    for (final item in items) _entry(item, layoutCollapsed),
-                    if (secondaryItems.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Divider(
-                        height: 1,
-                        color: cs.outlineVariant.withValues(alpha: 0.45),
-                      ),
-                      const SizedBox(height: 8),
-                      for (final item in secondaryItems)
-                        _entry(item, layoutCollapsed),
-                    ],
+  Widget build(BuildContext context) => CollapsibleSidebarShell(
+        title: title,
+        collapsed: collapsed,
+        onToggleCollapsed: onToggleCollapsed,
+        drawer: drawer,
+        secondaryHeader: secondaryHeader,
+        expandTooltip: expandTooltip,
+        collapseTooltip: collapseTooltip,
+        builder: (context, layoutCollapsed) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
+                children: [
+                  if (primaryAction != null) ...[
+                    _primaryEntry(
+                      context,
+                      primaryAction!,
+                      layoutCollapsed,
+                    ),
+                    const SizedBox(height: 8),
                   ],
-                ),
+                  for (final item in items) _entry(item, layoutCollapsed),
+                  if (secondaryItems.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    for (final item in secondaryItems)
+                      _entry(item, layoutCollapsed),
+                  ],
+                ],
               ),
-            ],
-          );
-        },
-      ),
-    );
-  }
+            ),
+          ],
+        ),
+      );
 
   Widget _entry(CollapsibleSidebarItem item, bool isCollapsed) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding:
+          const EdgeInsets.symmetric(vertical: NavigationTokens.childGap / 2),
       child: SidebarItem(
         key: item.key,
         icon: item.icon,

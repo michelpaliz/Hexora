@@ -240,6 +240,9 @@ class _SettingsState extends State<Settings> {
                 onToggleDark: () => themeModeProv.toggleLightDark(),
                 languageName: _languageName(context),
                 onChangeLanguage: _openLanguageSheet,
+                showDisplayPreferences: false,
+                onOpenPreferences: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.preferences),
                 autoStatementImportEnabled:
                     authProvider.currentUser?.autoStatementImportEnabled ??
                         false,

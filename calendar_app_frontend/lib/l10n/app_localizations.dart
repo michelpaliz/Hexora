@@ -14192,66 +14192,203 @@ abstract class AppLocalizations {
   /// **'No jobs for this day. Select another date or All.'**
   String get agendaEmptyDay;
 
-  /// Localized label for downloadsTitle.
+  /// No description provided for @downloadsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads'**
   String get downloadsTitle;
 
-  /// Localized label for downloadsRecent.
+  /// No description provided for @downloadsRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent downloads'**
   String get downloadsRecent;
 
-  /// Localized label for downloadsViewAll.
+  /// No description provided for @downloadsViewAll.
+  ///
+  /// In en, this message translates to:
+  /// **'View all downloads'**
   String get downloadsViewAll;
 
-  /// Localized label for downloadsInvoicesZip.
+  /// No description provided for @downloadsInvoicesZip.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoices'**
   String get downloadsInvoicesZip;
 
-  /// Localized label for downloadsInvoiceVatAudit.
+  /// No description provided for @downloadsInvoiceVatAudit.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice VAT audit'**
   String get downloadsInvoiceVatAudit;
 
-  /// Localized label for downloadsExpenseVatAudit.
+  /// No description provided for @downloadsExpenseVatAudit.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense VAT audit'**
   String get downloadsExpenseVatAudit;
 
-  /// Localized label for downloadsBankExpenses.
+  /// No description provided for @downloadsBankExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Bank expenses'**
   String get downloadsBankExpenses;
 
-  /// Localized label for downloadsBankTransactions.
+  /// No description provided for @downloadsBankTransactions.
+  ///
+  /// In en, this message translates to:
+  /// **'Bank transactions'**
   String get downloadsBankTransactions;
 
-  /// Localized label for downloadsInsights.
+  /// No description provided for @downloadsInsights.
+  ///
+  /// In en, this message translates to:
+  /// **'Insights report'**
   String get downloadsInsights;
 
-  /// Localized label for downloadsCustomReport.
+  /// No description provided for @downloadsCustomReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom report'**
   String get downloadsCustomReport;
 
-  /// Localized label for downloadsInvoice.
+  /// No description provided for @downloadsInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice'**
   String get downloadsInvoice;
 
-  /// Localized label for downloadsQueued.
+  /// No description provided for @downloadsQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued'**
   String get downloadsQueued;
 
-  /// Localized label for downloadsProcessing.
+  /// No description provided for @downloadsProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing'**
   String get downloadsProcessing;
 
-  /// Localized label for downloadsReady.
+  /// No description provided for @downloadsReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
   String get downloadsReady;
 
-  /// Localized label for downloadsFailed.
+  /// No description provided for @downloadsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
   String get downloadsFailed;
 
-  /// Localized label for downloadsExpired.
+  /// No description provided for @downloadsExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
   String get downloadsExpired;
 
-  /// Localized label for downloadsRefresh.
+  /// No description provided for @downloadsRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
   String get downloadsRefresh;
 
-  /// Localized label for downloadsEmpty.
+  /// No description provided for @downloadsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No recent downloads'**
   String get downloadsEmpty;
 
-  /// Localized label for downloadsChecking.
+  /// No description provided for @downloadsChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking files…'**
   String get downloadsChecking;
 
-  /// Localized label for downloadsGeneratedFile.
+  /// No description provided for @downloadsGeneratedFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated file'**
   String get downloadsGeneratedFile;
 
+  /// No description provided for @preferencesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferences'**
+  String get preferencesTitle;
+
+  /// No description provided for @preferencesNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Navigation'**
+  String get preferencesNavigation;
+
+  /// No description provided for @preferencesAppearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get preferencesAppearance;
+
+  /// No description provided for @preferencesLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get preferencesLanguage;
+
+  /// No description provided for @preferencesAutomatic.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get preferencesAutomatic;
+
+  /// No description provided for @preferencesNavigationAutomatic.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get preferencesNavigationAutomatic;
+
+  /// No description provided for @preferencesNavigationAutomaticDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show labels when space is available.'**
+  String get preferencesNavigationAutomaticDescription;
+
+  /// No description provided for @preferencesNavigationIconsAndText.
+  ///
+  /// In en, this message translates to:
+  /// **'Icons and text'**
+  String get preferencesNavigationIconsAndText;
+
+  /// No description provided for @preferencesNavigationIconsAndTextDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Always show module icons and labels.'**
+  String get preferencesNavigationIconsAndTextDescription;
+
+  /// No description provided for @preferencesNavigationIconsOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Icons only'**
+  String get preferencesNavigationIconsOnly;
+
+  /// No description provided for @preferencesNavigationIconsOnlyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a compact navigation with tooltips.'**
+  String get preferencesNavigationIconsOnlyDescription;
+
+  /// No description provided for @preferencesThemeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get preferencesThemeLight;
+
+  /// No description provided for @preferencesThemeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get preferencesThemeDark;
 }
 
 class _AppLocalizationsDelegate

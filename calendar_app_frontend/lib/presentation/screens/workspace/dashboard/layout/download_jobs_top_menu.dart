@@ -4,10 +4,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/downloads/download_job.dart';
+import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/presentation/shared/downloads/download_job_display.dart';
 import 'package:hexora/presentation/shared/downloads/download_jobs_store.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/services/downloads/downloads_api.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 
 class DownloadJobsTopMenu extends StatefulWidget {
   const DownloadJobsTopMenu({
@@ -200,38 +202,40 @@ class _DownloadJobsTopMenuState extends State<DownloadJobsTopMenu> {
                     ),
                 ]),
               ),
-              if (newReady > 0)
-                Positioned(
-                  right: -9,
-                  top: -8,
-                  child: Container(
-                    constraints:
-                        const BoxConstraints(minWidth: 15, minHeight: 15),
-                    alignment: Alignment.center,
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    decoration: BoxDecoration(
-                      color: colors.error,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(newReady > 9 ? '9+' : '$newReady',
-                        style: TextStyle(
-                            color: colors.onError,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700)),
-                  ),
-                ),
             ]);
-            if (compact) {
-              return IconButton(
-                tooltip: l.downloadsTitle,
-                onPressed: toggle,
-                icon: icon,
-              );
-            }
-            return TextButton.icon(
-              onPressed: toggle,
-              icon: icon,
-              label: Text(l.downloadsTitle),
+            return HexoraNavTile(
+              selected: controller.isOpen,
+              tooltip: l.downloadsTitle,
+              semanticLabel: newReady > 0
+                  ? '${l.downloadsTitle}: $newReady'
+                  : l.downloadsTitle,
+              padding: compact
+                  ? EdgeInsets.zero
+                  : const EdgeInsets.symmetric(
+                      horizontal: NavigationTokens.globalItemPadding,
+                    ),
+              onTap: toggle,
+              builder: (context, foreground) => Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  HexoraBadgeAnchor(
+                    count: newReady,
+                    attention: !controller.isOpen,
+                    child: IconTheme(
+                      data: IconThemeData(color: foreground),
+                      child: icon,
+                    ),
+                  ),
+                  if (!compact) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      l.downloadsTitle,
+                      style: NavigationTokens.label(context)
+                          .copyWith(color: foreground),
+                    ),
+                  ],
+                ],
+              ),
             );
           },
         );

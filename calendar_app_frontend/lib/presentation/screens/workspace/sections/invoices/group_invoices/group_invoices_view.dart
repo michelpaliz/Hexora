@@ -72,6 +72,10 @@ class _GroupInvoicesView extends StatelessWidget {
               'budgets_convert' => 'Convertir presupuesto',
               'clients' => 'Clientes',
               'client_invoice_stats' => 'Análisis de ingresos',
+              'operations' =>
+                Localizations.localeOf(context).languageCode == 'es'
+                    ? 'Operaciones'
+                    : 'Operations',
               'clients_flow' => l.groupInvoicesClientsFlowCta,
               'receipts' => 'Recibos',
               'emails' => 'Correo electrónico',
@@ -300,37 +304,42 @@ class _GroupInvoicesView extends StatelessWidget {
                   },
                   collapsed: state._invoiceSideMenuCollapsed,
                   compactMode: false,
+                  showOperations: state.canEditIssuedInvoices(context),
                   onToggleCollapse: state._toggleInvoiceSideMenuCollapsed,
                 ),
                 Expanded(
-                  child: (kIsWeb && state._selectedMenu != 'receipt_editor')
-                      ? FolderPanel(
-                          title: folderTitle,
-                          showTab: activeMenu != 'clients',
-                          tabContent:
-                              showInvoiceActions || documentToolbarTabs == null
-                                  ? null
-                                  : Row(
-                                      children: [
-                                        HexoraBreadcrumb(title: folderTitle),
-                                        const SizedBox(width: 16),
-                                        Expanded(child: documentToolbarTabs),
-                                      ],
-                                    ),
-                          actions: folderActions,
-                          actionsSpacing: 6,
-                          showToolbarDivider: !showInvoiceActions &&
-                              activeMenu != 'recurring' &&
-                              activeMenu != 'recurring_receipts',
-                          contentTopPadding: activeMenu == 'clients'
-                              ? 0
-                              : showInvoiceActions
-                                  ? HexoraDimensions.button +
-                                      HexoraTableTokens.gap
-                                  : 30,
-                          child: content,
-                        )
-                      : content,
+                  child: WorkspaceMainContent(
+                    child: (kIsWeb &&
+                            state._selectedMenu != 'receipt_editor' &&
+                            activeMenu != 'operations')
+                        ? FolderPanel(
+                            title: folderTitle,
+                            showTab: activeMenu != 'clients',
+                            tabContent: showInvoiceActions ||
+                                    documentToolbarTabs == null
+                                ? null
+                                : Row(
+                                    children: [
+                                      HexoraBreadcrumb(title: folderTitle),
+                                      const SizedBox(width: 16),
+                                      Expanded(child: documentToolbarTabs),
+                                    ],
+                                  ),
+                            actions: folderActions,
+                            actionsSpacing: 6,
+                            showToolbarDivider: !showInvoiceActions &&
+                                activeMenu != 'recurring' &&
+                                activeMenu != 'recurring_receipts',
+                            contentTopPadding: activeMenu == 'clients'
+                                ? 0
+                                : showInvoiceActions
+                                    ? HexoraDimensions.button +
+                                        HexoraTableTokens.gap
+                                    : 30,
+                            child: content,
+                          )
+                        : content,
+                  ),
                 ),
               ],
             ),
@@ -348,6 +357,7 @@ class _GroupInvoicesView extends StatelessWidget {
         state._selectedMenu == 'billing_profile' ||
         activeMenu == 'clients' ||
         activeMenu == 'client_invoice_stats' ||
+        activeMenu == 'operations' ||
         activeMenu == 'clients_flow' ||
         activeMenu == 'receipts' ||
         activeMenu == 'emails' ||

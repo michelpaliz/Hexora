@@ -11,9 +11,12 @@ class SidebarItem extends StatelessWidget {
       required this.collapsed,
       required this.onTap,
       this.textStyle,
+      this.subtitle,
       this.count,
       this.trailing,
       this.primaryAction = false,
+      this.groupHeader = false,
+      this.activeAncestor = false,
       this.rowHeight,
       this.iconSize});
   final IconData icon;
@@ -22,24 +25,45 @@ class SidebarItem extends StatelessWidget {
   final bool collapsed;
   final VoidCallback? onTap;
   final TextStyle? textStyle;
+  final String? subtitle;
   final int? count;
   final Widget? trailing;
+
+  /// Creation action ("Crear factura"): neutral text with a subtle blue icon.
   final bool primaryAction;
+
+  /// Toggle row of an expandable group ("Clientes", "Facturación").
+  final bool groupHeader;
+
+  /// Parent of the selected destination: keeps a soft fill without selection.
+  final bool activeAncestor;
   final double? rowHeight;
   final double? iconSize;
 
   @override
   Widget build(BuildContext context) {
     final colors = NavigationColors(Theme.of(context).colorScheme);
+    final isCreateAction = primaryAction && !isSelected;
     final fg = onTap == null
         ? colors.disabled
         : isSelected
             ? colors.selectedForeground
-            : colors.foreground;
+            : groupHeader
+                ? colors.groupForeground
+                : isCreateAction
+                    ? colors.createActionForeground
+                    : colors.itemForeground;
+    final iconColor =
+        isCreateAction && onTap != null ? colors.createActionIcon : fg;
     final style = (textStyle ?? NavigationTokens.label(context)).copyWith(
-        fontSize: NavigationTokens.textSize,
+        fontSize: groupHeader
+            ? NavigationTokens.groupSize
+            : isCreateAction
+                ? NavigationTokens.createActionSize
+                : NavigationTokens.textSize,
         color: fg,
-        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+        fontWeight:
+            isSelected || groupHeader ? FontWeight.w600 : FontWeight.w500,
         letterSpacing: 0);
     final radius = BorderRadius.circular(NavigationTokens.radius);
     final selectionDuration = MediaQuery.disableAnimationsOf(context)
@@ -56,7 +80,7 @@ class SidebarItem extends StatelessWidget {
                 animationDuration: selectionDuration,
                 color: isSelected
                     ? colors.selectedBackground
-                    : primaryAction
+                    : activeAncestor
                         ? colors.hover
                         : Colors.transparent,
                 borderRadius: radius,
@@ -94,20 +118,52 @@ class SidebarItem extends StatelessWidget {
                                     Icon(icon,
                                         size: iconSize ??
                                             NavigationTokens.iconSize,
-                                        color: fg),
+                                        color: iconColor),
                                     if (!collapsed) ...[
                                       const SizedBox(
-                                          width: NavigationTokens.itemPadding),
+                                        width: NavigationTokens.itemPadding,
+                                      ),
                                       Expanded(
-                                          child: Text(label,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: style)),
+                                          child: subtitle == null
+                                              ? Text(label,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: style)
+                                              : Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                      Text(label,
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          style: style),
+                                                      const SizedBox(height: 2),
+                                                      Text(subtitle!,
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          style: NavigationTokens
+                                                                  .label(
+                                                                      context)
+                                                              .copyWith(
+                                                                  fontSize: 11,
+                                                                  color: fg
+                                                                      .withValues(
+                                                                          alpha:
+                                                                              .72),
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w400)),
+                                                    ])),
                                       if (count != null) ...[
                                         const SizedBox(width: 6),
                                         Container(
                                             padding: const EdgeInsets.symmetric(
-                                                horizontal: 6, vertical: 2),
+                                                horizontal: 5, vertical: 1),
                                             decoration: BoxDecoration(
                                                 color:
                                                     fg.withValues(alpha: .12),
@@ -115,7 +171,9 @@ class SidebarItem extends StatelessWidget {
                                             child: Text('$count',
                                                 style: style.copyWith(
                                                     fontSize: NavigationTokens
-                                                        .sectionSize)))
+                                                        .countSize,
+                                                    fontWeight:
+                                                        FontWeight.w600)))
                                       ],
                                       if (trailing != null) ...[
                                         const SizedBox(width: 6),

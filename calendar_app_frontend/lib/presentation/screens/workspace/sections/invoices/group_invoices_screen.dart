@@ -72,6 +72,9 @@ import 'package:hexora/presentation/screens/workspace/sections/services_clients/
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/sheets/add_client_sheet/add_client_sheet.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/client_classification_manager_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/panels/services/right_panel_services_inline.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab_scope.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
@@ -87,6 +90,14 @@ import 'package:provider/provider.dart';
 part 'group_invoices/group_invoices_view.dart';
 part 'group_invoices/view/group_invoices_content.dart';
 part 'group_invoices/mobile/invoices_mobile_view.dart';
+
+typedef InvoicesWorkspaceOpener = void Function({
+  required String initialMenu,
+  String? initialInvoiceId,
+  String? initialReceiptId,
+  String? initialBudgetId,
+  String? tabTitle,
+});
 
 class GroupInvoicesRouteArgs {
   const GroupInvoicesRouteArgs({
@@ -111,6 +122,7 @@ class GroupInvoicesScreen extends StatefulWidget {
   final String? initialInvoiceId;
   final String? initialReceiptId;
   final String? initialBudgetId;
+  final InvoicesWorkspaceOpener? onOpenWorkspace;
 
   const GroupInvoicesScreen({
     super.key,
@@ -120,6 +132,7 @@ class GroupInvoicesScreen extends StatefulWidget {
     this.initialInvoiceId,
     this.initialReceiptId,
     this.initialBudgetId,
+    this.onOpenWorkspace,
   });
 
   @override
@@ -256,6 +269,9 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     if (widget.initialMenu != null && widget.initialMenu!.trim().isNotEmpty) {
       _selectedMenu = widget.initialMenu!.trim();
     }
+    if (_selectedMenu == 'invoice_editor') {
+      _menuBeforeInvoiceEditor = 'invoices_drafts';
+    }
     _syncInitialMenuExpansion();
     _loadAll();
     Future.microtask(_refreshInvoiceZipDownloads);
@@ -266,7 +282,8 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     _clientsExpanded = menu == 'clients' ||
         menu == 'client_classifications' ||
         menu == 'client_invoice_stats' ||
-        menu == 'clients_flow';
+        menu == 'clients_flow' ||
+        menu == 'operations';
     _facturacionExpanded = true;
     _businessExpanded = menu.startsWith('budgets');
     _informesExpanded = menu == 'receipts' ||
@@ -305,6 +322,13 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   void _openDraftBudgetEditor(String budgetId) {
     final trimmedId = budgetId.trim();
     if (trimmedId.isEmpty) return;
+    if (widget.embedded && kIsWeb && widget.onOpenWorkspace != null) {
+      widget.onOpenWorkspace!(
+        initialMenu: 'budgets_new',
+        initialBudgetId: trimmedId,
+      );
+      return;
+    }
     setState(() {
       _budgetEditorBudgetId = trimmedId;
       _selectedMenu = 'budgets_new';
@@ -317,21 +341,36 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       _budgetEditorUnsaved = false;
       _selectedMenu = 'budgets_list';
     });
+    _setWorkspaceDirty(false);
   }
 
-  void _applyPendingInitialSelections() {
+  void _setWorkspaceDirty(bool dirty) {
+    WorkspaceTabScope.maybeOf(context)?.setDirty(dirty: dirty);
+  }
+
+  void _applyPendingInitialSelections({Invoice? hydratedInvoice}) {
     final pendingInvoiceId = _pendingInitialInvoiceId;
     if (pendingInvoiceId != null) {
-      Invoice? target;
-      for (final invoice in <Invoice>[..._drafts, ..._invoices]) {
-        if (invoice.id.trim() == pendingInvoiceId) {
-          target = invoice;
-          break;
+      Invoice? target = hydratedInvoice?.id.trim() == pendingInvoiceId
+          ? hydratedInvoice
+          : null;
+      if (target == null) {
+        for (final invoice in <Invoice>[..._drafts, ..._invoices]) {
+          if (invoice.id.trim() == pendingInvoiceId) {
+            target = invoice;
+            break;
+          }
         }
       }
       if (target != null) {
         _selectedInvoice = target;
-        if (!_isInvoiceMenu(_selectedMenu)) {
+        final openingEditor = _selectedMenu == 'invoice_editor';
+        if (openingEditor) {
+          _invoiceEditorClientId = target.clientId;
+          _invoiceEditorInvoice = target;
+          _invoiceEditorSession++;
+        }
+        if (!openingEditor && !_isInvoiceMenu(_selectedMenu)) {
           _selectedMenu = _drafts.any((draft) => draft.id == target!.id)
               ? 'invoices_drafts'
               : 'invoices_issued';
@@ -351,9 +390,17 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       }
       if (target != null) {
         _selectedReceipt = target;
+        if (_selectedMenu == 'receipt_editor') {
+          _receiptEditorClientId = target.clientId;
+          _receiptEditorReceipt = target;
+          _receiptEditorSession++;
+        }
         _receiptListTabIndex =
             _receiptDrafts.any((r) => r.id == target!.id) ? 0 : 1;
-        if (_selectedMenu != 'receipts') {
+        // A workspace tab opened specifically to edit a receipt must remain
+        // in the editor. Previously this always redirected the freshly opened
+        // `receipt_editor` tab back to the receipt list after hydration.
+        if (_selectedMenu != 'receipt_editor') {
           _selectedMenu = 'receipts';
         }
         _pendingInitialReceiptId = null;
@@ -435,6 +482,24 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       issuedReceipts.removeWhere(
         (receipt) => draftIds.contains(receipt.id),
       );
+      Invoice? hydratedInitialInvoice;
+      final pendingInvoiceId = _pendingInitialInvoiceId;
+      if (_selectedMenu == 'invoice_editor' && pendingInvoiceId != null) {
+        try {
+          hydratedInitialInvoice = await _invoicesApi.getById(pendingInvoiceId);
+          if (hydratedInitialInvoice.lines.isEmpty) {
+            final lines = await _linesApi.list(pendingInvoiceId);
+            if (lines.isNotEmpty) {
+              hydratedInitialInvoice =
+                  hydratedInitialInvoice.copyWith(lines: lines);
+            }
+          }
+        } catch (_) {
+          // The list result remains a safe fallback when detail hydration is
+          // temporarily unavailable. The editor must still be reachable.
+        }
+      }
+      if (!mounted) return;
       setState(() {
         _clients = List<GroupClient>.from(
           results[0] as List<GroupClient>,
@@ -484,7 +549,9 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         _selectedReceipt ??= _receipts.isNotEmpty
             ? _receipts.first
             : (_receiptDrafts.isNotEmpty ? _receiptDrafts.first : null);
-        _applyPendingInitialSelections();
+        _applyPendingInitialSelections(
+          hydratedInvoice: hydratedInitialInvoice,
+        );
       });
     } catch (e) {
       if (!mounted) return;
@@ -929,6 +996,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       _invoiceEditorInvoice = null;
       _inlineInvoiceEditorUnsaved = false;
     });
+    _setWorkspaceDirty(false);
     if (changed) _loadAll();
   }
 
@@ -974,6 +1042,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       _inlineReceiptEditorUnsaved = false;
       _budgetEditorUnsaved = false;
     });
+    _setWorkspaceDirty(false);
   }
 
   void _closeInlineReceiptEditor({required bool changed}) {
@@ -983,10 +1052,18 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
       _receiptEditorReceipt = null;
       _inlineReceiptEditorUnsaved = false;
     });
+    _setWorkspaceDirty(false);
     if (changed) _loadAll();
   }
 
   Future<void> _openEditDraft(Invoice draft) async {
+    if (widget.embedded && kIsWeb && widget.onOpenWorkspace != null) {
+      widget.onOpenWorkspace!(
+        initialMenu: 'invoice_editor',
+        initialInvoiceId: draft.id,
+      );
+      return;
+    }
     if (_openingDraft) return;
     _openingDraft = true;
     try {
@@ -1043,6 +1120,13 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   Future<void> _openInvoiceFromBudgetConversion(String invoiceId) async {
     final id = invoiceId.trim();
     if (id.isEmpty) return;
+    if (widget.embedded && kIsWeb && widget.onOpenWorkspace != null) {
+      widget.onOpenWorkspace!(
+        initialMenu: 'invoice_editor',
+        initialInvoiceId: id,
+      );
+      return;
+    }
     try {
       final invoice = await _invoicesApi.getById(id);
       if (!mounted) return;
@@ -1101,6 +1185,17 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   }
 
   Future<void> _openEditReceipt(Receipt receipt) async {
+    if (widget.embedded && kIsWeb && widget.onOpenWorkspace != null) {
+      final number = receipt.receiptNumber?.trim() ?? '';
+      final isEs = Localizations.localeOf(context).languageCode == 'es';
+      widget.onOpenWorkspace!(
+        initialMenu: 'receipt_editor',
+        initialReceiptId: receipt.id,
+        tabTitle:
+            number.isEmpty ? null : '${isEs ? 'Recibo' : 'Receipt'} #$number',
+      );
+      return;
+    }
     if (widget.embedded && kIsWeb) {
       setState(() {
         _receiptEditorSession++;
@@ -1170,6 +1265,17 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   }
 
   void _openInvoiceDetail(Invoice invoice) {
+    if (widget.embedded && kIsWeb && widget.onOpenWorkspace != null) {
+      final number = invoice.invoiceNumber.trim();
+      final isEs = Localizations.localeOf(context).languageCode == 'es';
+      widget.onOpenWorkspace!(
+        initialMenu: 'invoices_issued',
+        initialInvoiceId: invoice.id,
+        tabTitle:
+            number.isEmpty ? null : '${isEs ? 'Factura' : 'Invoice'} #$number',
+      );
+      return;
+    }
     showModalBottomSheet<void>(
       sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,

@@ -1,4 +1,3 @@
-import 'package:hexora/theme/theme_provider.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -71,13 +70,11 @@ class ProfileViewScreen extends StatelessWidget {
                 iconBgColor: cs.primary.withValues(alpha: 0.12),
                 title: loc.email,
                 subtitle: user.email,
-                onTap: () =>
-                    copyToClipboard(user.email, loc.copiedToClipboard),
+                onTap: () => copyToClipboard(user.email, loc.copiedToClipboard),
               ),
               _divider(cs),
               NavTile(
-                leading:
-                    Icon(Icons.badge_rounded, size: 18, color: cs.primary),
+                leading: Icon(Icons.badge_rounded, size: 18, color: cs.primary),
                 iconBgColor: cs.primary.withValues(alpha: 0.12),
                 title: loc.username,
                 subtitle: '@${user.userName}',
@@ -90,8 +87,7 @@ class ProfileViewScreen extends StatelessWidget {
                 iconBgColor: cs.primary.withValues(alpha: 0.12),
                 title: loc.userId,
                 subtitle: user.id,
-                onTap: () =>
-                    copyToClipboard(user.id, loc.copiedToClipboard),
+                onTap: () => copyToClipboard(user.id, loc.copiedToClipboard),
               ),
             ],
           ),
@@ -101,8 +97,8 @@ class ProfileViewScreen extends StatelessWidget {
           child: Column(
             children: [
               NavTile(
-                leading: Icon(Icons.groups_3_rounded,
-                    size: 18, color: cs.primary),
+                leading:
+                    Icon(Icons.groups_3_rounded, size: 18, color: cs.primary),
                 iconBgColor: cs.primary.withValues(alpha: 0.12),
                 title: loc.teams,
                 subtitle: loc.teamCount(groupsCount),
@@ -132,8 +128,7 @@ class ProfileViewScreen extends StatelessWidget {
 
     final personalInfoTitle =
         isEs ? 'Información personal' : 'Personal information';
-    final activityTitle =
-        isEs ? 'Actividad y accesos' : 'Activity & access';
+    final activityTitle = isEs ? 'Actividad y accesos' : 'Activity & access';
 
     return MainScaffold(
       showAppBar: false,
@@ -232,8 +227,7 @@ class ProfileViewScreen extends StatelessWidget {
                               const SizedBox(width: 16),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       user.name,
@@ -280,9 +274,8 @@ class ProfileViewScreen extends StatelessWidget {
                                 onPressed: goToSettings,
                                 icon: const Icon(Icons.settings_outlined,
                                     size: 16),
-                                label: Text(isEs
-                                    ? 'Configuración'
-                                    : 'Settings'),
+                                label:
+                                    Text(isEs ? 'Configuración' : 'Settings'),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: cs.primary,
                                   side: BorderSide(
@@ -338,15 +331,13 @@ class ProfileViewScreen extends StatelessWidget {
                                 activitySection(),
                                 const SizedBox(height: 20),
                                 SectionHeader(
-                                  title: isEs
-                                      ? 'Preferencias'
-                                      : 'Preferences',
+                                  title: isEs ? 'Preferencias' : 'Preferences',
                                   markerHeight: 28,
                                   padding:
                                       const EdgeInsets.fromLTRB(0, 0, 0, 8),
                                 ),
                                 SectionCard(
-                                  child: _ThemeCard(isEs: isEs),
+                                  child: _PreferencesLink(isEs: isEs),
                                 ),
                               ],
                             ),
@@ -428,56 +419,22 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-class _ThemeCard extends StatelessWidget {
-  const _ThemeCard({required this.isEs});
+class _PreferencesLink extends StatelessWidget {
+  const _PreferencesLink({required this.isEs});
 
   final bool isEs;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.all(14),
-      child: Consumer<ThemeModeProvider>(
-        builder: (context, provider, _) => DropdownButtonFormField<ThemeMode>(
-          key: ValueKey(provider.mode),
-          initialValue: provider.mode,
-          isExpanded: true,
-          decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.palette_outlined),
-            labelText: isEs ? 'Tema de la app' : 'App theme',
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(
-                color: cs.outlineVariant.withValues(alpha: 0.3),
-              ),
-            ),
-          ),
-          items: [
-            DropdownMenuItem(
-              value: ThemeMode.system,
-              child: Text(isEs
-                  ? 'Usar tema del dispositivo'
-                  : 'Use device theme'),
-            ),
-            DropdownMenuItem(
-              value: ThemeMode.light,
-              child: Text(isEs ? 'Claro' : 'Light'),
-            ),
-            DropdownMenuItem(
-              value: ThemeMode.dark,
-              child: Text(isEs ? 'Oscuro' : 'Dark'),
-            ),
-          ],
-          onChanged: provider.isLoaded
-              ? (mode) {
-                  if (mode != null) provider.setMode(mode);
-                }
-              : null,
-        ),
-      ),
+    return NavTile(
+      leading: Icon(Icons.tune_rounded, color: cs.primary),
+      iconBgColor: cs.primary.withValues(alpha: 0.1),
+      title: isEs ? 'Abrir preferencias' : 'Open preferences',
+      subtitle: isEs
+          ? 'Navegación, apariencia e idioma'
+          : 'Navigation, appearance and language',
+      onTap: () => Navigator.of(context).pushNamed(AppRoutes.preferences),
     );
   }
 }

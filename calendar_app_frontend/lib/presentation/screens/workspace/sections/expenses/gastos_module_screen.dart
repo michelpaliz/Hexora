@@ -1,14 +1,13 @@
-import 'package:hexora/navigation/shell/hexora_nav_components.dart';
-import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
-import 'package:hexora/presentation/shared/widgets/navigation_menu_header.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
+import 'package:hexora/presentation/shared/widgets/navigation_group.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/vat/vat_summary_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/expense_upload_screen.dart';
-import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/section_label.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/vat_summary_view.dart';
 
@@ -33,42 +32,38 @@ const _kModules = [
 
 const _kGastosSections = [
   _GastosRailSection(
-    title: '',
+    title: 'Registrar gasto',
+    icon: Icons.add_circle_outline_rounded,
+    storageId: 'expenses-tree-register',
     items: [
       _GastosRailEntry(
-        value: 'register_expense',
-        icon: Icons.add_circle_outline_rounded,
-        label: 'Registrar gasto',
-        highlighted: true,
-        children: [
-          _GastosRailEntry(
-            value: 'register_manual',
-            icon: Icons.edit_note_outlined,
-            label: 'Manual',
-          ),
-          _GastosRailEntry(
-            value: 'register_json',
-            icon: Icons.data_object_outlined,
-            label: 'JSON',
-          ),
-          _GastosRailEntry(
-            value: 'register_batch',
-            icon: Icons.library_add_check_outlined,
-            label: 'Lote',
-          ),
-        ],
+        value: 'register_manual',
+        icon: Icons.edit_note_outlined,
+        label: 'Manual',
       ),
+      _GastosRailEntry(
+        value: 'register_json',
+        icon: Icons.data_object_outlined,
+        label: 'JSON',
+      ),
+      _GastosRailEntry(
+        value: 'register_batch',
+        icon: Icons.library_add_check_outlined,
+        label: 'Lote',
+      ),
+    ],
+  ),
+  _GastosRailSection(
+    title: 'Gastos',
+    icon: Icons.receipt_long_outlined,
+    storageId: 'expenses-tree-documents',
+    items: [
       _GastosRailEntry(
         value: 'supplier_invoices',
         icon: Icons.receipt_long_outlined,
         label: 'Facturas proveedor',
         badge: '142',
       ),
-    ],
-  ),
-  _GastosRailSection(
-    title: '',
-    items: [
       _GastosRailEntry(
         value: 'ocr_documents',
         icon: Icons.document_scanner_outlined,
@@ -82,7 +77,9 @@ const _kGastosSections = [
     ],
   ),
   _GastosRailSection(
-    title: '',
+    title: 'Gestión',
+    icon: Icons.tune_rounded,
+    storageId: 'expenses-tree-management',
     items: [
       _GastosRailEntry(
         value: 'categories',
@@ -240,43 +237,40 @@ class _GastosModuleScreenState extends State<GastosModuleScreen> {
           width: _sideRailCollapsed
               ? NavigationTokens.railWidth
               : NavigationTokens.sidebarWidth,
-          child: HexoraMenuContentTransition.submenu(
-            transitionKey: _sideRailCollapsed,
-            child: _GastosUnifiedRail(
-              isEs: _isEs,
-              activeModule: _activeModule,
-              onModuleSelected: _switchModule,
-              gastosSection: _gastosSection,
-              onGastosSectionSelected: (v) =>
-                  setState(() => _gastosSection = v),
-              modelosSection: _modelosSection,
-              onModelosSectionSelected: (v) =>
-                  setState(() => _modelosSection = v),
-              onTaxSectionSelected: (v) => setState(() => _taxSection = v),
-              taxSection: _taxSection,
-              collapsed: _sideRailCollapsed,
-              onToggleCollapsed: () =>
-                  setState(() => _sideRailCollapsed = !_sideRailCollapsed),
-            ),
+          child: _GastosUnifiedRail(
+            isEs: _isEs,
+            activeModule: _activeModule,
+            onModuleSelected: _switchModule,
+            gastosSection: _gastosSection,
+            onGastosSectionSelected: (v) => setState(() => _gastosSection = v),
+            modelosSection: _modelosSection,
+            onModelosSectionSelected: (v) =>
+                setState(() => _modelosSection = v),
+            onTaxSectionSelected: (v) => setState(() => _taxSection = v),
+            taxSection: _taxSection,
+            collapsed: _sideRailCollapsed,
+            onToggleCollapsed: () =>
+                setState(() => _sideRailCollapsed = !_sideRailCollapsed),
           ),
         ),
-        const SizedBox(width: 10),
         Expanded(
-          child: HexoraMenuContentTransition.submenu(
-            transitionKey:
-                '$_activeModule:$_gastosSection:$_modelosSection:$_taxSection',
-            child: IndexedStack(
-              index: activeModuleIdx,
-              sizing: StackFit.expand,
-              children: [
-                for (var i = 0; i < contents.length; i++)
-                  TickerMode(
-                    enabled: i == activeModuleIdx,
-                    child: _visitedModules.contains(_kModules[i])
-                        ? contents[i]
-                        : const SizedBox.shrink(),
-                  ),
-              ],
+          child: WorkspaceMainContent(
+            child: HexoraMenuContentTransition.submenu(
+              transitionKey:
+                  '$_activeModule:$_gastosSection:$_modelosSection:$_taxSection',
+              child: IndexedStack(
+                index: activeModuleIdx,
+                sizing: StackFit.expand,
+                children: [
+                  for (var i = 0; i < contents.length; i++)
+                    TickerMode(
+                      enabled: i == activeModuleIdx,
+                      child: _visitedModules.contains(_kModules[i])
+                          ? contents[i]
+                          : const SizedBox.shrink(),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -314,249 +308,211 @@ class _GastosUnifiedRail extends StatelessWidget {
   final bool collapsed;
   final VoidCallback onToggleCollapsed;
 
-  // ── Module area metadata ──────────────────────────────────────────────────
-
-  List<_GastosRailEntry> get _moduleItems => [
-        _GastosRailEntry(
-          value: _kModuleGastos,
-          icon: Icons.dashboard_outlined,
-          label: isEs ? 'Resumen' : 'Overview',
-        ),
-        _GastosRailEntry(
-          value: _kModuleImpuestos,
-          icon: Icons.account_balance_outlined,
-          label: isEs ? 'Impuestos' : 'Taxes',
-        ),
-        _GastosRailEntry(
-          value: _kModuleAnalitica,
-          icon: Icons.analytics_outlined,
-          label: isEs ? 'Analítica' : 'Analytics',
-        ),
-        _GastosRailEntry(
-          value: _kModuleModelos,
-          icon: Icons.description_outlined,
-          label: isEs ? 'Modelos' : 'Tax forms',
-        ),
-      ];
-
-  // ── Sub-sections for active module ────────────────────────────────────────
-
-  List<_GastosRailSection> get _activeSections {
-    switch (activeModule) {
-      case _kModuleGastos:
-        return _kGastosSections;
-      case _kModuleModelos:
-        return [
-          _GastosRailSection(
-            title: '',
-            indentItems: true,
-            items: [
-              _GastosRailEntry(
-                value: 'all',
-                icon: Icons.grid_view_outlined,
-                label: isEs ? 'Todos los modelos' : 'All forms',
-                badge: '${_kModelos.length}',
-              ),
-              for (final m in _kModelos)
-                _GastosRailEntry(
-                  value: m.$1,
-                  icon: Icons.description_outlined,
-                  label: m.$1,
-                ),
-            ],
-          ),
-        ];
-      case _kModuleImpuestos:
-        return [
-          _GastosRailSection(
-            title: '',
-            indentItems: true,
-            items: [
-              for (final section in TaxReportSection.values)
-                _GastosRailEntry(
-                  value: section.name,
-                  icon: Icons.chevron_right_rounded,
-                  label: section.label,
-                ),
-            ],
-          ),
-        ];
-      default:
-        return const [];
-    }
-  }
-
-  String get _activeSectionValue {
-    if (activeModule == _kModuleGastos) return gastosSection;
-    if (activeModule == _kModuleModelos) return modelosSection;
-    if (activeModule == _kModuleImpuestos) return taxSection.name;
-    return '';
-  }
-
-  ValueChanged<String> get _activeSectionChanged {
-    if (activeModule == _kModuleGastos) return onGastosSectionSelected;
-    if (activeModule == _kModuleModelos) return onModelosSectionSelected;
-    if (activeModule == _kModuleImpuestos) {
-      return (value) {
-        final section = TaxReportSection.values.firstWhere(
-          (item) => item.name == value,
-          orElse: () => TaxReportSection.supported,
-        );
-        onTaxSectionSelected(section);
-      };
-    }
-    return (_) {};
-  }
-
   @override
-  Widget build(BuildContext context) => NavigationSurface(builder: _buildNav);
+  Widget build(BuildContext context) => Theme(
+        data: navigationTheme(Theme.of(context)),
+        child: Builder(builder: _buildNav),
+      );
 
   Widget _buildNav(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final modules = _moduleItems;
-    final subSections = _activeSections;
-    final selectedSubValue = _activeSectionValue;
-    final onSubSelected = _activeSectionChanged;
+    void selectExpense(String value) {
+      onModuleSelected(_kModuleGastos);
+      onGastosSectionSelected(value);
+    }
 
-    final container = BoxDecoration(
-      color: cs.surface,
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-      boxShadow: [
-        BoxShadow(
-          color: cs.shadow.withValues(alpha: 0.035),
-          blurRadius: 16,
-          offset: const Offset(0, 6),
-        ),
-      ],
-    );
+    void selectTax(TaxReportSection section) {
+      onModuleSelected(_kModuleImpuestos);
+      onTaxSectionSelected(section);
+    }
+
+    void selectModel(String value) {
+      onModuleSelected(_kModuleModelos);
+      onModelosSectionSelected(value);
+    }
 
     // ── Collapsed ───────────────────────────────────────────────────────────
     if (collapsed) {
-      final flatSubItems = [for (final s in subSections) ...s.items];
-      return Container(
-        padding: const EdgeInsets.fromLTRB(7, 8, 7, 10),
-        decoration: container,
-        child: Column(
-          children: [
-            SidebarCollapseToggle(
-              collapsed: true,
-              onPressed: onToggleCollapsed,
-            ),
-            const SizedBox(height: 6),
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  // Module area icons
-                  for (final m in modules)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: SidebarItem(
-                        icon: m.icon,
-                        label: m.label,
-                        isSelected: m.value == activeModule,
-                        collapsed: true,
-                        onTap: () => onModuleSelected(m.value),
-                        count: _badgeCount(m.badge),
+      return SidebarEdgeShell(
+        collapsed: true,
+        onToggle: onToggleCollapsed,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(7, 8, 7, 10),
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    for (final section in _kGastosSections)
+                      CollapsedNavigationGroup(
+                        title: section.title,
+                        icon: section.icon,
+                        selected: activeModule == _kModuleGastos &&
+                            section.items
+                                .any((item) => item.value == gastosSection),
+                        destinations: [
+                          for (final item in section.items)
+                            CollapsedNavigationDestination(
+                              label: item.label,
+                              icon: item.icon,
+                              count: _badgeCount(item.badge),
+                              selected: activeModule == _kModuleGastos &&
+                                  item.value == gastosSection,
+                              onTap: () => selectExpense(item.value),
+                            ),
+                        ],
                       ),
+                    CollapsedNavigationGroup(
+                      title: isEs ? 'Impuestos' : 'Taxes',
+                      icon: Icons.account_balance_outlined,
+                      selected: activeModule == _kModuleImpuestos,
+                      destinations: [
+                        for (final section in TaxReportSection.values)
+                          CollapsedNavigationDestination(
+                            label: section.label,
+                            icon: Icons.percent_rounded,
+                            selected: activeModule == _kModuleImpuestos &&
+                                section == taxSection,
+                            onTap: () => selectTax(section),
+                          ),
+                      ],
                     ),
-                  if (flatSubItems.isNotEmpty) ...[
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 6),
-                      child: Divider(height: 1),
-                    ),
-                    // Sub-item icons for active module
-                    for (final item in flatSubItems)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: SidebarItem(
-                          icon: item.icon,
-                          label: item.label,
-                          isSelected: item.value == selectedSubValue,
-                          collapsed: true,
-                          primaryAction: item.highlighted,
-                          onTap: () => onSubSelected(item.value),
-                          count: _badgeCount(item.badge),
+                    CollapsedNavigationGroup(
+                      title: isEs ? 'Analítica' : 'Analytics',
+                      icon: Icons.analytics_outlined,
+                      selected: activeModule == _kModuleAnalitica,
+                      destinations: [
+                        CollapsedNavigationDestination(
+                          label: isEs ? 'Resumen' : 'Overview',
+                          icon: Icons.dashboard_outlined,
+                          selected: activeModule == _kModuleAnalitica,
+                          onTap: () => onModuleSelected(_kModuleAnalitica),
                         ),
-                      ),
+                      ],
+                    ),
+                    CollapsedNavigationGroup(
+                      title: isEs ? 'Modelos' : 'Tax forms',
+                      icon: Icons.description_outlined,
+                      selected: activeModule == _kModuleModelos,
+                      destinations: [
+                        CollapsedNavigationDestination(
+                          label: isEs ? 'Todos los modelos' : 'All forms',
+                          icon: Icons.grid_view_outlined,
+                          count: _kModelos.length,
+                          selected: activeModule == _kModuleModelos &&
+                              modelosSection == 'all',
+                          onTap: () => selectModel('all'),
+                        ),
+                        for (final model in _kModelos)
+                          CollapsedNavigationDestination(
+                            label: model.$1,
+                            icon: Icons.description_outlined,
+                            selected: activeModule == _kModuleModelos &&
+                                modelosSection == model.$1,
+                            onTap: () => selectModel(model.$1),
+                          ),
+                      ],
+                    ),
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }
 
     // ── Expanded ────────────────────────────────────────────────────────────
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-      decoration: container,
-      child: Material(
-        color: Colors.transparent,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            NavigationMenuHeader(
-              title: isEs ? 'Gastos' : 'Expenses',
-              icon: Icons.payments_outlined,
-              onToggle: onToggleCollapsed,
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // ── Module area items ──────────────────────────────────
-                    for (final section in _kGastosSections)
-                      _GastosRailGroupView(
-                        section: section,
-                        selectedValue: activeModule == _kModuleGastos
-                            ? gastosSection
-                            : null,
-                        onSelected: (value) {
-                          onModuleSelected(_kModuleGastos);
-                          onGastosSectionSelected(value);
-                        },
-                      ),
-                    for (final m in modules) ...[
-                      if (m.value != _kModuleGastos)
-                        GroupInvoicesSubMenuItem(
-                          icon: m.icon,
-                          label: m.label,
-                          selected:
-                              m.value == activeModule && subSections.isEmpty,
-                          primaryAction:
-                              m.value == activeModule && subSections.isNotEmpty,
-                          hasChildren:
-                              m.value == activeModule && subSections.isNotEmpty,
-                          count: _badgeCount(m.badge),
-                          onPressed: () => onModuleSelected(m.value),
+    return SidebarEdgeShell(
+      collapsed: false,
+      onToggle: onToggleCollapsed,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+        child: Material(
+          color: Colors.transparent,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // ── Module area items ──────────────────────────────────
+                      for (final section in _kGastosSections)
+                        _GastosRailGroupView(
+                          section: section,
+                          selectedValue: activeModule == _kModuleGastos
+                              ? gastosSection
+                              : null,
+                          onSelected: (value) {
+                            onModuleSelected(_kModuleGastos);
+                            onGastosSectionSelected(value);
+                          },
                         ),
-                      if (m.value != _kModuleGastos &&
-                          m.value == activeModule &&
-                          subSections.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        for (var i = 0; i < subSections.length; i++) ...[
-                          _GastosRailGroupView(
-                            section: subSections[i],
-                            selectedValue: selectedSubValue,
-                            onSelected: onSubSelected,
-                          ),
-                          if (i != subSections.length - 1)
-                            const SizedBox(height: 7),
-                        ],
-                        const SizedBox(height: 4),
-                      ],
+                      NavigationGroup(
+                        title: isEs ? 'Impuestos' : 'Taxes',
+                        icon: Icons.account_balance_outlined,
+                        storageId: 'expenses-tree-taxes',
+                        initiallyExpanded: activeModule == _kModuleImpuestos,
+                        child: Column(
+                          children: [
+                            for (final section in TaxReportSection.values)
+                              GroupInvoicesSubMenuItem(
+                                icon: Icons.percent_rounded,
+                                label: section.label,
+                                selected: activeModule == _kModuleImpuestos &&
+                                    section == taxSection,
+                                onPressed: () => selectTax(section),
+                              ),
+                          ],
+                        ),
+                      ),
+                      NavigationGroup(
+                        title: isEs ? 'Analítica' : 'Analytics',
+                        icon: Icons.analytics_outlined,
+                        storageId: 'expenses-tree-analytics',
+                        initiallyExpanded: activeModule == _kModuleAnalitica,
+                        child: GroupInvoicesSubMenuItem(
+                          icon: Icons.dashboard_outlined,
+                          label: isEs ? 'Resumen' : 'Overview',
+                          selected: activeModule == _kModuleAnalitica,
+                          onPressed: () => onModuleSelected(_kModuleAnalitica),
+                        ),
+                      ),
+                      NavigationGroup(
+                        title: isEs ? 'Modelos' : 'Tax forms',
+                        icon: Icons.description_outlined,
+                        storageId: 'expenses-tree-models',
+                        initiallyExpanded: activeModule == _kModuleModelos,
+                        child: Column(
+                          children: [
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.grid_view_outlined,
+                              label: isEs ? 'Todos los modelos' : 'All forms',
+                              count: _kModelos.length,
+                              selected: activeModule == _kModuleModelos &&
+                                  modelosSection == 'all',
+                              onPressed: () => selectModel('all'),
+                            ),
+                            for (final model in _kModelos)
+                              GroupInvoicesSubMenuItem(
+                                icon: Icons.description_outlined,
+                                label: model.$1,
+                                selected: activeModule == _kModuleModelos &&
+                                    modelosSection == model.$1,
+                                onPressed: () => selectModel(model.$1),
+                              ),
+                          ],
+                        ),
+                      ),
                     ],
-                    // ── Sub-items for active module ────────────────────────
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -570,13 +526,15 @@ class _GastosUnifiedRail extends StatelessWidget {
 class _GastosRailSection {
   const _GastosRailSection({
     required this.title,
+    required this.icon,
+    required this.storageId,
     required this.items,
-    this.indentItems = false,
   });
 
   final String title;
+  final IconData icon;
+  final String storageId;
   final List<_GastosRailEntry> items;
-  final bool indentItems;
 }
 
 class _GastosRailGroupView extends StatelessWidget {
@@ -592,41 +550,30 @@ class _GastosRailGroupView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final items = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (section.title.isNotEmpty) GroupInvoicesSectionLabel(section.title),
         for (final item in section.items) ...[
           GroupInvoicesSubMenuItem(
             icon: item.icon,
             label: item.label,
             selected: item.value == selectedValue,
             count: int.tryParse(item.badge ?? ''),
-            primaryAction: item.highlighted ||
-                item.children.any((child) => child.value == selectedValue),
-            onPressed: onSelected == null
-                ? null
-                : () => onSelected!(item.children.isEmpty
-                    ? item.value
-                    : item.children.first.value),
-            hasChildren: item.children.isNotEmpty,
-            indent: section.indentItems ? 18 : 0,
-            compact: section.indentItems,
+            onPressed:
+                onSelected == null ? null : () => onSelected!(item.value),
+            indent: 0,
           ),
-          for (final child in item.children)
-            GroupInvoicesSubMenuItem(
-              icon: child.icon,
-              label: child.label,
-              selected: child.value == selectedValue,
-              count: int.tryParse(child.badge ?? ''),
-              primaryAction: child.highlighted,
-              indent: 18,
-              compact: true,
-              onPressed:
-                  onSelected == null ? null : () => onSelected!(child.value),
-            ),
         ],
       ],
+    );
+    if (section.title.isEmpty) return items;
+    return NavigationGroup(
+      title: section.title,
+      icon: section.icon,
+      storageId: section.storageId,
+      initiallyExpanded: selectedValue != null &&
+          section.items.any((item) => item.value == selectedValue),
+      child: items,
     );
   }
 }
@@ -637,16 +584,12 @@ class _GastosRailEntry {
     required this.icon,
     required this.label,
     this.badge,
-    this.highlighted = false,
-    this.children = const [],
   });
 
   final String value;
   final IconData icon;
   final String label;
   final String? badge;
-  final bool highlighted;
-  final List<_GastosRailEntry> children;
 }
 
 // ── Placeholder grid (Modelos content) ───────────────────────────────────────

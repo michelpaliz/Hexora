@@ -46,9 +46,11 @@ import 'package:hexora/presentation/screens/agenda/agenda_screen.dart';
 import 'package:hexora/presentation/screens/profile/edit/profile_edit_screen.dart';
 import 'package:hexora/presentation/screens/profile/view/profile_view_screen.dart';
 import 'package:hexora/presentation/screens/settings/screens/settings.dart';
+import 'package:hexora/presentation/screens/preferences/user_preferences_screen.dart';
 
 final Map<String, WidgetBuilder> routes = {
   AppRoutes.settings: (context) => const Settings(),
+  AppRoutes.preferences: (context) => const UserPreferencesScreen(),
   AppRoutes.loginRoute: (context) => const LoginView(),
   AppRoutes.registerRoute: (context) => const RegisterView(),
   AppRoutes.forgotPasswordRoute: (context) => const ForgotPasswordScreen(),

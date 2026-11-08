@@ -89,12 +89,15 @@ class GroupDashboardRightPanel extends StatelessWidget {
         content = InsightsInlinePanel(group: group);
         break;
       case 'chat':
-        content = role == GroupRole.owner || role == GroupRole.admin || role == GroupRole.coAdmin
+        content = role == GroupRole.owner ||
+                role == GroupRole.admin ||
+                role == GroupRole.coAdmin
             ? InsightsChatPanel(groupId: group.id)
             : const SizedBox.shrink();
         break;
       case 'businessChat':
-        content = BusinessChatScreen(groupId: group.id, currentUserId: user?.id);
+        content =
+            BusinessChatScreen(groupId: group.id, currentUserId: user?.id);
         break;
       case 'workers':
         content = WorkersInlinePanel(group: group);
@@ -170,7 +173,8 @@ class GroupDashboardRightPanel extends StatelessWidget {
         activeAnchor == 'services' ||
         activeAnchor == 'settings' ||
         activeAnchor == 'notifications' ||
-        activeAnchor == 'chat') {
+        activeAnchor == 'chat' ||
+        activeAnchor == 'businessChat') {
       return content;
     }
 

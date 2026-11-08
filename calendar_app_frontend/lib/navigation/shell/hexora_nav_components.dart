@@ -299,7 +299,7 @@ class _HexoraNotificationBadgeState extends State<HexoraNotificationBadge>
   }
 }
 
-/// Subtle sidebar expand/collapse control shared by every module side menu.
+/// Circular blue expand/collapse control shared by module side menus.
 class SidebarCollapseToggle extends StatelessWidget {
   const SidebarCollapseToggle({
     super.key,
@@ -307,51 +307,63 @@ class SidebarCollapseToggle extends StatelessWidget {
     required this.onPressed,
     this.expandTooltip,
     this.collapseTooltip,
+    this.diameter = 32,
   });
 
   final bool collapsed;
   final VoidCallback? onPressed;
   final String? expandTooltip;
   final String? collapseTooltip;
+  final double diameter;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final nav = NavigationColors(cs);
     final es = Localizations.localeOf(context).languageCode == 'es';
     final tooltip = collapsed
         ? expandTooltip ?? (es ? 'Expandir barra lateral' : 'Expand sidebar')
         : collapseTooltip ??
             (es ? 'Contraer barra lateral' : 'Collapse sidebar');
-    const size = NavigationTokens.sidebarToggleSize;
-
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: Icon(
-        collapsed ? Icons.chevron_right_rounded : Icons.chevron_left_rounded,
-        size: NavigationTokens.iconSize,
-      ),
-      style: ButtonStyle(
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        visualDensity: VisualDensity.compact,
-        padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-        minimumSize: const WidgetStatePropertyAll(Size.square(size)),
-        fixedSize: const WidgetStatePropertyAll(Size.square(size)),
-        foregroundColor: WidgetStateProperty.resolveWith(
-          (s) =>
-              s.contains(WidgetState.hovered) || s.contains(WidgetState.focused)
-                  ? cs.onSurface
-                  : nav.foreground,
-        ),
-        overlayColor: WidgetStateProperty.resolveWith(nav.overlay),
-        side: WidgetStatePropertyAll(
-          BorderSide(color: cs.outlineVariant.withValues(alpha: 0.45)),
-        ),
-        shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(NavigationTokens.radius),
+    return SizedBox.square(
+      dimension: 44,
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        icon: Container(
+          width: diameter,
+          height: diameter,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: onPressed == null
+                ? AppColors.primary.withValues(alpha: 0.35)
+                : AppColors.primary,
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.18),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
+            ],
           ),
+          child: Icon(
+            collapsed
+                ? Icons.chevron_right_rounded
+                : Icons.chevron_left_rounded,
+            size: diameter * 0.61,
+            color: Colors.white,
+          ),
+        ),
+        style: ButtonStyle(
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+          padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+          minimumSize: const WidgetStatePropertyAll(Size.square(44)),
+          fixedSize: const WidgetStatePropertyAll(Size.square(44)),
+          overlayColor: WidgetStatePropertyAll(
+            AppColors.primary.withValues(alpha: 0.12),
+          ),
+          side: const WidgetStatePropertyAll(BorderSide.none),
+          shape: const WidgetStatePropertyAll(CircleBorder()),
         ),
       ),
     );

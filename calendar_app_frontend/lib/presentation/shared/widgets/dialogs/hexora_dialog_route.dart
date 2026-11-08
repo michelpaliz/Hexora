@@ -25,7 +25,7 @@ Future<T?> showHexoraDialog<T>({
     barrierLabel: barrierLabel ?? localizations.modalBarrierDismissLabel,
     barrierColor:
         barrierColor ?? DialogTheme.of(context).barrierColor ?? Colors.black54,
-    transitionDuration: reducedMotion ? Duration.zero : HexoraMotion.standard,
+    transitionDuration: reducedMotion ? Duration.zero : HexoraMotion.dialog,
     settings: routeSettings,
     anchorPoint: anchorPoint,
     traversalEdgeBehavior: traversalEdgeBehavior,

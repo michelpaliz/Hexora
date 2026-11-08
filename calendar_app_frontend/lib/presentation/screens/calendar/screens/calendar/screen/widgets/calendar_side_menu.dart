@@ -1,8 +1,6 @@
-import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
-import 'package:hexora/presentation/shared/widgets/navigation_menu_header.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/nav_section.dart';
@@ -60,28 +58,30 @@ class CalendarSideMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Theme(
       data: navigationTheme(Theme.of(context)),
-      child: ColoredBox(
-        color: AppColors.dashboardTopBar,
-        child: Builder(builder: _buildMenu),
-      ),
+      child: Builder(builder: _buildMenu),
     );
   }
 
   Widget _buildMenu(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
     final isEs = _isSpanish(context);
     final menuWidth = collapsed ? collapsedWidth : expandedWidth;
     const childIndent = NavigationTokens.nestedIndent;
 
     if (collapsed) {
-      return _CollapsedCalendarMenu(
+      return SizedBox(
         width: menuWidth,
-        selectedMenu: selectedMenu,
-        onMenuChanged: onMenuChanged,
-        onAddEvent: canAddEvents ? onAddEvent : null,
-        onToggleCollapse: onToggleCollapse,
-        showCollapseToggle: showCollapseToggle,
+        child: SidebarEdgeShell(
+          collapsed: true,
+          onToggle: onToggleCollapse,
+          showHandle: showCollapseToggle,
+          child: _CollapsedCalendarMenu(
+            width: menuWidth,
+            selectedMenu: selectedMenu,
+            onMenuChanged: onMenuChanged,
+            onAddEvent: canAddEvents ? onAddEvent : null,
+          ),
+        ),
       );
     }
 
@@ -89,196 +89,171 @@ class CalendarSideMenu extends StatelessWidget {
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
       width: menuWidth,
-      decoration: BoxDecoration(
-        border: Border(
-          right: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.36)),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 16, 10, 8),
-            child: _CalendarModuleHeader(
-              title: isEs ? 'Calendario' : 'Calendar',
-              onToggleCollapse: showCollapseToggle ? onToggleCollapse : null,
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  GroupInvoicesNavSection(
-                    title: isEs ? 'Vistas' : 'Views',
-                    icon: Icons.calendar_month_outlined,
-                    expanded: viewsExpanded,
-                    onToggle: onToggleViewsExpanded,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.calendar_view_week_outlined,
-                          label: l.tabWeek,
-                          selected: selectedMenu == 'week',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('week'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.calendar_view_day_outlined,
-                          label: l.tabDay,
-                          selected: selectedMenu == 'day',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('day'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.view_agenda_outlined,
-                          label: l.tabAgenda,
-                          selected: selectedMenu == 'agenda',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('agenda'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.calendar_today_outlined,
-                          label: l.tabMonth,
-                          selected: selectedMenu == 'month',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('month'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.grid_view_rounded,
-                          label: _overviewLabel(context),
-                          selected: selectedMenu == 'mini_calendar',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('mini_calendar'),
-                        ),
-                      ],
+      child: SidebarEdgeShell(
+        collapsed: false,
+        onToggle: onToggleCollapse,
+        showHandle: showCollapseToggle,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    GroupInvoicesNavSection(
+                      title: isEs ? 'Vistas' : 'Views',
+                      icon: Icons.calendar_month_outlined,
+                      expanded: viewsExpanded,
+                      onToggle: onToggleViewsExpanded,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.calendar_view_week_outlined,
+                            label: l.tabWeek,
+                            selected: selectedMenu == 'week',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('week'),
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.calendar_view_day_outlined,
+                            label: l.tabDay,
+                            selected: selectedMenu == 'day',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('day'),
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.view_agenda_outlined,
+                            label: l.tabAgenda,
+                            selected: selectedMenu == 'agenda',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('agenda'),
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.calendar_today_outlined,
+                            label: l.tabMonth,
+                            selected: selectedMenu == 'month',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('month'),
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.grid_view_rounded,
+                            label: _overviewLabel(context),
+                            selected: selectedMenu == 'mini_calendar',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('mini_calendar'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  GroupInvoicesNavSection(
-                    title: isEs ? 'Acciones' : 'Actions',
-                    icon: Icons.bolt_outlined,
-                    expanded: true,
-                    onToggle: () {},
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.add_rounded,
-                          label: _newEventLabel(context),
-                          selected: false,
-                          primaryAction: true,
-                          indent: childIndent,
-                          onPressed: canAddEvents ? onAddEvent : null,
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.alarm_add_rounded,
-                          label: _newReminderLabel(context),
-                          selected: false,
-                          primaryAction: true,
-                          indent: childIndent,
-                          onPressed: canAddEvents ? onAddEvent : null,
-                        ),
-                      ],
+                    const SizedBox(height: 8),
+                    GroupInvoicesNavSection(
+                      title: isEs ? 'Acciones' : 'Actions',
+                      icon: Icons.bolt_outlined,
+                      expanded: true,
+                      onToggle: () {},
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.add_rounded,
+                            label: _newEventLabel(context),
+                            selected: false,
+                            primaryAction: true,
+                            indent: childIndent,
+                            onPressed: canAddEvents ? onAddEvent : null,
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.alarm_add_rounded,
+                            label: _newReminderLabel(context),
+                            selected: false,
+                            primaryAction: true,
+                            indent: childIndent,
+                            onPressed: canAddEvents ? onAddEvent : null,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  _BusinessHoursInfo(
-                    group: group,
-                    canEdit: canEditBusinessHours,
-                    onTap: canEditBusinessHours ? onEditBusinessHours : null,
-                  ),
-                  const SizedBox(height: 8),
-                  GroupInvoicesNavSection(
-                    title: isEs ? 'Eventos' : 'Events',
-                    icon: Icons.event_available_outlined,
-                    expanded: eventsExpanded,
-                    onToggle: onToggleEventsExpanded,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        GroupInvoicesSectionLabel(
-                          isEs ? 'Seguimiento' : 'Tracking',
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.upcoming_rounded,
-                          label: l.sectionUpcoming,
-                          count: upcomingCount > 0 ? upcomingCount : null,
-                          selected: selectedMenu == 'upcoming',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('upcoming'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.task_alt_rounded,
-                          label: l.completedEventsSectionTitle,
-                          count: completedCount > 0 ? completedCount : null,
-                          selected: selectedMenu == 'completed',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('completed'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.checklist_rounded,
-                          label: _tasksLabel(context),
-                          selected: selectedMenu == 'tasks',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('tasks'),
-                        ),
-                      ],
+                    const SizedBox(height: 8),
+                    _BusinessHoursInfo(
+                      group: group,
+                      canEdit: canEditBusinessHours,
+                      onTap: canEditBusinessHours ? onEditBusinessHours : null,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  GroupInvoicesNavSection(
-                    title: isEs ? 'Analisis' : 'Analysis',
-                    icon: Icons.insights_outlined,
-                    expanded: insightsExpanded,
-                    onToggle: onToggleInsightsExpanded,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.analytics_outlined,
-                          label: _reportsLabel(context),
-                          selected: selectedMenu == 'insights',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('insights'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.query_stats_rounded,
-                          label: _statsLabel(context),
-                          selected: selectedMenu == 'insights',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('insights'),
-                        ),
-                      ],
+                    const SizedBox(height: 8),
+                    GroupInvoicesNavSection(
+                      title: isEs ? 'Eventos' : 'Events',
+                      icon: Icons.event_available_outlined,
+                      expanded: eventsExpanded,
+                      onToggle: onToggleEventsExpanded,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          GroupInvoicesSectionLabel(
+                            isEs ? 'Seguimiento' : 'Tracking',
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.upcoming_rounded,
+                            label: l.sectionUpcoming,
+                            count: upcomingCount > 0 ? upcomingCount : null,
+                            selected: selectedMenu == 'upcoming',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('upcoming'),
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.task_alt_rounded,
+                            label: l.completedEventsSectionTitle,
+                            count: completedCount > 0 ? completedCount : null,
+                            selected: selectedMenu == 'completed',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('completed'),
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.checklist_rounded,
+                            label: _tasksLabel(context),
+                            selected: selectedMenu == 'tasks',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('tasks'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    GroupInvoicesNavSection(
+                      title: isEs ? 'Analisis' : 'Analysis',
+                      icon: Icons.insights_outlined,
+                      expanded: insightsExpanded,
+                      onToggle: onToggleInsightsExpanded,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.analytics_outlined,
+                            label: _reportsLabel(context),
+                            selected: selectedMenu == 'insights',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('insights'),
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.query_stats_rounded,
+                            label: _statsLabel(context),
+                            selected: selectedMenu == 'insights',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('insights'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
-  }
-}
-
-class _CalendarModuleHeader extends StatelessWidget {
-  const _CalendarModuleHeader({
-    required this.title,
-    required this.onToggleCollapse,
-  });
-
-  final String title;
-  final VoidCallback? onToggleCollapse;
-
-  @override
-  Widget build(BuildContext context) {
-    return NavigationMenuHeader(
-        title: title,
-        icon: Icons.calendar_month_outlined,
-        onToggle: onToggleCollapse);
   }
 }
 
@@ -288,21 +263,15 @@ class _CollapsedCalendarMenu extends StatelessWidget {
     required this.selectedMenu,
     required this.onMenuChanged,
     required this.onAddEvent,
-    required this.onToggleCollapse,
-    required this.showCollapseToggle,
   });
 
   final double width;
   final String selectedMenu;
   final ValueChanged<String> onMenuChanged;
   final VoidCallback? onAddEvent;
-  final VoidCallback onToggleCollapse;
-  final bool showCollapseToggle;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
     final isEs = _isSpanish(context);
     final activeKey = selectedMenu == 'upcoming' ||
             selectedMenu == 'completed' ||
@@ -339,22 +308,8 @@ class _CollapsedCalendarMenu extends StatelessWidget {
       curve: Curves.easeOutCubic,
       width: width,
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
-      decoration: BoxDecoration(
-        border: Border(
-          right: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.42)),
-        ),
-      ),
       child: Column(
         children: [
-          if (showCollapseToggle)
-            Align(
-              alignment: Alignment.center,
-              child: SidebarCollapseToggle(
-                collapsed: true,
-                onPressed: onToggleCollapse,
-              ),
-            ),
-          const SizedBox(height: 8),
           Expanded(
             child: ListView.separated(
               padding: EdgeInsets.zero,
@@ -363,25 +318,29 @@ class _CollapsedCalendarMenu extends StatelessWidget {
               itemBuilder: (context, index) {
                 final item = items[index];
                 final selected = item.key == activeKey;
-                return SidebarItem(icon: item.icon, label: item.label,
- isSelected: selected, collapsed: true,
- onTap: () {
-                        switch (item.key) {
-                          case 'actions':
-                            onAddEvent?.call();
-                            break;
-                          case 'events':
-                            onMenuChanged('upcoming');
-                            break;
-                          case 'insights':
-                            onMenuChanged('insights');
-                            break;
-                          case 'calendar':
-                          default:
-                            onMenuChanged('week');
-                            break;
-                        }
-                      },);
+                return SidebarItem(
+                  icon: item.icon,
+                  label: item.label,
+                  isSelected: selected,
+                  collapsed: true,
+                  onTap: () {
+                    switch (item.key) {
+                      case 'actions':
+                        onAddEvent?.call();
+                        break;
+                      case 'events':
+                        onMenuChanged('upcoming');
+                        break;
+                      case 'insights':
+                        onMenuChanged('insights');
+                        break;
+                      case 'calendar':
+                      default:
+                        onMenuChanged('week');
+                        break;
+                    }
+                  },
+                );
               },
             ),
           ),
@@ -430,9 +389,7 @@ class _BusinessHoursInfoState extends State<_BusinessHoursInfo> {
       curve: Curves.easeOutCubic,
       padding: const EdgeInsets.fromLTRB(7, 5, 7, 6),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.115),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.18)),
       ),
       child: InkWell(
         onTap: widget.onTap,

@@ -4,15 +4,21 @@ import 'package:flutter/material.dart';
 
 /// Navigation-only sizing. Do not apply these values to forms or body text.
 abstract final class NavigationTokens {
-  static const double textSize = 13;
+  static const double textSize = 12.5;
   static const double titleSize = 15;
-  static const double sectionSize = 11;
+  static const double groupSize = 13;
+  static const double createActionSize = 12;
+  static const double sectionSize = 10.5;
+  static const double sectionLetterSpacing = 0.5;
+  static const double countSize = 11;
   static const double iconSize = 18;
   static const double desktopRowHeight = 40;
   static const double touchRowHeight = 48;
   static const double sidebarWidth = 248;
-  static const double railWidth = 64;
+  static const double railWidth = 56;
   static const double itemGap = 4;
+  static const double groupGap = 8;
+  static const double childGap = 2;
   static const double itemPadding = 12;
   static const double outerPadding = 16;
   static const double nestedIndent = 16;
@@ -54,7 +60,9 @@ abstract final class NavigationTokens {
       label(context).copyWith(fontSize: titleSize, fontWeight: FontWeight.w600);
 
   static TextStyle section(BuildContext context) => label(context).copyWith(
-      fontSize: sectionSize, fontWeight: FontWeight.w600, letterSpacing: 0.6);
+      fontSize: sectionSize,
+      fontWeight: FontWeight.w600,
+      letterSpacing: sectionLetterSpacing);
 }
 
 /// Theme-derived state colors, shared by rails, rows, chips and menus.
@@ -63,7 +71,20 @@ class NavigationColors {
   final ColorScheme scheme;
 
   Color get foreground => scheme.onSurfaceVariant;
-  Color get selectedForeground => scheme.onSurface;
+  Color get selectedForeground =>
+      scheme.brightness == Brightness.dark ? Colors.white : scheme.onSurface;
+
+  /// Sidebar text levels, from most to least prominent after the selected item.
+  Color get groupForeground =>
+      Color.lerp(scheme.onSurfaceVariant, scheme.onSurface, 0.55)!;
+  Color get itemForeground =>
+      Color.lerp(scheme.onSurfaceVariant, scheme.onSurface, 0.25)!;
+  Color get createActionForeground => scheme.onSurfaceVariant;
+  Color get sectionForeground => scheme.brightness == Brightness.dark
+      ? scheme.onSurfaceVariant.withValues(alpha: 0.72)
+      : scheme.onSurfaceVariant;
+  Color get createActionIcon => scheme.primary.withValues(alpha: 0.9);
+
   Color get selectedBackground =>
       Color.alphaBlend(scheme.primary.withValues(alpha: 0.16), scheme.surface);
   Color get indicator => scheme.primary;

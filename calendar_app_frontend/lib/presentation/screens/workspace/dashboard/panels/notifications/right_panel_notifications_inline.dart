@@ -30,6 +30,7 @@ import 'package:hexora/presentation/screens/notifications/show-notifications/uti
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_state.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/presentation/utils/errors/group_membership_error_mapper.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/premium_upgrade_dialog.dart';
 import 'package:hexora/theme/components/themed_buttons.dart';
@@ -808,23 +809,29 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
 
     Widget body;
     if (_loading) {
-      body = const Center(child: CircularProgressIndicator());
+      body = const WorkspaceMainContent(
+        child: Center(child: CircularProgressIndicator()),
+      );
     } else if (_error != null) {
-      body = Center(
-        child: Text(
-          l.groupNotificationsError,
-          style: t.bodyLarge,
-          textAlign: TextAlign.center,
+      body = WorkspaceMainContent(
+        child: Center(
+          child: Text(
+            l.groupNotificationsError,
+            style: t.bodyLarge,
+            textAlign: TextAlign.center,
+          ),
         ),
       );
     } else if (_notifications.isEmpty &&
         _downloads.isEmpty &&
         _ocrJobs.isEmpty) {
-      body = Center(
-        child: Text(
-          l.groupNotificationsEmpty,
-          style: t.bodyLarge,
-          textAlign: TextAlign.center,
+      body = WorkspaceMainContent(
+        child: Center(
+          child: Text(
+            l.groupNotificationsEmpty,
+            style: t.bodyLarge,
+            textAlign: TextAlign.center,
+          ),
         ),
       );
     } else {
@@ -1003,103 +1010,119 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                     filter,
                     const SizedBox(width: 12),
                     Expanded(
-                      flex: 3,
-                      child: FolderPanel(
-                        title: l.notifications,
-                        contentTopPadding: 8,
-                        actions: [
-                          _compactRefreshAction(context, l.refreshAction),
-                          _compactActionsMenu(context),
-                        ],
-                        child: listWithFilter,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: FolderPanel(
-                        title: null,
-                        showTab: false,
-                        contentTopPadding: 0,
-                        actions: [
-                          if (!_downloadsMode &&
-                              !_ocrJobsMode &&
-                              effectiveSelected != null)
-                            IconButton(
-                              style: ThemedButtons.iconAction(context),
-                              tooltip: MaterialLocalizations.of(context)
-                                  .closeButtonTooltip,
-                              icon: const Icon(Icons.close, size: 18),
-                              onPressed: () =>
-                                  setState(() => _detailsClosed = true),
+                      child: WorkspaceMainContent(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: FolderPanel(
+                                title: l.notifications,
+                                contentTopPadding: 8,
+                                actions: [
+                                  _compactRefreshAction(
+                                      context, l.refreshAction),
+                                  _compactActionsMenu(context),
+                                ],
+                                child: listWithFilter,
+                              ),
                             ),
-                        ],
-                        child: _ocrJobsMode
-                            ? _OcrJobDetailsPanel(
-                                job: effectiveSelectedOcrJob,
-                                onOpen: effectiveSelectedOcrJob == null
-                                    ? null
-                                    : () =>
-                                        _openOcrJob(effectiveSelectedOcrJob),
-                              )
-                            : _downloadsMode
-                                ? DownloadDetailsPanel(
-                                    item: effectiveSelectedDownload,
-                                    onRefresh: _refreshSelectedDownload,
-                                    onDownload: _downloadSelectedJob,
-                                  )
-                                : NotificationDetailsPanel(
-                                    notification: effectiveSelected,
-                                    groupName: widget.group.name,
-                                    onOpen: effectiveSelected != null &&
-                                            selectedDestination != null
-                                        ? () => _handleOpenNotification(
-                                            effectiveSelected)
-                                        : null,
-                                    openLabel: selectedDestination == null
-                                        ? null
-                                        : _openLabel(
-                                            selectedDestination,
-                                            Localizations.localeOf(context)
-                                                    .languageCode ==
-                                                'es',
-                                            notification: effectiveSelected),
-                                    onMarkRead: effectiveSelected != null &&
-                                            !effectiveSelected.isRead
-                                        ? () =>
-                                            _handleMarkRead(effectiveSelected)
-                                        : null,
-                                    onConfirm: effectiveSelected == null
-                                        ? null
-                                        : () =>
-                                            _handleConfirm(effectiveSelected),
-                                    onNegate: effectiveSelected == null
-                                        ? null
-                                        : () =>
-                                            _handleNegate(effectiveSelected),
-                                    onDelete: effectiveSelected == null
-                                        ? null
-                                        : () =>
-                                            _handleDelete(effectiveSelected),
-                                    onClose: effectiveSelected == null
-                                        ? null
-                                        : () => setState(
-                                            () => _detailsClosed = true),
-                                  ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 2,
+                              child: FolderPanel(
+                                title: null,
+                                showTab: false,
+                                contentTopPadding: 0,
+                                actions: [
+                                  if (!_downloadsMode &&
+                                      !_ocrJobsMode &&
+                                      effectiveSelected != null)
+                                    IconButton(
+                                      style: ThemedButtons.iconAction(context),
+                                      tooltip: MaterialLocalizations.of(context)
+                                          .closeButtonTooltip,
+                                      icon: const Icon(Icons.close, size: 18),
+                                      onPressed: () =>
+                                          setState(() => _detailsClosed = true),
+                                    ),
+                                ],
+                                child: _ocrJobsMode
+                                    ? _OcrJobDetailsPanel(
+                                        job: effectiveSelectedOcrJob,
+                                        onOpen: effectiveSelectedOcrJob == null
+                                            ? null
+                                            : () => _openOcrJob(
+                                                effectiveSelectedOcrJob),
+                                      )
+                                    : _downloadsMode
+                                        ? DownloadDetailsPanel(
+                                            item: effectiveSelectedDownload,
+                                            onRefresh: _refreshSelectedDownload,
+                                            onDownload: _downloadSelectedJob,
+                                          )
+                                        : NotificationDetailsPanel(
+                                            notification: effectiveSelected,
+                                            groupName: widget.group.name,
+                                            onOpen: effectiveSelected != null &&
+                                                    selectedDestination != null
+                                                ? () => _handleOpenNotification(
+                                                    effectiveSelected)
+                                                : null,
+                                            openLabel:
+                                                selectedDestination == null
+                                                    ? null
+                                                    : _openLabel(
+                                                        selectedDestination,
+                                                        Localizations.localeOf(
+                                                                    context)
+                                                                .languageCode ==
+                                                            'es',
+                                                        notification:
+                                                            effectiveSelected),
+                                            onMarkRead: effectiveSelected !=
+                                                        null &&
+                                                    !effectiveSelected.isRead
+                                                ? () => _handleMarkRead(
+                                                    effectiveSelected)
+                                                : null,
+                                            onConfirm: effectiveSelected == null
+                                                ? null
+                                                : () => _handleConfirm(
+                                                    effectiveSelected),
+                                            onNegate: effectiveSelected == null
+                                                ? null
+                                                : () => _handleNegate(
+                                                    effectiveSelected),
+                                            onDelete: effectiveSelected == null
+                                                ? null
+                                                : () => _handleDelete(
+                                                    effectiveSelected),
+                                            onClose: effectiveSelected == null
+                                                ? null
+                                                : () => setState(() =>
+                                                    _detailsClosed = true),
+                                          ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 );
               }
 
-              return FolderPanel(
-                title: l.notifications,
-                contentTopPadding: 44,
-                actions: [
-                  _compactRefreshAction(context, l.refreshAction),
-                  _compactActionsMenu(context),
-                ],
-                child: listWithFilter,
+              return WorkspaceMainContent(
+                child: FolderPanel(
+                  title: l.notifications,
+                  contentTopPadding: 44,
+                  actions: [
+                    _compactRefreshAction(context, l.refreshAction),
+                    _compactActionsMenu(context),
+                  ],
+                  child: listWithFilter,
+                ),
               );
             },
           );

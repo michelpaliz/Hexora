@@ -1,7 +1,8 @@
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
-import 'package:hexora/presentation/shared/widgets/navigation_menu_header.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -58,28 +59,11 @@ String _formatMoney(
   return '$formatted $currency';
 }
 
-class _WorkersNavHeader extends StatelessWidget {
-  const _WorkersNavHeader({
-    required this.title,
-    required this.onCollapse,
-  });
-
-  final String title;
-  final VoidCallback onCollapse;
-
-  @override
-  Widget build(BuildContext context) {
-    return NavigationMenuHeader(
-        title: title, icon: Icons.people_outline, onToggle: onCollapse);
-  }
-}
-
 class _WorkersCollapsedRail extends StatelessWidget {
   const _WorkersCollapsedRail({
     required this.width,
     required this.selected,
     required this.onSelect,
-    required this.onExpand,
     required this.onCreateWorker,
     required this.workersLabel,
     required this.chartsLabel,
@@ -93,7 +77,6 @@ class _WorkersCollapsedRail extends StatelessWidget {
   final double width;
   final _InlineSection selected;
   final ValueChanged<_InlineSection> onSelect;
-  final VoidCallback onExpand;
   final VoidCallback onCreateWorker;
   final String workersLabel;
   final String chartsLabel;
@@ -105,8 +88,6 @@ class _WorkersCollapsedRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
     Widget item(
       IconData icon,
       String tooltip, {
@@ -122,13 +103,7 @@ class _WorkersCollapsedRail extends StatelessWidget {
           onTap: onTap ?? (section == null ? null : () => onSelect(section)));
     }
 
-    Widget divider() => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5),
-          child: Divider(
-            height: 1,
-            color: cs.outlineVariant.withValues(alpha: 0.3),
-          ),
-        );
+    Widget groupGap() => const SizedBox(height: NavigationTokens.groupGap);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
@@ -137,30 +112,6 @@ class _WorkersCollapsedRail extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(7, 6, 7, 8),
       child: Column(
         children: [
-          Tooltip(
-            message: AppLocalizations.of(context)!.groupInvoicesNavExpand,
-            preferBelow: false,
-            child: InkWell(
-              onTap: onExpand,
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                width: NavigationTokens.rowHeight(context),
-                height: NavigationTokens.rowHeight(context),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: cs.outlineVariant.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Icon(
-                  Icons.chevron_right_rounded,
-                  size: NavigationTokens.iconSize,
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -193,13 +144,13 @@ class _WorkersCollapsedRail extends StatelessWidget {
                     telegramLabel,
                     section: _InlineSection.telegramImport,
                   ),
-                  divider(),
+                  groupGap(),
                   item(
                     Icons.history_outlined,
                     summaryLabel,
                     section: _InlineSection.historial,
                   ),
-                  divider(),
+                  groupGap(),
                   item(
                     Icons.bar_chart_rounded,
                     chartsLabel,
@@ -626,27 +577,37 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
         role == 'co-admin';
   }
 
-  Widget _buildSideMenu(BuildContext context) =>
-      NavigationSurface(builder: _buildNavigation);
+  Widget _buildSideMenu(BuildContext context) => Theme(
+        data: navigationTheme(Theme.of(context)),
+        child: Builder(builder: _buildNavigation),
+      );
 
   Widget _buildNavigation(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final isEs = _isSpanish(context);
 
     if (_sideMenuCollapsed) {
-      return _WorkersCollapsedRail(
+      return SizedBox(
         width: _collapsedMenuWidth,
-        selected: _section,
-        onExpand: () => setState(() => _sideMenuCollapsed = false),
-        onSelect: (section) => setState(() => _section = section),
-        onCreateWorker: _openCreateWorkerForm,
-        workersLabel: l.workersLabel,
-        chartsLabel: isEs ? 'Graficas' : 'Charts',
-        summaryLabel: isEs ? 'Resumen del mes' : 'Summary this month',
-        telegramLabel: isEs ? 'Importar Telegram' : 'Telegram import',
-        registerHoursLabel: isEs ? 'Registrar horas' : 'Register hours',
-        createWorkerLabel: l.createWorkerCta,
-        showAccountSetup: _canManageAccounts,
+        child: SidebarEdgeShell(
+          collapsed: true,
+          onToggle: () => setState(() => _sideMenuCollapsed = false),
+          headerTitle: l.workersLabel,
+          collapseInHeader: true,
+          child: _WorkersCollapsedRail(
+            width: _collapsedMenuWidth,
+            selected: _section,
+            onSelect: (section) => setState(() => _section = section),
+            onCreateWorker: _openCreateWorkerForm,
+            workersLabel: l.workersLabel,
+            chartsLabel: isEs ? 'Graficas' : 'Charts',
+            summaryLabel: isEs ? 'Resumen del mes' : 'Summary this month',
+            telegramLabel: isEs ? 'Importar Telegram' : 'Telegram import',
+            registerHoursLabel: isEs ? 'Registrar horas' : 'Register hours',
+            createWorkerLabel: l.createWorkerCta,
+            showAccountSetup: _canManageAccounts,
+          ),
+        ),
       );
     }
 
@@ -654,117 +615,121 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
       width: _expandedMenuWidth,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _WorkersNavHeader(
-            title: l.workersLabel,
-            onCollapse: () => setState(() => _sideMenuCollapsed = true),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  GroupInvoicesNavSection(
-                    title: isEs ? 'Datos' : 'Data',
-                    icon: Icons.dataset_outlined,
-                    expanded: _dataMenuExpanded,
-                    onToggle: () => setState(
-                      () => _dataMenuExpanded = !_dataMenuExpanded,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.person_add_alt_1,
-                          label: l.createWorkerCta,
-                          selected: false,
-                          primaryAction: true,
-                          indent: NavigationTokens.nestedIndent,
-                          onPressed: _openCreateWorkerForm,
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.group_outlined,
-                          label: l.workersLabel,
-                          selected: _section == _InlineSection.workers,
-                          indent: NavigationTokens.nestedIndent,
-                          onPressed: () => setState(
-                            () => _section = _InlineSection.workers,
-                          ),
-                        ),
-                        if (_canManageAccounts)
+      child: SidebarEdgeShell(
+        collapsed: false,
+        onToggle: () => setState(() => _sideMenuCollapsed = true),
+        headerTitle: l.workersLabel,
+        collapseInHeader: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    GroupInvoicesNavSection(
+                      title: isEs ? 'Datos' : 'Data',
+                      icon: Icons.dataset_outlined,
+                      expanded: _dataMenuExpanded,
+                      onToggle: () => setState(
+                        () => _dataMenuExpanded = !_dataMenuExpanded,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
                           GroupInvoicesSubMenuItem(
-                            icon: Icons.manage_accounts_outlined,
-                            label:
-                                isEs ? 'Cuentas de acceso' : 'Worker accounts',
-                            selected: _section == _InlineSection.accountSetup,
+                            icon: Icons.person_add_alt_1,
+                            label: l.createWorkerCta,
+                            selected: false,
+                            primaryAction: true,
+                            indent: NavigationTokens.nestedIndent,
+                            onPressed: _openCreateWorkerForm,
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.group_outlined,
+                            label: l.workersLabel,
+                            selected: _section == _InlineSection.workers,
                             indent: NavigationTokens.nestedIndent,
                             onPressed: () => setState(
-                              () => _section = _InlineSection.accountSetup,
+                              () => _section = _InlineSection.workers,
                             ),
                           ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.schedule_outlined,
-                          label: isEs ? 'Registrar horas' : 'Register hours',
-                          selected: _section == _InlineSection.registerHours,
-                          indent: NavigationTokens.nestedIndent,
-                          onPressed: () => setState(
-                            () => _section = _InlineSection.registerHours,
+                          if (_canManageAccounts)
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.manage_accounts_outlined,
+                              label: isEs
+                                  ? 'Cuentas de acceso'
+                                  : 'Worker accounts',
+                              selected: _section == _InlineSection.accountSetup,
+                              indent: NavigationTokens.nestedIndent,
+                              onPressed: () => setState(
+                                () => _section = _InlineSection.accountSetup,
+                              ),
+                            ),
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.schedule_outlined,
+                            label: isEs ? 'Registrar horas' : 'Register hours',
+                            selected: _section == _InlineSection.registerHours,
+                            indent: NavigationTokens.nestedIndent,
+                            onPressed: () => setState(
+                              () => _section = _InlineSection.registerHours,
+                            ),
                           ),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.telegram,
-                          label: isEs ? 'Importar Telegram' : 'Telegram import',
-                          selected: _section == _InlineSection.telegramImport,
-                          indent: NavigationTokens.nestedIndent,
-                          onPressed: () => setState(
-                            () => _section = _InlineSection.telegramImport,
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.telegram,
+                            label:
+                                isEs ? 'Importar Telegram' : 'Telegram import',
+                            selected: _section == _InlineSection.telegramImport,
+                            indent: NavigationTokens.nestedIndent,
+                            onPressed: () => setState(
+                              () => _section = _InlineSection.telegramImport,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  GroupInvoicesNavSection(
-                    title: isEs ? 'Historial' : 'History',
-                    icon: Icons.history_outlined,
-                    expanded: _historyMenuExpanded,
-                    onToggle: () => setState(
-                      () => _historyMenuExpanded = !_historyMenuExpanded,
-                    ),
-                    child: GroupInvoicesSubMenuItem(
+                    GroupInvoicesNavSection(
+                      title: isEs ? 'Historial' : 'History',
                       icon: Icons.history_outlined,
-                      label: isEs ? 'Resumen del mes' : 'Summary this month',
-                      selected: _section == _InlineSection.historial,
-                      indent: NavigationTokens.nestedIndent,
-                      onPressed: () => setState(
-                        () => _section = _InlineSection.historial,
+                      expanded: _historyMenuExpanded,
+                      onToggle: () => setState(
+                        () => _historyMenuExpanded = !_historyMenuExpanded,
+                      ),
+                      child: GroupInvoicesSubMenuItem(
+                        icon: Icons.history_outlined,
+                        label: isEs ? 'Resumen del mes' : 'Summary this month',
+                        selected: _section == _InlineSection.historial,
+                        indent: NavigationTokens.nestedIndent,
+                        onPressed: () => setState(
+                          () => _section = _InlineSection.historial,
+                        ),
                       ),
                     ),
-                  ),
-                  GroupInvoicesNavSection(
-                    title: isEs ? 'Analiticas' : 'Analytics',
-                    icon: Icons.analytics_outlined,
-                    expanded: _analyticsMenuExpanded,
-                    onToggle: () => setState(
-                      () => _analyticsMenuExpanded = !_analyticsMenuExpanded,
-                    ),
-                    child: GroupInvoicesSubMenuItem(
-                      icon: Icons.bar_chart_rounded,
-                      label: isEs ? 'Graficas' : 'Charts',
-                      selected: _section == _InlineSection.graphs,
-                      indent: NavigationTokens.nestedIndent,
-                      onPressed: () => setState(
-                        () => _section = _InlineSection.graphs,
+                    GroupInvoicesNavSection(
+                      title: isEs ? 'Analiticas' : 'Analytics',
+                      icon: Icons.analytics_outlined,
+                      expanded: _analyticsMenuExpanded,
+                      onToggle: () => setState(
+                        () => _analyticsMenuExpanded = !_analyticsMenuExpanded,
+                      ),
+                      child: GroupInvoicesSubMenuItem(
+                        icon: Icons.bar_chart_rounded,
+                        label: isEs ? 'Graficas' : 'Charts',
+                        selected: _section == _InlineSection.graphs,
+                        indent: NavigationTokens.nestedIndent,
+                        onPressed: () => setState(
+                          () => _section = _InlineSection.graphs,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1032,48 +997,50 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildSideMenu(context),
-                const SizedBox(width: 12),
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(0, 12, 12, 12),
-                    child: FolderPanel(
-                      title: _sectionTitle(context),
-                      showTab: _section != _InlineSection.workers,
-                      showBorder: false,
-                      showToolbarDivider: false,
-                      contentTopPadding:
-                          _section == _InlineSection.workers ? 12 : 30,
-                      child: HexoraMenuContentTransition.tab(
-                        transitionKey: _section,
-                        child: IndexedStack(
-                          index: _section.index,
-                          children: [
-                            IndexedStack(
-                              index: _overviewWorker == null ? 0 : 1,
-                              children: [
-                                _buildWorkersSection(context),
-                                if (_overviewWorker != null)
-                                  WorkerMonthlyOverviewInline(
-                                    group: widget.group,
-                                    worker: _overviewWorker!,
-                                    repo: _repo,
-                                    getToken: _token,
-                                    onBack: () =>
-                                        setState(() => _overviewWorker = null),
-                                    onDataChanged: _reloadActiveTotals,
-                                  ),
-                              ],
-                            ),
-                            WorkerTimeHistoryGraphView(
-                              key: ValueKey(
-                                  'inline-worker-graphs-${widget.group.id}'),
-                              group: widget.group,
-                            ),
-                            _buildHistorialSection(context),
-                            TelegramWorkerHoursImportView(group: widget.group),
-                            _buildRegisterHoursImportSection(context),
-                            WorkerAccountSetupScreen(group: widget.group),
-                          ],
+                  child: WorkspaceMainContent(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 12, 12, 12),
+                      child: FolderPanel(
+                        title: _sectionTitle(context),
+                        showTab: _section != _InlineSection.workers,
+                        showBorder: false,
+                        showToolbarDivider: false,
+                        contentTopPadding:
+                            _section == _InlineSection.workers ? 12 : 30,
+                        child: HexoraMenuContentTransition.tab(
+                          transitionKey: _section,
+                          child: IndexedStack(
+                            index: _section.index,
+                            children: [
+                              IndexedStack(
+                                index: _overviewWorker == null ? 0 : 1,
+                                children: [
+                                  _buildWorkersSection(context),
+                                  if (_overviewWorker != null)
+                                    WorkerMonthlyOverviewInline(
+                                      group: widget.group,
+                                      worker: _overviewWorker!,
+                                      repo: _repo,
+                                      getToken: _token,
+                                      onBack: () => setState(
+                                          () => _overviewWorker = null),
+                                      onDataChanged: _reloadActiveTotals,
+                                    ),
+                                ],
+                              ),
+                              WorkerTimeHistoryGraphView(
+                                key: ValueKey(
+                                    'inline-worker-graphs-${widget.group.id}'),
+                                group: widget.group,
+                              ),
+                              _buildHistorialSection(context),
+                              TelegramWorkerHoursImportView(
+                                  group: widget.group),
+                              _buildRegisterHoursImportSection(context),
+                              WorkerAccountSetupScreen(group: widget.group),
+                            ],
+                          ),
                         ),
                       ),
                     ),

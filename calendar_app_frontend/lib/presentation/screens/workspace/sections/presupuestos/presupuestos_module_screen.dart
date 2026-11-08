@@ -1,9 +1,9 @@
-import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
-import 'package:hexora/presentation/shared/widgets/navigation_menu_header.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/clients/client_api.dart';
@@ -120,11 +120,13 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
                         ),
                       ),
                       Expanded(
-                        child: FolderPanel(
-                          title: title,
-                          showTab: true,
-                          contentTopPadding: 8,
-                          child: menuContent,
+                        child: WorkspaceMainContent(
+                          child: FolderPanel(
+                            title: title,
+                            showTab: true,
+                            contentTopPadding: 8,
+                            child: menuContent,
+                          ),
                         ),
                       ),
                     ],
@@ -202,56 +204,58 @@ class PresupuestosSideMenu extends StatelessWidget {
   final VoidCallback onToggleCollapse;
 
   @override
-  Widget build(BuildContext context) =>
-      NavigationSurface(builder: _buildNavigation);
+  Widget build(BuildContext context) => Theme(
+        data: navigationTheme(Theme.of(context)),
+        child: Builder(builder: _buildNavigation),
+      );
 
   Widget _buildNavigation(BuildContext context) {
     const childIndent = NavigationTokens.nestedIndent;
 
-    if (collapsed) {
-      return _PresupuestosCollapsedMenu(
-        selected: selected,
-        onSelected: onSelected,
-        onToggleCollapse: onToggleCollapse,
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        NavigationMenuHeader(
-            title: _budgetMenuTitle(context),
-            collapseTooltip: _collapseMenuLabel(context),
-            icon: Icons.description_outlined,
-            onToggle: onToggleCollapse),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
-            child: Column(
+    return SidebarEdgeShell(
+      collapsed: collapsed,
+      onToggle: onToggleCollapse,
+      expandTooltip: _expandMenuLabel(context),
+      collapseTooltip: _collapseMenuLabel(context),
+      child: collapsed
+          ? _PresupuestosCollapsedMenu(
+              selected: selected,
+              onSelected: onSelected,
+              onToggleCollapse: onToggleCollapse,
+            )
+          : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (final item in _budgetListMenuItems)
-                  GroupInvoicesSubMenuItem(
-                    icon: item.icon,
-                    label: item.label(context),
-                    selected: selected == item.key,
-                    onPressed: () => onSelected(item.key),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final item in _budgetListMenuItems)
+                          GroupInvoicesSubMenuItem(
+                            icon: item.icon,
+                            label: item.label(context),
+                            selected: selected == item.key,
+                            onPressed: () => onSelected(item.key),
+                          ),
+                        const SizedBox(height: 4),
+                        GroupInvoicesSectionLabel(
+                            _resourcesSectionLabel(context)),
+                        for (final item in _resourceMenuItems)
+                          GroupInvoicesSubMenuItem(
+                            icon: item.icon,
+                            label: item.label(context),
+                            selected: selected == item.key,
+                            indent: childIndent,
+                            onPressed: () => onSelected(item.key),
+                          ),
+                      ],
+                    ),
                   ),
-                const SizedBox(height: 4),
-                GroupInvoicesSectionLabel(_resourcesSectionLabel(context)),
-                for (final item in _resourceMenuItems)
-                  GroupInvoicesSubMenuItem(
-                    icon: item.icon,
-                    label: item.label(context),
-                    selected: selected == item.key,
-                    indent: childIndent,
-                    onPressed: () => onSelected(item.key),
-                  ),
+                ),
               ],
             ),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -273,12 +277,6 @@ class _PresupuestosCollapsedMenu extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
       child: Column(
         children: [
-          SidebarCollapseToggle(
-            collapsed: true,
-            onPressed: onToggleCollapse,
-            expandTooltip: _expandMenuLabel(context),
-          ),
-          const SizedBox(height: 8),
           Expanded(
             child: ListView.separated(
               padding: EdgeInsets.zero,
@@ -379,14 +377,6 @@ String _resourcesSectionLabel(BuildContext context) {
       .toLowerCase()
       .startsWith('es');
   return isEs ? 'Recursos' : 'Resources';
-}
-
-String _budgetMenuTitle(BuildContext context) {
-  final isEs = Localizations.localeOf(context)
-      .languageCode
-      .toLowerCase()
-      .startsWith('es');
-  return isEs ? 'Propuestas' : 'Proposals';
 }
 
 String _collapseMenuLabel(BuildContext context) {

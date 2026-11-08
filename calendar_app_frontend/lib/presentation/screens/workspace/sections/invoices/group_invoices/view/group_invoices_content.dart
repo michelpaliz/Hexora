@@ -34,13 +34,33 @@ class _GroupInvoicesContent extends StatelessWidget {
       initialInvoice: state._invoiceEditorInvoice,
       embedded: true,
       onDataChanged: null,
-      onUnsavedStateChanged: (dirty) =>
-          state._inlineInvoiceEditorUnsaved = dirty,
+      onSavedInvoiceChanged: (invoice) {
+        final number = invoice.invoiceNumber.trim();
+        if (number.isEmpty) return;
+        final isEs = Localizations.localeOf(context).languageCode == 'es';
+        WorkspaceTabScope.maybeOf(context)?.updateTitle(
+          '${isEs ? 'Factura' : 'Invoice'} #$number',
+        );
+      },
+      onUnsavedStateChanged: (dirty) {
+        state._inlineInvoiceEditorUnsaved = dirty;
+        state._setWorkspaceDirty(dirty);
+      },
       onClose: (changed) => state._closeInlineInvoiceEditor(changed: changed),
     );
   }
 
   Widget _buildContent(BuildContext context) {
+    if (menu == 'operations') {
+      if (!state.canEditIssuedInvoices(context)) {
+        return const SizedBox.shrink();
+      }
+      return ServicesClientsInlinePanel(
+        key: ValueKey('group-invoices-operations-${state.widget.group.id}'),
+        group: state.widget.group,
+      );
+    }
+
     if (menu == 'client_invoice_stats') {
       return ClientInvoiceComparisonView(
         key: const ValueKey('group-invoices-client-invoice-stats'),
@@ -156,6 +176,16 @@ class _GroupInvoicesContent extends StatelessWidget {
     }
 
     if (state._selectedMenu == 'receipt_editor') {
+      final number = state._receiptEditorReceipt?.receiptNumber?.trim() ?? '';
+      if (number.isNotEmpty) {
+        final isEs = Localizations.localeOf(context).languageCode == 'es';
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!context.mounted) return;
+          WorkspaceTabScope.maybeOf(context)?.updateTitle(
+            '${isEs ? 'Recibo' : 'Receipt'} #$number',
+          );
+        });
+      }
       return ReceiptEditorWizardScreen(
         key: ValueKey(
           'inline-receipt-editor-${state._receiptEditorSession}-${state._receiptEditorReceipt?.id ?? 'new'}-${state._receiptEditorClientId ?? 'none'}',
@@ -165,8 +195,10 @@ class _GroupInvoicesContent extends StatelessWidget {
         initialClientId: state._receiptEditorClientId,
         initialReceipt: state._receiptEditorReceipt,
         embedded: true,
-        onUnsavedStateChanged: (dirty) =>
-            state._inlineReceiptEditorUnsaved = dirty,
+        onUnsavedStateChanged: (dirty) {
+          state._inlineReceiptEditorUnsaved = dirty;
+          state._setWorkspaceDirty(dirty);
+        },
         onClose: (changed) => state._closeInlineReceiptEditor(changed: changed),
       );
     }
@@ -286,7 +318,10 @@ class _GroupInvoicesContent extends StatelessWidget {
         clients: state._clients,
         mode: GroupInvoicesBudgetsMode.create,
         initialSelectedBudgetId: editorBudgetId,
-        onUnsavedStateChanged: (dirty) => state._budgetEditorUnsaved = dirty,
+        onUnsavedStateChanged: (dirty) {
+          state._budgetEditorUnsaved = dirty;
+          state._setWorkspaceDirty(dirty);
+        },
         onExitEditor:
             editorBudgetId == null ? null : state._closeBudgetEditorToList,
       );

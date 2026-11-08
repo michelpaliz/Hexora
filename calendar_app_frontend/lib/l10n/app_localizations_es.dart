@@ -8033,65 +8033,106 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get agendaEmptyDay =>
       'No hay trabajos para este día. Selecciona otra fecha o Todos.';
-  @override
-  String get downloadsTitle => "Descargas";
 
   @override
-  String get downloadsRecent => "Descargas recientes";
+  String get downloadsTitle => 'Descargas';
 
   @override
-  String get downloadsViewAll => "Ver todas las descargas";
+  String get downloadsRecent => 'Descargas recientes';
 
   @override
-  String get downloadsInvoicesZip => "Facturas";
+  String get downloadsViewAll => 'Ver todas las descargas';
 
   @override
-  String get downloadsInvoiceVatAudit => "Auditoría de IVA de facturas";
+  String get downloadsInvoicesZip => 'Facturas';
 
   @override
-  String get downloadsExpenseVatAudit => "Auditoría de IVA de gastos";
+  String get downloadsInvoiceVatAudit => 'Auditoría de IVA de facturas';
 
   @override
-  String get downloadsBankExpenses => "Gastos bancarios";
+  String get downloadsExpenseVatAudit => 'Auditoría de IVA de gastos';
 
   @override
-  String get downloadsBankTransactions => "Movimientos bancarios";
+  String get downloadsBankExpenses => 'Gastos bancarios';
 
   @override
-  String get downloadsInsights => "Informe de análisis";
+  String get downloadsBankTransactions => 'Movimientos bancarios';
 
   @override
-  String get downloadsCustomReport => "Informe personalizado";
+  String get downloadsInsights => 'Informe de análisis';
 
   @override
-  String get downloadsInvoice => "Factura";
+  String get downloadsCustomReport => 'Informe personalizado';
 
   @override
-  String get downloadsQueued => "En cola";
+  String get downloadsInvoice => 'Factura';
 
   @override
-  String get downloadsProcessing => "Procesando";
+  String get downloadsQueued => 'En cola';
 
   @override
-  String get downloadsReady => "Listo";
+  String get downloadsProcessing => 'Procesando';
 
   @override
-  String get downloadsFailed => "Error";
+  String get downloadsReady => 'Listo';
 
   @override
-  String get downloadsExpired => "Caducado";
+  String get downloadsFailed => 'Error';
 
   @override
-  String get downloadsRefresh => "Actualizar";
+  String get downloadsExpired => 'Caducado';
 
   @override
-  String get downloadsEmpty => "No hay descargas recientes";
+  String get downloadsRefresh => 'Actualizar';
 
   @override
-  String get downloadsChecking => "Comprobando archivos…";
+  String get downloadsEmpty => 'No hay descargas recientes';
 
   @override
-  String get downloadsGeneratedFile => "Archivo generado";
+  String get downloadsChecking => 'Comprobando archivos…';
 
+  @override
+  String get downloadsGeneratedFile => 'Archivo generado';
 
+  @override
+  String get preferencesTitle => 'Preferencias';
+
+  @override
+  String get preferencesNavigation => 'Navegación';
+
+  @override
+  String get preferencesAppearance => 'Apariencia';
+
+  @override
+  String get preferencesLanguage => 'Idioma';
+
+  @override
+  String get preferencesAutomatic => 'Automático';
+
+  @override
+  String get preferencesNavigationAutomatic => 'Automático';
+
+  @override
+  String get preferencesNavigationAutomaticDescription =>
+      'Muestra las etiquetas cuando hay espacio disponible.';
+
+  @override
+  String get preferencesNavigationIconsAndText => 'Iconos y texto';
+
+  @override
+  String get preferencesNavigationIconsAndTextDescription =>
+      'Muestra siempre los iconos y nombres de los módulos.';
+
+  @override
+  String get preferencesNavigationIconsOnly => 'Solo iconos';
+
+  @override
+  String get preferencesNavigationIconsOnlyDescription =>
+      'Usa una navegación compacta con ayudas emergentes.';
+
+  @override
+  String get preferencesThemeLight => 'Claro';
+
+  @override
+  String get preferencesThemeDark => 'Oscuro';
 }

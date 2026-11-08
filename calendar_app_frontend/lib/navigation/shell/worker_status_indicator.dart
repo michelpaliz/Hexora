@@ -19,12 +19,14 @@ class WorkerStatusIndicator extends StatefulWidget {
     required this.memberIds,
     required this.groupRoles,
     required this.onOpenWorkers,
+    this.compact = false,
   });
 
   final String groupId;
   final List<String> memberIds;
   final Map<String, String> groupRoles;
   final VoidCallback onOpenWorkers;
+  final bool compact;
 
   @override
   State<WorkerStatusIndicator> createState() => _WorkerStatusIndicatorState();
@@ -99,7 +101,7 @@ class _WorkerStatusIndicatorState extends State<WorkerStatusIndicator> {
         presence.hasReceivedPresence ? onlineMembers.length : null;
 
     final viewportWidth = MediaQuery.sizeOf(context).width;
-    final compact = viewportWidth < 760;
+    final compact = widget.compact || viewportWidth < 1200;
     final menuWidth = viewportWidth >= 296 ? 280.0 : viewportWidth - 16;
 
     return MenuAnchor(
@@ -110,6 +112,7 @@ class _WorkerStatusIndicatorState extends State<WorkerStatusIndicator> {
       ),
       menuChildren: _buildMenu(context, onlineCount),
       builder: (context, controller, _) => HexoraNavTile(
+        selected: controller.isOpen,
         tooltip: _isSpanish ? 'Estado de los trabajadores' : 'Worker status',
         semanticLabel:
             _isSpanish ? '$_activeCount trabajando' : '$_activeCount working',

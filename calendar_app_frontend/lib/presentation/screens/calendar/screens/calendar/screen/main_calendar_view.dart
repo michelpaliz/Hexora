@@ -1,6 +1,7 @@
 // presentation/c-group-calendar-section/screens/calendar/screen/main_calendar_view.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/calendar/events/event.dart';
 import 'package:hexora/models/groups/group.dart';
@@ -1547,58 +1548,63 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         calendarSidebar(),
-                        const SizedBox(width: 10),
                         Expanded(
-                          child: HexoraMenuContentTransition.submenu(
-                            transitionKey: _selectedSideMenu,
-                            child: isCalendarSection
-                                ? Row(
-                                    children: [
-                                      Expanded(
-                                        child: FolderPanel(
-                                          title: sectionTitle(),
-                                          showTab: true,
-                                          actions: calendarHeaderActions(),
-                                          child: calendarContent(
-                                            showActions: false,
-                                            showPresenceStrip: false,
+                          child: WorkspaceMainContent(
+                            child: HexoraMenuContentTransition.submenu(
+                              transitionKey: _selectedSideMenu,
+                              child: isCalendarSection
+                                  ? Row(
+                                      children: [
+                                        Expanded(
+                                          child: FolderPanel(
+                                            title: sectionTitle(),
+                                            showTab: true,
+                                            actions: calendarHeaderActions(),
+                                            child: calendarContent(
+                                              showActions: false,
+                                              showPresenceStrip: false,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      if (!_rightPanelCollapsed)
-                                        const SizedBox(width: 8),
-                                      Visibility(
-                                          visible: !_rightPanelCollapsed,
-                                          maintainState: true,
-                                          child: SizedBox(
-                                            width:
-                                                HexoraDimensions.calendarPanel,
-                                            child: FolderPanel(
-                                              title: calendarRightPanelTitle(),
-                                              showTab: true,
-                                              child: HexoraMenuContentTransition
-                                                  .tab(
-                                                transitionKey: _panelView,
+                                        if (!_rightPanelCollapsed)
+                                          const SizedBox(width: 8),
+                                        Visibility(
+                                            visible: !_rightPanelCollapsed,
+                                            maintainState: true,
+                                            child: SizedBox(
+                                              width: HexoraDimensions
+                                                  .calendarPanel,
+                                              child: FolderPanel(
+                                                title:
+                                                    calendarRightPanelTitle(),
+                                                showTab: true,
                                                 child:
-                                                    calendarRightPanelContent(),
+                                                    HexoraMenuContentTransition
+                                                        .tab(
+                                                  transitionKey: _panelView,
+                                                  child:
+                                                      calendarRightPanelContent(),
+                                                ),
                                               ),
-                                            ),
-                                          )),
-                                    ],
-                                  )
-                                : FolderPanel(
-                                    title: sectionTitle(),
-                                    showTab: true,
-                                    child: sectionContent(),
-                                  ),
+                                            )),
+                                      ],
+                                    )
+                                  : FolderPanel(
+                                      title: sectionTitle(),
+                                      showTab: true,
+                                      child: sectionContent(),
+                                    ),
+                            ),
                           ),
                         ),
                       ],
                     ),
                   )
-                : Padding(
-                    padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
-                    child: compactCalendarContent(),
+                : WorkspaceMainContent(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+                      child: compactCalendarContent(),
+                    ),
                   ),
           ),
         );

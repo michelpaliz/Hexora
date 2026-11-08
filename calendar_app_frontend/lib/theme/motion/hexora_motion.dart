@@ -5,8 +5,17 @@ import 'package:flutter/material.dart';
 /// Keep motion subtle and state-preserving. Call [duration] when an animation
 /// must respect the platform reduced-motion preference.
 abstract final class HexoraMotion {
-  static const Duration fast = Duration(milliseconds: 140);
-  static const Duration standard = Duration(milliseconds: 200);
+  /// Short feedback such as tabs and small controls.
+  static const Duration fast = Duration(milliseconds: 120);
+
+  /// General content transitions.
+  static const Duration normal = Duration(milliseconds: 180);
+
+  /// Coordinated shell geometry changes (navigation and sidebars).
+  static const Duration layout = Duration(milliseconds: 200);
+
+  /// Backwards-compatible default for existing components.
+  static const Duration standard = normal;
   static const Duration navigation = Duration(milliseconds: 240);
   static const Duration chart = Duration(milliseconds: 750);
 
@@ -14,11 +23,12 @@ abstract final class HexoraMotion {
   /// separate from wizard/page timings so changing one does not affect the
   /// other workflows.
   static const Duration moduleNavigation = Duration(milliseconds: 180);
-  static const Duration submenuNavigation = Duration(milliseconds: 120);
+  static const Duration submenuNavigation = Duration(milliseconds: 160);
   static const Duration tabNavigation = Duration(milliseconds: 110);
   static const Duration tabIndicator = Duration(milliseconds: 150);
-  static const Duration sidePanel = Duration(milliseconds: 200);
-  static const Duration popup = Duration(milliseconds: 100);
+  static const Duration sidePanel = layout;
+  static const Duration popup = Duration(milliseconds: 120);
+  static const Duration dialog = Duration(milliseconds: 180);
 
   static const Curve enter = Curves.easeOutCubic;
   static const Curve exit = Curves.easeInCubic;

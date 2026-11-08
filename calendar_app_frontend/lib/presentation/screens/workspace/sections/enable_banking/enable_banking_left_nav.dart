@@ -1,6 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/navigation_group.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
-import 'package:hexora/presentation/shared/widgets/navigation_menu_header.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -39,8 +39,10 @@ class EnableBankingLeftNav extends StatelessWidget {
   final VoidCallback onToggleCollapse;
 
   @override
-  Widget build(BuildContext context) =>
-      NavigationSurface(builder: _buildNavigation);
+  Widget build(BuildContext context) => Theme(
+        data: navigationTheme(Theme.of(context)),
+        child: Builder(builder: _buildNavigation),
+      );
 
   Widget _buildNavigation(BuildContext context) {
     const expandedWidth = NavigationTokens.sidebarWidth;
@@ -50,43 +52,29 @@ class EnableBankingLeftNav extends StatelessWidget {
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOut,
       width: collapsed ? collapsedWidth : expandedWidth,
-      child: collapsed
-          ? _CollapsedRail(
-              selected: selected,
-              onSelect: onSelect,
-              onExpand: onToggleCollapse,
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _NavPanelHeader(onCollapse: onToggleCollapse),
-                Expanded(
-                  child: _GroupedNavContent(
-                    selected: selected,
-                    onSelect: onSelect,
-                    collapsed: false,
-                    onToggleCollapse: onToggleCollapse,
+      child: SidebarEdgeShell(
+        collapsed: collapsed,
+        onToggle: onToggleCollapse,
+        child: collapsed
+            ? _CollapsedRail(
+                selected: selected,
+                onSelect: onSelect,
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _GroupedNavContent(
+                      selected: selected,
+                      onSelect: onSelect,
+                      collapsed: false,
+                      onToggleCollapse: onToggleCollapse,
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+      ),
     );
-  }
-}
-
-class _NavPanelHeader extends StatelessWidget {
-  const _NavPanelHeader({required this.onCollapse});
-
-  final VoidCallback onCollapse;
-
-  @override
-  Widget build(BuildContext context) {
-    return NavigationMenuHeader(
-        title: Localizations.localeOf(context).languageCode == 'es'
-            ? 'Banco'
-            : 'Banking',
-        icon: Icons.account_balance_outlined,
-        onToggle: onCollapse);
   }
 }
 
@@ -96,58 +84,28 @@ class _CollapsedRail extends StatelessWidget {
   const _CollapsedRail({
     required this.selected,
     required this.onSelect,
-    required this.onExpand,
   });
 
   final EnableBankingMenu selected;
   final void Function(EnableBankingMenu) onSelect;
-  final VoidCallback onExpand;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
     Widget item(IconData icon, String tooltip, EnableBankingMenu menu) {
-      return SidebarItem(icon: icon, label: tooltip, isSelected: selected == menu,
-        collapsed: true, onTap: () => onSelect(menu));
+      return SidebarItem(
+          icon: icon,
+          label: tooltip,
+          isSelected: selected == menu,
+          collapsed: true,
+          onTap: () => onSelect(menu));
     }
-    Widget divider() => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5),
-          child: Divider(
-            height: 1,
-            color: cs.outlineVariant.withValues(alpha: 0.3),
-          ),
-        );
+
+    Widget groupGap() => const SizedBox(height: NavigationTokens.groupGap);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(7, 6, 7, 8),
       child: Column(
         children: [
-          // Expand toggle
-          Tooltip(
-            message: 'Expandir menú',
-            preferBelow: false,
-            child: InkWell(
-              onTap: onExpand,
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                width: NavigationTokens.rowHeight(context),
-                height: NavigationTokens.rowHeight(context),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: cs.outlineVariant.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Icon(
-                  Icons.chevron_right_rounded,
-                  size: NavigationTokens.iconSize,
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -161,11 +119,11 @@ class _CollapsedRail extends StatelessWidget {
                   const SizedBox(height: 3),
                   item(Icons.history_outlined, 'Historial',
                       EnableBankingMenu.history),
-                  divider(),
+                  groupGap(),
                   // Historial
                   item(Icons.table_chart_outlined, 'Movimientos',
                       EnableBankingMenu.allData),
-                  divider(),
+                  groupGap(),
                   // Analiticas
                   item(Icons.dashboard_outlined, 'Resumen',
                       EnableBankingMenu.analyticsOverview),
@@ -265,7 +223,7 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
         StatementsAnalyticsCopy.comparisonMenu(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -291,7 +249,6 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
                           onTap: () =>
                               widget.onSelect(EnableBankingMenu.banking),
                         ),
-                        const SizedBox(height: 4),
                         _NavSubItem(
                           icon: Icons.file_upload_outlined,
                           label: 'Importar Excel',
@@ -300,7 +257,6 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
                           onTap: () =>
                               widget.onSelect(EnableBankingMenu.imports),
                         ),
-                        const SizedBox(height: 4),
                         _NavSubItem(
                           icon: Icons.history_outlined,
                           label: l.statementsHistoryTabTitle,
@@ -352,7 +308,6 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
                           onTap: () => widget
                               .onSelect(EnableBankingMenu.analyticsOverview),
                         ),
-                        const SizedBox(height: 4),
                         _NavSubItem(
                           icon: Icons.pie_chart_outline_rounded,
                           label: analyticsSplitLabel,
@@ -361,7 +316,6 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
                           onTap: () =>
                               widget.onSelect(EnableBankingMenu.analyticsSplit),
                         ),
-                        const SizedBox(height: 4),
                         _NavSubItem(
                           icon: Icons.stacked_bar_chart_rounded,
                           label: analyticsVolumeLabel,
@@ -370,7 +324,6 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
                           onTap: () => widget
                               .onSelect(EnableBankingMenu.analyticsVolume),
                         ),
-                        const SizedBox(height: 4),
                         _NavSubItem(
                           icon: Icons.tune_rounded,
                           label: analyticsTicketLabel,
@@ -379,7 +332,6 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
                           onTap: () => widget
                               .onSelect(EnableBankingMenu.analyticsTicket),
                         ),
-                        const SizedBox(height: 4),
                         _NavSubItem(
                           icon: Icons.link_outlined,
                           label: analyticsLinkedLabel,
@@ -388,7 +340,6 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
                           onTap: () => widget
                               .onSelect(EnableBankingMenu.analyticsLinked),
                         ),
-                        const SizedBox(height: 4),
                         _NavSubItem(
                           icon: Icons.calendar_view_week_outlined,
                           label: analyticsActivityLabel,
@@ -397,7 +348,6 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
                           onTap: () => widget
                               .onSelect(EnableBankingMenu.analyticsActivity),
                         ),
-                        const SizedBox(height: 4),
                         _NavSubItem(
                           icon: Icons.verified_outlined,
                           label: analyticsStatusLabel,
@@ -406,7 +356,6 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
                           onTap: () => widget
                               .onSelect(EnableBankingMenu.analyticsStatus),
                         ),
-                        const SizedBox(height: 4),
                         _NavSubItem(
                           icon: Icons.show_chart_outlined,
                           label: analyticsTrendsLabel,
@@ -415,7 +364,6 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
                           onTap: () => widget
                               .onSelect(EnableBankingMenu.analyticsTrends),
                         ),
-                        const SizedBox(height: 4),
                         _NavSubItem(
                           icon: Icons.bar_chart_outlined,
                           label: analyticsTopMerchantsLabel,
@@ -424,7 +372,6 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
                           onTap: () => widget.onSelect(
                               EnableBankingMenu.analyticsTopMerchants),
                         ),
-                        const SizedBox(height: 4),
                         _NavSubItem(
                           icon: Icons.compare_arrows_outlined,
                           label: analyticsComparisonLabel,
@@ -465,9 +412,14 @@ class _NavSection extends StatelessWidget {
   final bool selected;
 
   @override
-  Widget build(BuildContext context) => NavigationGroup(title: title, icon: icon,
-    expanded: expanded, onToggle: onToggle, child: child);
+  Widget build(BuildContext context) => NavigationGroup(
+      title: title,
+      icon: icon,
+      expanded: expanded,
+      onToggle: onToggle,
+      child: child);
 }
+
 class _NavSubItem extends StatelessWidget {
   const _NavSubItem({
     required this.icon,
@@ -484,7 +436,7 @@ class _NavSubItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-        padding: const EdgeInsets.only(left: NavigationTokens.nestedIndent, right: 0, bottom: NavigationTokens.itemGap),
+        padding: const EdgeInsets.only(bottom: NavigationTokens.childGap),
         child: SidebarItem(
             icon: icon,
             label: label,

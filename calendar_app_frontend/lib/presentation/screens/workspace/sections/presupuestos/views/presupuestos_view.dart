@@ -2438,6 +2438,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
           case CompactDocumentColumn.total:
             _budgetTotalRange = const _BudgetRange();
           case CompactDocumentColumn.payment:
+          case CompactDocumentColumn.notes:
             break;
         }
       });

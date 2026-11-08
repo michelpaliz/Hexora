@@ -9,6 +9,8 @@ class PreferencesSection extends StatelessWidget {
   final VoidCallback onToggleDark;
   final String languageName;
   final VoidCallback onChangeLanguage;
+  final bool showDisplayPreferences;
+  final VoidCallback? onOpenPreferences;
   final bool autoStatementImportEnabled;
   final bool autoStatementImportBusy;
   final ValueChanged<bool> onToggleAutoStatementImport;
@@ -23,6 +25,8 @@ class PreferencesSection extends StatelessWidget {
     required this.onToggleDark,
     required this.languageName,
     required this.onChangeLanguage,
+    this.showDisplayPreferences = true,
+    this.onOpenPreferences,
     required this.autoStatementImportEnabled,
     required this.autoStatementImportBusy,
     required this.onToggleAutoStatementImport,
@@ -40,22 +44,40 @@ class PreferencesSection extends StatelessWidget {
 
     return Column(
       children: [
-        SwitchTile(
-          leading: Icon(
-            isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-            size: 18,
-            color: cs.primary,
+        if (onOpenPreferences != null) ...[
+          NavTile(
+            leading: Icon(Icons.tune_rounded, size: 18, color: cs.primary),
+            iconBgColor: cs.primary.withValues(alpha: 0.12),
+            title: l.preferencesTitle,
+            subtitle: isSpanish
+                ? 'Navegación, apariencia e idioma'
+                : 'Navigation, appearance and language',
+            compact: true,
+            onTap: onOpenPreferences!,
           ),
-          iconBgColor: cs.primary.withValues(alpha: 0.12),
-          title: l.darkMode,
-          compact: true,
-          value: isDark,
-          onChanged: (_) => onToggleDark(),
-        ),
-        Divider(
-            height: 0,
-            indent: 63,
-            color: cs.outlineVariant.withValues(alpha: 0.4)),
+          Divider(
+              height: 0,
+              indent: 63,
+              color: cs.outlineVariant.withValues(alpha: 0.4)),
+        ],
+        if (showDisplayPreferences) ...[
+          SwitchTile(
+            leading: Icon(
+              isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+              size: 18,
+              color: cs.primary,
+            ),
+            iconBgColor: cs.primary.withValues(alpha: 0.12),
+            title: l.darkMode,
+            compact: true,
+            value: isDark,
+            onChanged: (_) => onToggleDark(),
+          ),
+          Divider(
+              height: 0,
+              indent: 63,
+              color: cs.outlineVariant.withValues(alpha: 0.4)),
+        ],
         SwitchTile(
           leading: Icon(Icons.sync_rounded, size: 18, color: cs.primary),
           iconBgColor: cs.primary.withValues(alpha: 0.12),
@@ -66,26 +88,28 @@ class PreferencesSection extends StatelessWidget {
           enabled: !autoStatementImportBusy,
           onChanged: onToggleAutoStatementImport,
         ),
-        Divider(
-            height: 0,
-            indent: 63,
-            color: cs.outlineVariant.withValues(alpha: 0.4)),
-        NavTile(
-          leading: Icon(Icons.language_rounded, size: 18, color: cs.primary),
-          iconBgColor: cs.primary.withValues(alpha: 0.12),
-          title: isSpanish ? 'Idioma' : 'Language',
-          subtitle: languageName,
-          compact: true,
-          onTap: onChangeLanguage,
-        ),
+        if (showDisplayPreferences) ...[
+          Divider(
+              height: 0,
+              indent: 63,
+              color: cs.outlineVariant.withValues(alpha: 0.4)),
+          NavTile(
+            leading: Icon(Icons.language_rounded, size: 18, color: cs.primary),
+            iconBgColor: cs.primary.withValues(alpha: 0.12),
+            title: isSpanish ? 'Idioma' : 'Language',
+            subtitle: languageName,
+            compact: true,
+            onTap: onChangeLanguage,
+          ),
+        ],
         if (showDailyQuote != null && onToggleDailyQuote != null) ...[
           Divider(
               height: 0,
               indent: 63,
               color: cs.outlineVariant.withValues(alpha: 0.4)),
           SwitchTile(
-            leading: Icon(Icons.format_quote_rounded,
-                size: 18, color: cs.primary),
+            leading:
+                Icon(Icons.format_quote_rounded, size: 18, color: cs.primary),
             iconBgColor: cs.primary.withValues(alpha: 0.12),
             title: isSpanish ? 'Frase motivacional' : 'Motivational quote',
             subtitle: isSpanish

@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 /// It intentionally only renders identity; profile-photo changes remain in the
 /// account profile flow.
 class HexoraUserAvatar extends StatelessWidget {
+  static const double compactSize = 32;
+  static const double menuSize = 40;
+
   const HexoraUserAvatar({
     super.key,
     required this.userId,
@@ -13,7 +16,13 @@ class HexoraUserAvatar extends StatelessWidget {
     this.photoUrl,
     this.size = 40,
   }) : assert(
-            size == 24 || size == 32 || size == 40 || size == 48 || size == 64);
+          size == 24 ||
+              size == compactSize ||
+              size == menuSize ||
+              size == 48 ||
+              size == 64,
+          'Use a supported Hexora avatar size: 24, 32, 40, 48, or 64.',
+        );
 
   final String userId;
   final String? displayName;

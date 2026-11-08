@@ -1,5 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -414,8 +415,11 @@ class _EnableBankingViewState extends State<_EnableBankingView>
               onToggleCollapse: () =>
                   setState(() => _sidebarCollapsedManual = !collapsed),
             ),
-            const SizedBox(width: 8),
-            Expanded(child: _buildContentArea(context, l, isMobile: false)),
+            Expanded(
+              child: WorkspaceMainContent(
+                child: _buildContentArea(context, l, isMobile: false),
+              ),
+            ),
             const SizedBox(width: 12),
           ],
         );

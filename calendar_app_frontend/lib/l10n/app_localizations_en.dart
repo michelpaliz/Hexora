@@ -7947,65 +7947,106 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get agendaEmptyDay =>
       'No jobs for this day. Select another date or All.';
-  @override
-  String get downloadsTitle => "Downloads";
 
   @override
-  String get downloadsRecent => "Recent downloads";
+  String get downloadsTitle => 'Downloads';
 
   @override
-  String get downloadsViewAll => "View all downloads";
+  String get downloadsRecent => 'Recent downloads';
 
   @override
-  String get downloadsInvoicesZip => "Invoices";
+  String get downloadsViewAll => 'View all downloads';
 
   @override
-  String get downloadsInvoiceVatAudit => "Invoice VAT audit";
+  String get downloadsInvoicesZip => 'Invoices';
 
   @override
-  String get downloadsExpenseVatAudit => "Expense VAT audit";
+  String get downloadsInvoiceVatAudit => 'Invoice VAT audit';
 
   @override
-  String get downloadsBankExpenses => "Bank expenses";
+  String get downloadsExpenseVatAudit => 'Expense VAT audit';
 
   @override
-  String get downloadsBankTransactions => "Bank transactions";
+  String get downloadsBankExpenses => 'Bank expenses';
 
   @override
-  String get downloadsInsights => "Insights report";
+  String get downloadsBankTransactions => 'Bank transactions';
 
   @override
-  String get downloadsCustomReport => "Custom report";
+  String get downloadsInsights => 'Insights report';
 
   @override
-  String get downloadsInvoice => "Invoice";
+  String get downloadsCustomReport => 'Custom report';
 
   @override
-  String get downloadsQueued => "Queued";
+  String get downloadsInvoice => 'Invoice';
 
   @override
-  String get downloadsProcessing => "Processing";
+  String get downloadsQueued => 'Queued';
 
   @override
-  String get downloadsReady => "Ready";
+  String get downloadsProcessing => 'Processing';
 
   @override
-  String get downloadsFailed => "Failed";
+  String get downloadsReady => 'Ready';
 
   @override
-  String get downloadsExpired => "Expired";
+  String get downloadsFailed => 'Failed';
 
   @override
-  String get downloadsRefresh => "Refresh";
+  String get downloadsExpired => 'Expired';
 
   @override
-  String get downloadsEmpty => "No recent downloads";
+  String get downloadsRefresh => 'Refresh';
 
   @override
-  String get downloadsChecking => "Checking files…";
+  String get downloadsEmpty => 'No recent downloads';
 
   @override
-  String get downloadsGeneratedFile => "Generated file";
+  String get downloadsChecking => 'Checking files…';
 
+  @override
+  String get downloadsGeneratedFile => 'Generated file';
 
+  @override
+  String get preferencesTitle => 'Preferences';
+
+  @override
+  String get preferencesNavigation => 'Navigation';
+
+  @override
+  String get preferencesAppearance => 'Appearance';
+
+  @override
+  String get preferencesLanguage => 'Language';
+
+  @override
+  String get preferencesAutomatic => 'Automatic';
+
+  @override
+  String get preferencesNavigationAutomatic => 'Automatic';
+
+  @override
+  String get preferencesNavigationAutomaticDescription =>
+      'Show labels when space is available.';
+
+  @override
+  String get preferencesNavigationIconsAndText => 'Icons and text';
+
+  @override
+  String get preferencesNavigationIconsAndTextDescription =>
+      'Always show module icons and labels.';
+
+  @override
+  String get preferencesNavigationIconsOnly => 'Icons only';
+
+  @override
+  String get preferencesNavigationIconsOnlyDescription =>
+      'Use a compact navigation with tooltips.';
+
+  @override
+  String get preferencesThemeLight => 'Light';
+
+  @override
+  String get preferencesThemeDark => 'Dark';
 }

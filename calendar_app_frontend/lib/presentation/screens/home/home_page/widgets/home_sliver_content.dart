@@ -271,342 +271,353 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
 
         return AnimatedOpacity(
           opacity: _appeared ? 1 : 0,
-          duration: HexoraMotion.duration(
-              context, const Duration(milliseconds: 180)),
+          duration:
+              HexoraMotion.duration(context, const Duration(milliseconds: 180)),
           curve: HexoraMotion.enter,
           child: CustomScrollView(
-          controller: widget.controller,
-          slivers: [
-            if (widget.showSectionNavBar && widget.sectionItems != null)
-              SliverToBoxAdapter(
-                child: Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: HomeSectionNav(
-                    items: widget.sectionItems!,
-                    selectedId: widget.activeSection ?? '',
-                    onSelect: widget.onSectionSelected ?? (_) {},
-                    isDark: Theme.of(context).brightness == Brightness.dark,
-                    axis: Axis.horizontal,
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-                  ),
-                ),
-              ),
-            // ── Unified welcome hero: only on dashboard / groups ─────
-            if (_activeView == _HomeView.groups) ...[
-              SliverToBoxAdapter(
-                key: widget.summaryKey,
-                child: _WelcomeHero(
-                  user: widget.user,
-                  compact: !widget.isWide,
-                  onSettings: () =>
-                      setState(() => _activeView = _HomeView.settings),
-                  onNotifications: () =>
-                      setState(() => _activeView = _HomeView.notifications),
-                ),
-              ),
-              if (_showDailyQuote)
+            controller: widget.controller,
+            slivers: [
+              if (widget.showSectionNavBar && widget.sectionItems != null)
                 SliverToBoxAdapter(
-                  key: widget.phraseKey,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 2, 16, 2),
-                    child: _DailyPhraseCard(
-                      onDismiss: () => _setShowDailyQuote(false),
+                  child: Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: HomeSectionNav(
+                      items: widget.sectionItems!,
+                      selectedId: widget.activeSection ?? '',
+                      onSelect: widget.onSectionSelected ?? (_) {},
+                      isDark: Theme.of(context).brightness == Brightness.dark,
+                      axis: Axis.horizontal,
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
                     ),
                   ),
                 ),
-              const SliverToBoxAdapter(child: SizedBox(height: 4)),
-            ],
-
-            // ── Compact header: secondary views ─────────────────────
-            if (_activeView == _HomeView.settings)
-              SliverToBoxAdapter(
-                child: _CompactPageHeader(
-                  icon: Icons.settings_outlined,
-                  title: loc.settings,
-                  subtitle: _isSpanish
-                      ? 'Cuenta, preferencias y contacto'
-                      : 'Account, preferences & contact',
-                  onBack: () => setState(() => _activeView = _HomeView.groups),
-                ),
-              ),
-
-            if (_activeView == _HomeView.notifications)
-              SliverToBoxAdapter(
-                child: _CompactPageHeader(
-                  icon: Icons.notifications_outlined,
-                  title: loc.notifications,
-                  subtitle: _isSpanish
-                      ? 'Revisa tus avisos y alertas'
-                      : 'Review your alerts and updates',
-                  onBack: () => setState(() => _activeView = _HomeView.groups),
-                ),
-              ),
-
-            if (_activeView == _HomeView.profile)
-              SliverToBoxAdapter(
-                child: _CompactPageHeader(
-                  icon: Icons.person_outlined,
-                  title: _isSpanish ? 'Mi perfil' : 'My profile',
-                  subtitle: '@${widget.user.userName}',
-                  onBack: () =>
-                      setState(() => _activeView = _HomeView.settings),
-                  trailing: OutlinedButton.icon(
-                    onPressed: () =>
+              // ── Unified welcome hero: only on dashboard / groups ─────
+              if (_activeView == _HomeView.groups) ...[
+                SliverToBoxAdapter(
+                  key: widget.summaryKey,
+                  child: _WelcomeHero(
+                    user: widget.user,
+                    compact: !widget.isWide,
+                    onSettings: () =>
                         setState(() => _activeView = _HomeView.settings),
-                    icon: const Icon(Icons.settings_outlined, size: 16),
-                    label: Text(_isSpanish ? 'Configuración' : 'Settings'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: cs.primary,
-                      side: BorderSide(
-                          color: cs.outlineVariant.withValues(alpha: 0.8)),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                ),
-              ),
-
-            // ── Groups view (default) ────────────────────────────────
-            if (_activeView == _HomeView.groups) ...[
-              SliverToBoxAdapter(
-                key: widget.groupsKey,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SectionHeader(
-                    title: loc.groupSectionTitle,
-                    markerHeight: widget.isWide ? 30 : 24,
-                    padding: const EdgeInsets.fromLTRB(0, 6, 0, 8),
-                    trailing: widget.isWide
-                        ? Wrap(
-                            spacing: 8,
-                            children: [
-                              OutlinedButton.icon(
-                                onPressed: () => _openCreateGroup(context),
-                                icon: const Icon(Icons.add_rounded, size: 18),
-                                label: Text(loc.createGroup),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: cs.primary,
-                                  side: BorderSide(
-                                    color: cs.outlineVariant
-                                        .withValues(alpha: 0.8),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 10,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                              ),
-                              const SeeAllGroupsButton(
-                                  compact: true, outlined: true),
-                            ],
-                          )
-                        : const SeeAllGroupsButton(
-                            compact: true, outlined: true),
-                  ),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 6)),
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.only(top: 6, bottom: 12),
-                  child: GroupListSection(maxItems: 5, fullPage: false),
-                ),
-              ),
-            ],
-
-            // ── Settings view ────────────────────────────────────────
-            if (_activeView == _HomeView.settings) ...[
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _InlineProfileCard(
-                    userName: _userName,
-                    photoUrl: photoUrl,
-                    onTap: () =>
-                        setState(() => _activeView = _HomeView.profile),
-                  ),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-              // Account
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SectionHeader(
-                    title: loc.accountSectionTitle,
-                    markerHeight: widget.isWide ? 30 : 24,
-                    padding: const EdgeInsets.fromLTRB(0, 6, 0, 8),
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SectionCard(
-                    child: AccountSection(
-                      userName: _userName,
-                      onEditUsername: () async {
-                        final successMessage = loc.successChangingUsername;
-                        final newName = await showChangeUsernameDialog(context);
-                        if (newName == null) return;
-                        final err = await _changeUsername(newName);
-                        _snack(err ?? successMessage);
-                      },
-                      onEditProfile: () => showProfileEditDialog(context),
-                      onChangePassword: () async {
-                        final result = await showChangePasswordDialog(context);
-                        if (result == null) return;
-                        await _changePassword(
-                            result.current, result.newPass, result.confirm);
-                      },
-                      onLogout: _confirmLogout,
-                    ),
-                  ),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-              // Preferences
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SectionHeader(
-                    title: loc.preferencesSectionTitle,
-                    markerHeight: widget.isWide ? 30 : 24,
-                    padding: const EdgeInsets.fromLTRB(0, 6, 0, 8),
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SectionCard(
-                    child: PreferencesSection(
-                      isDark: themeModeProv.mode == ThemeMode.dark,
-                      onToggleDark: () => themeModeProv.toggleLightDark(),
-                      languageName: _languageName(),
-                      onChangeLanguage: () => showLanguageSheet(context),
-                      autoStatementImportEnabled: autoImportEnabled,
-                      autoStatementImportBusy: _autoStatementImportLoading,
-                      onToggleAutoStatementImport: _toggleAutoStatementImport,
-                      showDailyQuote: _showDailyQuote,
-                      onToggleDailyQuote: _setShowDailyQuote,
-                    ),
-                  ),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-              // Contact
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SectionHeader(
-                    title:
-                        _isSpanish ? 'Contactar con Hexora' : 'Contact Hexora',
-                    markerHeight: widget.isWide ? 30 : 24,
-                    padding: const EdgeInsets.fromLTRB(0, 6, 0, 8),
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SectionCard(
-                    child: ContactSection(
-                      isSpanish: _isSpanish,
-                      onEmail: _email,
-                    ),
-                  ),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 12)),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    '${loc.appVersionLabel}: 1.0.0',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                  ),
-                ),
-              ),
-            ],
-
-            // ── Notifications view ───────────────────────────────────
-            if (_activeView == _HomeView.notifications)
-              SliverFillRemaining(
-                child: ShowNotifications(
-                  user: widget.user,
-                  showBottomNav: false,
-                ),
-              ),
-
-            // ── Profile view ────────────────────────────────────────
-            if (_activeView == _HomeView.profile) ...[
-              // Compact profile summary
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _InlineProfileCard(
-                    userName: widget.user.name.isNotEmpty
-                        ? widget.user.name
-                        : widget.user.userName,
-                    photoUrl: photoUrl,
-                    onTap: () =>
-                        setState(() => _activeView = _HomeView.settings),
-                    subtitle: '@${widget.user.userName}  ·  '
-                        '${widget.user.email}',
-                  ),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: ProfileDetailsCard(
-                    email: widget.user.email,
-                    username: '@${widget.user.userName}',
-                    userId: widget.user.id,
-                    groupsCount: widget.user.groupIds.length,
-                    calendarsCount: widget.user.sharedCalendars.length,
-                    notificationsCount:
-                        context.read<NotificationDomain>().notifications.length,
-                    onCopyEmail: () {
-                      Clipboard.setData(ClipboardData(text: widget.user.email));
-                      _snack(loc.copiedToClipboard);
-                    },
-                    onCopyId: () {
-                      Clipboard.setData(ClipboardData(text: widget.user.id));
-                      _snack(loc.copiedToClipboard);
-                    },
-                    onTapUsername: () =>
-                        setState(() => _activeView = _HomeView.settings),
-                    onTapTeams: () =>
-                        Navigator.pushNamed(context, AppRoutes.showGroups),
-                    onTapCalendars: () =>
-                        Navigator.pushNamed(context, AppRoutes.agenda),
-                    onTapNotifications: () =>
+                    onNotifications: () =>
                         setState(() => _activeView = _HomeView.notifications),
                   ),
                 ),
-              ),
-            ],
+                if (_showDailyQuote)
+                  SliverToBoxAdapter(
+                    key: widget.phraseKey,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 2, 16, 2),
+                      child: _DailyPhraseCard(
+                        onDismiss: () => _setShowDailyQuote(false),
+                      ),
+                    ),
+                  ),
+                const SliverToBoxAdapter(child: SizedBox(height: 4)),
+              ],
 
-            SliverToBoxAdapter(
-                child: SizedBox(
-                    height: widget.isWide ? 24 : widget.bottomSafePadding)),
-          ],
+              // ── Compact header: secondary views ─────────────────────
+              if (_activeView == _HomeView.settings)
+                SliverToBoxAdapter(
+                  child: _CompactPageHeader(
+                    icon: Icons.settings_outlined,
+                    title: loc.settings,
+                    subtitle: _isSpanish
+                        ? 'Cuenta, preferencias y contacto'
+                        : 'Account, preferences & contact',
+                    onBack: () =>
+                        setState(() => _activeView = _HomeView.groups),
+                  ),
+                ),
+
+              if (_activeView == _HomeView.notifications)
+                SliverToBoxAdapter(
+                  child: _CompactPageHeader(
+                    icon: Icons.notifications_outlined,
+                    title: loc.notifications,
+                    subtitle: _isSpanish
+                        ? 'Revisa tus avisos y alertas'
+                        : 'Review your alerts and updates',
+                    onBack: () =>
+                        setState(() => _activeView = _HomeView.groups),
+                  ),
+                ),
+
+              if (_activeView == _HomeView.profile)
+                SliverToBoxAdapter(
+                  child: _CompactPageHeader(
+                    icon: Icons.person_outlined,
+                    title: _isSpanish ? 'Mi perfil' : 'My profile',
+                    subtitle: '@${widget.user.userName}',
+                    onBack: () =>
+                        setState(() => _activeView = _HomeView.settings),
+                    trailing: OutlinedButton.icon(
+                      onPressed: () =>
+                          setState(() => _activeView = _HomeView.settings),
+                      icon: const Icon(Icons.settings_outlined, size: 16),
+                      label: Text(_isSpanish ? 'Configuración' : 'Settings'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: cs.primary,
+                        side: BorderSide(
+                            color: cs.outlineVariant.withValues(alpha: 0.8)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // ── Groups view (default) ────────────────────────────────
+              if (_activeView == _HomeView.groups) ...[
+                SliverToBoxAdapter(
+                  key: widget.groupsKey,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SectionHeader(
+                      title: loc.groupSectionTitle,
+                      markerHeight: widget.isWide ? 30 : 24,
+                      padding: const EdgeInsets.fromLTRB(0, 6, 0, 8),
+                      trailing: widget.isWide
+                          ? Wrap(
+                              spacing: 8,
+                              children: [
+                                OutlinedButton.icon(
+                                  onPressed: () => _openCreateGroup(context),
+                                  icon: const Icon(Icons.add_rounded, size: 18),
+                                  label: Text(loc.createGroup),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: cs.primary,
+                                    side: BorderSide(
+                                      color: cs.outlineVariant
+                                          .withValues(alpha: 0.8),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                ),
+                                const SeeAllGroupsButton(
+                                    compact: true, outlined: true),
+                              ],
+                            )
+                          : const SeeAllGroupsButton(
+                              compact: true, outlined: true),
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 6)),
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 6, bottom: 12),
+                    child: GroupListSection(maxItems: 5, fullPage: false),
+                  ),
+                ),
+              ],
+
+              // ── Settings view ────────────────────────────────────────
+              if (_activeView == _HomeView.settings) ...[
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _InlineProfileCard(
+                      userName: _userName,
+                      photoUrl: photoUrl,
+                      onTap: () =>
+                          setState(() => _activeView = _HomeView.profile),
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // Account
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SectionHeader(
+                      title: loc.accountSectionTitle,
+                      markerHeight: widget.isWide ? 30 : 24,
+                      padding: const EdgeInsets.fromLTRB(0, 6, 0, 8),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SectionCard(
+                      child: AccountSection(
+                        userName: _userName,
+                        onEditUsername: () async {
+                          final successMessage = loc.successChangingUsername;
+                          final newName =
+                              await showChangeUsernameDialog(context);
+                          if (newName == null) return;
+                          final err = await _changeUsername(newName);
+                          _snack(err ?? successMessage);
+                        },
+                        onEditProfile: () => showProfileEditDialog(context),
+                        onChangePassword: () async {
+                          final result =
+                              await showChangePasswordDialog(context);
+                          if (result == null) return;
+                          await _changePassword(
+                              result.current, result.newPass, result.confirm);
+                        },
+                        onLogout: _confirmLogout,
+                      ),
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // Preferences
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SectionHeader(
+                      title: loc.preferencesSectionTitle,
+                      markerHeight: widget.isWide ? 30 : 24,
+                      padding: const EdgeInsets.fromLTRB(0, 6, 0, 8),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SectionCard(
+                      child: PreferencesSection(
+                        isDark: themeModeProv.mode == ThemeMode.dark,
+                        onToggleDark: () => themeModeProv.toggleLightDark(),
+                        languageName: _languageName(),
+                        onChangeLanguage: () => showLanguageSheet(context),
+                        showDisplayPreferences: false,
+                        onOpenPreferences: () => Navigator.of(context)
+                            .pushNamed(AppRoutes.preferences),
+                        autoStatementImportEnabled: autoImportEnabled,
+                        autoStatementImportBusy: _autoStatementImportLoading,
+                        onToggleAutoStatementImport: _toggleAutoStatementImport,
+                        showDailyQuote: _showDailyQuote,
+                        onToggleDailyQuote: _setShowDailyQuote,
+                      ),
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // Contact
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SectionHeader(
+                      title: _isSpanish
+                          ? 'Contactar con Hexora'
+                          : 'Contact Hexora',
+                      markerHeight: widget.isWide ? 30 : 24,
+                      padding: const EdgeInsets.fromLTRB(0, 6, 0, 8),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SectionCard(
+                      child: ContactSection(
+                        isSpanish: _isSpanish,
+                        onEmail: _email,
+                      ),
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      '${loc.appVersionLabel}: 1.0.0',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                    ),
+                  ),
+                ),
+              ],
+
+              // ── Notifications view ───────────────────────────────────
+              if (_activeView == _HomeView.notifications)
+                SliverFillRemaining(
+                  child: ShowNotifications(
+                    user: widget.user,
+                    showBottomNav: false,
+                  ),
+                ),
+
+              // ── Profile view ────────────────────────────────────────
+              if (_activeView == _HomeView.profile) ...[
+                // Compact profile summary
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _InlineProfileCard(
+                      userName: widget.user.name.isNotEmpty
+                          ? widget.user.name
+                          : widget.user.userName,
+                      photoUrl: photoUrl,
+                      onTap: () =>
+                          setState(() => _activeView = _HomeView.settings),
+                      subtitle: '@${widget.user.userName}  ·  '
+                          '${widget.user.email}',
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: ProfileDetailsCard(
+                      email: widget.user.email,
+                      username: '@${widget.user.userName}',
+                      userId: widget.user.id,
+                      groupsCount: widget.user.groupIds.length,
+                      calendarsCount: widget.user.sharedCalendars.length,
+                      notificationsCount: context
+                          .read<NotificationDomain>()
+                          .notifications
+                          .length,
+                      onCopyEmail: () {
+                        Clipboard.setData(
+                            ClipboardData(text: widget.user.email));
+                        _snack(loc.copiedToClipboard);
+                      },
+                      onCopyId: () {
+                        Clipboard.setData(ClipboardData(text: widget.user.id));
+                        _snack(loc.copiedToClipboard);
+                      },
+                      onTapUsername: () =>
+                          setState(() => _activeView = _HomeView.settings),
+                      onTapTeams: () =>
+                          Navigator.pushNamed(context, AppRoutes.showGroups),
+                      onTapCalendars: () =>
+                          Navigator.pushNamed(context, AppRoutes.agenda),
+                      onTapNotifications: () =>
+                          setState(() => _activeView = _HomeView.notifications),
+                    ),
+                  ),
+                ),
+              ],
+
+              SliverToBoxAdapter(
+                  child: SizedBox(
+                      height: widget.isWide ? 24 : widget.bottomSafePadding)),
+            ],
           ),
         );
       },
@@ -1054,8 +1065,7 @@ class _DailyPhraseCardState extends State<_DailyPhraseCard> {
     final quotes = isEs ? quotesEs : quotesEn;
     final (quote, author) = quotes[dayKey % quotes.length];
     final cs = Theme.of(context).colorScheme;
-    final text =
-        '“$quote” — ${author.replaceFirst(RegExp(r'^[\s—–-]+'), '')}';
+    final text = '“$quote” — ${author.replaceFirst(RegExp(r'^[\s—–-]+'), '')}';
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

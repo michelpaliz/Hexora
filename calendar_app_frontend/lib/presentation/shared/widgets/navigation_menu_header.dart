@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:hexora/navigation/shell/hexora_nav_components.dart';
-import 'package:hexora/theme/themes/navigation_tokens.dart';
-import 'package:hexora/theme/themes/navigation_theme.dart';
 
+/// Slim header that hosts only the collapse control. The module title is
+/// deliberately omitted: every module already names itself in the content
+/// area and the global bar, so repeating it in each side menu was redundant.
+/// [title] and [icon] are kept for call-site compatibility and accessibility.
 class NavigationMenuHeader extends StatelessWidget {
   const NavigationMenuHeader(
       {super.key,
@@ -23,41 +24,8 @@ class NavigationMenuHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: EdgeInsets.symmetric(
-          horizontal: collapsed ? 7 : NavigationTokens.outerPadding,
-          vertical: 12),
-      child: Row(children: [
-        if (!collapsed) ...[
-          Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                  color: cs.primaryContainer,
-                  borderRadius: BorderRadius.circular(8)),
-              child: Icon(icon,
-                  size: NavigationTokens.iconSize,
-                  color: cs.onPrimaryContainer)),
-          const SizedBox(width: 8),
-          Expanded(
-              child: Text(title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: NavigationTokens.title(context).copyWith(
-                      fontSize: NavigationTokens.titleSize,
-                      color: NavigationColors(cs).foreground,
-                      fontWeight: FontWeight.w600))),
-        ],
-        if (onToggle != null)
-          SidebarCollapseToggle(
-            key: toggleKey,
-            collapsed: collapsed,
-            onPressed: onToggle,
-            expandTooltip: expandTooltip,
-            collapseTooltip: collapseTooltip,
-          ),
-      ]),
-    );
+    // SidebarEdgeShell owns the full-height notch and handle. This legacy
+    // widget intentionally reserves no layout space.
+    return const SizedBox.shrink();
   }
 }

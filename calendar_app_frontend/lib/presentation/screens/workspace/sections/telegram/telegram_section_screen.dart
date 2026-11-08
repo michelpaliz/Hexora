@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/models/telegram/telegram.dart';
 import 'package:hexora/services/telegram/domain/telegram_domain.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
@@ -61,9 +62,11 @@ class _TelegramSectionScreenState extends State<TelegramSectionScreen> {
                 ),
               );
             }
-            return SingleChildScrollView(
-              padding: EdgeInsets.all(mobile ? 12 : 24),
-              child: _ConnectingFlow(domain: telegramDomain),
+            return WorkspaceMainContent(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(mobile ? 12 : 24),
+                child: _ConnectingFlow(domain: telegramDomain),
+              ),
             );
           }),
         );
@@ -597,64 +600,66 @@ class _ConnectedFlowState extends State<_ConnectedFlow> {
               _selectedSection != _TelegramConnectedSection.chats ||
                   domain.selectedChat == null;
           final inChat = !showTitle;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (showTitle)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  child: Text(_sectionTitle(_selectedSection),
-                      style: Theme.of(context).textTheme.titleLarge),
-                ),
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: inChat ? 0 : 12),
-                  child: _buildSectionContent(
-                    domain,
-                    showMobileAccountActions: true,
+          return WorkspaceMainContent(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (showTitle)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                    child: Text(_sectionTitle(_selectedSection),
+                        style: Theme.of(context).textTheme.titleLarge),
                   ),
-                ),
-              ),
-              if (!inChat)
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      top: BorderSide(color: cs.outlineVariant),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: inChat ? 0 : 12),
+                    child: _buildSectionContent(
+                      domain,
+                      showMobileAccountActions: true,
                     ),
                   ),
-                  child: NavigationBar(
-                    height: 72,
-                    elevation: 0,
-                    backgroundColor: cs.surface,
-                    indicatorColor: cs.primaryContainer,
-                    selectedIndex: _selectedSection.index,
-                    labelBehavior:
-                        NavigationDestinationLabelBehavior.alwaysShow,
-                    onDestinationSelected: (index) =>
-                        _selectSection(_TelegramConnectedSection.values[index]),
-                    destinations: [
-                      NavigationDestination(
-                        icon: const Icon(Icons.chat_bubble_outline_rounded),
-                        selectedIcon: const Icon(Icons.chat_bubble_rounded),
-                        label: l.telegramMenuChats,
-                      ),
-                      NavigationDestination(
-                        icon: Badge(
-                          isLabelVisible:
-                              domain.currentExport?.isRunning ?? false,
-                          child: const Icon(Icons.file_download_outlined),
-                        ),
-                        label: l.telegramMenuExports,
-                      ),
-                      NavigationDestination(
-                        icon: const Icon(Icons.person_outline_rounded),
-                        selectedIcon: const Icon(Icons.person_rounded),
-                        label: l.telegramMenuAccount,
-                      ),
-                    ],
-                  ),
                 ),
-            ],
+                if (!inChat)
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: cs.outlineVariant),
+                      ),
+                    ),
+                    child: NavigationBar(
+                      height: 72,
+                      elevation: 0,
+                      backgroundColor: cs.surface,
+                      indicatorColor: cs.primaryContainer,
+                      selectedIndex: _selectedSection.index,
+                      labelBehavior:
+                          NavigationDestinationLabelBehavior.alwaysShow,
+                      onDestinationSelected: (index) => _selectSection(
+                          _TelegramConnectedSection.values[index]),
+                      destinations: [
+                        NavigationDestination(
+                          icon: const Icon(Icons.chat_bubble_outline_rounded),
+                          selectedIcon: const Icon(Icons.chat_bubble_rounded),
+                          label: l.telegramMenuChats,
+                        ),
+                        NavigationDestination(
+                          icon: Badge(
+                            isLabelVisible:
+                                domain.currentExport?.isRunning ?? false,
+                            child: const Icon(Icons.file_download_outlined),
+                          ),
+                          label: l.telegramMenuExports,
+                        ),
+                        NavigationDestination(
+                          icon: const Icon(Icons.person_outline_rounded),
+                          selectedIcon: const Icon(Icons.person_rounded),
+                          label: l.telegramMenuAccount,
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           );
         }
         final menu = _TelegramTopMenu(
@@ -738,14 +743,16 @@ class _ConnectedFlowState extends State<_ConnectedFlow> {
                   onDisconnect: () => _showDisconnectConfirm(context, domain),
                 )),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                child: contentCard,
+              child: WorkspaceMainContent(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                  child: contentCard,
+                ),
               ),
             ),
           ]);
         }
-        return contentCard;
+        return WorkspaceMainContent(child: contentCard);
       },
     );
   }

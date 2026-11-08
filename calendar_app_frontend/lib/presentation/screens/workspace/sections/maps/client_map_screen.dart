@@ -18,6 +18,7 @@ import 'package:hexora/services/maps/maps_api.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/widgets/geofenced_visits_view.dart';
 import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -935,11 +936,12 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                   ),
               ],
             ),
-            const SizedBox(width: 10),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(0, 4, 4, 4),
-                child: sectionContent,
+              child: WorkspaceMainContent(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 4, 4, 4),
+                  child: sectionContent,
+                ),
               ),
             ),
           ],

@@ -3640,5 +3640,18 @@
   "downloadsRefresh": "Actualizar",
   "downloadsEmpty": "No hay descargas recientes",
   "downloadsChecking": "Comprobando archivos…",
-  "downloadsGeneratedFile": "Archivo generado"
+  "downloadsGeneratedFile": "Archivo generado",
+  "preferencesTitle": "Preferencias",
+  "preferencesNavigation": "Navegación",
+  "preferencesAppearance": "Apariencia",
+  "preferencesLanguage": "Idioma",
+  "preferencesAutomatic": "Automático",
+  "preferencesNavigationAutomatic": "Automático",
+  "preferencesNavigationAutomaticDescription": "Muestra las etiquetas cuando hay espacio disponible.",
+  "preferencesNavigationIconsAndText": "Iconos y texto",
+  "preferencesNavigationIconsAndTextDescription": "Muestra siempre los iconos y nombres de los módulos.",
+  "preferencesNavigationIconsOnly": "Solo iconos",
+  "preferencesNavigationIconsOnlyDescription": "Usa una navegación compacta con ayudas emergentes.",
+  "preferencesThemeLight": "Claro",
+  "preferencesThemeDark": "Oscuro"
 }

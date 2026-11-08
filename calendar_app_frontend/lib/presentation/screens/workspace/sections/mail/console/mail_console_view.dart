@@ -731,7 +731,7 @@ class _MailConsoleView extends StatelessWidget {
       ],
     );
 
-    if (state.widget.embedded) return content;
+    if (state.widget.embedded) return WorkspaceMainContent(child: content);
     return Scaffold(
       appBar: AppBar(title: Text(l.mailConsoleTitle)),
       body: content,

@@ -21,6 +21,8 @@ import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab_manager.dart';
 
 import '../navigation/dashboard_sections.dart';
 
@@ -55,6 +57,8 @@ class MailBarActions {
 
 class GroupDashboardState extends ChangeNotifier {
   GroupDashboardState(this.context, this.group) {
+    workspaceTabs = WorkspaceTabManager(businessId: group.id)
+      ..addListener(_onWorkspaceTabChanged);
     _gm = context.read<GroupDomain>();
     _gm.addListener(_onGroupUpdated);
     _ud = context.read<UserDomain>();
@@ -76,6 +80,8 @@ class GroupDashboardState extends ChangeNotifier {
   @override
   void dispose() {
     _gm.removeListener(_onGroupUpdated);
+    workspaceTabs.removeListener(_onWorkspaceTabChanged);
+    workspaceTabs.dispose();
     super.dispose();
   }
 
@@ -89,6 +95,7 @@ class GroupDashboardState extends ChangeNotifier {
   MembersCount? counts;
   GroupRole? role;
   User? user;
+  late final WorkspaceTabManager workspaceTabs;
 
   // UI
   String activeSection = Sections.calendar;
@@ -112,6 +119,25 @@ class GroupDashboardState extends ChangeNotifier {
     Sections.workers,
   };
 
+  static const _workspaceSections = {
+    Sections.agenda,
+    Sections.calendar,
+    Sections.notifications,
+    Sections.settings,
+    Sections.members,
+    Sections.services,
+    Sections.maps,
+    Sections.workers,
+    Sections.invoices,
+    Sections.budgets,
+    Sections.expenses,
+    Sections.emails,
+    Sections.chat,
+    Sections.businessChat,
+    Sections.enableBanking,
+    Sections.telegram,
+  };
+
   String _sectionKey(String userId) =>
       'hexora.dashboard_section.$userId.${group.id}';
 
@@ -124,11 +150,29 @@ class GroupDashboardState extends ChangeNotifier {
     }
   }
 
+  void _onWorkspaceTabChanged() {
+    final active = workspaceTabs.activeTab;
+    activeSection = active?.section ?? '';
+    final userId = user?.id;
+    if (userId != null && active != null) {
+      unawaited(_rememberSection(userId, active.section));
+    }
+    // Desktop workspace consumers listen to workspaceTabs directly. Notifying
+    // the root dashboard provider here rebuilt the complete Scaffold whenever
+    // a tab was activated or closed, producing a visible full-screen refresh.
+    // Mobile navigation still relies on the dashboard notifier.
+    if (!isWide) notifyListeners();
+  }
+
   void selectSection(String section) {
     if (section == Sections.chat && !canSeeAdmin) return;
     if (section == Sections.services && !canSeeAdmin) return;
     if (section == Sections.workers && !canSeeAdmin) return;
     _sectionChosenSinceOpen = true;
+    if (isWide) {
+      workspaceTabs.openOrActivateTab(_tabForSection(section));
+      return;
+    }
     if (activeSection == section) return;
     if (section == Sections.invoices) {
       invoicesInitialMenu = 'invoices_issued';
@@ -148,6 +192,7 @@ class GroupDashboardState extends ChangeNotifier {
     String? initialInvoiceId,
     String? initialReceiptId,
     String? initialBudgetId,
+    String? tabTitle,
   }) {
     invoicesInitialMenu = initialMenu;
     invoicesInitialInvoiceId = initialInvoiceId;
@@ -155,6 +200,41 @@ class GroupDashboardState extends ChangeNotifier {
     invoicesInitialBudgetId = initialBudgetId;
     invoicesNavigationRevision += 1;
     _sectionChosenSinceOpen = true;
+    if (isWide) {
+      final identity = initialInvoiceId != null
+          ? 'invoice:$initialInvoiceId'
+          : initialReceiptId != null
+              ? 'receipt:$initialReceiptId'
+              : initialBudgetId != null
+                  ? 'budget:$initialBudgetId'
+                  : _invoiceMenuIdentity(initialMenu);
+      final workspaceIdentity = WorkspaceTabIdentity(identity);
+      if (workspaceTabs.isDirty(workspaceIdentity)) {
+        workspaceTabs.activateTab(workspaceIdentity);
+        return;
+      }
+      workspaceTabs.openOrActivateTab(
+        _tabForSection(
+          Sections.invoices,
+          identity: identity,
+          title: tabTitle ??
+              _invoiceTabTitle(
+                initialMenu,
+                invoiceId: initialInvoiceId,
+                receiptId: initialReceiptId,
+                budgetId: initialBudgetId,
+              ),
+          arguments: <String, String>{
+            'initialMenu': initialMenu,
+            'navigationRevision': invoicesNavigationRevision.toString(),
+            if (initialInvoiceId != null) 'initialInvoiceId': initialInvoiceId,
+            if (initialReceiptId != null) 'initialReceiptId': initialReceiptId,
+            if (initialBudgetId != null) 'initialBudgetId': initialBudgetId,
+          },
+        ),
+      );
+      return;
+    }
     activeSection = Sections.invoices;
     final userId = user?.id;
     if (userId != null) {
@@ -219,8 +299,19 @@ class GroupDashboardState extends ChangeNotifier {
 
     role = await RoleResolver.resolve(group: target, userDomain: _ud);
     user = await _getSafeUser();
+    if (isWide && user != null && workspaceTabs.tabs.isEmpty) {
+      await workspaceTabs.configureSession(user!.id);
+      final restored = await workspaceTabs.restore(
+        resolver: _restoreWorkspaceTab,
+      );
+      if (!restored) {
+        workspaceTabs.openOrActivateTab(
+          _tabForSection(canSeeAdmin ? Sections.invoices : Sections.calendar),
+        );
+      }
+    }
     if (!_sectionChosenSinceOpen && canSeeAdmin) {
-      activeSection = Sections.invoices;
+      if (!isWide) activeSection = Sections.invoices;
       invoicesInitialMenu = 'invoices_issued';
     }
     if (_adminOnlySections.contains(activeSection) && !canSeeAdmin) {
@@ -230,6 +321,173 @@ class GroupDashboardState extends ChangeNotifier {
     if (refreshed != null) group = refreshed;
 
     notifyListeners();
+  }
+
+  WorkspaceTab? _restoreWorkspaceTab(WorkspaceTabSnapshot snapshot) {
+    if (!_workspaceSections.contains(snapshot.section)) return null;
+    if (_adminOnlySections.contains(snapshot.section) && !canSeeAdmin) {
+      return null;
+    }
+
+    // Workspace persistence deliberately excludes unsaved form state. An
+    // editor tab without the document it was editing cannot be restored into
+    // a useful workflow: it opens a blank form and immediately presents
+    // validation such as “Select a client to continue”. Restore the durable
+    // invoices landing view instead. Existing invoice, receipt and budget
+    // editor tabs retain their IDs and continue to restore normally.
+    if (snapshot.section == Sections.invoices &&
+        _isTransientInvoiceEditorSnapshot(snapshot)) {
+      return _tabForSection(
+        Sections.invoices,
+        identity: Sections.invoices,
+        arguments: const {'initialMenu': 'invoices_issued'},
+      );
+    }
+    var restoredTitle = snapshot.title;
+    if (snapshot.section == Sections.invoices) {
+      final documentIds = <String>[
+        snapshot.arguments['initialInvoiceId'] ?? '',
+        snapshot.arguments['initialReceiptId'] ?? '',
+        snapshot.arguments['initialBudgetId'] ?? '',
+      ].where((id) => id.isNotEmpty);
+      if (documentIds.any(restoredTitle.contains)) {
+        restoredTitle = _invoiceTabTitle(
+          snapshot.arguments['initialMenu'] ?? '',
+          invoiceId: snapshot.arguments['initialInvoiceId'],
+          receiptId: snapshot.arguments['initialReceiptId'],
+          budgetId: snapshot.arguments['initialBudgetId'],
+        );
+      }
+    }
+    return _tabForSection(
+      snapshot.section,
+      identity: snapshot.identity,
+      title: restoredTitle,
+      arguments: snapshot.arguments,
+    );
+  }
+
+  bool _isTransientInvoiceEditorSnapshot(WorkspaceTabSnapshot snapshot) {
+    final menu = (snapshot.arguments['initialMenu'] ?? '').trim();
+    if (menu == 'invoice_editor') {
+      return (snapshot.arguments['initialInvoiceId'] ?? '').trim().isEmpty;
+    }
+    if (menu == 'receipt_editor') {
+      return (snapshot.arguments['initialReceiptId'] ?? '').trim().isEmpty;
+    }
+    if (menu == 'budgets_new') {
+      return (snapshot.arguments['initialBudgetId'] ?? '').trim().isEmpty;
+    }
+    return snapshot.identity == 'invoice:new';
+  }
+
+  WorkspaceTab _tabForSection(
+    String section, {
+    String? identity,
+    String? title,
+    Map<String, String> arguments = const <String, String>{},
+  }) {
+    final l = AppLocalizations.of(context)!;
+    final es = l.localeName.startsWith('es');
+    final defaults = switch (section) {
+      Sections.invoices => (
+          Icons.receipt_long_outlined,
+          es ? 'Ingresos' : 'Income'
+        ),
+      Sections.expenses => (
+          Icons.trending_down_rounded,
+          es ? 'Gastos' : 'Expenses'
+        ),
+      Sections.enableBanking => (
+          Icons.account_balance_outlined,
+          es ? 'Banco' : 'Bank'
+        ),
+      Sections.calendar => (Icons.calendar_month_rounded, l.calendar),
+      Sections.budgets => (
+          Icons.description_outlined,
+          es ? 'Propuestas' : 'Proposals'
+        ),
+      Sections.businessChat => (Icons.chat_bubble_outline_rounded, 'Chat'),
+      Sections.maps => (Icons.map_outlined, es ? 'Mapa' : 'Map'),
+      Sections.emails => (Icons.email_outlined, 'Emails'),
+      Sections.workers => (
+          Icons.access_time_rounded,
+          es ? 'Trabajadores' : 'Workers'
+        ),
+      Sections.chat => (
+          Icons.auto_awesome_outlined,
+          es ? 'Asistente IA' : 'AI assistant'
+        ),
+      Sections.telegram => (Icons.telegram, 'Telegram'),
+      Sections.settings => (
+          Icons.settings_outlined,
+          es ? 'Ajustes' : 'Settings'
+        ),
+      Sections.notifications => (
+          Icons.notifications_none_rounded,
+          l.notifications
+        ),
+      Sections.agenda => (Icons.event_note_outlined, es ? 'Agenda' : 'Agenda'),
+      Sections.services => (
+          Icons.people_outline_rounded,
+          es ? 'Clientes' : 'Clients'
+        ),
+      Sections.members => (Icons.groups_outlined, es ? 'Miembros' : 'Members'),
+      _ => (Icons.dashboard_outlined, section),
+    };
+    return WorkspaceTab(
+      identity: WorkspaceTabIdentity(identity ?? section),
+      section: section,
+      title: title?.trim().isNotEmpty == true ? title!.trim() : defaults.$2,
+      icon: defaults.$1,
+      arguments: Map.unmodifiable(arguments),
+    );
+  }
+
+  String _invoiceMenuIdentity(String menu) {
+    final normalized = menu.toLowerCase();
+    if (normalized.contains('create') || normalized.contains('new')) {
+      return 'invoice:new';
+    }
+    if (normalized == 'invoices_issued' || normalized.isEmpty) {
+      return Sections.invoices;
+    }
+    return 'invoices:$normalized';
+  }
+
+  String _invoiceTabTitle(
+    String menu, {
+    String? invoiceId,
+    String? receiptId,
+    String? budgetId,
+  }) {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    final normalized = menu.toLowerCase();
+    // Document IDs remain part of the stable workspace identity and routing,
+    // but are not meaningful labels for users. Callers pass a document number
+    // through tabTitle when it is already available; otherwise use a localized
+    // fallback until the loaded editor updates the title from its metadata.
+    if (invoiceId != null) {
+      if (normalized.contains('draft')) {
+        return es ? 'Borrador de factura' : 'Invoice draft';
+      }
+      return es ? 'Factura' : 'Invoice';
+    }
+    if (receiptId != null) return es ? 'Recibo' : 'Receipt';
+    if (budgetId != null) return es ? 'Presupuesto' : 'Proposal';
+    if (normalized.contains('create') || normalized.contains('new')) {
+      return es ? 'Nueva factura' : 'New invoice';
+    }
+    if (normalized.contains('receipt') || normalized.contains('recibo')) {
+      return es ? 'Recibos' : 'Receipts';
+    }
+    if (normalized.contains('budget') || normalized.contains('presupuesto')) {
+      return es ? 'Presupuestos' : 'Proposals';
+    }
+    if (normalized.contains('recurring')) {
+      return es ? 'Facturas recurrentes' : 'Recurring invoices';
+    }
+    return es ? 'Ingresos' : 'Income';
   }
 
   Future<User?> _getSafeUser() async {

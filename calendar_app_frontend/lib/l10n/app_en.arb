@@ -3671,5 +3671,18 @@
   "downloadsRefresh": "Refresh",
   "downloadsEmpty": "No recent downloads",
   "downloadsChecking": "Checking files…",
-  "downloadsGeneratedFile": "Generated file"
+  "downloadsGeneratedFile": "Generated file",
+  "preferencesTitle": "Preferences",
+  "preferencesNavigation": "Navigation",
+  "preferencesAppearance": "Appearance",
+  "preferencesLanguage": "Language",
+  "preferencesAutomatic": "Automatic",
+  "preferencesNavigationAutomatic": "Automatic",
+  "preferencesNavigationAutomaticDescription": "Show labels when space is available.",
+  "preferencesNavigationIconsAndText": "Icons and text",
+  "preferencesNavigationIconsAndTextDescription": "Always show module icons and labels.",
+  "preferencesNavigationIconsOnly": "Icons only",
+  "preferencesNavigationIconsOnlyDescription": "Use a compact navigation with tooltips.",
+  "preferencesThemeLight": "Light",
+  "preferencesThemeDark": "Dark"
 }
