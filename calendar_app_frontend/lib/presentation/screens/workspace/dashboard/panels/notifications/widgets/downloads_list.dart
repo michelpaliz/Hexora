@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/downloads/download_job.dart';
+import 'package:hexora/presentation/shared/downloads/download_job_display.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 class DownloadsList extends StatelessWidget {
@@ -56,9 +57,8 @@ class _DownloadRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final isEs = Localizations.localeOf(context).languageCode == 'es';
     final statusColor = _statusColor(item.status, cs);
-    final statusLabel = _statusLabel(item.status, isEs);
+    final statusLabel = DownloadJobDisplay.status(context, item);
 
     return Material(
       color: Colors.transparent,
@@ -102,9 +102,7 @@ class _DownloadRow extends StatelessWidget {
                         ),
                       )
                     : Icon(
-                        item.isPdf
-                            ? Icons.picture_as_pdf_rounded
-                            : Icons.description_rounded,
+                        DownloadJobDisplay.icon(item),
                         size: 17,
                         color: statusColor,
                       ),
@@ -114,28 +112,18 @@ class _DownloadRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      item.title.trim().isNotEmpty
-                          ? item.title
-                          : item.effectiveFileName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: t.bodySmall.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: cs.onSurface,
-                      ),
-                    ),
-                    if (item.description.trim().isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        item.description,
+                    Tooltip(
+                      message: item.effectiveFileName,
+                      child: Text(
+                        DownloadJobDisplay.name(context, item),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: t.caption.copyWith(
-                          color: cs.onSurfaceVariant,
+                        style: t.bodySmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: cs.onSurface,
                         ),
                       ),
-                    ],
+                    ),
                     const SizedBox(height: 3),
                     Row(
                       children: [
@@ -163,7 +151,7 @@ class _DownloadRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      _formatTimestamp(item.createdAt),
+                      DownloadJobDisplay.timestamp(context, item),
                       style: t.caption.copyWith(
                         color: cs.onSurfaceVariant.withValues(alpha: 0.70),
                         fontSize: 10,
@@ -177,23 +165,6 @@ class _DownloadRow extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  static String _statusLabel(String status, bool isEs) {
-    switch (status) {
-      case 'queued':
-        return isEs ? 'En cola' : 'Queued';
-      case 'processing':
-        return isEs ? 'Preparando' : 'Preparing';
-      case 'ready':
-        return isEs ? 'Listo' : 'Ready';
-      case 'failed':
-        return isEs ? 'Error' : 'Failed';
-      case 'expired':
-        return isEs ? 'Caducado' : 'Expired';
-      default:
-        return status;
-    }
   }
 
   static Color _statusColor(String status, ColorScheme cs) {
@@ -219,9 +190,4 @@ class _DownloadRow extends StatelessWidget {
     return '${mb.toStringAsFixed(mb >= 100 ? 0 : 1)} MB';
   }
 
-  static String _formatTimestamp(DateTime dateTime) {
-    final hh = dateTime.hour.toString().padLeft(2, '0');
-    final mm = dateTime.minute.toString().padLeft(2, '0');
-    return '${dateTime.day}/${dateTime.month}/${dateTime.year} · $hh:$mm';
-  }
 }

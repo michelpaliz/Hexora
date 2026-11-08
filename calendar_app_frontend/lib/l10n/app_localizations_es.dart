@@ -8033,4 +8033,65 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get agendaEmptyDay =>
       'No hay trabajos para este día. Selecciona otra fecha o Todos.';
+  @override
+  String get downloadsTitle => "Descargas";
+
+  @override
+  String get downloadsRecent => "Descargas recientes";
+
+  @override
+  String get downloadsViewAll => "Ver todas las descargas";
+
+  @override
+  String get downloadsInvoicesZip => "Facturas";
+
+  @override
+  String get downloadsInvoiceVatAudit => "Auditoría de IVA de facturas";
+
+  @override
+  String get downloadsExpenseVatAudit => "Auditoría de IVA de gastos";
+
+  @override
+  String get downloadsBankExpenses => "Gastos bancarios";
+
+  @override
+  String get downloadsBankTransactions => "Movimientos bancarios";
+
+  @override
+  String get downloadsInsights => "Informe de análisis";
+
+  @override
+  String get downloadsCustomReport => "Informe personalizado";
+
+  @override
+  String get downloadsInvoice => "Factura";
+
+  @override
+  String get downloadsQueued => "En cola";
+
+  @override
+  String get downloadsProcessing => "Procesando";
+
+  @override
+  String get downloadsReady => "Listo";
+
+  @override
+  String get downloadsFailed => "Error";
+
+  @override
+  String get downloadsExpired => "Caducado";
+
+  @override
+  String get downloadsRefresh => "Actualizar";
+
+  @override
+  String get downloadsEmpty => "No hay descargas recientes";
+
+  @override
+  String get downloadsChecking => "Comprobando archivos…";
+
+  @override
+  String get downloadsGeneratedFile => "Archivo generado";
+
+
 }

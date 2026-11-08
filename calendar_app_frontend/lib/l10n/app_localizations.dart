@@ -14191,6 +14191,67 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No jobs for this day. Select another date or All.'**
   String get agendaEmptyDay;
+
+  /// Localized label for downloadsTitle.
+  String get downloadsTitle;
+
+  /// Localized label for downloadsRecent.
+  String get downloadsRecent;
+
+  /// Localized label for downloadsViewAll.
+  String get downloadsViewAll;
+
+  /// Localized label for downloadsInvoicesZip.
+  String get downloadsInvoicesZip;
+
+  /// Localized label for downloadsInvoiceVatAudit.
+  String get downloadsInvoiceVatAudit;
+
+  /// Localized label for downloadsExpenseVatAudit.
+  String get downloadsExpenseVatAudit;
+
+  /// Localized label for downloadsBankExpenses.
+  String get downloadsBankExpenses;
+
+  /// Localized label for downloadsBankTransactions.
+  String get downloadsBankTransactions;
+
+  /// Localized label for downloadsInsights.
+  String get downloadsInsights;
+
+  /// Localized label for downloadsCustomReport.
+  String get downloadsCustomReport;
+
+  /// Localized label for downloadsInvoice.
+  String get downloadsInvoice;
+
+  /// Localized label for downloadsQueued.
+  String get downloadsQueued;
+
+  /// Localized label for downloadsProcessing.
+  String get downloadsProcessing;
+
+  /// Localized label for downloadsReady.
+  String get downloadsReady;
+
+  /// Localized label for downloadsFailed.
+  String get downloadsFailed;
+
+  /// Localized label for downloadsExpired.
+  String get downloadsExpired;
+
+  /// Localized label for downloadsRefresh.
+  String get downloadsRefresh;
+
+  /// Localized label for downloadsEmpty.
+  String get downloadsEmpty;
+
+  /// Localized label for downloadsChecking.
+  String get downloadsChecking;
+
+  /// Localized label for downloadsGeneratedFile.
+  String get downloadsGeneratedFile;
+
 }
 
 class _AppLocalizationsDelegate

@@ -7947,4 +7947,65 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get agendaEmptyDay =>
       'No jobs for this day. Select another date or All.';
+  @override
+  String get downloadsTitle => "Downloads";
+
+  @override
+  String get downloadsRecent => "Recent downloads";
+
+  @override
+  String get downloadsViewAll => "View all downloads";
+
+  @override
+  String get downloadsInvoicesZip => "Invoices";
+
+  @override
+  String get downloadsInvoiceVatAudit => "Invoice VAT audit";
+
+  @override
+  String get downloadsExpenseVatAudit => "Expense VAT audit";
+
+  @override
+  String get downloadsBankExpenses => "Bank expenses";
+
+  @override
+  String get downloadsBankTransactions => "Bank transactions";
+
+  @override
+  String get downloadsInsights => "Insights report";
+
+  @override
+  String get downloadsCustomReport => "Custom report";
+
+  @override
+  String get downloadsInvoice => "Invoice";
+
+  @override
+  String get downloadsQueued => "Queued";
+
+  @override
+  String get downloadsProcessing => "Processing";
+
+  @override
+  String get downloadsReady => "Ready";
+
+  @override
+  String get downloadsFailed => "Failed";
+
+  @override
+  String get downloadsExpired => "Expired";
+
+  @override
+  String get downloadsRefresh => "Refresh";
+
+  @override
+  String get downloadsEmpty => "No recent downloads";
+
+  @override
+  String get downloadsChecking => "Checking files…";
+
+  @override
+  String get downloadsGeneratedFile => "Generated file";
+
+
 }

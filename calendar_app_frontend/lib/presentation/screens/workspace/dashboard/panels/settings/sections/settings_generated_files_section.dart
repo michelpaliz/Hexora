@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/downloads/download_job.dart';
+import 'package:hexora/presentation/shared/downloads/download_job_display.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/downloads/downloads_api.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/notifications/widgets/download_details_panel.dart';
@@ -318,15 +319,16 @@ class _JobRow extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      item.title.trim().isNotEmpty
-                          ? item.title
-                          : item.effectiveFileName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: t.bodySmall.copyWith(
-                        color: cs.onSurface,
-                        fontWeight: FontWeight.w800,
+                    child: Tooltip(
+                      message: item.effectiveFileName,
+                      child: Text(
+                        DownloadJobDisplay.name(context, item),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.bodySmall.copyWith(
+                          color: cs.onSurface,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ),
@@ -339,7 +341,7 @@ class _JobRow extends StatelessWidget {
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
-                      _statusLabel(item.status, isEs),
+                      DownloadJobDisplay.status(context, item),
                       style: t.caption.copyWith(
                         color: statusColor,
                         fontWeight: FontWeight.w700,
@@ -355,11 +357,11 @@ class _JobRow extends StatelessWidget {
               ),
               _MetaLine(
                 label: isEs ? 'Tipo' : 'Type',
-                value: item.jobType.trim().isNotEmpty ? item.jobType : '-',
+                value: DownloadJobDisplay.fileType(item),
               ),
               _MetaLine(
                 label: isEs ? 'Creado' : 'Created',
-                value: _formatDate(item.createdAt),
+                value: DownloadJobDisplay.dateTime(context, item.createdAt),
               ),
               _MetaLine(
                 label: isEs ? 'Tamaño' : 'Size',
@@ -391,29 +393,6 @@ class _JobRow extends StatelessWidget {
       default:
         return cs.onSurfaceVariant;
     }
-  }
-
-  static String _statusLabel(String status, bool isEs) {
-    switch (status) {
-      case 'queued':
-        return isEs ? 'En cola' : 'Queued';
-      case 'processing':
-        return isEs ? 'Preparando' : 'Preparing';
-      case 'ready':
-        return isEs ? 'Listo' : 'Ready';
-      case 'failed':
-        return isEs ? 'Error' : 'Failed';
-      case 'expired':
-        return isEs ? 'Caducado' : 'Expired';
-      default:
-        return status;
-    }
-  }
-
-  static String _formatDate(DateTime value) {
-    final hh = value.hour.toString().padLeft(2, '0');
-    final mm = value.minute.toString().padLeft(2, '0');
-    return '${value.day}/${value.month}/${value.year} · $hh:$mm';
   }
 
   static String _formatBytes(int bytes) {

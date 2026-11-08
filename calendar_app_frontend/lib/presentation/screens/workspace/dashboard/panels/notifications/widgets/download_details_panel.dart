@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/downloads/download_job.dart';
+import 'package:hexora/presentation/shared/downloads/download_job_display.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
@@ -34,7 +35,7 @@ class DownloadDetailsPanel extends StatelessWidget {
     }
 
     final statusColor = _statusColor(item!.status, cs);
-    final statusLabel = _statusLabel(item!.status, isEs);
+    final statusLabel = DownloadJobDisplay.status(context, item!);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
@@ -61,9 +62,7 @@ class DownloadDetailsPanel extends StatelessWidget {
                         ),
                       )
                     : Icon(
-                        item!.isPdf
-                            ? Icons.picture_as_pdf_rounded
-                            : Icons.description_rounded,
+                        DownloadJobDisplay.icon(item!),
                         size: 20,
                         color: statusColor,
                       ),
@@ -74,35 +73,18 @@ class DownloadDetailsPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item!.title.trim().isNotEmpty
-                          ? item!.title
-                          : item!.effectiveFileName,
+                      DownloadJobDisplay.name(context, item!),
                       style: t.bodyLarge.copyWith(
                         fontWeight: FontWeight.w800,
                         color: ThemeColors.textPrimary(context),
                       ),
                     ),
-                    if (item!.description.trim().isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        item!.description,
-                        style: t.bodyMedium.copyWith(
-                          color: ThemeColors.textSecondary(context),
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: [
                         _Pill(label: statusLabel, color: statusColor),
-                        if (item!.jobType.trim().isNotEmpty)
-                          _Pill(
-                            label: item!.jobType,
-                            color: cs.secondary,
-                          ),
                       ],
                     ),
                   ],
@@ -139,7 +121,7 @@ class DownloadDetailsPanel extends StatelessWidget {
           ),
           _DetailRow(
             label: isEs ? 'Tipo' : 'Type',
-            value: _humanType(item!, isEs),
+              value: DownloadJobDisplay.fileType(item!),
           ),
           if ((item!.size ?? 0) > 0)
             _DetailRow(
@@ -149,22 +131,22 @@ class DownloadDetailsPanel extends StatelessWidget {
           _SectionDivider(label: isEs ? 'Estado' : 'Status', cs: cs, t: t),
           _DetailRow(
             label: isEs ? 'Creado' : 'Created',
-            value: _formatDateTime(item!.createdAt),
+            value: DownloadJobDisplay.dateTime(context, item!.createdAt),
           ),
           if (item!.startedAt != null)
             _DetailRow(
               label: isEs ? 'Inicio' : 'Started',
-              value: _formatDateTime(item!.startedAt!),
+              value: DownloadJobDisplay.dateTime(context, item!.startedAt!),
             ),
           if (item!.completedAt != null)
             _DetailRow(
               label: isEs ? 'Completado' : 'Completed',
-              value: _formatDateTime(item!.completedAt!),
+              value: DownloadJobDisplay.dateTime(context, item!.completedAt!),
             ),
           if (item!.expiresAt != null)
             _DetailRow(
               label: isEs ? 'Caduca' : 'Expires',
-              value: _formatDateTime(item!.expiresAt!),
+              value: DownloadJobDisplay.dateTime(context, item!.expiresAt!),
             ),
           if (item!.requestedByUserName.trim().isNotEmpty)
             _DetailRow(
@@ -180,33 +162,6 @@ class DownloadDetailsPanel extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  static String _humanType(DownloadJob job, bool isEs) {
-    if (job.isPdf) return 'PDF';
-    if (job.mimeType.contains('spreadsheetml') ||
-        job.effectiveFileName.toLowerCase().endsWith('.xlsx')) {
-      return isEs ? 'Excel' : 'Excel';
-    }
-    if (job.mimeType.trim().isNotEmpty) return job.mimeType;
-    return isEs ? 'Documento' : 'Document';
-  }
-
-  static String _statusLabel(String status, bool isEs) {
-    switch (status) {
-      case 'queued':
-        return isEs ? 'En cola' : 'Queued';
-      case 'processing':
-        return isEs ? 'Preparando' : 'Preparing';
-      case 'ready':
-        return isEs ? 'Listo' : 'Ready';
-      case 'failed':
-        return isEs ? 'Error' : 'Failed';
-      case 'expired':
-        return isEs ? 'Caducado' : 'Expired';
-      default:
-        return status;
-    }
   }
 
   static Color _statusColor(String status, ColorScheme cs) {
@@ -232,11 +187,6 @@ class DownloadDetailsPanel extends StatelessWidget {
     return '${mb.toStringAsFixed(mb >= 100 ? 0 : 1)} MB';
   }
 
-  static String _formatDateTime(DateTime dt) {
-    final hh = dt.hour.toString().padLeft(2, '0');
-    final mm = dt.minute.toString().padLeft(2, '0');
-    return '${dt.day}/${dt.month}/${dt.year} · $hh:$mm';
-  }
 }
 
 class _SectionDivider extends StatelessWidget {
