@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/downloads/download_job.dart';
+import 'package:hexora/services/shared/content_disposition.dart';
 import 'package:intl/intl.dart';
 
 /// Presentation only: stored filenames and download URLs remain unchanged.
@@ -51,6 +52,38 @@ class DownloadJobDisplay {
 
   static String timestamp(BuildContext context, DownloadJob job) {
     return dateTime(context, job.completedAt ?? job.createdAt);
+  }
+
+  static String downloadFilename(
+    BuildContext context,
+    DownloadJob job,
+    Map<String, String> headers,
+  ) {
+    final fromServer = downloadFileNameFromHeaders(headers, fallback: '');
+    if (fromServer.isNotEmpty) return fromServer;
+    final l = _l(context);
+    final date = job.completedAt ?? job.createdAt;
+    final stamp = '${date.year.toString().padLeft(4, '0')}'
+        '${date.month.toString().padLeft(2, '0')}'
+        '${date.day.toString().padLeft(2, '0')}';
+    final original = job.effectiveFileName;
+    final extension = original.contains('.') ? '.${original.split('.').last}' : '';
+    final base = switch (job.jobType) {
+      'invoice_zip' => l.localeName.startsWith('es') ? 'facturas' : 'invoices',
+      'bank_transactions_excel' => job.params['amountType'] == 'expense'
+          ? (l.localeName.startsWith('es') ? 'gastos-bancarios' : 'bank-expenses')
+          : (l.localeName.startsWith('es') ? 'movimientos-bancarios' : 'bank-transactions'),
+      'invoice_vat_audit_excel' => l.localeName.startsWith('es')
+          ? 'auditoria-iva-facturas' : 'invoice-vat-audit',
+      'expense_vat_audit_excel' => l.localeName.startsWith('es')
+          ? 'auditoria-iva-gastos' : 'expense-vat-audit',
+      'insights_excel' => l.localeName.startsWith('es') ? 'informe-analisis' : 'insights-report',
+      'custom_report' => l.localeName.startsWith('es') ? 'informe-personalizado' : 'custom-report',
+      'worker_hours_excel' => l.localeName.startsWith('es') ? 'horas-trabajadas' : 'worker-hours',
+      'presupuesto_zip' => l.localeName.startsWith('es') ? 'presupuestos' : 'budgets',
+      _ => '',
+    };
+    return base.isEmpty ? original : '$base-$stamp$extension';
   }
 
   static String dateTime(BuildContext context, DateTime date) {

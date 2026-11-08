@@ -16,6 +16,7 @@ import 'package:hexora/presentation/screens/workspace/dashboard/panels/notificat
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/notifications/widgets/notification_details_panel.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/notifications/widgets/notifications_list.dart';
 import 'package:hexora/presentation/shared/downloads/download_jobs_store.dart';
+import 'package:hexora/presentation/shared/downloads/download_job_display.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
@@ -667,7 +668,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
       final response = await _downloadsApi.downloadFile(job);
       await launchFileDownload(
         response.bodyBytes,
-        fileName: job.effectiveFileName,
+        fileName: DownloadJobDisplay.downloadFilename(context, job, response.headers),
         mimeType: job.mimeType.trim().isNotEmpty
             ? job.mimeType
             : 'application/octet-stream',

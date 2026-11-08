@@ -1224,12 +1224,15 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   String _fileName(String suffix) {
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
     final number =
-        (widget.presupuestoNumber ?? _documentFlow.presupuestoId ?? 'documento')
+        (widget.presupuestoNumber ?? _documentFlow.presupuestoId ??
+                (isSpanish ? 'documento' : 'document'))
             .replaceAll('/', '-')
             .trim();
-    final prefix = Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto' : 'budget';
-    return '$prefix-$number-$suffix.pdf';
+    final prefix = isSpanish ? 'presupuesto' : 'budget';
+    final localizedSuffix = isSpanish && suffix == 'preview' ? 'vista-previa' : suffix;
+    return '$prefix-$number-$localizedSuffix.pdf';
   }
 
   void _moveSection(int index, int delta) {

@@ -182,7 +182,10 @@ class _PresupuestoDocumentActionsViewState
     setState(() => _fileBusyId = id);
     try {
       final number = _documentNumber(document).replaceAll('/', '-');
-      final fileName = '$pdfPrefix-$number-documento.pdf';
+      final documentSuffix = Localizations.localeOf(context).languageCode == 'es'
+          ? 'documento'
+          : 'document';
+      final fileName = '$pdfPrefix-$number-$documentSuffix.pdf';
       final variables = await _api.getTemplateVariables(id);
       if (!mounted ||
           !await _confirmUnresolvedVariables(

@@ -63,7 +63,7 @@ class _DownloadJobsTopMenuState extends State<DownloadJobsTopMenu> {
       final response = await _api.downloadFile(job);
       await launchFileDownload(
         response.bodyBytes,
-        fileName: job.effectiveFileName,
+        fileName: DownloadJobDisplay.downloadFilename(context, job, response.headers),
         mimeType: job.mimeType.isEmpty ? 'application/octet-stream' : job.mimeType,
       );
     } catch (error) {

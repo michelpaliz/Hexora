@@ -92,7 +92,7 @@ class _SettingsGeneratedFilesSectionState
       final response = await _downloadsApi.downloadFile(job);
       await launchFileDownload(
         response.bodyBytes,
-        fileName: job.effectiveFileName,
+        fileName: DownloadJobDisplay.downloadFilename(context, job, response.headers),
         mimeType: job.mimeType.trim().isNotEmpty
             ? job.mimeType
             : 'application/octet-stream',

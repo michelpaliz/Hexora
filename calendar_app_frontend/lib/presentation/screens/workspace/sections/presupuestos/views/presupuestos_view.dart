@@ -7,6 +7,7 @@ import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice_block.dart';
 import 'package:hexora/models/presupuesto/presupuesto_kind.dart';
 import 'package:hexora/services/presupuestos/presupuestos_api.dart';
+import 'package:hexora/services/shared/content_disposition.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_pdf.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/form/invoice_content_section.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_form_sheet/invoice_blocks_editor.dart';
@@ -1418,9 +1419,17 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
     try {
       final response =
           await _presupuestosApi.downloadAllPdfsZip(groupId: widget.groupId);
+      final date = DateTime.now();
+      final stamp = '${date.year.toString().padLeft(4, '0')}'
+          '${date.month.toString().padLeft(2, '0')}'
+          '${date.day.toString().padLeft(2, '0')}';
+      final prefix = l.localeName.startsWith('es') ? 'presupuestos' : 'budgets';
       await launchFileDownload(
         response.bodyBytes,
-        fileName: 'presupuestos-${widget.groupId}.zip',
+        fileName: downloadFileNameFromHeaders(
+          response.headers,
+          fallback: '$prefix-$stamp.zip',
+        ),
         mimeType: 'application/zip',
       );
     } on PresupuestosApiException catch (e) {

@@ -4,6 +4,7 @@ import 'package:hexora/services/groups/event/repository/i_event_repository.dart'
 import 'utils/event_args_helper.dart';
 import 'utils/notification_destination.dart';
 import 'package:hexora/models/downloads/download_job.dart';
+import 'package:hexora/presentation/shared/downloads/download_job_display.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/jobs/background_job.dart';
 import 'package:hexora/models/jobs/job_notification.dart';
@@ -368,7 +369,7 @@ class _ShowNotificationsState extends State<ShowNotifications>
       final response = await _downloadsApi.downloadFile(job);
       await launchFileDownload(
         response.bodyBytes,
-        fileName: job.effectiveFileName,
+        fileName: DownloadJobDisplay.downloadFilename(context, job, response.headers),
         mimeType: job.mimeType.trim().isNotEmpty
             ? job.mimeType
             : 'application/octet-stream',
