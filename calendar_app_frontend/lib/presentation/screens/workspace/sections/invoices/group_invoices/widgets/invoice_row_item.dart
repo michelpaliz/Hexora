@@ -181,11 +181,16 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   Widget _buildMobileCard(AppLocalizations l, AppTypography t, ColorScheme cs,
       String total, String date) {
     final inv = widget.invoice;
+    final notes = (inv.notes ?? '').trim();
     return MobileDocumentCard(
       title: widget.client.name,
       amount: total,
-      metadata:
-          [inv.invoiceNumber, date].where((v) => v.isNotEmpty).join(' · '),
+      metadata: [
+        inv.invoiceNumber,
+        date,
+        if (notes.isNotEmpty)
+          '${l.localeName.toLowerCase().startsWith('es') ? 'Notas' : 'Notes'}: $notes',
+      ].where((v) => v.isNotEmpty).join(' · '),
       isDraft: inv.isDraft,
       statusLabel: inv.isDraft ? l.statusDraft : l.statusIssued,
       onTap: widget.onTap,
@@ -259,6 +264,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     final invoiceType = (widget.invoice.invoiceType ?? '').trim().toLowerCase();
     final showInvoiceType = invoiceType == 'advance' || invoiceType == 'final';
     final isEs = l.localeName.toLowerCase().startsWith('es');
+    final invoiceNotes = (widget.invoice.notes ?? '').trim();
     final showsAdvanceDeduction =
         invoiceType == 'final' && settlementDeduction > 0;
     final effectiveDiscount = showsAdvanceDeduction
@@ -706,6 +712,39 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                         ),
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 124,
+                  child: Tooltip(
+                    message: invoiceNotes.isEmpty ? (isEs ? 'Sin notas' : 'No notes') : invoiceNotes,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          isEs ? 'Notas' : 'Notes',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.bodySmall.copyWith(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.72),
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          invoiceNotes.isEmpty ? '—' : invoiceNotes,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.bodySmall.copyWith(
+                            fontSize: 11,
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.9),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
