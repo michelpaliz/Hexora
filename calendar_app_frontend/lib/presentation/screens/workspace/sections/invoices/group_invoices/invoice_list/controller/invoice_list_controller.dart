@@ -58,6 +58,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   DateTime? _fromDate;
   DateTime? _toDate;
   bool _filtersExpanded = false;
+  String _duplicateFilter = 'all';
   bool _unlinkedOnly = false;
   bool _unlinkedLoading = false;
   String? _unlinkedError;

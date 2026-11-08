@@ -127,6 +127,7 @@ class Invoice {
   final String? recurringSeriesId;
   final DateTime? occurrenceDate;
   final bool? isLinked;
+  final bool isDuplicate;
   final bool? linked;
   final String? linkStatusLabel;
   final String? totalFormatted;
@@ -184,6 +185,7 @@ class Invoice {
     this.recurringSeriesId,
     this.occurrenceDate,
     this.isLinked,
+    this.isDuplicate = false,
     this.linked,
     this.linkStatusLabel,
     this.totalFormatted,
@@ -242,6 +244,7 @@ class Invoice {
     String? recurringSeriesId,
     DateTime? occurrenceDate,
     bool? isLinked,
+    bool? isDuplicate,
     bool? linked,
     String? linkStatusLabel,
     String? totalFormatted,
@@ -299,6 +302,7 @@ class Invoice {
       recurringSeriesId: recurringSeriesId ?? this.recurringSeriesId,
       occurrenceDate: occurrenceDate ?? this.occurrenceDate,
       isLinked: isLinked ?? this.isLinked,
+      isDuplicate: isDuplicate ?? this.isDuplicate,
       linked: linked ?? this.linked,
       linkStatusLabel: linkStatusLabel ?? this.linkStatusLabel,
       totalFormatted: totalFormatted ?? this.totalFormatted,
@@ -589,6 +593,7 @@ class Invoice {
           json['recurrenceSeriesId']),
       occurrenceDate: parseDate(json['occurrenceDate']),
       isLinked: parsedIsLinked,
+      isDuplicate: json['isDuplicate'] == true,
       linked: parsedLinked,
       linkStatusLabel: json['linkStatusLabel']?.toString(),
       totalFormatted: parsedTotalFormatted,

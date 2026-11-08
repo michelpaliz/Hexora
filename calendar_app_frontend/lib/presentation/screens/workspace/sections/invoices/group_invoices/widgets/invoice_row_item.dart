@@ -188,6 +188,8 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       metadata: [
         inv.invoiceNumber,
         date,
+        if (inv.isDuplicate)
+          l.localeName.toLowerCase().startsWith('es') ? 'Duplicado' : 'Duplicate',
         if (notes.isNotEmpty)
           '${l.localeName.toLowerCase().startsWith('es') ? 'Notas' : 'Notes'}: $notes',
       ].where((v) => v.isNotEmpty).join(' · '),
@@ -508,23 +510,51 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                         children: [
                           // Invoice number + date + line count
                           Expanded(
-                            child: Text(
-                              [
-                                widget.invoice.displayNumber(
-                                  draftLabel: l.statusDraft,
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    widget.invoice.displayNumber(
+                                      draftLabel: l.statusDraft,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: t.bodySmall.copyWith(
+                                      fontSize: 11,
+                                      color: cs.onSurfaceVariant.withValues(alpha: 0.8),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
-                                if (_lineCount != null || _loadingMeta)
-                                  '${l.invoiceLinesTitle}: $linesCountLabel',
-                                if (dateLabel.isNotEmpty) dateLabel,
-                              ].join('  ·  '),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: t.bodySmall.copyWith(
-                                fontSize: 11,
-                                color:
-                                    cs.onSurfaceVariant.withValues(alpha: 0.8),
-                                fontWeight: FontWeight.w500,
-                              ),
+                                if (widget.invoice.isDuplicate) ...[
+                                  const SizedBox(width: 6),
+                                  _InlinePill(
+                                    label: isEs ? 'Duplicado' : 'Duplicate',
+                                    color: amber,
+                                    bg: amberBg.withValues(alpha: isLight ? 0.86 : 0.42),
+                                    icon: Icons.content_copy_rounded,
+                                  ),
+                                ],
+                                if (_lineCount != null || _loadingMeta || dateLabel.isNotEmpty) ...[
+                                  const SizedBox(width: 7),
+                                  Expanded(
+                                    child: Text(
+                                      [
+                                        if (_lineCount != null || _loadingMeta)
+                                          '${l.invoiceLinesTitle}: $linesCountLabel',
+                                        if (dateLabel.isNotEmpty) dateLabel,
+                                      ].join('  ·  '),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: t.bodySmall.copyWith(
+                                        fontSize: 11,
+                                        color: cs.onSurfaceVariant.withValues(alpha: 0.8),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                           const SizedBox(width: 6),

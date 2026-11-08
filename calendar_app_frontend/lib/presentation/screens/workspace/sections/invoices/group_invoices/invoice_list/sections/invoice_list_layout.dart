@@ -8,6 +8,10 @@ extension _InvoiceListLayout on _InvoicesTabListState {
         ? (_unlinkedInvoices ?? const <Invoice>[])
         : widget.invoices;
     final filtered = sourceInvoices.where((inv) {
+      if (_duplicateFilter == 'duplicates' && !inv.isDuplicate) return false;
+      if (_duplicateFilter == 'without_duplicates' && inv.isDuplicate) {
+        return false;
+      }
       final date = _invoiceDate(inv);
       if (!hasFilter) return true;
       if (date == null) return false;
@@ -279,8 +283,63 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                 );
               }
 
+              Widget duplicateFilterButton() {
+                final selection = switch (_duplicateFilter) {
+                  'duplicates' => isSpanish ? 'Solo duplicados' : 'Duplicates only',
+                  'without_duplicates' => isSpanish ? 'Sin duplicados' : 'Without duplicates',
+                  _ => isSpanish ? 'Todos' : 'All',
+                };
+                return PopupMenuButton<String>(
+                  tooltip: isSpanish ? 'Filtrar duplicados' : 'Filter duplicates',
+                  onSelected: (value) => _updateInvoiceListState(
+                    () => _duplicateFilter = value,
+                  ),
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'all',
+                      child: Text(isSpanish ? 'Todos' : 'All'),
+                    ),
+                    PopupMenuItem(
+                      value: 'duplicates',
+                      child: Text(isSpanish ? 'Solo duplicados' : 'Duplicates only'),
+                    ),
+                    PopupMenuItem(
+                      value: 'without_duplicates',
+                      child: Text(isSpanish ? 'Sin duplicados' : 'Without duplicates'),
+                    ),
+                  ],
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: cs.surface.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: cs.outlineVariant.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.filter_list_rounded, size: 14, color: cs.onSurfaceVariant),
+                        const SizedBox(width: 5),
+                        Text(
+                          '${isSpanish ? 'Duplicados' : 'Duplicates'}: $selection',
+                          style: t.bodySmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(width: 3),
+                        Icon(Icons.arrow_drop_down_rounded, size: 17, color: cs.onSurfaceVariant),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
               final labelActions = <Widget>[
                 if (issueAllButton != null) issueAllButton,
+                duplicateFilterButton(),
                 sortButton(
                   value: InvoiceSortBy.date,
                   label: l.date,
