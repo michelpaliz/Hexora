@@ -11,6 +11,7 @@ class DownloadJobsStore extends ChangeNotifier {
 
   final DownloadsApi _api = DownloadsApi();
   final List<DownloadJob> _jobs = <DownloadJob>[];
+  final Set<String> _unseenReadyIds = <String>{};
 
   Timer? _pollTimer;
   DateTime? _nextRefreshAt;
@@ -22,6 +23,13 @@ class DownloadJobsStore extends ChangeNotifier {
   bool _openDownloadsRequested = false;
 
   List<DownloadJob> get jobs => List.unmodifiable(_jobs);
+  int get newReadyCount => _unseenReadyIds.length;
+
+  void markReadySeen() {
+    if (_unseenReadyIds.isEmpty) return;
+    _unseenReadyIds.clear();
+    notifyListeners();
+  }
   bool get loading => _loading;
   bool get loadedOnce => _loadedOnce;
   String? get boundGroupId => _groupId;
@@ -52,6 +60,7 @@ class DownloadJobsStore extends ChangeNotifier {
     _nextRefreshAt = null;
     _groupId = normalized;
     _jobs.clear();
+    _unseenReadyIds.clear();
     _loadedOnce = false;
     _loading = false;
     _error = null;
@@ -125,6 +134,7 @@ class DownloadJobsStore extends ChangeNotifier {
       _pollTimer = null;
       _nextRefreshAt = null;
       _jobs.clear();
+      _unseenReadyIds.clear();
       _groupId = groupId;
     }
     upsert(job);
@@ -136,6 +146,10 @@ class DownloadJobsStore extends ChangeNotifier {
   void upsert(DownloadJob job) {
     if (_groupId != null && job.groupId != _groupId) return;
     final index = _jobs.indexWhere((item) => item.id == job.id);
+    if (job.status == 'ready' && job.canDownload &&
+        (index == -1 || _jobs[index].status != 'ready')) {
+      _unseenReadyIds.add(job.id);
+    }
     if (index == -1) {
       _jobs.add(job);
     } else {
@@ -147,6 +161,17 @@ class DownloadJobsStore extends ChangeNotifier {
   }
 
   void _replaceJobs(List<DownloadJob> jobs) {
+    if (_loadedOnce) {
+      final previous = {for (final job in _jobs) job.id: job};
+      for (final job in jobs) {
+        if (job.status == 'ready' && job.canDownload &&
+            previous[job.id]?.status != 'ready') {
+          _unseenReadyIds.add(job.id);
+        }
+      }
+    }
+    final readyIds = jobs.where((job) => job.status == 'ready').map((job) => job.id).toSet();
+    _unseenReadyIds.removeWhere((id) => !readyIds.contains(id));
     _jobs
       ..clear()
       ..addAll(jobs);
@@ -154,13 +179,7 @@ class DownloadJobsStore extends ChangeNotifier {
   }
 
   void _sortJobs() {
-    _jobs.sort((a, b) {
-      final aActive = a.isActive ? 0 : 1;
-      final bActive = b.isActive ? 0 : 1;
-      final activeCmp = aActive.compareTo(bActive);
-      if (activeCmp != 0) return activeCmp;
-      return b.createdAt.compareTo(a.createdAt);
-    });
+    _jobs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
   void _ensurePolling() {

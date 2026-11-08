@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/downloads/download_job.dart';
+import 'package:hexora/presentation/shared/downloads/download_job_display.dart';
 import 'package:hexora/presentation/shared/downloads/download_jobs_store.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/file_download_launcher.dart';
 import 'package:hexora/services/downloads/downloads_api.dart';
@@ -27,75 +30,35 @@ class DownloadJobsTopMenu extends StatefulWidget {
 class _DownloadJobsTopMenuState extends State<DownloadJobsTopMenu> {
   final _store = DownloadJobsStore.instance;
   final _api = DownloadsApi();
-  Timer? _clock;
+  final _menu = MenuController();
 
   @override
   void initState() {
     super.initState();
     unawaited(_bindJobs());
-    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && _store.nextRefreshAt != null) setState(() {});
-    });
   }
 
   @override
   void didUpdateWidget(covariant DownloadJobsTopMenu oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.groupId != widget.groupId) {
+      _menu.close();
       unawaited(_bindJobs());
     }
   }
 
   Future<void> _bindJobs() async {
     final groupId = widget.groupId;
-    final alreadyLoaded = _store.boundGroupId == groupId &&
-        _store.loadedOnce;
+    final alreadyLoaded = _store.boundGroupId == groupId && _store.loadedOnce;
     await _store.bindGroup(groupId);
     if (alreadyLoaded && _store.boundGroupId == groupId) {
       await _store.refresh();
     }
   }
 
-  @override
-  void dispose() {
-    _clock?.cancel();
-    super.dispose();
-  }
-
-  String _label(DownloadJob job, bool isEs) {
-    if (job.fileName.trim().isNotEmpty) return job.fileName;
-    return switch (job.jobType) {
-      'invoice_zip' => isEs ? 'ZIP de facturas' : 'Invoice ZIP',
-      'invoice_vat_audit_excel' => isEs ? 'Excel de IVA de facturas' : 'Invoice VAT Excel',
-      'expense_vat_audit_excel' => isEs ? 'Excel de IVA de gastos' : 'Expense VAT Excel',
-      'insights_excel' => isEs ? 'Excel de análisis' : 'Insights Excel',
-      _ => job.title.trim().isNotEmpty ? job.title : (isEs ? 'Archivo generado' : 'Generated file'),
-    };
-  }
-
-  String _status(DownloadJob job, bool isEs) => switch (job.status) {
-        'queued' => isEs ? 'En cola' : 'Queued',
-        'processing' => isEs ? 'Preparando' : 'Preparing',
-        'ready' => isEs ? 'Listo para descargar' : 'Ready to download',
-        'failed' => isEs ? 'Error al generar' : 'Generation failed',
-        'expired' => isEs ? 'Caducado' : 'Expired',
-        _ => job.status,
-      };
-
-  Future<void> _select(String value) async {
-    if (value == 'refresh') {
-      await _store.refresh();
-      return;
-    }
-    if (value == 'open') {
-      _openAll();
-      return;
-    }
-    final job = _store.jobs.where((item) => item.id == value).firstOrNull;
-    if (job == null || job.status != 'ready' || !job.canDownload) {
-      _openAll();
-      return;
-    }
+  Future<void> _download(DownloadJob job) async {
+    if (job.status != 'ready' || !job.canDownload) return;
+    _menu.close();
     try {
       final response = await _api.downloadFile(job);
       await launchFileDownload(
@@ -112,153 +75,195 @@ class _DownloadJobsTopMenuState extends State<DownloadJobsTopMenu> {
   }
 
   void _openAll() {
+    _menu.close();
     if (widget.openInNotifications) _store.requestOpenDownloads();
     widget.onViewAllDownloads();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final l = AppLocalizations.of(context)!;
     final colors = Theme.of(context).colorScheme;
     return ListenableBuilder(
       listenable: _store,
       builder: (context, _) {
-        final groupJobs = _store.jobs
+        final jobs = _store.jobs
             .where((job) => job.groupId == widget.groupId)
+            .take(5)
             .toList(growable: false);
-        final jobs = groupJobs.take(5);
-        final active = groupJobs.where((job) => job.isActive).length;
-        final recentCutoff = DateTime.now().subtract(const Duration(days: 1));
-        final ready = groupJobs.where((job) =>
-            job.status == 'ready' &&
-            job.canDownload &&
-            (job.completedAt ?? job.createdAt).isAfter(recentCutoff)).length;
+        final hasActiveJobs = _store.jobs.any((job) =>
+            job.groupId == widget.groupId && job.isActive);
         final nextRefreshAt = _store.nextRefreshAt;
-        final seconds = nextRefreshAt == null
-            ? null
-            : (nextRefreshAt.difference(DateTime.now()).inMilliseconds / 1000)
-                .ceil()
-                .clamp(0, 12);
-        final countdown = active == 0
-            ? null
-            : _store.loading
-                ? (isEs ? 'Comprobando archivos...' : 'Checking files...')
-                : seconds == null
-                    ? null
-                    : '${isEs ? 'Actualiza en' : 'Checks in'} ${seconds}s';
-        return PopupMenuButton<String>(
-          tooltip: isEs ? 'Archivos generados' : 'Generated files',
-          onSelected: (value) => unawaited(_select(value)),
-          itemBuilder: (context) => [
-            if (countdown != null)
-              PopupMenuItem<String>(
-                enabled: false,
-                child: Text(countdown),
-              ),
-            if (groupJobs.isEmpty)
-              PopupMenuItem<String>(
-                enabled: false,
-                child: Text(_store.loading
-                    ? (isEs ? 'Cargando descargas...' : 'Loading downloads...')
-                    : _store.error ??
-                        (isEs ? 'No hay descargas recientes' : 'No recent downloads')),
-              ),
-            for (final job in jobs)
-              PopupMenuItem<String>(
-                value: job.id,
-                child: Row(
-                  children: [
-                    Icon(job.status == 'ready'
-                        ? Icons.download_done_rounded
-                        : job.isActive
-                            ? Icons.hourglass_top_rounded
-                            : Icons.error_outline_rounded),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(_label(job, isEs), maxLines: 1, overflow: TextOverflow.ellipsis),
-                          Text(_status(job, isEs), style: Theme.of(context).textTheme.bodySmall),
-                        ],
+        final newReady = _store.newReadyCount;
+        final compact = widget.compact || MediaQuery.sizeOf(context).width < 1200;
+        final menuWidth = math.min(340.0, MediaQuery.sizeOf(context).width - 32.0);
+        final maxListHeight = math.max(64.0,
+            math.min(260.0, MediaQuery.sizeOf(context).height - 160.0));
+        return MenuAnchor(
+          controller: _menu,
+          style: MenuStyle(
+            backgroundColor: WidgetStatePropertyAll(colors.surface),
+            padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+            maximumSize: WidgetStatePropertyAll(Size(menuWidth, MediaQuery.sizeOf(context).height - 40)),
+          ),
+          menuChildren: [
+            SizedBox(
+              width: menuWidth,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 6, 4),
+                  child: Row(children: [
+                    Expanded(child: Text(l.downloadsRecent,
+                        style: Theme.of(context).textTheme.titleSmall)),
+                    IconButton(
+                      tooltip: l.downloadsRefresh,
+                      onPressed: _store.loading ? null : () => unawaited(_store.refresh()),
+                      icon: _store.loading
+                          ? const SizedBox(width: 18, height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.refresh_rounded, size: 19),
+                    ),
+                  ]),
+                ),
+                if (jobs.isEmpty)
+                  SizedBox(height: 56, child: Center(child: Text(
+                    _store.loading ? l.downloadsChecking : _store.error ?? l.downloadsEmpty,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  )))
+                else
+                  SizedBox(
+                    height: math.min(maxListHeight, jobs.length * 52.0),
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: jobs.length,
+                      itemBuilder: (context, index) => _DownloadMenuRow(
+                        job: jobs[index],
+                        onDownload: () => unawaited(_download(jobs[index])),
                       ),
                     ),
-                  ],
+                  ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: _openAll,
+                    child: Text(l.downloadsViewAll),
+                  ),
                 ),
-              ),
-            const PopupMenuDivider(),
-            PopupMenuItem<String>(
-              value: 'refresh',
-              child: Row(children: [
-                const Icon(Icons.refresh_rounded),
-                const SizedBox(width: 8),
-                Text(isEs ? 'Actualizar ahora' : 'Refresh now'),
               ]),
             ),
-            PopupMenuItem<String>(
-              value: 'open',
-              child: Text(isEs ? 'Ver todas las descargas' : 'View all downloads'),
-            ),
           ],
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              if (active > 0 && nextRefreshAt != null)
-                TweenAnimationBuilder<double>(
-                  key: ValueKey(nextRefreshAt.millisecondsSinceEpoch),
-                  tween: Tween<double>(
-                    begin: 0,
-                    end: (1 -
-                            nextRefreshAt.difference(DateTime.now()).inMilliseconds /
-                                12000)
-                        .clamp(0.0, 1.0)
-                        .toDouble(),
-                  ),
-                  duration: const Duration(seconds: 1),
-                  builder: (context, progress, _) => SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            value: progress,
-                            strokeWidth: 2.5,
-                            color: colors.primary,
-                          ),
+          builder: (context, controller, child) {
+            void toggle() {
+              if (controller.isOpen) {
+                controller.close();
+              } else {
+                _store.markReadySeen();
+                controller.open();
+              }
+            }
+            final icon = Stack(clipBehavior: Clip.none, children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: Stack(alignment: Alignment.center, children: [
+                  const Icon(Icons.download_rounded, size: 19),
+                  if (hasActiveJobs && nextRefreshAt != null)
+                    TweenAnimationBuilder<double>(
+                      key: ValueKey(nextRefreshAt.millisecondsSinceEpoch),
+                      tween: Tween(begin: 0, end: 1),
+                      duration: const Duration(seconds: 12),
+                      builder: (context, progress, _) => SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          value: progress,
+                          strokeWidth: 1.5,
+                          color: colors.primary,
                         ),
-                        Icon(Icons.download_rounded, size: 13, color: colors.primary),
-                      ],
+                      ),
                     ),
+                ]),
+              ),
+              if (newReady > 0)
+                Positioned(
+                  right: -9,
+                  top: -8,
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    decoration: BoxDecoration(
+                      color: colors.error,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(newReady > 9 ? '9+' : '$newReady',
+                        style: TextStyle(color: colors.onError, fontSize: 9,
+                            fontWeight: FontWeight.w700)),
                   ),
-                )
-              else
-                Icon(ready > 0 && active == 0
-                    ? Icons.download_done_rounded
-                    : Icons.download_rounded,
-                    size: 18,
-                    color: ready > 0 && active == 0 ? colors.tertiary : colors.primary),
-              if (!widget.compact) ...[
-                const SizedBox(width: 5),
-                Text(isEs ? 'Descargas' : 'Downloads'),
-              ],
-              if (active > 0) ...[
-                const SizedBox(width: 5),
-                Text('$active${seconds == null ? '' : ' · ${seconds}s'}',
-                    style: TextStyle(color: colors.primary, fontWeight: FontWeight.w700)),
-              ],
-              if (active == 0 && ready > 0) ...[
-                const SizedBox(width: 5),
-                Text('$ready ${isEs ? 'listo' : 'ready'}',
-                    style: TextStyle(color: colors.tertiary, fontWeight: FontWeight.w700)),
-              ],
-            ]),
-          ),
+                ),
+            ]);
+            if (compact) {
+              return IconButton(
+                tooltip: l.downloadsTitle,
+                onPressed: toggle,
+                icon: icon,
+              );
+            }
+            return TextButton.icon(
+              onPressed: toggle,
+              icon: icon,
+              label: Text(l.downloadsTitle),
+            );
+          },
         );
       },
+    );
+  }
+}
+
+class _DownloadMenuRow extends StatelessWidget {
+  const _DownloadMenuRow({required this.job, required this.onDownload});
+
+  final DownloadJob job;
+  final VoidCallback onDownload;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final name = DownloadJobDisplay.name(context, job);
+    final status = DownloadJobDisplay.status(context, job);
+    final type = DownloadJobDisplay.fileType(job);
+    final time = DownloadJobDisplay.timestamp(context, job);
+    return SizedBox(
+      height: 52,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(children: [
+          Icon(DownloadJobDisplay.icon(job), size: 20, color: colors.onSurfaceVariant),
+          const SizedBox(width: 10),
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Tooltip(
+                message: job.effectiveFileName,
+                child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium),
+              ),
+              Text('$type · $status · $time', maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: job.status == 'failed' ? colors.error : colors.onSurfaceVariant,
+                  )),
+            ],
+          )),
+          IconButton(
+            tooltip: AppLocalizations.of(context)!.download,
+            onPressed: job.status == 'ready' && job.canDownload ? onDownload : null,
+            icon: const Icon(Icons.download_rounded, size: 19),
+          ),
+        ]),
+      ),
     );
   }
 }
