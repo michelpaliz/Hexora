@@ -13,6 +13,7 @@ import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/layout/download_jobs_top_menu.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/layout/group_dashboard_content.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/group_dashboard_right_panel.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/enable_banking_screen.dart';
@@ -346,6 +347,17 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
       notificationCount: unreadNotifications,
       notificationsSelected: state.activeSection == Sections.notifications,
       onOpenNotifications: () => state.openSection(Sections.notifications),
+      downloads: IconTheme(
+        data: const IconThemeData(color: HexoraGlobalNavColors.foreground),
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(color: HexoraGlobalNavColors.foreground),
+          child: DownloadJobsTopMenu(
+            groupId: state.group.id,
+            onViewAllDownloads: () => state.openSection(Sections.notifications),
+            compact: _compact,
+          ),
+        ),
+      ),
       onlineMembers: state.canSeeAdmin
           ? WorkerStatusIndicator(
               groupId: state.group.id,
