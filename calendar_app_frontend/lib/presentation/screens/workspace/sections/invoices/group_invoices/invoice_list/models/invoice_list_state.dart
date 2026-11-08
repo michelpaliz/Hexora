@@ -4,7 +4,7 @@ enum InvoiceSortBy { date, number }
 
 enum InvoiceSortDir { asc, desc }
 
-enum _InvoiceHeaderAction { toggleUnlinked, resolveLinks }
+enum _InvoiceHeaderAction { toggleUnpaid, toggleUnlinked, resolveLinks }
 
 class InvoiceDateFilterState {
   const InvoiceDateFilterState({

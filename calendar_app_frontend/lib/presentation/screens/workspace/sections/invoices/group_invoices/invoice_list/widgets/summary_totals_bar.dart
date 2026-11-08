@@ -10,6 +10,7 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
     required this.toDate,
     required this.quickRange,
     required this.sortActions,
+    required this.unpaidOnly,
     required this.unlinkedOnly,
     required this.paymentSuggestionsLoading,
     required this.onDateRangeSelected,
@@ -26,6 +27,7 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
   final DateTime? toDate;
   final DateQuickRange quickRange;
   final List<Widget> sortActions;
+  final bool unpaidOnly;
   final bool unlinkedOnly;
   final bool paymentSuggestionsLoading;
   final ValueChanged<DateQuickRange> onDateRangeSelected;
@@ -240,11 +242,20 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
                           onSelected: onHeaderAction,
                           itemBuilder: (_) => [
                             CheckedPopupMenuItem(
+                              value: _InvoiceHeaderAction.toggleUnpaid,
+                              checked: unpaidOnly,
+                              child: Text(
+                                isSpanish
+                                    ? 'Facturas no pagadas'
+                                    : 'Unpaid invoices',
+                              ),
+                            ),
+                            CheckedPopupMenuItem(
                               value: _InvoiceHeaderAction.toggleUnlinked,
                               checked: unlinkedOnly,
                               child: Text(
                                 isSpanish
-                                    ? 'Facturas no vinculadas'
+                                    ? 'Facturas sin vincular'
                                     : 'Unlinked invoices',
                               ),
                             ),
@@ -269,12 +280,12 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
                             width: 38,
                             height: 38,
                             decoration: BoxDecoration(
-                              color: unlinkedOnly
+                              color: (unpaidOnly || unlinkedOnly)
                                   ? cs.tertiary.withValues(alpha: 0.10)
                                   : Colors.transparent,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: (unlinkedOnly
+                                color: ((unpaidOnly || unlinkedOnly)
                                         ? cs.tertiary
                                         : cs.outlineVariant)
                                     .withValues(alpha: 0.35),
@@ -292,7 +303,7 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
                                 : Icon(
                                     Icons.more_horiz_rounded,
                                     size: 18,
-                                    color: unlinkedOnly
+                                    color: (unpaidOnly || unlinkedOnly)
                                         ? cs.tertiary
                                         : cs.onSurfaceVariant,
                                   ),

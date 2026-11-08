@@ -59,6 +59,10 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   DateTime? _toDate;
   bool _filtersExpanded = false;
   String _duplicateFilter = 'all';
+  bool _unpaidOnly = false;
+  bool _unpaidLoading = false;
+  String? _unpaidError;
+  List<Invoice>? _unpaidInvoices;
   bool _unlinkedOnly = false;
   bool _unlinkedLoading = false;
   String? _unlinkedError;
@@ -86,6 +90,11 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
     if (oldWidget.showSummaryTotals != widget.showSummaryTotals ||
         oldWidget.invoices != widget.invoices) {
       _scheduleSummaryLoad();
+    }
+    if (_unpaidOnly &&
+        (oldWidget.sortState != widget.sortState ||
+            oldWidget.groupId != widget.groupId)) {
+      _loadUnpaidInvoices();
     }
     if (_unlinkedOnly &&
         (oldWidget.sortState != widget.sortState ||
@@ -171,9 +180,50 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
     };
   }
 
-  Future<void> _loadUnlinkedInvoices() async {
+  Future<void> _loadUnpaidInvoices() async {
     final groupId = widget.groupId.trim();
     if (!widget.showSummaryTotals || groupId.isEmpty) return;
+    setState(() {
+      _unpaidLoading = true;
+      _unpaidError = null;
+    });
+    try {
+      final (sortBy, sortDir) = _invoiceSortParams();
+      final invoices = await _invoicesApi.listByGroup(
+        groupId,
+        status: 'issued',
+        paymentStatus: 'unpaid',
+        sortBy: sortBy,
+        sortDir: sortDir,
+      );
+      if (!mounted) return;
+      setState(() => _unpaidInvoices = invoices);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _unpaidError = e.toString());
+    } finally {
+      if (mounted) setState(() => _unpaidLoading = false);
+    }
+  }
+
+  void _toggleUnpaidOnly() {
+    final next = !_unpaidOnly;
+    setState(() {
+      _unpaidOnly = next;
+      if (next) _unlinkedOnly = false;
+      if (!next) {
+        _unpaidError = null;
+        _paymentSuggestionsError = null;
+      }
+    });
+    if (next && _unpaidInvoices == null) {
+      _loadUnpaidInvoices();
+    }
+  }
+
+  Future<void> _loadUnlinkedInvoices() async {
+    final groupId = widget.groupId.trim();
+    if (groupId.isEmpty) return;
     setState(() {
       _unlinkedLoading = true;
       _unlinkedError = null;
@@ -187,11 +237,9 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
         sortBy: sortBy,
         sortDir: sortDir,
       );
-      if (!mounted) return;
-      setState(() => _unlinkedInvoices = invoices);
+      if (mounted) setState(() => _unlinkedInvoices = invoices);
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _unlinkedError = e.toString());
+      if (mounted) setState(() => _unlinkedError = e.toString());
     } finally {
       if (mounted) setState(() => _unlinkedLoading = false);
     }
@@ -201,14 +249,11 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
     final next = !_unlinkedOnly;
     setState(() {
       _unlinkedOnly = next;
-      if (!next) {
-        _unlinkedError = null;
-        _paymentSuggestionsError = null;
-      }
+      if (next) _unpaidOnly = false;
+      _unlinkedError = null;
+      if (!next) _paymentSuggestionsError = null;
     });
-    if (next && _unlinkedInvoices == null) {
-      _loadUnlinkedInvoices();
-    }
+    if (next && _unlinkedInvoices == null) _loadUnlinkedInvoices();
   }
 
   Future<void> _loadPaymentSuggestions() async {
@@ -475,14 +520,26 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
     _refreshFilteredData();
   }
 
-  Map<String, dynamic> _summaryFromInvoices(List<Invoice> invoices) {
+  Map<String, dynamic> _summaryFromInvoices(
+    List<Invoice> invoices, {
+    required bool outstandingOnly,
+  }) {
     num subtotal = 0;
     num taxTotal = 0;
     num total = 0;
     for (final invoice in invoices) {
-      subtotal += invoice.subtotal ?? 0;
-      taxTotal += invoice.taxTotal ?? 0;
-      total += invoice.total ?? 0;
+      final invoiceTotal = (invoice.total ?? 0).toDouble();
+      final status = (invoice.paymentStatus ?? 'unpaid').toLowerCase();
+      final paidAmount = !outstandingOnly
+          ? 0.0
+          : status == 'paid'
+          ? invoiceTotal
+          : ((invoice.paidAmount ?? 0).toDouble()).clamp(0, invoiceTotal);
+      final outstanding = (invoiceTotal - paidAmount).clamp(0, invoiceTotal);
+      final ratio = invoiceTotal > 0 ? outstanding / invoiceTotal : 0.0;
+      subtotal += (invoice.subtotal ?? 0) * ratio;
+      taxTotal += (invoice.taxTotal ?? 0) * ratio;
+      total += outstanding;
     }
     return {
       'count': invoices.length,

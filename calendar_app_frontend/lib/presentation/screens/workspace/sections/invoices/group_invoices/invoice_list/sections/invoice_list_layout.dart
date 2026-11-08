@@ -4,9 +4,11 @@ extension _InvoiceListLayout on _InvoicesTabListState {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final hasFilter = _fromDate != null || _toDate != null;
-    final sourceInvoices = _unlinkedOnly
-        ? (_unlinkedInvoices ?? const <Invoice>[])
-        : widget.invoices;
+    final sourceInvoices = _unpaidOnly
+        ? (_unpaidInvoices ?? const <Invoice>[])
+        : _unlinkedOnly
+            ? (_unlinkedInvoices ?? const <Invoice>[])
+            : widget.invoices;
     final filtered = sourceInvoices.where((inv) {
       if (_duplicateFilter == 'duplicates' && !inv.isDuplicate) return false;
       if (_duplicateFilter == 'without_duplicates' && inv.isDuplicate) {
@@ -35,8 +37,13 @@ extension _InvoiceListLayout on _InvoicesTabListState {
         return _compareInvoiceFallback(a, b);
       });
     }
-    final summaryTotals =
-        _unlinkedOnly ? _summaryFromInvoices(visible) : _summaryTotals;
+    final hasLocallyAppliedFilter = _unpaidOnly ||
+        _unlinkedOnly ||
+        _duplicateFilter != 'all' ||
+        hasFilter;
+    final summaryTotals = hasLocallyAppliedFilter
+        ? _summaryFromInvoices(visible, outstandingOnly: _unpaidOnly)
+        : _summaryTotals;
 
     return Padding(
       padding: const EdgeInsets.all(6),
@@ -408,12 +415,21 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                 return _InvoiceSummaryTotalsBar(
                   count: visible.length,
                   summary: summaryTotals,
-                  loading: _unlinkedOnly ? _unlinkedLoading : _summaryLoading,
-                  error: _unlinkedOnly ? _unlinkedError : _summaryError,
+                  loading: _unpaidOnly
+                      ? _unpaidLoading
+                      : _unlinkedOnly
+                          ? _unlinkedLoading
+                          : _summaryLoading,
+                  error: _unpaidOnly
+                      ? _unpaidError
+                      : _unlinkedOnly
+                          ? _unlinkedError
+                          : _summaryError,
                   fromDate: _fromDate,
                   toDate: _toDate,
                   quickRange: _quickRange,
                   sortActions: sortActions,
+                  unpaidOnly: _unpaidOnly,
                   unlinkedOnly: _unlinkedOnly,
                   paymentSuggestionsLoading: _paymentSuggestionsLoading,
                   onDateRangeSelected: (value) {
@@ -435,8 +451,12 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                   },
                   onHeaderAction: (action) {
                     switch (action) {
+                      case _InvoiceHeaderAction.toggleUnpaid:
+                        _toggleUnpaidOnly();
+                        break;
                       case _InvoiceHeaderAction.toggleUnlinked:
                         _toggleUnlinkedOnly();
+                        break;
                       case _InvoiceHeaderAction.resolveLinks:
                         _openPaymentSuggestionsDialog();
                     }
@@ -495,14 +515,15 @@ extension _InvoiceListLayout on _InvoicesTabListState {
               );
             },
           ),
-          if (widget.showSummaryTotals && _unlinkedOnly) ...[
+          if (widget.showSummaryTotals && (_unpaidOnly || _unlinkedOnly)) ...[
             const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: _UnlinkedInvoicesNotice(
-                loading: _unlinkedLoading,
-                error: _unlinkedError,
-                onRetry: _loadUnlinkedInvoices,
+                loading: _unpaidOnly ? _unpaidLoading : _unlinkedLoading,
+                error: _unpaidOnly ? _unpaidError : _unlinkedError,
+                unpaidOnly: _unpaidOnly,
+                onRetry: _unpaidOnly ? _loadUnpaidInvoices : _loadUnlinkedInvoices,
               ),
             ),
           ],
