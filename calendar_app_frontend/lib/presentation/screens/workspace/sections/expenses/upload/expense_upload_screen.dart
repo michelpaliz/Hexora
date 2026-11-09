@@ -54,6 +54,7 @@ class ExpenseUploadScreen extends StatefulWidget {
     this.providerFormOnly = false,
     this.listOnly = false,
     this.uploadOnly = false,
+    this.initialExpenseId,
     required this.groupId,
     required this.groupName,
   });
@@ -65,6 +66,7 @@ class ExpenseUploadScreen extends StatefulWidget {
   final bool providerFormOnly;
   final bool listOnly;
   final bool uploadOnly;
+  final String? initialExpenseId;
   final String groupId;
   final String groupName;
 
@@ -627,6 +629,11 @@ abstract class _ExpenseUploadScreenStateBase extends State<ExpenseUploadScreen>
     _createImportTabsController(initialIndex: 0);
     loadProviders();
     loadRecentUploads();
+    if (widget.initialExpenseId?.trim().isNotEmpty == true) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) openExpenseEditorById(widget.initialExpenseId!);
+      });
+    }
   }
 
   static const Set<String> _allowedInvoiceExtensions = {

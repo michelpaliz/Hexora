@@ -7,11 +7,16 @@ import 'package:hexora/services/business_chat/business_chat_drafts.dart';
 import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/shared/backend_api_exception.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'package:hexora/presentation/shared/widgets/avatars/avatar_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/enable_banking_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/expense_upload_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/workers/workers_hub_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/shared/bank_transaction_share_dialog.dart';
 import 'package:provider/provider.dart';
 import 'bank_transaction_chat_card.dart';
 import 'bank_transaction_picker.dart';
+import 'document_review_dialog.dart';
 import 'business_chat_search_dialog.dart';
 import 'package:intl/intl.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
@@ -61,6 +66,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
   bool _canManageIssues = false;
   bool _canAssignIssues = false;
   bool _canShareBankTransactions = false;
+  bool _canRequestDocumentReview = false;
   bool _showChatOnNarrow = false;
   String? _error;
   String? _pendingConversationId;
@@ -144,6 +150,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
       _canCreateTeam = false;
       _canCreateIssues = false;
       _canShareBankTransactions = false;
+      _canRequestDocumentReview = false;
       _canManageIssues = false;
       _canAssignIssues = false;
       _refresh();
@@ -190,6 +197,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
       _canCreateTeam = false;
       _canCreateIssues = false;
       _canShareBankTransactions = false;
+      _canRequestDocumentReview = false;
       _canManageIssues = false;
       _canAssignIssues = false;
       _error = _es
@@ -289,6 +297,8 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
             (data['capabilities'] as Map?)?['canAssignIssues'] == true;
         _canShareBankTransactions =
             (data['capabilities'] as Map?)?['canShareBankTransactions'] == true;
+        _canRequestDocumentReview =
+            (data['capabilities'] as Map?)?['canRequestDocumentReview'] == true;
       });
       _switchDraft(oldId, _selected?.id);
       _pendingConversationId = null;
@@ -535,6 +545,85 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     _pendingConversationId = destinationId;
     _showChatOnNarrow = true;
     await _refresh(silent: true);
+  }
+
+  Future<void> _requestDocumentReview(String kind) async {
+    if (!_canRequestDocumentReview || _sending) return;
+    final destinations = _conversations.where((c) => c.canRequestReview).toList();
+    if (destinations.isEmpty) {
+      _showError(_es
+          ? 'Crea un chat de equipo solo con propietarios, administradores y coadministradores.'
+          : 'Create a team chat with only owners, admins, and co-admins.');
+      return;
+    }
+    final selection = await showDialog<DocumentReviewSelection>(
+      context: context,
+      builder: (_) => DocumentReviewDialog(
+        groupId: widget.groupId, kind: kind, conversations: destinations,
+        initialConversationId: _selected?.canRequestReview == true ? _selected!.id : null,
+        onOpenBanking: () async {
+          final group = await context.read<GroupDomain>().groupRepository.getGroupById(widget.groupId);
+          if (!mounted) return;
+          await Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => EnableBankingScreen(group: group)));
+        },
+        onCreateExpense: () async {
+          final group = await context.read<GroupDomain>().groupRepository.getGroupById(widget.groupId);
+          if (!mounted) return;
+          await Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => ExpenseUploadScreen(
+              groupId: widget.groupId, groupName: group.name, uploadOnly: true)));
+        },
+      ),
+    );
+    if (!mounted || selection == null) return;
+    setState(() => _sending = true);
+    try {
+      await _api.requestReview(widget.groupId, selection.conversationId,
+        kind: selection.kind, documentId: selection.documentId,
+        year: selection.year, quarter: selection.quarter,
+        body: selection.body, file: selection.file);
+      if (!mounted) return;
+      _pendingConversationId = selection.conversationId;
+      _showChatOnNarrow = true;
+      await _refresh(silent: true);
+    } catch (error) {
+      if (mounted) _showError(error);
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _openReviewDocument(Map<String, dynamic> review) async {
+    final id = (review['documentId'] ?? '').toString();
+    if (id.isEmpty) return;
+    try {
+      final group = await context.read<GroupDomain>().groupRepository.getGroupById(widget.groupId);
+      if (!mounted) return;
+      final kind = (review['kind'] ?? '').toString();
+      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) {
+        if (kind == 'invoice') return GroupInvoicesScreen(group: group, initialInvoiceId: id);
+        if (kind == 'expense') return ExpenseUploadScreen(
+          groupId: widget.groupId, groupName: group.name, initialExpenseId: id);
+        return WorkersHubScreen(group: group);
+      }));
+    } catch (error) {
+      if (mounted) _showError(error);
+    }
+  }
+
+  String _reviewSubtitle(Map<String, dynamic> review) {
+    final count = review['timeEntriesCount'] ?? 0;
+    final number = review['kind'] == 'worker_hours'
+        ? '$count ${_es ? 'registros' : 'entries'}'
+        : (review['number'] ?? '').toString();
+    final date = DateTime.tryParse((review['documentDate'] ?? '').toString());
+    return [
+      (review['counterparty'] ?? '').toString(),
+      if (number.isNotEmpty) number,
+      if (date != null) DateFormat.yMMMd(_es ? 'es' : 'en').format(date.toLocal()),
+      '${_es ? 'T' : 'Q'}${review['quarter']}/${review['year']}',
+    ].join(' · ');
   }
 
   Future<void> _send() async {
@@ -1454,20 +1543,10 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                 onPressed: _loading ? null : _refresh,
                 tooltip: _es ? 'Actualizar' : 'Refresh',
                 icon: const Icon(Icons.refresh)),
-            IconButton(
+            TextButton.icon(
                 onPressed: _showMemberPresence,
-                tooltip: _es
-                    ? 'Ver miembros y conexión'
-                    : 'View members and presence',
-                icon: const Icon(Icons.people_alt_outlined)),
-            if (_canShareBankTransactions)
-              IconButton(
-                  onPressed: () => _shareBankTransactionFromChat(
-                      requestReview: true),
-                  tooltip: _es
-                      ? 'Pedir revisión de un movimiento bancario'
-                      : 'Request bank transaction review',
-                  icon: const Icon(Icons.account_balance_outlined)),
+                icon: const Icon(Icons.people_alt_outlined, size: 18),
+                label: Text(_es ? 'Miembros' : 'Members')),
             if (_canCreateIssues)
               IconButton(
                   onPressed: _createIssue,
@@ -1549,6 +1628,8 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                             ? (_es
                                                 ? 'Movimiento bancario compartido'
                                                 : 'Shared bank transaction')
+                                            : lastMessage.review != null
+                                                ? (_es ? 'Revisión solicitada' : 'Review requested')
                                             : lastMessage.body.trim().isNotEmpty
                                                 ? lastMessage.body
                                                 : (lastMessage.attachment?[
@@ -1959,6 +2040,49 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                                                   .createdAt,
                                                             ),
                                                           if (!message.isDeleted &&
+                                                              message.review != null)
+                                                            Card(
+                                                              child: Padding(
+                                                                padding: const EdgeInsets.all(10),
+                                                                child: Column(
+                                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                                  children: [
+                                                                    Text(switch (message.review!['kind']) {
+                                                                      'invoice' => _es ? 'Revisión de factura' : 'Invoice review',
+                                                                      'expense' => _es ? 'Revisión de gasto' : 'Expense review',
+                                                                      _ => _es ? 'Revisión de horas' : 'Hours review',
+                                                                    }, style: Theme.of(context).textTheme.titleSmall),
+                                                                    Text(_reviewSubtitle(message.review!)),
+                                                                    TextButton.icon(
+                                                                      onPressed: () => _openReviewDocument(message.review!),
+                                                                      icon: const Icon(Icons.open_in_new),
+                                                                      label: Text(switch (message.review!['kind']) {
+                                                                        'invoice' => _es ? 'Abrir factura' : 'Open invoice',
+                                                                        'expense' => _es ? 'Abrir gasto' : 'Open expense',
+                                                                        _ => _es ? 'Abrir trabajadores' : 'Open workers',
+                                                                      }),
+                                                                    ),
+                                                                    if (message.review!['kind'] != 'worker_hours' && message.review!['bankLinkAvailable'] == true)
+                                                                      Text((message.review!['linkedTransactionIds'] as List? ?? const []).isEmpty
+                                                                          ? (_es ? 'Sin movimiento vinculado' : 'No linked transaction')
+                                                                          : (_es ? 'Movimiento vinculado' : 'Linked transaction')),
+                                                                    if (message.review!['bankLinkAvailable'] == true &&
+                                                                        (message.review!['linkedTransactionIds'] as List? ?? const []).isNotEmpty)
+                                                                      Wrap(children: [
+                                                                        for (final (index, entryId) in (message.review!['linkedTransactionIds'] as List).indexed)
+                                                                          TextButton.icon(
+                                                                            onPressed: () => _openBankTransaction({
+                                                                              'entryId': entryId.toString(),
+                                                                            }),
+                                                                            icon: const Icon(Icons.account_balance_outlined),
+                                                                            label: Text(_es ? 'Movimiento ${index + 1}' : 'Transaction ${index + 1}'),
+                                                                          ),
+                                                                      ]),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          if (!message.isDeleted &&
                                                               message.attachment !=
                                                                   null)
                                                             TextButton.icon(
@@ -2075,17 +2199,23 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                           ? 'Compartir movimiento bancario'
                                           : 'Share bank transaction'),
                                     ),
-                                  if (_canShareBankTransactions)
+                                  if (_canRequestDocumentReview)
                                     TextButton.icon(
-                                      onPressed: () =>
-                                          _shareBankTransactionFromChat(
-                                              requestReview: true),
-                                      icon: const Icon(
-                                          Icons.rate_review_outlined,
-                                          size: 17),
-                                      label: Text(_es
-                                          ? 'Pedir revisión'
-                                          : 'Request review'),
+                                      onPressed: () => _requestDocumentReview('invoice'),
+                                      icon: const Icon(Icons.receipt_long_outlined, size: 17),
+                                      label: Text(_es ? 'Revisar factura' : 'Review invoice'),
+                                    ),
+                                  if (_canRequestDocumentReview)
+                                    TextButton.icon(
+                                      onPressed: () => _requestDocumentReview('expense'),
+                                      icon: const Icon(Icons.payments_outlined, size: 17),
+                                      label: Text(_es ? 'Revisar gasto' : 'Review expense'),
+                                    ),
+                                  if (_canRequestDocumentReview)
+                                    TextButton.icon(
+                                      onPressed: () => _requestDocumentReview('worker_hours'),
+                                      icon: const Icon(Icons.access_time_outlined, size: 17),
+                                      label: Text(_es ? 'Revisar horas' : 'Review hours'),
                                     ),
                                   Text(
                                     _es
@@ -2126,7 +2256,9 @@ class _BusinessChatMembersDialogState
     extends State<_BusinessChatMembersDialog> {
   List<BusinessChatMember> _members = const [];
   bool _loading = true;
+  bool _requestInFlight = false;
   String? _error;
+  String _query = '';
   Timer? _timer;
 
   @override
@@ -2143,9 +2275,15 @@ class _BusinessChatMembersDialogState
   }
 
   Future<void> _load() async {
+    if (_requestInFlight) return;
+    _requestInFlight = true;
     try {
       final members = await widget.api.memberPresence(widget.groupId);
       if (!mounted) return;
+      members.sort((a, b) {
+        if (a.isOnline != b.isOnline) return a.isOnline ? -1 : 1;
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
       setState(() {
         _members = members;
         _loading = false;
@@ -2154,11 +2292,14 @@ class _BusinessChatMembersDialogState
     } catch (_) {
       if (!mounted) return;
       setState(() {
+        _members = const [];
         _loading = false;
         _error = widget.spanish
             ? 'No se pudo cargar la conexión de los miembros.'
             : 'Could not load member presence.';
       });
+    } finally {
+      _requestInFlight = false;
     }
   }
 
@@ -2168,84 +2309,124 @@ class _BusinessChatMembersDialogState
           ? 'Sin conexión anterior registrada'
           : 'No previous connection recorded';
     }
-    final local = value.toLocal();
-    return '${widget.spanish ? 'Última conexión' : 'Last seen'} · ${DateFormat('dd/MM/yyyy HH:mm').format(local)}';
+    final elapsed = DateTime.now().difference(value.toLocal());
+    final ago = elapsed.inDays > 0
+        ? '${elapsed.inDays} d'
+        : elapsed.inHours > 0
+            ? '${elapsed.inHours} h'
+            : '${elapsed.inMinutes.clamp(1, 59)} min';
+    return widget.spanish ? 'Última conexión hace $ago' : 'Last seen $ago ago';
+  }
+
+  String _role(String role) {
+    switch (role) {
+      case 'owner':
+        return widget.spanish ? 'Propietario' : 'Owner';
+      case 'admin':
+        return widget.spanish ? 'Administrador' : 'Admin';
+      case 'co-admin':
+        return widget.spanish ? 'Coadministrador' : 'Co-Admin';
+      case 'worker':
+        return widget.spanish ? 'Trabajador' : 'Worker';
+      default:
+        return widget.spanish ? 'Miembro' : 'Member';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final online = _members.where((member) => member.isOnline).length;
+    final visible = _members.where((member) =>
+        member.name.toLowerCase().contains(_query.toLowerCase())).toList();
+    final colors = Theme.of(context).colorScheme;
+    final screen = MediaQuery.sizeOf(context);
     return AlertDialog(
       title: Row(children: [
         Expanded(
             child: Text(
-                widget.spanish ? 'Miembros del negocio' : 'Business members')),
+                widget.spanish ? 'Miembros · $online conectados' : 'Members · $online online',
+                style: Theme.of(context).textTheme.titleMedium)),
         IconButton(
           tooltip: widget.spanish ? 'Actualizar' : 'Refresh',
-          onPressed: _loading ? null : _load,
-          icon: const Icon(Icons.refresh),
+          onPressed: _load,
+          icon: const Icon(Icons.refresh, size: 20),
         ),
       ]),
       content: SizedBox(
-        width: 420,
-        height: 400,
+        width: screen.width < 488 ? screen.width - 128 : 360,
+        height: (_members.length * 44.0 + (_members.length > 8 ? 60 : 0))
+            .clamp(120.0, (screen.height - 180).clamp(120.0, 440.0))
+            .toDouble(),
         child: _loading && _members.isEmpty
             ? const Center(child: CircularProgressIndicator())
             : _error != null && _members.isEmpty
                 ? Text(_error!)
                 : Column(mainAxisSize: MainAxisSize.min, children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Text(widget.spanish
-                            ? '$online en línea · ${_members.length} miembros'
-                            : '$online online · ${_members.length} members'),
-                      ),
-                    ),
-                    if (_error != null)
+                    if (_members.length > 8)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(_error!,
-                            style: TextStyle(
-                                color: Theme.of(context).colorScheme.error)),
+                        child: TextField(
+                          onChanged: (value) => setState(() => _query = value),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            hintText: widget.spanish ? 'Buscar miembros' : 'Search members',
+                            prefixIcon: const Icon(Icons.search, size: 18),
+                          ),
+                        ),
                       ),
                     Expanded(
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: _members.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
+                      child: ListView.builder(
+                        itemCount: visible.length,
                         itemBuilder: (context, index) {
-                          final member = _members[index];
-                          final photo = member.photoUrl;
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: CircleAvatar(
-                              backgroundImage: photo == null || photo.isEmpty
-                                  ? null
-                                  : NetworkImage(photo),
-                              child: photo == null || photo.isEmpty
-                                  ? Text(member.name.isEmpty
-                                      ? '?'
-                                      : member.name[0].toUpperCase())
-                                  : null,
-                            ),
-                            title: Text(member.name),
-                            subtitle: Text(member.isOnline
-                                ? (widget.spanish ? 'En línea' : 'Online')
-                                : _lastSeen(member.lastActiveAt)),
-                            trailing: Container(
-                              width: 10,
-                              height: 10,
-                              decoration: BoxDecoration(
-                                color: member.isOnline
-                                    ? Colors.green
-                                    : Theme.of(context)
-                                        .colorScheme
-                                        .outlineVariant,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
+                          final member = visible[index];
+                          final status = !member.presenceVisible
+                              ? (widget.spanish ? 'Estado oculto' : 'Status hidden')
+                              : member.isOnline
+                                  ? (widget.spanish ? 'En línea' : 'Online')
+                                  : _lastSeen(member.lastActiveAt);
+                          return SizedBox(
+                            height: 44,
+                            child: Row(children: [
+                              Stack(clipBehavior: Clip.none, children: [
+                                AvatarUtils.profileAvatar(context, member.photoUrl,
+                                    radius: 15),
+                                if (member.presenceVisible)
+                                  Positioned(
+                                    right: -1,
+                                    bottom: -1,
+                                    child: Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        color: member.isOnline
+                                            ? Colors.green
+                                            : colors.outlineVariant,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: colors.surface, width: 1.5),
+                                      ),
+                                    ),
+                                  ),
+                              ]),
+                              const SizedBox(width: 10),
+                              Expanded(child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(member.name, maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context).textTheme.bodyMedium),
+                                  Tooltip(
+                                    message: member.isOnline || member.lastActiveAt == null || !member.presenceVisible
+                                        ? status
+                                        : '${_lastSeen(member.lastActiveAt)} · ${DateFormat('dd/MM/yyyy HH:mm').format(member.lastActiveAt!.toLocal())}',
+                                    child: Text('${_role(member.role)} · $status',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context).textTheme.bodySmall),
+                                  ),
+                                ],
+                              )),
+                            ]),
                           );
                         },
                       ),

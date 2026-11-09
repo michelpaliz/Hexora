@@ -19,6 +19,7 @@ class BusinessChatMessage {
     this.isDeleted = false,
     this.attachment,
     this.bankTransaction,
+    this.review,
     this.replyTo,
   });
 
@@ -32,6 +33,7 @@ class BusinessChatMessage {
   final bool isDeleted;
   final Map<String, dynamic>? attachment;
   final Map<String, dynamic>? bankTransaction;
+  final Map<String, dynamic>? review;
   final Map<String, dynamic>? replyTo;
 
   factory BusinessChatMessage.fromJson(Map<String, dynamic> json) =>
@@ -51,6 +53,9 @@ class BusinessChatMessage {
         bankTransaction: json['bankTransaction'] is Map
             ? Map<String, dynamic>.from(json['bankTransaction'])
             : null,
+        review: json['review'] is Map
+            ? Map<String, dynamic>.from(json['review'])
+            : null,
         replyTo: json['replyTo'] is Map
             ? Map<String, dynamic>.from(json['replyTo'])
             : null,
@@ -62,6 +67,8 @@ class BusinessChatMember {
     required this.id,
     required this.name,
     required this.isOnline,
+    this.role = 'member',
+    this.presenceVisible = true,
     this.photoUrl,
     this.lastActiveAt,
   });
@@ -69,6 +76,8 @@ class BusinessChatMember {
   final String id;
   final String name;
   final bool isOnline;
+  final String role;
+  final bool presenceVisible;
   final String? photoUrl;
   final DateTime? lastActiveAt;
 
@@ -77,6 +86,8 @@ class BusinessChatMember {
         id: (json['id'] ?? '').toString(),
         name: (json['name'] ?? '').toString(),
         isOnline: json['isOnline'] == true,
+        role: (json['role'] ?? 'member').toString(),
+        presenceVisible: json['presenceVisible'] != false,
         photoUrl: json['photoUrl']?.toString(),
         lastActiveAt:
             DateTime.tryParse((json['lastActiveAt'] ?? '').toString()),
@@ -96,7 +107,8 @@ class BusinessChatConversation {
       this.canManageParticipants = false,
       this.canModerateMessages = false,
       this.muted = false,
-      this.canShareBankTransaction = false});
+      this.canShareBankTransaction = false,
+      this.canRequestReview = false});
   final String id;
   final String type;
   final String title;
@@ -109,6 +121,7 @@ class BusinessChatConversation {
   final bool canModerateMessages;
   final bool muted;
   final bool canShareBankTransaction;
+  final bool canRequestReview;
 
   factory BusinessChatConversation.fromJson(Map<String, dynamic> json) =>
       BusinessChatConversation(
@@ -133,6 +146,7 @@ class BusinessChatConversation {
         canModerateMessages: json['canModerateMessages'] == true,
         muted: json['muted'] == true,
         canShareBankTransaction: json['canShareBankTransaction'] == true,
+        canRequestReview: json['canRequestReview'] == true,
       );
 
   BusinessChatConversation copyWith({int? unreadCount}) =>
@@ -148,6 +162,7 @@ class BusinessChatConversation {
           canModerateMessages: canModerateMessages,
           muted: muted,
           canShareBankTransaction: canShareBankTransaction,
+          canRequestReview: canRequestReview,
           unreadCount: unreadCount ?? this.unreadCount);
 }
 
@@ -268,6 +283,64 @@ class BusinessChatApi {
         body: jsonEncode({'entryId': entryId, 'body': body}));
     if (response.statusCode != 201)
       throw BackendApiException.fromResponse(response);
+    return BusinessChatMessage.fromJson(
+        Map<String, dynamic>.from(jsonDecode(response.body)));
+  }
+
+  Future<Map<String, dynamic>> reviewDocuments(String groupId, {
+    required String kind,
+    required int year,
+    required int quarter,
+    int page = 1,
+    String search = '',
+  }) async {
+    final uri = _uri(groupId, '/review-documents').replace(queryParameters: {
+      'kind': kind,
+      'year': '$year',
+      'quarter': '$quarter',
+      'page': '$page',
+      if (search.isNotEmpty) 'search': search,
+    });
+    final response = await AuthenticatedHttpClient.get(uri);
+    if (response.statusCode != 200) throw BackendApiException.fromResponse(response);
+    return Map<String, dynamic>.from(jsonDecode(response.body));
+  }
+
+  Future<BusinessChatMessage> requestReview(
+    String groupId,
+    String conversationId, {
+    required String kind,
+    required String documentId,
+    required int year,
+    required int quarter,
+    required String body,
+    PlatformFile? file,
+  }) async {
+    if (file != null && file.bytes == null) throw StateError('File data is unavailable');
+    final response = await AuthenticatedHttpClient.sendMultipart((headers) {
+      final request = http.MultipartRequest('POST',
+          _uri(groupId, '/conversations/$conversationId/messages/review'));
+      request.fields.addAll({
+        'kind': kind,
+        'documentId': documentId,
+        'year': '$year',
+        'quarter': '$quarter',
+        'body': body,
+      });
+      if (file != null) {
+        final mime = {
+          'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+          'webp': 'image/webp', 'pdf': 'application/pdf',
+          'csv': 'text/csv',
+          'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        }[file.extension?.toLowerCase()];
+        if (mime == null) throw StateError('Unsupported attachment type');
+        request.files.add(http.MultipartFile.fromBytes('file', file.bytes!,
+            filename: file.name, contentType: MediaType.parse(mime)));
+      }
+      return request;
+    });
+    if (response.statusCode != 201) throw BackendApiException.fromResponse(response);
     return BusinessChatMessage.fromJson(
         Map<String, dynamic>.from(jsonDecode(response.body)));
   }
