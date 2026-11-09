@@ -861,8 +861,12 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
                   Expanded(
                     child: Text(
                       l.localeName.startsWith('es')
-                          ? 'Guarda el borrador antes de generar la vista previa.'
-                          : 'Save the draft before generating the preview.',
+                          ? (_draftReceipt?.status == 'issued'
+                              ? 'Guarda los cambios antes de generar la vista previa.'
+                              : 'Guarda el borrador antes de generar la vista previa.')
+                          : (_draftReceipt?.status == 'issued'
+                              ? 'Save changes before generating the preview.'
+                              : 'Save the draft before generating the preview.'),
                       style: t.bodySmall.copyWith(
                         color: cs.onSurfaceVariant,
                         fontWeight: FontWeight.w700,
@@ -879,7 +883,11 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.save_outlined),
-                    label: Text(l.saveDraft),
+                    label: Text(_draftReceipt?.status == 'issued'
+                        ? (l.localeName.startsWith('es')
+                            ? 'Guardar cambios'
+                            : 'Save changes')
+                        : l.saveDraft),
                   ),
                   const SizedBox(width: 8),
                   FilledButton.icon(
@@ -1168,7 +1176,11 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.save_outlined),
-                      label: Text(l.saveDraft),
+                      label: Text(_draftReceipt?.status == 'issued'
+                          ? (l.localeName.startsWith('es')
+                              ? 'Guardar cambios'
+                              : 'Save changes')
+                          : l.saveDraft),
                     ),
                   ],
                 ),
@@ -1689,16 +1701,40 @@ class _ClientReceiptStatsBoxState extends State<_ClientReceiptStatsBox>
                   final actor = (entry['userName'] ?? '').toString().trim();
                   final field = (entry['field'] ?? '').toString();
                   final reason = (entry['reason'] ?? '').toString().trim();
+                  final changes = entry['changes'] is List
+                      ? (entry['changes'] as List)
+                          .whereType<Map>()
+                          .map((change) => Map<String, dynamic>.from(change))
+                          .toList()
+                      : <Map<String, dynamic>>[];
+                  final fromVersion = entry['fromVersion'];
+                  final toVersion = entry['toVersion'];
+                  String displayValue(dynamic value) {
+                    if (value == null || value == '') return '—';
+                    final text = value is Map || value is List
+                        ? jsonEncode(value)
+                        : value.toString();
+                    return text.length > 120 ? '${text.substring(0, 117)}…' : text;
+                  }
+                  final title = field.isNotEmpty
+                      ? field
+                      : (fromVersion != null && toVersion != null
+                          ? '${isEs ? 'Versión' : 'Version'} $fromVersion → $toVersion'
+                          : (isEs ? 'Cambio' : 'Change'));
                   return ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.edit_note_rounded),
-                    title: Text(
-                        field.isEmpty ? (isEs ? 'Cambio' : 'Change') : field),
+                    title: Text(title),
                     subtitle: Text([
                       if (changedAt != null) dateFormat.format(changedAt),
                       if (actor.isNotEmpty) '${isEs ? 'por' : 'by'} $actor',
                       if (reason.isNotEmpty) reason,
+                      if (changes.isNotEmpty)
+                        changes.map((change) =>
+                          '${change['field'] ?? (isEs ? 'Campo' : 'Field')}: '
+                          '${displayValue(change['oldValue'])} → ${displayValue(change['newValue'])}'
+                        ).join('\n'),
                     ].join(' · ')),
                   );
                 },

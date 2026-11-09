@@ -246,6 +246,20 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
         else if (!widget.fullPage)
           Row(
             children: [
+              if (isIssued) ...[
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    widget.onEdit();
+                  },
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  label: Text(isEs ? 'Editar recibo emitido' : 'Edit issued receipt'),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               FilledButton.tonalIcon(
                 onPressed: () {
                   if (!widget.fullPage) Navigator.of(context).pop();

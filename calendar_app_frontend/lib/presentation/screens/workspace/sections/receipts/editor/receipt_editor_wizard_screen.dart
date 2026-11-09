@@ -193,6 +193,7 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
     }
     _existingUnnumberedReceiptId = null;
     _existingUnnumberedReceipt = null;
+    _didPersist = receipt.id.trim().isNotEmpty;
     _markDraftSynced();
   }
 
