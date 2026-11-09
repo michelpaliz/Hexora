@@ -6,6 +6,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/documents/presupuesto_document_workspace.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/widgets/presupuesto_pdf_preview_dialog.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/templates/presupuesto_template_editor_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/presupuestos/views/presupuestos_view.dart';
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:intl/intl.dart';
 
@@ -170,6 +171,22 @@ class _PresupuestoDocumentActionsViewState
       );
     }
     if (mounted) await _load();
+  }
+
+  void _openHistory(Map<String, dynamic> document) {
+    final id = presupuestoDocumentId(document);
+    if (id.isEmpty) return;
+    final locale = Localizations.localeOf(context);
+    showDialog<void>(
+      context: context,
+      builder: (_) => BudgetHistoryDialog(
+        api: _api,
+        presupuestoId: id,
+        title: _documentNumber(document),
+        localeName: locale.toString(),
+        isSpanish: locale.languageCode == 'es',
+      ),
+    );
   }
 
   Future<void> _openPdf(
@@ -587,6 +604,8 @@ class _PresupuestoDocumentActionsViewState
               onOpen: presupuestoDocumentStatus(document) == 'draft'
                   ? () => _openEditor(document)
                   : () => _openPdf(document, preview: true),
+              onEdit: () => _openEditor(document),
+              onHistory: () => _openHistory(document),
               onPreview: () => _openPdf(document, preview: true),
               onDownload: () => _openPdf(document, preview: false),
               onIssue: () => _issue(document),
@@ -646,6 +665,8 @@ class _DocumentRow extends StatelessWidget {
     required this.fileActionsDisabled,
     required this.issuing,
     required this.onOpen,
+    required this.onEdit,
+    required this.onHistory,
     required this.onPreview,
     required this.onDownload,
     required this.onIssue,
@@ -659,6 +680,8 @@ class _DocumentRow extends StatelessWidget {
   final bool fileActionsDisabled;
   final bool issuing;
   final VoidCallback onOpen;
+  final VoidCallback onEdit;
+  final VoidCallback onHistory;
   final VoidCallback onPreview;
   final VoidCallback onDownload;
   final VoidCallback onIssue;
@@ -978,6 +1001,10 @@ class _DocumentRow extends StatelessWidget {
             switch (value) {
               case 'open':
                 onOpen();
+              case 'edit':
+                onEdit();
+              case 'history':
+                onHistory();
               case 'preview':
                 onPreview();
               case 'issue':
@@ -996,6 +1023,24 @@ class _DocumentRow extends StatelessWidget {
                   label: 'Editar documento',
                 ),
               ),
+            if (_isIssued) ...[
+              PopupMenuItem<String>(
+                value: 'edit',
+                child: _actionMenuItem(
+                  context,
+                  icon: Icons.edit_note_rounded,
+                  label: 'Editar documento emitido',
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'history',
+                child: _actionMenuItem(
+                  context,
+                  icon: Icons.history_rounded,
+                  label: 'Historial de versiones',
+                ),
+              ),
+            ],
             PopupMenuItem<String>(
               value: 'preview',
               enabled: !fileActionsDisabled,

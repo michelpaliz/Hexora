@@ -14,10 +14,14 @@ class PresupuestoDocumentDraftFlow {
   Future<String> save({
     required String groupId,
     required Map<String, dynamic> content,
+    String? reason,
   }) async {
     final existing = _presupuestoId;
     if (existing != null) {
-      await api.saveTemplateContent(existing, content);
+      await api.saveTemplateContent(existing, {
+        ...content,
+        if ((reason ?? '').trim().isNotEmpty) 'reason': reason!.trim(),
+      });
       return existing;
     }
 

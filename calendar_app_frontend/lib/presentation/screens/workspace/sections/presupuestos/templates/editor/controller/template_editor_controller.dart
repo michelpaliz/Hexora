@@ -27,6 +27,7 @@ class _PresupuestoTemplateEditorScreenState
   Map<String, dynamic>? _selectedDefaultTemplate;
   String? _selectedDefaultKey;
   String? _selectedTemplateSnapshot;
+  String? _documentStatus;
   String? _templateId;
   String? _logoUrl;
   int _activeStep = 0;
@@ -51,6 +52,7 @@ class _PresupuestoTemplateEditorScreenState
       api: widget.api,
       presupuestoId: widget.presupuestoId,
     );
+    _documentStatus = widget.initialBudget?['status']?.toString();
     _load();
   }
 
@@ -90,6 +92,7 @@ class _PresupuestoTemplateEditorScreenState
             widget.api.getTemplateVariables(presupuestoId),
           ]);
           final payload = responses[0];
+          _documentStatus = payload['status']?.toString() ?? _documentStatus;
           final content = _asMap(payload['content']) ?? const {};
           _templateId =
               _string(content['templateId']) ?? _string(payload['templateId']);
@@ -102,6 +105,7 @@ class _PresupuestoTemplateEditorScreenState
               ? null
               : _variables['CLIENTE']?.text.trim();
           _variableSchemaKey = 'document:$presupuestoId';
+          _selectedTemplateSnapshot = jsonEncode(_payload(includeTemplateId: false));
           return;
         }
         if (!widget.createDocumentDraft) {
@@ -617,8 +621,51 @@ class _PresupuestoTemplateEditorScreenState
     return bySlot.values.map(_TemplateImageState.fromMap).toList();
   }
 
-  Future<void> _save({bool silent = false}) async {
-    if (_saving) return;
+  bool get _isIssuedDocument => !widget.templateOnly && _documentStatus == 'issued';
+
+  Future<String?> _requestIssuedEditReason() async {
+    if (!_isIssuedDocument) return null;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isEs ? 'Editar presupuesto emitido' : 'Edit issued budget'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 1000,
+          maxLines: 3,
+          decoration: InputDecoration(
+            labelText: isEs ? 'Motivo del cambio' : 'Reason for change',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(isEs ? 'Cancelar' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              if (value.isNotEmpty) Navigator.pop(dialogContext, value);
+            },
+            child: Text(isEs ? 'Guardar nueva versión' : 'Save new version'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return reason;
+  }
+
+  Future<bool> _save({bool silent = false, String? issuedReason}) async {
+    if (_saving) return false;
+    if (_isIssuedDocument && !_hasTemplateEdits()) return true;
+    final reason = _isIssuedDocument
+        ? (issuedReason ?? await _requestIssuedEditReason())
+        : null;
+    if (!mounted || (_isIssuedDocument && reason == null)) return false;
     setState(() => _saving = true);
     try {
       if (widget.templateOnly) {
@@ -642,6 +689,7 @@ class _PresupuestoTemplateEditorScreenState
             : await _documentFlow.save(
                 groupId: widget.groupId,
                 content: content,
+                reason: reason,
               );
         if (creating) {
           _rememberCurrentDocumentVariables();
@@ -650,8 +698,9 @@ class _PresupuestoTemplateEditorScreenState
               await widget.api.getTemplateVariables(presupuestoId);
           _applyLoadedDocumentVariables(refreshed);
         } else {
-          await _saveChangedDocumentVariables(presupuestoId);
+          await _saveChangedDocumentVariables(presupuestoId, reason: reason);
         }
+        _selectedTemplateSnapshot = jsonEncode(_payload(includeTemplateId: false));
         await widget.onDocumentSaved?.call();
       }
       if (!silent && mounted) {
@@ -659,9 +708,12 @@ class _PresupuestoTemplateEditorScreenState
           context,
           widget.templateOnly
               ? 'Plantilla guardada.'
-              : 'Presupuesto guardado como borrador.',
+              : (_isIssuedDocument
+                  ? 'Nueva versión del presupuesto guardada.'
+                  : 'Presupuesto guardado como borrador.'),
         );
       }
+      return true;
     } on PresupuestosApiException catch (e) {
       if (mounted) showErrorSnack(context, e.message);
       rethrow;
@@ -752,7 +804,7 @@ class _PresupuestoTemplateEditorScreenState
     setState(() => _previewing = true);
     try {
       if (!widget.templateOnly) {
-        await _save(silent: true);
+        if (!await _save(silent: true)) return;
         if (!mounted || !await _confirmUnresolvedVariables('previsualizar')) {
           return;
         }
@@ -945,7 +997,7 @@ class _PresupuestoTemplateEditorScreenState
     if (_downloading) return;
     setState(() => _downloading = true);
     try {
-      await _save(silent: true);
+      if (!await _save(silent: true)) return;
       final presupuestoId = _documentFlow.presupuestoId;
       if (presupuestoId == null || presupuestoId.isEmpty) return;
       final response = await widget.api.downloadTemplatePdf(presupuestoId);
@@ -968,7 +1020,9 @@ class _PresupuestoTemplateEditorScreenState
     );
     final file = picked?.files.single;
     final bytes = file?.bytes;
-    if (file == null || bytes == null) return;
+    if (file == null || bytes == null || !mounted) return;
+    final reason = _isIssuedDocument ? await _requestIssuedEditReason() : null;
+    if (!mounted || (_isIssuedDocument && reason == null)) return;
     try {
       final response = widget.templateOnly
           ? await widget.api.uploadTemplateImage(
@@ -984,12 +1038,13 @@ class _PresupuestoTemplateEditorScreenState
               fileName: file.name,
               slot: image.slot,
               label: image.label.text,
+              reason: reason,
             );
       final uploaded = _extractImage(response, image.slot);
       if (uploaded != null) {
         setState(() => image.apply(uploaded));
       }
-      await _save(silent: true);
+      await _save(silent: true, issuedReason: reason);
       if (mounted) showSuccessSnack(context, 'Imagen actualizada.');
     } on PresupuestosApiException catch (e) {
       if (mounted) showErrorSnack(context, e.message);
@@ -1008,6 +1063,9 @@ class _PresupuestoTemplateEditorScreenState
       groupId: widget.groupId,
     );
     if (selected == null || !mounted) return;
+    final reason = _isIssuedDocument ? await _requestIssuedEditReason() : null;
+    if (!mounted || (_isIssuedDocument && reason == null)) return;
+    final hadPendingEdits = _hasTemplateEdits();
 
     setState(() => _libraryImageBusySlots.add(image.slot));
     try {
@@ -1020,6 +1078,7 @@ class _PresupuestoTemplateEditorScreenState
         slot: image.slot,
         label: image.label.text,
         enabled: image.enabled,
+        reason: reason,
       );
       final attached = _extractImage(response, image.slot);
       if (!mounted) return;
@@ -1035,6 +1094,9 @@ class _PresupuestoTemplateEditorScreenState
               },
         );
       });
+      if (!hadPendingEdits) {
+        _selectedTemplateSnapshot = jsonEncode(_payload(includeTemplateId: false));
+      }
       showSuccessSnack(context, 'Imagen añadida desde la biblioteca.');
     } on PresupuestosApiException catch (e) {
       if (mounted) showErrorSnack(context, e.message);
@@ -1200,7 +1262,7 @@ class _PresupuestoTemplateEditorScreenState
       );
   }
 
-  Future<void> _saveChangedDocumentVariables(String presupuestoId) async {
+  Future<void> _saveChangedDocumentVariables(String presupuestoId, {String? reason}) async {
     final changes = <String, dynamic>{};
     for (final entry in _variables.entries) {
       final definition = _variableFieldDefinitions[entry.key];
@@ -1218,6 +1280,7 @@ class _PresupuestoTemplateEditorScreenState
     await widget.api.updateTemplateVariables(
       presupuestoId,
       variables: changes,
+      reason: reason,
     );
     final refreshed = await widget.api.getTemplateVariables(presupuestoId);
     _applyLoadedDocumentVariables(refreshed);

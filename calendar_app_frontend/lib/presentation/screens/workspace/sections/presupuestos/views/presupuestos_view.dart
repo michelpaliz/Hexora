@@ -840,7 +840,7 @@ class _GroupInvoicesBudgetsViewState extends State<GroupInvoicesBudgetsView> {
             height: (MediaQuery.sizeOf(context).height - 150)
                 .clamp(680.0, 980.0)
                 .toDouble(),
-            child: _BudgetHistoryDialog(
+            child: BudgetHistoryDialog(
               api: _presupuestosApi,
               presupuestoId: _budgetId(budget),
               title: _budgetClientName(budget, l),
@@ -2933,8 +2933,8 @@ class _BudgetMonthDivider extends StatelessWidget {
   }
 }
 
-class _BudgetHistoryDialog extends StatefulWidget {
-  const _BudgetHistoryDialog({
+class BudgetHistoryDialog extends StatefulWidget {
+  const BudgetHistoryDialog({
     required this.api,
     required this.presupuestoId,
     required this.title,
@@ -2953,10 +2953,10 @@ class _BudgetHistoryDialog extends StatefulWidget {
   final VoidCallback? onBack;
 
   @override
-  State<_BudgetHistoryDialog> createState() => _BudgetHistoryDialogState();
+  State<BudgetHistoryDialog> createState() => _BudgetHistoryDialogState();
 }
 
-class _BudgetHistoryDialogState extends State<_BudgetHistoryDialog> {
+class _BudgetHistoryDialogState extends State<BudgetHistoryDialog> {
   late Future<Map<String, dynamic>> _historyFuture;
   final Map<String, Future<Map<String, dynamic>>> _snapshotFutures = {};
   final Map<String, List<String>> _snapshotRowRefs = {};

@@ -695,6 +695,7 @@ class PresupuestosApi {
     required String slot,
     String? label,
     bool enabled = true,
+    String? reason,
   }) async {
     final r = await AuthenticatedHttpClient.post(
       _u('/image-library/targets/${targetId.trim()}'),
@@ -704,6 +705,7 @@ class PresupuestosApi {
         'slot': slot.trim(),
         'label': (label ?? '').trim(),
         'enabled': enabled,
+        if ((reason ?? '').trim().isNotEmpty) 'reason': reason!.trim(),
       }),
     );
     return _decodeMap(r);
@@ -751,6 +753,7 @@ class PresupuestosApi {
     required String fileName,
     required String slot,
     String? label,
+    String? reason,
   }) async {
     final auth = await _requireAuthToken(
       path: '/${presupuestoId.trim()}/template-content/images',
@@ -764,6 +767,9 @@ class PresupuestosApi {
     req.fields['slot'] = slot;
     if ((label ?? '').trim().isNotEmpty) {
       req.fields['label'] = label!.trim();
+    }
+    if ((reason ?? '').trim().isNotEmpty) {
+      req.fields['reason'] = reason!.trim();
     }
     req.files.add(
       http.MultipartFile.fromBytes('file', bytes, filename: fileName),
