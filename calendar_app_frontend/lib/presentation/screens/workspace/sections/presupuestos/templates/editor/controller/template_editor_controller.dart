@@ -9,28 +9,9 @@ class _PresupuestoTemplateEditorScreenState
   final _title = TextEditingController();
   final _subtitle = TextEditingController();
   final _intro = TextEditingController();
-  final _highSeasonFrequency = TextEditingController();
-  final _lowSeasonFrequency = TextEditingController();
-  Set<int> _highSeasonMonths = {6, 7, 8, 9};
-  bool _seasonEdited = false;
-  bool _seasonMonthsEdited = false;
-  bool _serviceChosen = false;
-  bool _serviceSelectionError = false;
-
-  void _updateSeasons(VoidCallback change) {
-    setState(() {
-      _seasonEdited = true;
-      change();
-      _syncSeasonVariables();
-    });
-  }
-
   final _previewHorizontalScrollController = ScrollController();
   final Map<String, TextEditingController> _variables = {};
   final List<_TemplateSectionState> _sections = [];
-  final Map<String, bool> _sectionExpansionState = <String, bool>{};
-  String? _hoveredSectionKey;
-  String? _hoveredDefaultTemplateKey;
   final List<_TemplateImageState> _images = [];
   final Set<String> _libraryImageBusySlots = <String>{};
   late final PresupuestoDocumentDraftFlow _documentFlow;
@@ -46,6 +27,7 @@ class _PresupuestoTemplateEditorScreenState
   Map<String, dynamic>? _selectedDefaultTemplate;
   String? _selectedDefaultKey;
   String? _selectedTemplateSnapshot;
+  String? _documentStatus;
   String? _templateId;
   String? _logoUrl;
   int _activeStep = 0;
@@ -62,7 +44,6 @@ class _PresupuestoTemplateEditorScreenState
   final ClientsApi _clientsApi = ClientsApi();
   String? _selectedClientId;
   String? _selectedClientName;
-  bool _customClientName = false;
 
   @override
   void initState() {
@@ -71,6 +52,7 @@ class _PresupuestoTemplateEditorScreenState
       api: widget.api,
       presupuestoId: widget.presupuestoId,
     );
+    _documentStatus = widget.initialBudget?['status']?.toString();
     _load();
   }
 
@@ -83,8 +65,6 @@ class _PresupuestoTemplateEditorScreenState
     _title.dispose();
     _subtitle.dispose();
     _intro.dispose();
-    _highSeasonFrequency.dispose();
-    _lowSeasonFrequency.dispose();
     _previewHorizontalScrollController.dispose();
     for (final controller in _variables.values) {
       controller.dispose();
@@ -112,6 +92,7 @@ class _PresupuestoTemplateEditorScreenState
             widget.api.getTemplateVariables(presupuestoId),
           ]);
           final payload = responses[0];
+          _documentStatus = payload['status']?.toString() ?? _documentStatus;
           final content = _asMap(payload['content']) ?? const {};
           _templateId =
               _string(content['templateId']) ?? _string(payload['templateId']);
@@ -123,9 +104,8 @@ class _PresupuestoTemplateEditorScreenState
           _selectedClientName = _selectedClientId == null
               ? null
               : _variables['CLIENTE']?.text.trim();
-          _customClientName = _selectedClientId == null &&
-              (_variables['CLIENTE']?.text.trim().isNotEmpty ?? false);
           _variableSchemaKey = 'document:$presupuestoId';
+          _selectedTemplateSnapshot = jsonEncode(_payload(includeTemplateId: false));
           return;
         }
         if (!widget.createDocumentDraft) {
@@ -185,10 +165,7 @@ class _PresupuestoTemplateEditorScreenState
         _hydrate(source);
       }
       if (widget.templateOnly && widget.createNewTemplate) {
-        _templateId = null;
-        _selectedDefaultKey = null;
-        _selectedDefaultTemplate = null;
-        _hydrate(_newTemplateSource());
+        _newTemplate();
       } else if (widget.createDocumentDraft) {
         _templateId = null;
         _hydrate(_newDocumentSource());
@@ -216,21 +193,11 @@ class _PresupuestoTemplateEditorScreenState
     return null;
   }
 
-  Future<void> _selectTemplate(String? id) async {
+  void _selectTemplate(String? id) {
     final template = _templateById(id);
     if (template == null) return;
-    final currentId = _templateId?.trim();
-    if (currentId != id &&
-        !await _confirmTemplateReplacement(
-          nextName: _string(template['name']) ?? 'la plantilla seleccionada',
-        )) {
-      return;
-    }
-    if (!mounted) return;
     setState(() {
       _templateId = id;
-      _selectedDefaultKey = null;
-      _selectedDefaultTemplate = null;
       _hydrate(template);
     });
   }
@@ -239,41 +206,16 @@ class _PresupuestoTemplateEditorScreenState
     final key = _string(template['key']);
     if (key == null || key.isEmpty || _creatingDefaultKey != null) return;
 
-    if (_selectedDefaultKey != key &&
-        !await _confirmTemplateReplacement(
-          nextName: _string(template['name']) ?? 'la plantilla seleccionada',
-        )) {
-      return;
-    }
-    if (!mounted) return;
-
-    final content = _templateContent(template);
-    final sharedVariables = <String, String>{};
-    final currentClient = _variables['CLIENTE']?.text;
-    if (_selectedDefaultKey != null &&
-        currentClient != null &&
-        _readVariableFieldDefinitions(content['variableFields'])
-            .containsKey('CLIENTE')) {
-      sharedVariables['CLIENTE'] = currentClient;
-    }
-    setState(() {
-      _selectedDefaultKey = key;
-      _selectedDefaultTemplate = Map<String, dynamic>.from(template);
-      _variableSchemaKey = 'default:$key';
-      _templateId = null;
-      _hydrate(content, preservedVariables: sharedVariables);
-      _activeStep = 0;
-    });
-  }
-
-  Future<bool> _confirmTemplateReplacement({required String nextName}) async {
-    if (!_hasTemplateEdits()) return true;
-    return await showHexoraDialog<bool>(
+    if (!widget.templateOnly) {
+      if (_selectedDefaultKey != null &&
+          _selectedDefaultKey != key &&
+          _hasTemplateEdits()) {
+        final replace = await showDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
-            title: const Text('Cambiar plantilla'),
-            content: Text(
-              'Los cambios sin guardar se reemplazarán por el contenido de "$nextName".',
+            title: const Text('Cambiar tipo de presupuesto'),
+            content: const Text(
+              'Los cambios actuales se reemplazaran por el contenido de la nueva plantilla.',
             ),
             actions: [
               TextButton(
@@ -286,8 +228,63 @@ class _PresupuestoTemplateEditorScreenState
               ),
             ],
           ),
-        ) ??
-        false;
+        );
+        if (replace != true || !mounted) return;
+      }
+
+      final content = _templateContent(template);
+      final sharedVariables = <String, String>{};
+      final currentClient = _variables['CLIENTE']?.text;
+      if (_selectedDefaultKey != null &&
+          currentClient != null &&
+          _readVariableFieldDefinitions(content['variableFields'])
+              .containsKey('CLIENTE')) {
+        sharedVariables['CLIENTE'] = currentClient;
+      }
+      setState(() {
+        _selectedDefaultKey = key;
+        _selectedDefaultTemplate = Map<String, dynamic>.from(template);
+        _variableSchemaKey = 'default:$key';
+        _templateId = null;
+        _hydrate(content, preservedVariables: sharedVariables);
+        _activeStep = 0;
+        _selectedTemplateSnapshot =
+            jsonEncode(_payload(includeTemplateId: false));
+      });
+      return;
+    }
+
+    setState(() => _creatingDefaultKey = key);
+    try {
+      final created = await widget.api.createTemplateFromDefault(
+        key: key,
+        groupId: widget.groupId,
+      );
+      final createdTemplate = _asMap(created['template']) ?? created;
+      final id =
+          _string(createdTemplate['_id']) ?? _string(createdTemplate['id']);
+      setState(() {
+        if (id != null && id.isNotEmpty) _templateId = id;
+        _variableSchemaKey = 'template:${id ?? key}';
+        _templates = [
+          createdTemplate,
+          ..._templates.where((item) {
+            final existingId = _string(item['_id']) ?? _string(item['id']);
+            return existingId != id;
+          }),
+        ];
+        _hydrate(createdTemplate);
+      });
+      if (mounted) showSuccessSnack(context, 'Plantilla creada.');
+    } on PresupuestosApiException catch (e) {
+      if (mounted) showErrorSnack(context, e.message);
+    } catch (e) {
+      if (mounted) {
+        showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => _creatingDefaultKey = null);
+    }
   }
 
   bool _hasTemplateEdits() {
@@ -331,7 +328,6 @@ class _PresupuestoTemplateEditorScreenState
     Map<String, String> preservedVariables = const {},
   }) {
     _sourceContent = Map<String, dynamic>.from(source);
-    _hydrateSeasons(source);
     final cleaningTemplate = _isCleaningTemplateSource(source);
     final sourceName = _string(source['name']);
     final sourceTitle = _string(source['title']);
@@ -359,30 +355,14 @@ class _PresupuestoTemplateEditorScreenState
       ..clear()
       ..addAll(_readVariableFieldDefinitions(_variableFieldsSource));
     final variableFieldValues = _readVariableFieldValues(_variableFieldsSource);
-    for (final key in {..._seasonVariableKeys, 'SERVICIO_MANTENIMIENTO'}) {
-      if (variables.containsKey(key) ||
-          (key == 'SERVICIO_MANTENIMIENTO' && _hasSeasons)) {
-        _variableFieldDefinitions.putIfAbsent(
-            key, () => _readVariableFieldDefinitions([key])[key]!);
-      }
-    }
-    _serviceChosen = false;
-    _serviceSelectionError = false;
     for (final key in _variableFieldDefinitions.keys) {
       _variables[key] = TextEditingController(
         text: preservedVariables[key] ??
-            (key == 'SERVICIO_MANTENIMIENTO'
-                ? _string(variables[key])
-                : null) ??
             variableFieldValues[key] ??
             _string(variables[key]) ??
             '',
       );
     }
-    if (_documentFlow.presupuestoId == null && !widget.templateOnly) {
-      _variables['SERVICIO_MANTENIMIENTO']?.clear();
-    }
-    _readSeasonFrequencies();
     _recalculateVariableFields();
 
     for (final section in _sections) {
@@ -393,30 +373,15 @@ class _PresupuestoTemplateEditorScreenState
       ..addAll(_sectionStates(source['sections']));
     if (_sections.any((section) => section.generatedFrequency)) {
       for (final key in SeasonalFrequency.keys) {
-        _variableFieldDefinitions.putIfAbsent(
-            key, () => _readVariableFieldDefinitions([key])[key]!);
-        _variables.putIfAbsent(key,
-            () => TextEditingController(text: _string(variables[key]) ?? ''));
+        _variableFieldDefinitions.putIfAbsent(key,
+            () => _readVariableFieldDefinitions([key])[key]!);
+        _variables.putIfAbsent(key, () => TextEditingController(text: _string(variables[key]) ?? ''));
       }
-      if (_documentFlow.presupuestoId == null && !widget.templateOnly) {
-        _variables['SERVICIO_MANTENIMIENTO']!.clear();
-        if (_variables['MESES_TEMPORADA_ALTA']!.text.trim().isEmpty) {
-          _variables['MESES_TEMPORADA_ALTA']!.text =
-              _seasonMonthsText(_highSeasonMonths);
-        }
-      }
-      final high = SeasonalFrequency.monthIndexes(
-          _variables['MESES_TEMPORADA_ALTA']!.text);
-      if (high != null &&
-          high.isNotEmpty &&
-          _variables['MESES_TEMPORADA_BAJA']!.text.trim().isEmpty) {
+      final highMonths = SeasonalFrequency.monthIndexes(_variables['MESES_TEMPORADA_ALTA']!.text);
+      if (highMonths != null && highMonths.isNotEmpty && _variables['MESES_TEMPORADA_BAJA']!.text.trim().isEmpty) {
         _variables['MESES_TEMPORADA_BAJA']!.text = SeasonalFrequency.monthList(
-            List.generate(12, (i) => i).where((i) => !high.contains(i)));
+          List.generate(12, (index) => index).where((index) => !highMonths.contains(index)));
       }
-      _readSeasonFrequencies();
-    }
-    if (_documentFlow.presupuestoId == null && !widget.templateOnly) {
-      _bindDefaultServiceDescriptions();
     }
 
     for (final image in _images) {
@@ -425,7 +390,6 @@ class _PresupuestoTemplateEditorScreenState
     _images
       ..clear()
       ..addAll(_imageStates(_imageDefinitions(source)));
-    _selectedTemplateSnapshot = jsonEncode(_payload(includeTemplateId: false));
   }
 
   dynamic _imageDefinitions(Map<String, dynamic> source) {
@@ -476,15 +440,7 @@ class _PresupuestoTemplateEditorScreenState
       if (key.isEmpty) return;
       final definition = _asMap(rawDefinition) ?? const {};
       final label = _variableLabel(key, _string(definition['label']));
-      final type = (_string(definition['type']) ??
-              (key.contains('PRECIO') ||
-                      key.contains('IMPORTE') ||
-                      key.contains('TOTAL')
-                  ? 'currency'
-                  : const {'ZONAS_COMUNES', 'PRODUCTOS_INCLUIDOS'}.contains(key)
-                      ? 'multiline'
-                      : 'text'))
-          .toLowerCase();
+      final type = (_string(definition['type']) ?? '').toLowerCase();
       final calculationMap = _asMap(definition['calculation']) ??
           (definition['operation'] != null ? definition : null);
       final calculation = calculationMap == null
@@ -492,39 +448,20 @@ class _PresupuestoTemplateEditorScreenState
           : _VariableCalculation.fromMap(calculationMap);
       final isAutomaticDate = const {'FECHA', 'DIA', 'MES', 'ANO', 'AÑO'}
           .contains(key.toUpperCase());
-      // A monthly amount without a formula must be entered and saved manually.
-      final isManualMonthlyTotal =
-          key == 'TOTAL_MENSUAL' && calculation == null;
       definitions[key] = _TemplateVariableField(
         key: key,
-        label: label,
-        group: _string(definition['group']) ??
-            (type == 'currency'
-                ? 'pricing'
-                : key.contains('DURACION') || key.contains('PREAVISO')
-                    ? 'contract'
-                    : 'services'),
-        inputType: type,
-        isRequired: definition['required'] == true,
+        label: '$label [$key]',
         hint: _string(definition['hint']) ??
             _string(definition['placeholder']) ??
             _variableHint(key),
         icon: _variableIcon(key),
-        keyboardType: type == 'currency' || type == 'decimal'
-            ? const TextInputType.numberWithOptions(decimal: true)
-            : key == 'ANO' ||
-                    type == 'year' ||
-                    type == 'number' ||
-                    type == 'integer'
-                ? TextInputType.number
-                : key == 'FECHA' || type == 'date'
-                    ? TextInputType.datetime
-                    : TextInputType.text,
-        maxLines: type.contains('textarea') || type == 'multiline' ? 3 : 1,
-        isAutomatic: ((definition['isAutomatic'] == true ||
-                    definition['automatic'] == true) &&
-                !isManualMonthlyTotal) ||
-            isAutomaticDate,
+        keyboardType: key == 'ANO' || type == 'year'
+            ? TextInputType.number
+            : key == 'FECHA' || type == 'date'
+                ? TextInputType.datetime
+                : TextInputType.text,
+        maxLines: type.contains('textarea') ? 3 : 1,
+        isAutomatic: definition['isAutomatic'] == true || isAutomaticDate,
         isUsedInTemplate: definition['isUsedInTemplate'] != false,
         readOnly: definition['readOnly'] == true ||
             isAutomaticDate ||
@@ -584,7 +521,7 @@ class _PresupuestoTemplateEditorScreenState
     return definition['value'] ??
         definition['resolvedValue'] ??
         definition['automaticValue'] ??
-        definition['defaultValue'];
+        '';
   }
 
   String _variableLabel(String key, String? backendLabel) {
@@ -593,12 +530,9 @@ class _PresupuestoTemplateEditorScreenState
       'FECHA': 'Fecha',
       'MES': 'Mes',
       'ANO': 'Año',
-      'AÑO': 'Año',
-      'DIA': 'Día',
       'FRECUENCIA_MENSUAL': 'Frecuencia mensual',
       'PRECIO_VISITA': 'Precio por visita',
       'TOTAL_MENSUAL': 'Total mensual',
-      'IVA_PORCENTAJE': 'IVA (%)',
       'DURACION_CONTRATO': 'Duración del contrato',
       'FRECUENCIA_LIMPIEZA_GARAJE': 'Frecuencia de limpieza del garaje',
       'PRECIO_LIMPIEZA_GARAJE': 'Precio de limpieza del garaje',
@@ -606,9 +540,9 @@ class _PresupuestoTemplateEditorScreenState
       'PRECIO_PISCINA_PRIVADA': 'Precio piscina privada',
       'ZONAS_COMUNES': 'Zonas comunes',
       'PRODUCTOS_INCLUIDOS': 'Productos incluidos',
-      'MESES_TEMPORADA_ALTA': 'Meses de temporada alta',
+      'MESES_TEMPORADA_ALTA': 'Meses de temporada alta (opcional)',
       'SERVICIO_MANTENIMIENTO': 'Servicio de mantenimiento',
-      'MESES_TEMPORADA_BAJA': 'Meses de temporada baja',
+      'MESES_TEMPORADA_BAJA': 'Meses de temporada baja (opcional)',
       'DIAS_TEMPORADA_ALTA': 'Frecuencia en temporada alta',
       'FRECUENCIA_TEMPORADA_BAJA': 'Frecuencia en temporada baja',
       'IMPORTE_MENSUAL': 'Importe mensual',
@@ -622,36 +556,28 @@ class _PresupuestoTemplateEditorScreenState
         candidate != candidate.toUpperCase();
     return backendIsReadable
         ? candidate
-        : localized[key] ??
-            '${key[0].toUpperCase()}${key.substring(1).replaceAll('_', ' ').toLowerCase()}';
+        : localized[key] ?? key.replaceAll('_', ' ');
   }
 
   String _variableHint(String key) {
     const hints = <String, String>{
-      'ZONAS_COMUNES': 'Ej. portal, escaleras y jardines',
-      'PRODUCTOS_INCLUIDOS': 'Ej. productos de limpieza y tratamiento del agua',
-      'MESES_TEMPORADA_ALTA': 'Ej. Junio, julio y agosto',
-      'SERVICIO_MANTENIMIENTO': 'Ej. mantenimiento del jardín y la piscina',
-      'MESES_TEMPORADA_BAJA': 'Ej. Octubre a mayo',
-      'DIAS_TEMPORADA_ALTA': 'Ej. 4 visitas por mes',
-      'FRECUENCIA_TEMPORADA_BAJA': 'Ej. una visita por semana',
-      'PREAVISO': 'Ej. 30 días',
       'CLIENTE': 'Ej. Comunidad Las Alondras',
       'FECHA': 'Ej. 31/07/2026',
       'MES': 'Ej. julio',
       'ANO': 'Ej. 2026',
       'FRECUENCIA_MENSUAL': 'Ej. 4 veces al mes',
+      'MESES_TEMPORADA_ALTA': 'Ej. Junio, julio y agosto',
+      'SERVICIO_MANTENIMIENTO': 'Ej. mantenimiento del jardín y la piscina',
+      'MESES_TEMPORADA_BAJA': 'Ej. Octubre a mayo',
+      'DIAS_TEMPORADA_ALTA': 'Ej. 4 visitas por mes',
+      'FRECUENCIA_TEMPORADA_BAJA': 'Ej. 2 visitas por mes',
       'PRECIO_VISITA': 'Ej. 480 €',
       'TOTAL_MENSUAL': 'Ej. 1.920 €',
-      'IVA_PORCENTAJE': 'Ej. 21',
       'DURACION_CONTRATO': 'Ej. un (1) año',
       'FRECUENCIA_LIMPIEZA_GARAJE': 'Ej. una vez al año',
       'PRECIO_LIMPIEZA_GARAJE': 'Ej. 650 €',
     };
-    return hints[key] ??
-        (key.contains('PRECIO') || key.contains('IMPORTE')
-            ? 'Ej. 25,00'
-            : 'Escribe la información para el documento');
+    return hints[key] ?? 'Valor para [$key]';
   }
 
   IconData _variableIcon(String key) {
@@ -677,7 +603,6 @@ class _PresupuestoTemplateEditorScreenState
       states.add(_TemplateSectionState.fromMap(row, fallbackOrder: i + 1));
     }
     states.sort((a, b) => a.order.compareTo(b.order));
-    _enforcePinnedSectionOrder(states);
     return states;
   }
 
@@ -696,8 +621,51 @@ class _PresupuestoTemplateEditorScreenState
     return bySlot.values.map(_TemplateImageState.fromMap).toList();
   }
 
-  Future<void> _save({bool silent = false}) async {
-    if (_saving || !_validateServiceSelection()) return;
+  bool get _isIssuedDocument => !widget.templateOnly && _documentStatus == 'issued';
+
+  Future<String?> _requestIssuedEditReason() async {
+    if (!_isIssuedDocument) return null;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isEs ? 'Editar presupuesto emitido' : 'Edit issued budget'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 1000,
+          maxLines: 3,
+          decoration: InputDecoration(
+            labelText: isEs ? 'Motivo del cambio' : 'Reason for change',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(isEs ? 'Cancelar' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              if (value.isNotEmpty) Navigator.pop(dialogContext, value);
+            },
+            child: Text(isEs ? 'Guardar nueva versión' : 'Save new version'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return reason;
+  }
+
+  Future<bool> _save({bool silent = false, String? issuedReason}) async {
+    if (_saving) return false;
+    if (_isIssuedDocument && !_hasTemplateEdits()) return true;
+    final reason = _isIssuedDocument
+        ? (issuedReason ?? await _requestIssuedEditReason())
+        : null;
+    if (!mounted || (_isIssuedDocument && reason == null)) return false;
     setState(() => _saving = true);
     try {
       if (widget.templateOnly) {
@@ -721,6 +689,7 @@ class _PresupuestoTemplateEditorScreenState
             : await _documentFlow.save(
                 groupId: widget.groupId,
                 content: content,
+                reason: reason,
               );
         if (creating) {
           _rememberCurrentDocumentVariables();
@@ -729,8 +698,9 @@ class _PresupuestoTemplateEditorScreenState
               await widget.api.getTemplateVariables(presupuestoId);
           _applyLoadedDocumentVariables(refreshed);
         } else {
-          await _saveChangedDocumentVariables(presupuestoId);
+          await _saveChangedDocumentVariables(presupuestoId, reason: reason);
         }
+        _selectedTemplateSnapshot = jsonEncode(_payload(includeTemplateId: false));
         await widget.onDocumentSaved?.call();
       }
       if (!silent && mounted) {
@@ -738,9 +708,12 @@ class _PresupuestoTemplateEditorScreenState
           context,
           widget.templateOnly
               ? 'Plantilla guardada.'
-              : 'Presupuesto guardado como borrador.',
+              : (_isIssuedDocument
+                  ? 'Nueva versión del presupuesto guardada.'
+                  : 'Presupuesto guardado como borrador.'),
         );
       }
+      return true;
     } on PresupuestosApiException catch (e) {
       if (mounted) showErrorSnack(context, e.message);
       rethrow;
@@ -823,7 +796,6 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   Future<void> _previewPdf() async {
-    if (!_validateServiceSelection()) return;
     if (_previewing) return;
     if (_mustSelectDefaultTemplate) {
       showErrorSnack(context, 'Selecciona un tipo de presupuesto primero.');
@@ -831,20 +803,19 @@ class _PresupuestoTemplateEditorScreenState
     }
     setState(() => _previewing = true);
     try {
-      final existingDocumentId = _documentFlow.presupuestoId;
-      if (!widget.templateOnly && existingDocumentId != null) {
-        await _save(silent: true);
+      if (!widget.templateOnly) {
+        if (!await _save(silent: true)) return;
         if (!mounted || !await _confirmUnresolvedVariables('previsualizar')) {
           return;
         }
       }
-      final response = widget.templateOnly || existingDocumentId == null
+      final response = widget.templateOnly
           ? await widget.api.previewLiveTemplatePdf(
               groupId: widget.groupId,
               template: _payload(includeTemplateId: false),
             )
           : await widget.api.previewTemplatePdf(
-              existingDocumentId,
+              _documentFlow.presupuestoId!,
             );
       final bytes = InvoiceEditorPdf.validatePdf(response);
       if (!mounted) return;
@@ -871,7 +842,7 @@ class _PresupuestoTemplateEditorScreenState
   Future<bool> _confirmUnresolvedVariables(String action) async {
     if (_unresolvedKeys.isEmpty) return true;
     final keys = _unresolvedKeys.map((key) => '[$key]').join(', ');
-    return await showHexoraDialog<bool>(
+    return await showDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: const Text('Variables sin completar'),
@@ -924,7 +895,7 @@ class _PresupuestoTemplateEditorScreenState
         bytes: bytes,
         onDownload: () => launchFileDownload(
           bytes,
-          fileName: 'presupuesto-plantilla-$key-preview.pdf',
+          fileName: '${Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto-plantilla' : 'budget-template'}-$key-preview.pdf',
           mimeType: 'application/pdf',
         ),
       );
@@ -940,6 +911,7 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   Future<void> _previewSavedTemplate(String? templateId) async {
+    final pdfPrefix = Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto-plantilla' : 'budget-template';
     final id = templateId?.trim();
     if (id == null || id.isEmpty || _previewingSavedTemplateId != null) return;
     setState(() => _previewingSavedTemplateId = id);
@@ -947,7 +919,7 @@ class _PresupuestoTemplateEditorScreenState
       final response = await widget.api.previewSavedTemplatePdf(id);
       await launchFileDownload(
         response.bodyBytes,
-        fileName: 'presupuesto-plantilla-$id-preview.pdf',
+        fileName: '$pdfPrefix-$id-preview.pdf',
         mimeType: 'application/pdf',
       );
     } on PresupuestosApiException catch (e) {
@@ -965,16 +937,12 @@ class _PresupuestoTemplateEditorScreenState
     final id = _string(template['_id']) ?? _string(template['id']);
     if (id == null || id.isEmpty || _deletingTemplateId != null) return;
     final name = _string(template['name']) ?? 'Plantilla sin nombre';
-    final discardsUnsavedChanges =
-        (_templateId ?? '').trim() == id && _hasTemplateEdits();
-    final confirmed = await showHexoraDialog<bool>(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Eliminar plantilla'),
         content: Text(
-          'Se eliminará solo la plantilla "$name". '
-          '${discardsUnsavedChanges ? 'También se descartarán los cambios sin guardar. ' : ''}'
-          'Los presupuestos ya creados conservan su contenido y PDF.',
+          'Se eliminara solo la plantilla "$name". Los presupuestos ya creados conservan su contenido y PDF.',
         ),
         actions: [
           TextButton(
@@ -1026,31 +994,20 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   Future<void> _downloadPdf() async {
-    if (!_validateServiceSelection()) return;
     if (_downloading) return;
     setState(() => _downloading = true);
     try {
+      if (!await _save(silent: true)) return;
       final presupuestoId = _documentFlow.presupuestoId;
-      final response = widget.templateOnly || presupuestoId == null
-          ? await widget.api.previewLiveTemplatePdf(
-              groupId: widget.groupId,
-              template: _payload(includeTemplateId: false),
-            )
-          : await (() async {
-              await _save(silent: true);
-              return widget.api.downloadTemplatePdf(presupuestoId);
-            })();
+      if (presupuestoId == null || presupuestoId.isEmpty) return;
+      final response = await widget.api.downloadTemplatePdf(presupuestoId);
       await launchFileDownload(
         response.bodyBytes,
         fileName: _fileName('editable'),
         mimeType: 'application/pdf',
       );
-    } on PresupuestosApiException catch (e) {
-      if (mounted) showErrorSnack(context, e.message);
-    } catch (e) {
-      if (mounted) {
-        showErrorSnack(context, e.toString().replaceFirst('Exception: ', ''));
-      }
+    } catch (_) {
+      // Save/API methods already show the relevant error.
     } finally {
       if (mounted) setState(() => _downloading = false);
     }
@@ -1063,7 +1020,9 @@ class _PresupuestoTemplateEditorScreenState
     );
     final file = picked?.files.single;
     final bytes = file?.bytes;
-    if (file == null || bytes == null) return;
+    if (file == null || bytes == null || !mounted) return;
+    final reason = _isIssuedDocument ? await _requestIssuedEditReason() : null;
+    if (!mounted || (_isIssuedDocument && reason == null)) return;
     try {
       final response = widget.templateOnly
           ? await widget.api.uploadTemplateImage(
@@ -1079,12 +1038,13 @@ class _PresupuestoTemplateEditorScreenState
               fileName: file.name,
               slot: image.slot,
               label: image.label.text,
+              reason: reason,
             );
       final uploaded = _extractImage(response, image.slot);
       if (uploaded != null) {
         setState(() => image.apply(uploaded));
       }
-      await _save(silent: true);
+      await _save(silent: true, issuedReason: reason);
       if (mounted) showSuccessSnack(context, 'Imagen actualizada.');
     } on PresupuestosApiException catch (e) {
       if (mounted) showErrorSnack(context, e.message);
@@ -1103,6 +1063,9 @@ class _PresupuestoTemplateEditorScreenState
       groupId: widget.groupId,
     );
     if (selected == null || !mounted) return;
+    final reason = _isIssuedDocument ? await _requestIssuedEditReason() : null;
+    if (!mounted || (_isIssuedDocument && reason == null)) return;
+    final hadPendingEdits = _hasTemplateEdits();
 
     setState(() => _libraryImageBusySlots.add(image.slot));
     try {
@@ -1115,6 +1078,7 @@ class _PresupuestoTemplateEditorScreenState
         slot: image.slot,
         label: image.label.text,
         enabled: image.enabled,
+        reason: reason,
       );
       final attached = _extractImage(response, image.slot);
       if (!mounted) return;
@@ -1130,6 +1094,9 @@ class _PresupuestoTemplateEditorScreenState
               },
         );
       });
+      if (!hadPendingEdits) {
+        _selectedTemplateSnapshot = jsonEncode(_payload(includeTemplateId: false));
+      }
       showSuccessSnack(context, 'Imagen añadida desde la biblioteca.');
     } on PresupuestosApiException catch (e) {
       if (mounted) showErrorSnack(context, e.message);
@@ -1184,17 +1151,12 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   Map<String, dynamic> _payload({bool includeTemplateId = true}) {
-    _syncSeasonVariables();
-    // A section renamed to "Anexo…" / "Condiciones de pago…" is pinned too.
-    _enforcePinnedSectionOrder();
     for (var i = 0; i < _sections.length; i++) {
       _sections[i].order = i + 1;
     }
     final scheduleTotal = _scheduleTotal();
     return {
       ..._sourceContent,
-      if (_hasSeasons && _seasonEdited)
-        'seasonConfiguration': _seasonConfiguration(),
       'name': _name.text.trim().isEmpty ? 'Presupuesto' : _name.text.trim(),
       if (includeTemplateId && (_templateId ?? '').trim().isNotEmpty)
         'templateId': _templateId!.trim(),
@@ -1234,20 +1196,12 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   void _applyLoadedDocumentVariables(Map<String, dynamic> payload) {
-    final previousMaintenance = <String, String>{
-      for (final key in {..._seasonVariableKeys, 'SERVICIO_MANTENIMIENTO'})
-        if (_variables.containsKey(key)) key: _variables[key]!.text,
-    };
     final rawVariables = payload['variables'];
     final rawFields = payload['variableFields'] ??
         (payload['variables'] is List ? payload['variables'] : null);
     final definitions = _readVariableFieldDefinitions(rawVariables)
       ..addAll(_readVariableFieldDefinitions(rawFields));
     final fieldValues = _readVariableFieldValues(rawFields);
-    for (final key in previousMaintenance.keys) {
-      definitions.putIfAbsent(
-          key, () => _readVariableFieldDefinitions([key])[key]!);
-    }
     final explicitValues = rawVariables is Map
         ? <String, String>{
             for (final entry in rawVariables.entries)
@@ -1285,16 +1239,9 @@ class _PresupuestoTemplateEditorScreenState
     };
     for (final key in definitions.keys) {
       _variables[key] = TextEditingController(
-        text: (previousMaintenance.containsKey(key)
-                ? explicitValues[key]
-                : null) ??
-            fieldValues[key] ??
-            _string(explicitValues[key]) ??
-            previousMaintenance[key] ??
-            '',
+        text: fieldValues[key] ?? _string(explicitValues[key]) ?? '',
       );
     }
-    _readSeasonFrequencies();
     _recalculateVariableFields();
 
     final values = <String, String>{
@@ -1315,13 +1262,13 @@ class _PresupuestoTemplateEditorScreenState
       );
   }
 
-  Future<void> _saveChangedDocumentVariables(String presupuestoId) async {
+  Future<void> _saveChangedDocumentVariables(String presupuestoId, {String? reason}) async {
     final changes = <String, dynamic>{};
     for (final entry in _variables.entries) {
       final definition = _variableFieldDefinitions[entry.key];
       final key = entry.key.toUpperCase();
       if (definition?.readOnly == true ||
-          (definition?.isAutomatic == true && key != 'CLIENTE') ||
+          definition?.isAutomatic == true ||
           const {'FECHA', 'DIA', 'MES', 'ANO', 'AÑO'}.contains(key)) {
         continue;
       }
@@ -1333,48 +1280,27 @@ class _PresupuestoTemplateEditorScreenState
     await widget.api.updateTemplateVariables(
       presupuestoId,
       variables: changes,
+      reason: reason,
     );
     final refreshed = await widget.api.getTemplateVariables(presupuestoId);
     _applyLoadedDocumentVariables(refreshed);
   }
 
   String _fileName(String suffix) {
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
     final number =
-        (widget.presupuestoNumber ?? _documentFlow.presupuestoId ?? 'documento')
+        (widget.presupuestoNumber ?? _documentFlow.presupuestoId ??
+                (isSpanish ? 'documento' : 'document'))
             .replaceAll('/', '-')
             .trim();
-    return 'presupuesto-$number-$suffix.pdf';
-  }
-
-  /// Index of the first pinned section, i.e. how far free sections may move.
-  int get _firstPinnedSectionIndex {
-    final i = _sections.indexWhere((s) => s.isPinned);
-    return i < 0 ? _sections.length : i;
-  }
-
-  /// Keeps free sections in their current order, followed by pinned sections
-  /// (payment conditions, then annex). Stable for everything else.
-  void _enforcePinnedSectionOrder([List<_TemplateSectionState>? list]) {
-    final target = list ?? _sections;
-    final free = target.where((s) => !s.isPinned).toList();
-    final pinned = target.where((s) => s.isPinned).toList();
-    final order = {for (var i = 0; i < pinned.length; i++) pinned[i]: i};
-    pinned.sort((a, b) {
-      final byRank = a.pinnedRank.compareTo(b.pinnedRank);
-      return byRank != 0 ? byRank : order[a]!.compareTo(order[b]!);
-    });
-    target
-      ..clear()
-      ..addAll(free)
-      ..addAll(pinned);
+    final prefix = isSpanish ? 'presupuesto' : 'budget';
+    final localizedSuffix = isSpanish && suffix == 'preview' ? 'vista-previa' : suffix;
+    return '$prefix-$number-$localizedSuffix.pdf';
   }
 
   void _moveSection(int index, int delta) {
     final target = index + delta;
     if (target < 0 || target >= _sections.length) return;
-    if (_sections[index].isPinned || target >= _firstPinnedSectionIndex) {
-      return;
-    }
     setState(() {
       final item = _sections.removeAt(index);
       _sections.insert(target, item);
@@ -1394,8 +1320,8 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   List<String> _generatedFrequencyItems() => SeasonalFrequency.render({
-        for (final entry in _variables.entries) entry.key: entry.value.text,
-      });
+    for (final entry in _variables.entries) entry.key: entry.value.text,
+  });
 
   void _editFrequencyControls() {
     final index = _editorSteps().indexWhere((step) => step.title == 'Datos');
@@ -1437,6 +1363,7 @@ class _PresupuestoTemplateEditorScreenState
       if (target.text != next) target.text = next;
     }
     if (changedKey != null) _syncVariableToTables(changedKey);
+    if (changedKey != null && SeasonalFrequency.keys.contains(changedKey) && mounted) setState(() {});
   }
 
   void _syncVariableToTables(String key) {
@@ -1471,9 +1398,7 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   String _variableDisplayLabel(_TemplateVariableField field) =>
-      const ['TOTAL_MENSUAL', 'IMPORTE_MENSUAL'].contains(field.key)
-          ? 'Importe mensual'
-          : field.label.replaceAll('[${field.key}]', '').trim();
+      field.label.replaceAll('[${field.key}]', '').trim();
 
   Future<List<GroupClient>> _searchActiveClients(String search) {
     final override = widget.clientSearch;
@@ -1495,7 +1420,6 @@ class _PresupuestoTemplateEditorScreenState
         'items': <String>[],
         'enabled': true,
       }));
-      _enforcePinnedSectionOrder();
     });
   }
 
@@ -1507,16 +1431,9 @@ class _PresupuestoTemplateEditorScreenState
     });
   }
 
-  Future<void> _newTemplate() async {
-    if (!await _confirmTemplateReplacement(
-        nextName: 'una plantilla en blanco')) {
-      return;
-    }
-    if (!mounted) return;
+  void _newTemplate() {
     setState(() {
       _templateId = null;
-      _selectedDefaultKey = null;
-      _selectedDefaultTemplate = null;
       _hydrate(_newTemplateSource());
     });
   }
@@ -1557,6 +1474,12 @@ class _PresupuestoTemplateEditorScreenState
 
   bool _isDark(ThemeData theme) => _TemplateEditorLayout(this)._isDark(theme);
 
+  Color _editorCardBg(ThemeData theme) =>
+      _TemplateEditorLayout(this)._editorCardBg(theme);
+
+  Color _editorPanelBg(ThemeData theme) =>
+      _TemplateEditorLayout(this)._editorPanelBg(theme);
+
   Color _editorInsetBg(ThemeData theme) =>
       _TemplateEditorLayout(this)._editorInsetBg(theme);
 
@@ -1572,21 +1495,13 @@ class _PresupuestoTemplateEditorScreenState
       _documentFlow.presupuestoId == null &&
       _selectedDefaultKey == null;
 
-  String? get _selectedTemplateName {
-    final defaultName = _string(_selectedDefaultTemplate?['name']);
-    if (defaultName != null && defaultName.isNotEmpty) return defaultName;
-    final saved = _templateById(_templateId);
-    final savedName = _string(saved?['name']);
-    return savedName == null || savedName.isEmpty ? null : savedName;
-  }
-
   List<_EditorStep> _editorSteps() {
     final steps = <_EditorStep>[];
     final canChooseTemplate = widget.templateOnly ||
         (widget.createDocumentDraft && _documentFlow.presupuestoId == null);
     final baseChildren = <Widget>[
       if (canChooseTemplate) _buildDefaultTemplatesCard(),
-      if (widget.templateOnly && _templates.isNotEmpty)
+      if (widget.templateOnly && (_templates.isNotEmpty || widget.templateOnly))
         _buildTemplateSelectorCard(),
     ];
     if (baseChildren.isNotEmpty) {
@@ -1669,6 +1584,9 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   Widget _buildImagesCard() => _TemplateImageEditor(this)._buildImagesCard();
+
+  Widget _buildDocumentActionsCard() =>
+      _TemplateDocumentPreview(this)._buildDocumentActionsCard();
 
   Widget _card({
     required String title,
@@ -1792,10 +1710,7 @@ class _PresupuestoTemplateEditorScreenState
       'key': newKey,
       'title': title.isEmpty ? 'Seccion (copia)' : '$title (copia)',
     });
-    setState(() {
-      _sections.insert(index + 1, duplicated);
-      _enforcePinnedSectionOrder();
-    });
+    setState(() => _sections.insert(index + 1, duplicated));
   }
 
   // Keep State.setState calls on the existing lifecycle owner.
