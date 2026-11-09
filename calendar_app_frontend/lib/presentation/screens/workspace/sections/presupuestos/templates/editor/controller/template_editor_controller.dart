@@ -105,7 +105,8 @@ class _PresupuestoTemplateEditorScreenState
               ? null
               : _variables['CLIENTE']?.text.trim();
           _variableSchemaKey = 'document:$presupuestoId';
-          _selectedTemplateSnapshot = jsonEncode(_payload(includeTemplateId: false));
+          _selectedTemplateSnapshot =
+              jsonEncode(_payload(includeTemplateId: false));
           return;
         }
         if (!widget.createDocumentDraft) {
@@ -373,14 +374,19 @@ class _PresupuestoTemplateEditorScreenState
       ..addAll(_sectionStates(source['sections']));
     if (_sections.any((section) => section.generatedFrequency)) {
       for (final key in SeasonalFrequency.keys) {
-        _variableFieldDefinitions.putIfAbsent(key,
-            () => _readVariableFieldDefinitions([key])[key]!);
-        _variables.putIfAbsent(key, () => TextEditingController(text: _string(variables[key]) ?? ''));
+        _variableFieldDefinitions.putIfAbsent(
+            key, () => _readVariableFieldDefinitions([key])[key]!);
+        _variables.putIfAbsent(key,
+            () => TextEditingController(text: _string(variables[key]) ?? ''));
       }
-      final highMonths = SeasonalFrequency.monthIndexes(_variables['MESES_TEMPORADA_ALTA']!.text);
-      if (highMonths != null && highMonths.isNotEmpty && _variables['MESES_TEMPORADA_BAJA']!.text.trim().isEmpty) {
+      final highMonths = SeasonalFrequency.monthIndexes(
+          _variables['MESES_TEMPORADA_ALTA']!.text);
+      if (highMonths != null &&
+          highMonths.isNotEmpty &&
+          _variables['MESES_TEMPORADA_BAJA']!.text.trim().isEmpty) {
         _variables['MESES_TEMPORADA_BAJA']!.text = SeasonalFrequency.monthList(
-          List.generate(12, (index) => index).where((index) => !highMonths.contains(index)));
+            List.generate(12, (index) => index)
+                .where((index) => !highMonths.contains(index)));
       }
     }
 
@@ -621,7 +627,8 @@ class _PresupuestoTemplateEditorScreenState
     return bySlot.values.map(_TemplateImageState.fromMap).toList();
   }
 
-  bool get _isIssuedDocument => !widget.templateOnly && _documentStatus == 'issued';
+  bool get _isIssuedDocument =>
+      !widget.templateOnly && _documentStatus == 'issued';
 
   Future<String?> _requestIssuedEditReason() async {
     if (!_isIssuedDocument) return null;
@@ -700,7 +707,8 @@ class _PresupuestoTemplateEditorScreenState
         } else {
           await _saveChangedDocumentVariables(presupuestoId, reason: reason);
         }
-        _selectedTemplateSnapshot = jsonEncode(_payload(includeTemplateId: false));
+        _selectedTemplateSnapshot =
+            jsonEncode(_payload(includeTemplateId: false));
         await widget.onDocumentSaved?.call();
       }
       if (!silent && mounted) {
@@ -895,7 +903,8 @@ class _PresupuestoTemplateEditorScreenState
         bytes: bytes,
         onDownload: () => launchFileDownload(
           bytes,
-          fileName: '${Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto-plantilla' : 'budget-template'}-$key-preview.pdf',
+          fileName:
+              '${Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto-plantilla' : 'budget-template'}-$key-preview.pdf',
           mimeType: 'application/pdf',
         ),
       );
@@ -911,7 +920,9 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   Future<void> _previewSavedTemplate(String? templateId) async {
-    final pdfPrefix = Localizations.localeOf(context).languageCode == 'es' ? 'presupuesto-plantilla' : 'budget-template';
+    final pdfPrefix = Localizations.localeOf(context).languageCode == 'es'
+        ? 'presupuesto-plantilla'
+        : 'budget-template';
     final id = templateId?.trim();
     if (id == null || id.isEmpty || _previewingSavedTemplateId != null) return;
     setState(() => _previewingSavedTemplateId = id);
@@ -1095,7 +1106,8 @@ class _PresupuestoTemplateEditorScreenState
         );
       });
       if (!hadPendingEdits) {
-        _selectedTemplateSnapshot = jsonEncode(_payload(includeTemplateId: false));
+        _selectedTemplateSnapshot =
+            jsonEncode(_payload(includeTemplateId: false));
       }
       showSuccessSnack(context, 'Imagen añadida desde la biblioteca.');
     } on PresupuestosApiException catch (e) {
@@ -1262,7 +1274,8 @@ class _PresupuestoTemplateEditorScreenState
       );
   }
 
-  Future<void> _saveChangedDocumentVariables(String presupuestoId, {String? reason}) async {
+  Future<void> _saveChangedDocumentVariables(String presupuestoId,
+      {String? reason}) async {
     final changes = <String, dynamic>{};
     for (final entry in _variables.entries) {
       final definition = _variableFieldDefinitions[entry.key];
@@ -1288,13 +1301,14 @@ class _PresupuestoTemplateEditorScreenState
 
   String _fileName(String suffix) {
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
-    final number =
-        (widget.presupuestoNumber ?? _documentFlow.presupuestoId ??
-                (isSpanish ? 'documento' : 'document'))
-            .replaceAll('/', '-')
-            .trim();
+    final number = (widget.presupuestoNumber ??
+            _documentFlow.presupuestoId ??
+            (isSpanish ? 'documento' : 'document'))
+        .replaceAll('/', '-')
+        .trim();
     final prefix = isSpanish ? 'presupuesto' : 'budget';
-    final localizedSuffix = isSpanish && suffix == 'preview' ? 'vista-previa' : suffix;
+    final localizedSuffix =
+        isSpanish && suffix == 'preview' ? 'vista-previa' : suffix;
     return '$prefix-$number-$localizedSuffix.pdf';
   }
 
@@ -1320,8 +1334,8 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   List<String> _generatedFrequencyItems() => SeasonalFrequency.render({
-    for (final entry in _variables.entries) entry.key: entry.value.text,
-  });
+        for (final entry in _variables.entries) entry.key: entry.value.text,
+      });
 
   void _editFrequencyControls() {
     final index = _editorSteps().indexWhere((step) => step.title == 'Datos');
@@ -1363,7 +1377,9 @@ class _PresupuestoTemplateEditorScreenState
       if (target.text != next) target.text = next;
     }
     if (changedKey != null) _syncVariableToTables(changedKey);
-    if (changedKey != null && SeasonalFrequency.keys.contains(changedKey) && mounted) setState(() {});
+    if (changedKey != null &&
+        SeasonalFrequency.keys.contains(changedKey) &&
+        mounted) setState(() {});
   }
 
   void _syncVariableToTables(String key) {
@@ -1474,12 +1490,6 @@ class _PresupuestoTemplateEditorScreenState
 
   bool _isDark(ThemeData theme) => _TemplateEditorLayout(this)._isDark(theme);
 
-  Color _editorCardBg(ThemeData theme) =>
-      _TemplateEditorLayout(this)._editorCardBg(theme);
-
-  Color _editorPanelBg(ThemeData theme) =>
-      _TemplateEditorLayout(this)._editorPanelBg(theme);
-
   Color _editorInsetBg(ThemeData theme) =>
       _TemplateEditorLayout(this)._editorInsetBg(theme);
 
@@ -1584,9 +1594,6 @@ class _PresupuestoTemplateEditorScreenState
   }
 
   Widget _buildImagesCard() => _TemplateImageEditor(this)._buildImagesCard();
-
-  Widget _buildDocumentActionsCard() =>
-      _TemplateDocumentPreview(this)._buildDocumentActionsCard();
 
   Widget _card({
     required String title,

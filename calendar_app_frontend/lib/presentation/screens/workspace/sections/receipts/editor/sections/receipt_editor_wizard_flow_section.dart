@@ -154,6 +154,54 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
     // Ignore re-entrant saves so a rapid second click cannot close the editor
     // using stale draft data while the current request is still in flight.
     if (_savingDraft) return null;
+    if (_draftReceipt?.status == 'issued' && !_draftDirty) {
+      return _draftReceipt;
+    }
+
+    var editReason = '';
+    if (_draftReceipt?.status == 'issued') {
+      final reasonCtrl = TextEditingController();
+      final isEs = AppLocalizations.of(context)!
+          .localeName
+          .toLowerCase()
+          .startsWith('es');
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(isEs ? 'Editar recibo emitido' : 'Edit issued receipt'),
+          content: TextField(
+            controller: reasonCtrl,
+            autofocus: true,
+            maxLength: 1000,
+            maxLines: 3,
+            decoration: InputDecoration(
+              labelText: isEs ? 'Motivo del cambio' : 'Reason for change',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(isEs ? 'Cancelar' : 'Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(isEs ? 'Continuar' : 'Continue'),
+            ),
+          ],
+        ),
+      );
+      editReason = reasonCtrl.text.trim();
+      reasonCtrl.dispose();
+      if (confirmed != true) return null;
+      if (editReason.isEmpty) {
+        showInfoSnack(
+            context,
+            isEs
+                ? 'Indica el motivo para guardar los cambios.'
+                : 'Enter a reason before saving the changes.');
+        return null;
+      }
+    }
 
     setState(() => _savingDraft = true);
     try {
@@ -163,7 +211,7 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
         clientId: _useManualClient ? '' : _clientId!,
         clientName: _useManualClient ? _clientNameCtrl.text.trim() : null,
         clientSnapshot: _receiptClientSnapshot,
-        status: 'draft',
+        status: _draftReceipt?.status ?? 'draft',
         issueDate: _issueDate,
         notes: _notesCtrl.text.trim(),
         lines: _payloadLines(),
@@ -172,7 +220,10 @@ extension _ReceiptEditorWizardFlowSection on _ReceiptEditorWizardScreenState {
           ? await _receiptsApi.create(payloadReceipt)
           : await _receiptsApi.update(
               _draftReceipt!.id,
-              payloadReceipt.toUpdatePayload(),
+              {
+                ...payloadReceipt.toUpdatePayload(),
+                if (editReason.isNotEmpty) 'reason': editReason,
+              },
             );
       if (!mounted) return null;
       setState(() {
