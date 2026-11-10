@@ -406,13 +406,17 @@ class _RepetitionScreenState extends State<RepetitionScreen> {
             );
 
             _updateWarningMessage();
+            setState(() => validationError = result.error);
 
-            setState(() {
-              validationError = result.error;
+            if (result.error != null || warningMessage != null) return;
 
-              if (result.error == null && warningMessage == null) {
-                _goBackToParentView(result.rule, true);
-              }
+            // The recurrence editor is presented in an Overlay on web.  Do
+            // not remove that overlay while this button's pointer event is
+            // still being dispatched; doing so can mutate a LayoutBuilder or
+            // MouseTracker during layout and leaves the rule unapplied.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              _goBackToParentView(result.rule, true);
             });
           },
           child: Text(l.confirm),
