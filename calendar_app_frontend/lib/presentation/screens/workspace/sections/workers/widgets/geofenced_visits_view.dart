@@ -619,64 +619,53 @@ class _GeofencedVisitsViewState extends State<GeofencedVisitsView> {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            SizedBox(
-              height: 76 *
-                  (MediaQuery.textScalerOf(context).scale(14) / 14)
-                      .clamp(1.0, double.infinity),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final metrics = <Widget>[
-                    _VisitMetricCard(
-                      icon: Icons.place_outlined,
-                      label: _isSpanish ? 'Registradas' : 'Recorded',
-                      value: '${visits.length}',
-                      color: cs.primary,
-                    ),
-                    _VisitMetricCard(
-                      icon: Icons.check_circle_outline_rounded,
-                      label: _isSpanish ? 'Finalizadas' : 'Completed',
-                      value: '$completedCount',
-                      color: const Color(0xFF16813E),
-                    ),
-                    _VisitMetricCard(
-                      icon: Icons.timelapse_rounded,
-                      label: _isSpanish ? 'En curso' : 'In progress',
-                      value: '$activeCount',
-                      color: const Color(0xFFE08A16),
-                    ),
-                    _VisitMetricCard(
-                      icon: Icons.schedule_outlined,
-                      label: _isSpanish ? 'Duración media' : 'Avg. duration',
-                      value: averageMinutes == null
-                          ? '—'
-                          : _durationLabel(averageMinutes),
-                      color: cs.secondary,
-                    ),
-                  ];
-                  if (constraints.maxWidth < 720) {
-                    return ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: metrics.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (_, index) => SizedBox(
-                        width: 160 *
-                            (MediaQuery.textScalerOf(context).scale(14) / 14)
-                                .clamp(1.0, double.infinity),
-                        child: metrics[index],
-                      ),
-                    );
-                  }
-                  return Row(
+            const SizedBox(height: 10),
+            Builder(
+              builder: (context) {
+                final metrics = <Widget>[
+                  _VisitMetricCard(
+                    icon: Icons.place_outlined,
+                    label: _isSpanish ? 'Registradas' : 'Recorded',
+                    value: '${visits.length}',
+                    color: cs.primary,
+                  ),
+                  _VisitMetricCard(
+                    icon: Icons.check_circle_outline_rounded,
+                    label: _isSpanish ? 'Finalizadas' : 'Completed',
+                    value: '$completedCount',
+                    color: const Color(0xFF16813E),
+                  ),
+                  _VisitMetricCard(
+                    icon: Icons.timelapse_rounded,
+                    label: _isSpanish ? 'En curso' : 'In progress',
+                    value: '$activeCount',
+                    color: const Color(0xFFE08A16),
+                  ),
+                  _VisitMetricCard(
+                    icon: Icons.schedule_outlined,
+                    label: _isSpanish ? 'Duración media' : 'Avg. duration',
+                    value: averageMinutes == null
+                        ? '—'
+                        : _durationLabel(averageMinutes),
+                    color: cs.secondary,
+                  ),
+                ];
+                final visibleMetrics =
+                    compact ? metrics.take(3).toList() : metrics;
+                return SizedBox(
+                  height: compact ? 60 : 76,
+                  child: Row(
                     children: [
-                      for (var index = 0; index < metrics.length; index++) ...[
+                      for (var index = 0;
+                          index < visibleMetrics.length;
+                          index++) ...[
                         if (index > 0) const SizedBox(width: 8),
-                        Expanded(child: metrics[index]),
+                        Expanded(child: visibleMetrics[index]),
                       ],
                     ],
-                  );
-                },
-              ),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 12),
             _buildFilterToolbar(cs),
@@ -1602,8 +1591,8 @@ class _TrackingStatusCard extends StatelessWidget {
             ? const Color(0xFFE09B25)
             : cs.primary;
     final statusIcon = Container(
-      width: 46,
-      height: 46,
+      width: 38,
+      height: 38,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.13),
         borderRadius: BorderRadius.circular(14),
@@ -1662,23 +1651,6 @@ class _TrackingStatusCard extends StatelessWidget {
                   color: cs.onSurfaceVariant,
                 ),
           ),
-        const SizedBox(height: 3),
-        Text(
-          runningHere
-              ? (isSpanish
-                  ? '${tracking.clientLocationCount} ubicaciones activas · solo se guardan llegadas y salidas'
-                  : '${tracking.clientLocationCount} active locations · only arrivals and departures are stored')
-              : activeHere
-                  ? (isSpanish
-                      ? 'Reanuda la ubicación en segundo plano para continuar.'
-                      : 'Resume background location to continue.')
-                  : (isSpanish
-                      ? 'Inícialo antes de comenzar la ruta de trabajo.'
-                      : 'Start it before beginning the work route.'),
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
-        ),
         if ((tracking.error ?? '').isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
@@ -1722,7 +1694,7 @@ class _TrackingStatusCard extends StatelessWidget {
       final compact = constraints.maxWidth < 600;
       return Container(
         margin: EdgeInsets.fromLTRB(compact ? 0 : 16, 12, compact ? 0 : 16, 10),
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(compact ? 10 : 16),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(18),

@@ -789,11 +789,14 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     }
     return Scaffold(
       appBar: SectionAppBar(
-        title: _isSpanish ? 'Mapa' : 'Map',
+        title: _isSpanish ? 'Mapa y visitas' : 'Maps & visits',
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: MediaQuery.sizeOf(context).width <
+                  CollapsibleSidebar.responsiveBreakpoint
+              ? EdgeInsets.zero
+              : const EdgeInsets.all(16),
           child: content,
         ),
       ),
@@ -879,38 +882,24 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
       builder: (context, constraints) {
         final sectionContent = _buildSectionContent(token);
         if (constraints.maxWidth < CollapsibleSidebar.responsiveBreakpoint) {
-          final showGrid = constraints.maxWidth < 600 && navItems.length <= 4;
           return Column(
             children: [
-              if (showGrid)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 2, 4, 10),
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (final item in navItems)
-                        SizedBox(
-                          width: (constraints.maxWidth - 14) / 2,
-                          child: _buildMobileNavButton(context, item, cs),
-                        ),
-                    ],
-                  ),
-                )
-              else
-                SingleChildScrollView(
+              SizedBox(
+                height: 42,
+                child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.fromLTRB(4, 2, 4, 10),
+                  padding: const EdgeInsets.fromLTRB(4, 2, 4, 2),
                   child: Row(
                     children: [
                       for (final item in navItems)
                         Padding(
-                          padding: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.only(right: 4),
                           child: _buildMobileNavButton(context, item, cs),
                         ),
                     ],
                   ),
                 ),
+              ),
               Expanded(child: sectionContent),
             ],
           );
@@ -961,28 +950,21 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
       child: TextButton(
         onPressed: () => _selectSection(item.section),
         style: TextButton.styleFrom(
-          minimumSize: const Size(0, 44),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          foregroundColor:
-              selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-          backgroundColor:
-              selected ? cs.primaryContainer : cs.surfaceContainerLow,
-          side: BorderSide(
-            color: selected
-                ? cs.primary.withValues(alpha: 0.22)
-                : cs.outlineVariant,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          minimumSize: const Size(0, 38),
+          padding: const EdgeInsets.symmetric(horizontal: 13),
+          foregroundColor: selected ? cs.primary : cs.onSurfaceVariant,
+          backgroundColor: selected
+              ? cs.primary.withValues(alpha: .10)
+              : cs.surfaceContainerLow.withValues(alpha: .65),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
         ),
         child: Text(
           item.mobileLabel,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: selected ? cs.primary : cs.onSurfaceVariant,
               ),
         ),
       ),
@@ -1134,42 +1116,56 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
       final desktop = constraints.maxWidth >= 900;
       final map = Stack(children: [
         Positioned.fill(child: _buildMap(token)),
-        Positioned(
-          top: _editing ? 66 : 12,
-          left: 12,
-          child: _mapSurface(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(HexoraDimensions.radius),
-            child: SizedBox(
-              width: (canManageLocations ? 320.0 : 200.0)
-                  .clamp(0.0, constraints.maxWidth - 24),
-              child: Row(children: [
-                Expanded(
-                    child:
-                        _buildActions(canManageLocations: canManageLocations)),
-                if (showSidePanel)
-                  IconButton(
-                    tooltip: _isSpanish ? 'Clientes' : 'Clients',
-                    icon: Icon(_clientPanelCollapsed
-                        ? Icons.people_outline
-                        : Icons.view_sidebar_outlined),
-                    onPressed: () => setState(
-                        () => _clientPanelCollapsed = !_clientPanelCollapsed),
-                  ),
-              ]),
+        if (desktop)
+          Positioned(
+            top: _editing ? 66 : 12,
+            left: 12,
+            child: _mapSurface(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(HexoraDimensions.radius),
+              child: SizedBox(
+                width: (canManageLocations ? 320.0 : 200.0)
+                    .clamp(0.0, constraints.maxWidth - 24),
+                child: Row(children: [
+                  Expanded(
+                      child: _buildActions(
+                          canManageLocations: canManageLocations)),
+                  if (showSidePanel)
+                    IconButton(
+                      tooltip: _isSpanish ? 'Clientes' : 'Clients',
+                      icon: Icon(_clientPanelCollapsed
+                          ? Icons.people_outline
+                          : Icons.view_sidebar_outlined),
+                      onPressed: () => setState(
+                          () => _clientPanelCollapsed = !_clientPanelCollapsed),
+                    ),
+                ]),
+              ),
+            ),
+          )
+        else
+          Positioned(
+            top: 12,
+            right: 12,
+            child: _buildMobileMapActions(
+              canManageLocations: canManageLocations,
+              showSidePanel: showSidePanel,
             ),
           ),
-        ),
       ]);
       if (!showSidePanel) return map;
-      final panel = Theme(
-        data: Theme.of(context).brightness == Brightness.dark
-            ? navigationTheme(Theme.of(context))
-            : Theme.of(context),
-        child: Builder(
-            builder: (context) => _buildSidePanel(
-                canManageLocations: canManageLocations, panelContext: context)),
-      );
+      Widget panel([ScrollController? listScrollController]) => Theme(
+            data: Theme.of(context).brightness == Brightness.dark
+                ? navigationTheme(Theme.of(context))
+                : Theme.of(context),
+            child: Builder(
+              builder: (context) => _buildSidePanel(
+                canManageLocations: canManageLocations,
+                panelContext: context,
+                listScrollController: listScrollController,
+              ),
+            ),
+          );
       if (desktop) {
         return Row(children: [
           Expanded(child: map),
@@ -1181,7 +1177,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
               ),
             ),
             const SizedBox(width: 4),
-            SizedBox(width: _panelWidth, child: panel),
+            SizedBox(width: _panelWidth, child: panel()),
           ],
         ]);
       }
@@ -1196,20 +1192,20 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
               color: Theme.of(context).colorScheme.surface,
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(12)),
-              child: ListView(
-                controller: scrollController,
+              child: Column(
                 children: [
                   Center(
-                      child: Container(
-                    margin: const EdgeInsets.all(8),
-                    width: 32,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                      borderRadius: BorderRadius.circular(4),
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 8, bottom: 4),
+                      width: 34,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
-                  )),
-                  SizedBox(height: constraints.maxHeight * .75, child: panel),
+                  ),
+                  Expanded(child: panel(scrollController)),
                 ],
               ),
             ),
@@ -1225,6 +1221,78 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
       PointerInterceptor(
           child:
               Material(color: color, borderRadius: borderRadius, child: child));
+
+  Widget _buildMobileMapActions({
+    required bool canManageLocations,
+    required bool showSidePanel,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    Widget button({
+      required String tooltip,
+      required IconData icon,
+      required VoidCallback? onPressed,
+      bool primary = false,
+    }) {
+      return SizedBox.square(
+        dimension: 42,
+        child: IconButton(
+          tooltip: tooltip,
+          onPressed: onPressed,
+          style: IconButton.styleFrom(
+            backgroundColor: primary ? cs.primary : cs.surface,
+            foregroundColor: primary ? cs.onPrimary : cs.onSurface,
+            elevation: 3,
+            shadowColor: Colors.black26,
+          ),
+          icon: Icon(icon, size: 20),
+        ),
+      );
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          button(
+            tooltip: _isSpanish ? 'Actualizar mapa' : 'Refresh map',
+            icon: Icons.refresh_rounded,
+            onPressed: _load,
+          ),
+          const SizedBox(height: 6),
+          button(
+            tooltip: _isSpanish ? 'Mi ubicación' : 'My location',
+            icon: _locating ? Icons.hourglass_top_rounded : Icons.my_location,
+            onPressed:
+                _locating ? null : () => _loadUserLocation(showErrors: true),
+          ),
+          if (canManageLocations) ...[
+            const SizedBox(height: 6),
+            button(
+              tooltip: _isSpanish ? 'Ubicar cliente' : 'Set client location',
+              icon: Icons.add_location_alt_outlined,
+              onPressed: _chooseClient,
+              primary: true,
+            ),
+          ],
+          if (showSidePanel) ...[
+            const SizedBox(height: 6),
+            button(
+              // Keep the stable "Clientes" label used by the desktop panel
+              // and existing accessibility shortcuts.
+              tooltip: _isSpanish ? 'Clientes' : 'Clients',
+              icon: _clientPanelCollapsed
+                  ? Icons.people_outline
+                  : Icons.keyboard_arrow_down_rounded,
+              onPressed: () => setState(
+                () => _clientPanelCollapsed = !_clientPanelCollapsed,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   Widget _buildMap(AzureMapsToken token) {
     final cs = Theme.of(context).colorScheme;
@@ -1391,8 +1459,11 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
     );
   }
 
-  Widget _buildSidePanel(
-      {required bool canManageLocations, BuildContext? panelContext}) {
+  Widget _buildSidePanel({
+    required bool canManageLocations,
+    BuildContext? panelContext,
+    ScrollController? listScrollController,
+  }) {
     final cs = Theme.of(panelContext ?? context).colorScheme;
     return Container(
       decoration: BoxDecoration(
@@ -1404,12 +1475,16 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
           ? _buildEditor()
           : _buildClientBrowser(
               canManageLocations: canManageLocations,
-              panelContext: panelContext),
+              panelContext: panelContext,
+              listScrollController: listScrollController),
     );
   }
 
-  Widget _buildClientBrowser(
-      {required bool canManageLocations, BuildContext? panelContext}) {
+  Widget _buildClientBrowser({
+    required bool canManageLocations,
+    BuildContext? panelContext,
+    ScrollController? listScrollController,
+  }) {
     final context = panelContext ?? this.context;
     final cs = Theme.of(context).colorScheme;
     final selected =
@@ -1425,7 +1500,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
           child: Row(children: [
             Expanded(
                 child: Text(
-                    '${_isSpanish ? 'Clientes' : 'Clients'} · ${_filteredClients.length}',
+                    '${_isSpanish ? 'Clientes' : 'Clients'} · ${_clients.length}',
                     style: Theme.of(context).textTheme.titleMedium)),
             DropdownButton<String>(
               value: _locationFilter,
@@ -1505,7 +1580,7 @@ class _ClientMapScreenState extends State<ClientMapScreen> {
                   ),
                 )
               : ListView.builder(
-                  controller: _clientListScroll,
+                  controller: listScrollController ?? _clientListScroll,
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   itemCount: _filteredClients.length +
                       (selected != null && selectedLocation != null ? 1 : 0),
