@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hexora/services/auth/token/token_service.dart';
 import 'package:hexora/services/business_chat/business_chat_api.dart';
 import 'package:hexora/services/business_chat/business_chat_drafts.dart';
@@ -12,12 +13,24 @@ import 'package:hexora/presentation/screens/workspace/sections/enable_banking/en
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/expense_upload_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/workers_hub_screen.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/shared/bank_transaction_share_dialog.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:provider/provider.dart';
 import 'bank_transaction_chat_card.dart';
 import 'bank_transaction_picker.dart';
 import 'document_review_dialog.dart';
 import 'business_chat_search_dialog.dart';
+import 'compact_conversation_tile.dart';
+import 'widgets/chat_user_avatar.dart';
+import 'widgets/compact_chat_bubble.dart';
+import 'widgets/chat_message_actions.dart';
+import 'widgets/chat_channel_header.dart';
+import 'widgets/chat_composer.dart';
+import 'widgets/chat_inbox_search.dart';
+import 'widgets/mobile_chat_inbox_header.dart';
 import 'package:intl/intl.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:url_launcher/url_launcher.dart';
@@ -27,10 +40,16 @@ class BusinessChatScreen extends StatefulWidget {
       {super.key,
       required this.groupId,
       required this.currentUserId,
-      this.initialConversationId});
+      this.initialConversationId,
+      this.onExit});
   final String groupId;
   final String? currentUserId;
   final String? initialConversationId;
+
+  /// When provided, the chat owns its header (no outer app bar) and shows a
+  /// back button that invokes this; used by the full-screen mobile entry
+  /// points. Left null for the embedded desktop panel.
+  final VoidCallback? onExit;
 
   @override
   State<BusinessChatScreen> createState() => _BusinessChatScreenState();
@@ -67,10 +86,30 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
   bool _canAssignIssues = false;
   bool _canShareBankTransactions = false;
   bool _canRequestDocumentReview = false;
+  bool _showActions = false;
+  bool _chatPaneCollapsed = false;
+  String? _activeBusinessAction;
+  Widget? _reviewPanel;
+  bool _reviewCollapsed = false;
   bool _showChatOnNarrow = false;
   String? _error;
   String? _pendingConversationId;
+  final _composerFocus = FocusNode();
+  Map<String, String?> _memberPhotos = const {};
   bool get _es => Localizations.localeOf(context).languageCode == 'es';
+
+  Future<void> _loadMemberPhotos() async {
+    final requestedGroupId = widget.groupId;
+    try {
+      final members = await _api.memberPresence(requestedGroupId);
+      if (!mounted || requestedGroupId != widget.groupId) return;
+      setState(() => _memberPhotos = {
+            for (final member in members) member.id: member.photoUrl,
+          });
+    } catch (_) {
+      // Avatars fall back to initials when presence is unavailable.
+    }
+  }
 
   @override
   void initState() {
@@ -78,6 +117,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     _pendingConversationId = widget.initialConversationId;
     _composer.addListener(_onComposerChanged);
     _refresh();
+    _loadMemberPhotos();
     _connectSocket();
     _timer = Timer.periodic(const Duration(seconds: 15), (_) {
       _refreshTicks += 1;
@@ -151,9 +191,14 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
       _canCreateIssues = false;
       _canShareBankTransactions = false;
       _canRequestDocumentReview = false;
+      _activeBusinessAction = null;
+      _showActions = false;
+      _reviewPanel = null;
       _canManageIssues = false;
       _canAssignIssues = false;
+      _memberPhotos = const {};
       _refresh();
+      _loadMemberPhotos();
     } else if (oldWidget.initialConversationId !=
         widget.initialConversationId) {
       _pendingConversationId = widget.initialConversationId;
@@ -170,6 +215,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     _socketDebounce?.cancel();
     _socket?.dispose();
     _composer.dispose();
+    _composerFocus.dispose();
     _conversationSearch.dispose();
     _scroll.dispose();
     super.dispose();
@@ -200,6 +246,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
       _canRequestDocumentReview = false;
       _canManageIssues = false;
       _canAssignIssues = false;
+      _reviewPanel = null;
       _error = _es
           ? 'Ya no tienes acceso al chat de este negocio.'
           : 'You no longer have access to this business chat.';
@@ -528,10 +575,24 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
           : 'To share transactions, create a team chat with only admins and co-admins.');
       return;
     }
-    final entry = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (_) => BankTransactionPicker(groupId: widget.groupId),
-    );
+    final selection = Completer<Map<String, dynamic>?>();
+    setState(() {
+      _reviewCollapsed = false;
+      _reviewPanel = BankTransactionPicker(
+        key: const ValueKey('chat-bank-transaction-panel'),
+        groupId: widget.groupId,
+        presentation: BankTransactionPickerPresentation.sidePanel,
+        onClose: () {
+          if (!selection.isCompleted) selection.complete();
+          if (mounted) setState(() => _reviewPanel = null);
+        },
+        onSelected: (entry) {
+          if (!selection.isCompleted) selection.complete(entry);
+          if (mounted) setState(() => _reviewPanel = null);
+        },
+      );
+    });
+    final entry = await selection.future;
     if (!mounted || entry == null) return;
     final destinationId = await BankTransactionShareDialog.show(
         context, widget.groupId, entry,
@@ -558,6 +619,50 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
           : 'Create a team chat with only owners, admins, and co-admins.');
       return;
     }
+    Future<void> createExpense() async {
+      final group = await context
+          .read<GroupDomain>()
+          .groupRepository
+          .getGroupById(widget.groupId);
+      if (!mounted) return;
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => ExpenseUploadScreen(
+              groupId: widget.groupId,
+              groupName: group.name,
+              uploadOnly: true)));
+    }
+
+    // All review kinds (factura, gasto, horas) open as the right-side action
+    // column on desktop/tablet; only narrow viewports fall back to a modal.
+    if (MediaQuery.sizeOf(context).width >= 720) {
+      setState(() {
+        _reviewCollapsed = false;
+        _reviewPanel = DocumentReviewDialog(
+          key: ValueKey('chat-review-panel-$kind'),
+          groupId: widget.groupId,
+          kind: kind,
+          conversations: destinations,
+          initialConversationId:
+              _selected?.canRequestReview == true ? _selected!.id : null,
+          presentation: DocumentReviewPresentation.sidePanel,
+          onClose: () => setState(() {
+            _reviewPanel = null;
+            _reviewCollapsed = false;
+          }),
+          onCollapse: () => setState(() => _reviewCollapsed = true),
+          onSelection: (selection) {
+            setState(() {
+              _reviewPanel = null;
+              _reviewCollapsed = false;
+            });
+            _submitDocumentReview(selection);
+          },
+          onOpenBanking: _openBankingFromReview,
+          onCreateExpense: kind == 'expense' ? createExpense : null,
+        );
+      });
+      return;
+    }
     final selection = await showDialog<DocumentReviewSelection>(
       context: context,
       builder: (_) => DocumentReviewDialog(
@@ -575,21 +680,15 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
           await Navigator.of(context).push(MaterialPageRoute<void>(
               builder: (_) => EnableBankingScreen(group: group)));
         },
-        onCreateExpense: () async {
-          final group = await context
-              .read<GroupDomain>()
-              .groupRepository
-              .getGroupById(widget.groupId);
-          if (!mounted) return;
-          await Navigator.of(context).push(MaterialPageRoute<void>(
-              builder: (_) => ExpenseUploadScreen(
-                  groupId: widget.groupId,
-                  groupName: group.name,
-                  uploadOnly: true)));
-        },
+        onCreateExpense: createExpense,
       ),
     );
     if (!mounted || selection == null) return;
+    await _submitDocumentReview(selection);
+  }
+
+  Future<void> _submitDocumentReview(DocumentReviewSelection selection) async {
+    if (_sending) return;
     setState(() => _sending = true);
     try {
       await _api.requestReview(widget.groupId, selection.conversationId,
@@ -608,6 +707,16 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     } finally {
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  Future<void> _openBankingFromReview() async {
+    final group = await context
+        .read<GroupDomain>()
+        .groupRepository
+        .getGroupById(widget.groupId);
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => EnableBankingScreen(group: group)));
   }
 
   Future<void> _openReviewDocument(Map<String, dynamic> review) async {
@@ -715,6 +824,144 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     } finally {
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  Future<void> _showBusinessActionsSheet() async {
+    if (_selected == null || _sending) return;
+    final showBusinessActions = MediaQuery.sizeOf(context).width < 700;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _es ? 'Acciones del chat' : 'Chat actions',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.attach_file_rounded),
+                title: Text(_es ? 'Adjuntar archivo' : 'Attach file'),
+                subtitle: Text(
+                    _es ? 'JPG, PNG, WebP o PDF' : 'JPG, PNG, WebP, or PDF'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _attach();
+                },
+              ),
+              if (showBusinessActions && _canShareBankTransactions)
+                ListTile(
+                  leading: const Icon(Icons.account_balance_outlined),
+                  title: Text(_es
+                      ? 'Compartir movimiento bancario'
+                      : 'Share bank transaction'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _shareBankTransactionFromChat();
+                  },
+                ),
+              if (showBusinessActions && _canRequestDocumentReview)
+                ListTile(
+                  leading: const Icon(Icons.receipt_long_outlined),
+                  title: Text(_es ? 'Revisar factura' : 'Review invoice'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _requestDocumentReview('invoice');
+                  },
+                ),
+              if (showBusinessActions && _canRequestDocumentReview)
+                ListTile(
+                  leading: const Icon(Icons.payments_outlined),
+                  title: Text(_es ? 'Revisar gasto' : 'Review expense'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _requestDocumentReview('expense');
+                  },
+                ),
+              if (showBusinessActions && _canRequestDocumentReview)
+                ListTile(
+                  leading: const Icon(Icons.access_time_outlined),
+                  title: Text(_es ? 'Revisar horas' : 'Review hours'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _requestDocumentReview('worker_hours');
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showMobileMessageActions(
+    BusinessChatMessage message, {
+    required bool canEdit,
+    required bool canDelete,
+  }) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.reply_rounded),
+                title: Text(_es ? 'Responder' : 'Reply'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  setState(() => _replyingTo = message);
+                },
+              ),
+              if (message.body.trim().isNotEmpty)
+                ListTile(
+                  leading: const Icon(Icons.copy_outlined),
+                  title: Text(_es ? 'Copiar' : 'Copy'),
+                  onTap: () async {
+                    await Clipboard.setData(ClipboardData(text: message.body));
+                    if (sheetContext.mounted) Navigator.pop(sheetContext);
+                  },
+                ),
+              if (canEdit)
+                ListTile(
+                  leading: const Icon(Icons.edit_outlined),
+                  title: Text(_es ? 'Editar' : 'Edit'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _messageAction(message, 'edit');
+                  },
+                ),
+              if (canDelete)
+                ListTile(
+                  leading: const Icon(Icons.delete_outline_rounded),
+                  title: Text(_es ? 'Eliminar' : 'Delete'),
+                  iconColor: Theme.of(context).colorScheme.error,
+                  textColor: Theme.of(context).colorScheme.error,
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _messageAction(message, 'delete');
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _openAttachment(BusinessChatMessage message) async {
@@ -1403,6 +1650,35 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
   void _showError(Object error) => ScaffoldMessenger.of(context)
       .showSnackBar(SnackBar(content: Text(error.toString())));
 
+  Future<void> _showConnectionInfo() async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: Icon(_liveConnected
+            ? Icons.cloud_done_outlined
+            : Icons.cloud_off_outlined),
+        title: Text(_liveConnected
+            ? (_es ? 'Conectado' : 'Connected')
+            : (_es
+                ? 'Sin conexión en directo'
+                : 'Live connection unavailable')),
+        content: Text(_liveConnected
+            ? (_es
+                ? 'Los mensajes se actualizan en directo.'
+                : 'Messages update live.')
+            : (_es
+                ? 'No hay conexión en directo; el chat se actualiza cada minuto.'
+                : 'No live connection; the chat refreshes every minute.')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(_es ? 'Cerrar' : 'Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _setIssueStatus(String status) async {
     final issueId = _selected?.issue?['id']?.toString();
     if (issueId == null || issueId.isEmpty) return;
@@ -1524,9 +1800,875 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
         : DateFormat('dd/MM/yyyy HH:mm').format(date.toLocal());
   }
 
+  /// Two messages belong to the same visual group when the same sender posts
+  /// them close together (within 5 minutes) on the same calendar day.
+  bool _isSameGroup(BusinessChatMessage a, BusinessChatMessage b) {
+    if (a.senderId != b.senderId || a.senderId.isEmpty) return false;
+    final first = a.createdAt.toLocal();
+    final second = b.createdAt.toLocal();
+    if (first.year != second.year ||
+        first.month != second.month ||
+        first.day != second.day) {
+      return false;
+    }
+    return second.difference(first).inMinutes.abs() < 5;
+  }
+
+  Widget _dateSeparator(DateTime value) {
+    final local = value.toLocal();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(local.year, local.month, local.day);
+    final difference = today.difference(day).inDays;
+    final label = difference == 0
+        ? (_es ? 'Hoy' : 'Today')
+        : difference == 1
+            ? (_es ? 'Ayer' : 'Yesterday')
+            : DateFormat.yMMMMd(_es ? 'es' : 'en').format(local);
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHighest.withValues(alpha: .7),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontSize: 11,
+                  color: colors.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The rich body of a single message, without sender name or action icons
+  /// (those are provided by the group header and the contextual toolbar).
+  Widget _messageContent(BusinessChatMessage message, bool mine) {
+    final colors = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (message.replyTo != null)
+          Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: colors.surface.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              message.replyTo!['unavailable'] == true
+                  ? (_es
+                      ? 'Mensaje original no disponible'
+                      : 'Original message unavailable')
+                  : '${message.replyTo!['senderName'] ?? ''}: ${message.replyTo!['body']?.toString().isNotEmpty == true ? message.replyTo!['body'] : (_es ? 'Adjunto o referencia' : 'Attachment or reference')}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          ),
+        if (message.isDeleted || message.body.isNotEmpty)
+          Text(
+            message.isDeleted
+                ? (_es ? 'Mensaje eliminado' : 'Message deleted')
+                : message.body,
+            style: message.isDeleted
+                ? TextStyle(
+                    fontStyle: FontStyle.italic, color: colors.onSurfaceVariant)
+                : null,
+          ),
+        if (!message.isDeleted && message.bankTransaction != null)
+          BankTransactionChatCard(
+            transaction: message.bankTransaction!,
+            onOpen: () => _openBankTransaction(message.bankTransaction!),
+            onReview: () => _openBankTransaction(message.bankTransaction!,
+                reviewLink: true),
+            onRequestReview: () {
+              setState(() {
+                _replyingTo = message;
+                if (_composer.text.trim().isEmpty) {
+                  _composer.text = _es
+                      ? '¿Podéis revisar este movimiento y confirmar si está vinculado correctamente?'
+                      : 'Could you review this transaction and confirm its link is correct?';
+                }
+              });
+            },
+            sharedBy: message.senderName,
+            sharedAt: message.createdAt,
+          ),
+        if (!message.isDeleted && message.review != null)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                      switch (message.review!['kind']) {
+                        'invoice' =>
+                          _es ? 'Revisión de factura' : 'Invoice review',
+                        'expense' =>
+                          _es ? 'Revisión de gasto' : 'Expense review',
+                        _ => _es ? 'Revisión de horas' : 'Hours review',
+                      },
+                      style: Theme.of(context).textTheme.titleSmall),
+                  Text(_reviewSubtitle(message.review!)),
+                  TextButton.icon(
+                    onPressed: () => _openReviewDocument(message.review!),
+                    icon: const Icon(Icons.open_in_new),
+                    label: Text(switch (message.review!['kind']) {
+                      'invoice' => _es ? 'Abrir factura' : 'Open invoice',
+                      'expense' => _es ? 'Abrir gasto' : 'Open expense',
+                      _ => _es ? 'Abrir trabajadores' : 'Open workers',
+                    }),
+                  ),
+                  if (message.review!['kind'] != 'worker_hours' &&
+                      message.review!['bankLinkAvailable'] == true)
+                    Text((message.review!['linkedTransactionIds'] as List? ??
+                                const [])
+                            .isEmpty
+                        ? (_es
+                            ? 'Sin movimiento vinculado'
+                            : 'No linked transaction')
+                        : (_es
+                            ? 'Movimiento vinculado'
+                            : 'Linked transaction')),
+                  if (message.review!['bankLinkAvailable'] == true &&
+                      (message.review!['linkedTransactionIds'] as List? ??
+                              const [])
+                          .isNotEmpty)
+                    Wrap(children: [
+                      for (final (index, entryId)
+                          in (message.review!['linkedTransactionIds'] as List)
+                              .indexed)
+                        TextButton.icon(
+                          onPressed: () => _openBankTransaction({
+                            'entryId': entryId.toString(),
+                          }),
+                          icon: const Icon(Icons.account_balance_outlined),
+                          label: Text(_es
+                              ? 'Movimiento ${index + 1}'
+                              : 'Transaction ${index + 1}'),
+                        ),
+                    ]),
+                ],
+              ),
+            ),
+          ),
+        if (!message.isDeleted && message.attachment != null)
+          TextButton.icon(
+              onPressed: () => _openAttachment(message),
+              icon: Icon((message.attachment!['mimeType'] ?? '')
+                      .toString()
+                      .startsWith('image/')
+                  ? Icons.image_outlined
+                  : Icons.attach_file),
+              label: Text((message.attachment!['fileName'] ??
+                      (_es ? 'Adjunto' : 'Attachment'))
+                  .toString())),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text(
+              '${DateFormat('HH:mm').format(message.createdAt.toLocal())}${message.editedAt != null ? (_es ? ' · Editado' : ' · Edited') : ''}',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontSize: 10.5,
+                    color: colors.onSurfaceVariant,
+                  ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// A grouped message row: optional date separator, a bottom-aligned avatar
+  /// (shown once per group), the sender name at the top of a group, and the
+  /// content-sized bubble with contextual actions.
+  Widget _buildMessageItem({
+    required BusinessChatMessage message,
+    required bool mine,
+    required bool canEdit,
+    required bool canDelete,
+    required bool isFirstInGroup,
+    required bool isLastInGroup,
+    required bool showDateSeparator,
+    required bool narrow,
+    required double maxBubbleWidth,
+  }) {
+    const double avatarSize = 30;
+    final colors = Theme.of(context).colorScheme;
+
+    final actions = <ChatMessageAction>[
+      if (!message.isDeleted)
+        ChatMessageAction(
+          icon: Icons.reply_rounded,
+          label: _es ? 'Responder' : 'Reply',
+          onSelected: () => setState(() => _replyingTo = message),
+        ),
+      if (!message.isDeleted && message.body.trim().isNotEmpty)
+        ChatMessageAction(
+          icon: Icons.copy_outlined,
+          label: _es ? 'Copiar' : 'Copy',
+          onSelected: () =>
+              Clipboard.setData(ClipboardData(text: message.body)),
+        ),
+      if (canEdit)
+        ChatMessageAction(
+          icon: Icons.edit_outlined,
+          label: _es ? 'Editar' : 'Edit',
+          onSelected: () => _messageAction(message, 'edit'),
+        ),
+      if (canDelete)
+        ChatMessageAction(
+          icon: Icons.delete_outline_rounded,
+          label: _es ? 'Eliminar' : 'Delete',
+          destructive: true,
+          onSelected: () => _messageAction(message, 'delete'),
+        ),
+    ];
+
+    final avatar = isLastInGroup
+        ? ChatUserAvatar(
+            name: message.senderName,
+            photoUrl: _memberPhotos[message.senderId],
+            size: avatarSize,
+          )
+        : const SizedBox(width: avatarSize);
+
+    final bubble = ChatMessageActions(
+      mine: mine,
+      enabled: !narrow && actions.isNotEmpty,
+      actions: actions,
+      child: CompactChatBubble(
+        mine: mine,
+        isFirstInGroup: isFirstInGroup,
+        isLastInGroup: isLastInGroup,
+        maxWidth: maxBubbleWidth,
+        onLongPress: narrow && !message.isDeleted
+            ? () => _showMobileMessageActions(message,
+                canEdit: canEdit, canDelete: canDelete)
+            : null,
+        child: _messageContent(message, mine),
+      ),
+    );
+
+    final column = Column(
+      crossAxisAlignment:
+          mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (isFirstInGroup && !mine)
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 2),
+            child: Text(
+              message.senderName,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: colors.onSurfaceVariant,
+                  ),
+            ),
+          ),
+        bubble,
+      ],
+    );
+
+    final row = Row(
+      mainAxisAlignment: mine ? MainAxisAlignment.end : MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: mine
+          ? [
+              Flexible(child: column),
+              const SizedBox(width: 8),
+              avatar,
+            ]
+          : [
+              avatar,
+              const SizedBox(width: 8),
+              Flexible(child: column),
+            ],
+    );
+
+    return Padding(
+      padding: EdgeInsets.only(top: isFirstInGroup ? 12 : 3),
+      child: Column(children: [
+        if (showDateSeparator) _dateSeparator(message.createdAt),
+        row,
+      ]),
+    );
+  }
+
+  bool _sameDay(DateTime a, DateTime b) {
+    final first = a.toLocal();
+    final second = b.toLocal();
+    return first.year == second.year &&
+        first.month == second.month &&
+        first.day == second.day;
+  }
+
+  /// Centered, grouped conversation thread. On wide screens the content is
+  /// constrained so messages do not stretch across the whole workspace.
+  Widget _buildMessageList(bool narrow, double viewportWidth) {
+    final hasOlder = _hasOlderMessages;
+    final maxBubbleWidth = narrow
+        ? viewportWidth * .85
+        : (viewportWidth * .70).clamp(280.0, 520.0).toDouble();
+    final list = ListView.builder(
+      controller: _scroll,
+      padding: EdgeInsets.symmetric(
+        horizontal: narrow ? 10 : 20,
+        vertical: narrow ? 8 : 12,
+      ),
+      itemCount: _messages.length + (hasOlder ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (hasOlder && index == 0) {
+          return Center(
+              child: TextButton.icon(
+            onPressed: _loadingOlderMessages ? null : _loadOlderMessages,
+            icon: _loadingOlderMessages
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.history),
+            label: Text(
+                _es ? 'Cargar mensajes anteriores' : 'Load older messages'),
+          ));
+        }
+        final i = index - (hasOlder ? 1 : 0);
+        final message = _messages[i];
+        final prev = i > 0 ? _messages[i - 1] : null;
+        final next = i < _messages.length - 1 ? _messages[i + 1] : null;
+        final mine = message.senderId == widget.currentUserId;
+        final isFirstInGroup = prev == null || !_isSameGroup(prev, message);
+        final isLastInGroup = next == null || !_isSameGroup(message, next);
+        final showDateSeparator =
+            prev == null || !_sameDay(prev.createdAt, message.createdAt);
+        final canEdit = mine &&
+            !message.isDeleted &&
+            DateTime.now().difference(message.createdAt.toLocal()).inMinutes <
+                15;
+        final canDelete = !message.isDeleted &&
+            (mine || (_selected?.canModerateMessages == true));
+        return _buildMessageItem(
+          message: message,
+          mine: mine,
+          canEdit: canEdit,
+          canDelete: canDelete,
+          isFirstInGroup: isFirstInGroup,
+          isLastInGroup: isLastInGroup,
+          showDateSeparator: showDateSeparator,
+          narrow: narrow,
+          maxBubbleWidth: maxBubbleWidth,
+        );
+      },
+    );
+    if (narrow) return list;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1000),
+        child: list,
+      ),
+    );
+  }
+
+  /// Secondary conversation actions, consolidated into a single overflow menu
+  /// so the header stays compact. Returns null when there is nothing to show.
+  Widget? _threadOverflowMenu(BusinessChatConversation conversation) {
+    final issue = conversation.issue;
+    final isParticipant = conversation.type != 'general' &&
+        widget.currentUserId != null &&
+        conversation.participantIds.contains(widget.currentUserId);
+    final hasStatus = issue?['status'] != null;
+    final items = <PopupMenuEntry<String>>[
+      PopupMenuItem(
+        value: 'refresh',
+        enabled: !_loading,
+        child: Row(children: [
+          const Icon(Icons.refresh, size: 18),
+          const SizedBox(width: 10),
+          Text(_es ? 'Actualizar' : 'Refresh'),
+        ]),
+      ),
+      if (conversation.type == 'general')
+        PopupMenuItem(
+          value: 'connection',
+          child: Row(children: [
+            Icon(
+              _liveConnected
+                  ? Icons.cloud_done_outlined
+                  : Icons.cloud_off_outlined,
+              size: 18,
+            ),
+            const SizedBox(width: 10),
+            Text(_es ? 'Estado de conexión' : 'Connection status'),
+          ]),
+        ),
+      const PopupMenuDivider(),
+      if (conversation.type == 'issue')
+        PopupMenuItem(
+            value: 'issue', child: Text(_es ? 'Ver incidencia' : 'View issue')),
+      if (hasStatus && _canAssignIssues)
+        PopupMenuItem(
+            value: 'assign',
+            child: Text(_es ? 'Cambiar responsable' : 'Change assignee')),
+      if (hasStatus && _canManageIssues)
+        for (final status in const [
+          'open',
+          'in_progress',
+          'review',
+          'resolved',
+          'closed',
+        ])
+          PopupMenuItem(
+              value: 'status:$status', child: Text(_statusLabel(status))),
+      if (_canCreateIssues)
+        PopupMenuItem(
+            value: 'newIssue',
+            child: Text(_es ? 'Nueva incidencia' : 'New incident')),
+      if (_canCreateTeam)
+        PopupMenuItem(
+            value: 'newTeam',
+            child: Text(_es ? 'Nuevo chat de equipo' : 'New team chat')),
+      if (isParticipant)
+        PopupMenuItem(
+            value: 'leave', child: Text(_es ? 'Salir del chat' : 'Leave chat')),
+    ];
+    if (items.isEmpty) return null;
+    PopupMenuItem<String> structuredItem(
+      String value,
+      IconData icon,
+      String label, {
+      bool enabled = true,
+      bool destructive = false,
+    }) =>
+        PopupMenuItem<String>(
+          value: value,
+          enabled: enabled,
+          height: 40,
+          textStyle:
+              destructive ? const TextStyle(color: Color(0xFFDC2626)) : null,
+          child: Row(children: [
+            Icon(icon,
+                size: 18, color: destructive ? const Color(0xFFDC2626) : null),
+            const SizedBox(width: 10),
+            Text(label),
+          ]),
+        );
+    final hasWorkspaceActions = _canCreateIssues || _canCreateTeam;
+    final structuredItems = <PopupMenuEntry<String>>[
+      if (_canCreateIssues)
+        structuredItem('newIssue', Icons.add_alert_outlined,
+            _es ? 'Nueva incidencia' : 'New incident'),
+      if (_canCreateTeam)
+        structuredItem('newTeam', Icons.add_comment_outlined,
+            _es ? 'Nuevo chat de equipo' : 'New team chat'),
+      if (hasWorkspaceActions) const PopupMenuDivider(height: 9),
+      structuredItem('refresh', Icons.refresh, _es ? 'Actualizar' : 'Refresh',
+          enabled: !_loading),
+      if (conversation.type == 'general')
+        structuredItem(
+          'connection',
+          _liveConnected ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
+          _es ? 'Estado de conexión' : 'Connection status',
+        ),
+      if (conversation.type == 'issue' ||
+          (hasStatus && _canAssignIssues) ||
+          (hasStatus && _canManageIssues))
+        const PopupMenuDivider(height: 9),
+      if (conversation.type == 'issue')
+        structuredItem('issue', Icons.visibility_outlined,
+            _es ? 'Ver incidencia' : 'View issue'),
+      if (hasStatus && _canAssignIssues)
+        structuredItem('assign', Icons.person_outline,
+            _es ? 'Cambiar responsable' : 'Change assignee'),
+      if (hasStatus && _canManageIssues)
+        for (final status in const [
+          'open',
+          'in_progress',
+          'review',
+          'resolved',
+          'closed',
+        ])
+          structuredItem('status:$status', Icons.check_circle_outline,
+              _statusLabel(status)),
+      if (isParticipant) const PopupMenuDivider(height: 9),
+      if (isParticipant)
+        structuredItem('leave', Icons.logout_outlined,
+            _es ? 'Salir del chat' : 'Leave chat',
+            destructive: true),
+    ];
+    return PopupMenuButton<String>(
+      tooltip: _es ? 'Más acciones' : 'More actions',
+      icon: const Icon(Icons.more_vert_rounded, size: 20),
+      color: Theme.of(context).colorScheme.surface,
+      elevation: 6,
+      constraints: const BoxConstraints(minWidth: 224),
+      menuPadding: const EdgeInsets.symmetric(vertical: 6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      onSelected: (value) {
+        if (value == 'refresh') _refresh();
+        if (value == 'connection') _showConnectionInfo();
+        if (value == 'issue') _showIssueDetails(conversation);
+        if (value == 'assign') _assignIssue(conversation);
+        if (value == 'leave') _leaveConversation(conversation);
+        if (value == 'newIssue') _createIssue();
+        if (value == 'newTeam') _createTeam();
+        if (value.startsWith('status:')) _setIssueStatus(value.substring(7));
+      },
+      itemBuilder: (_) => structuredItems,
+    );
+  }
+
+  /// Compact single header for the active conversation: identity on the left,
+  /// primary actions (search, members, notifications) plus an overflow menu on
+  /// the right. Replaces the previous multi-line header that repeated the title
+  /// and kept every action permanently visible.
+  Widget _buildThreadHeader(bool narrow) {
+    final conversation = _selected!;
+    final colors = Theme.of(context).colorScheme;
+    final issue = conversation.issue;
+    final icon = conversation.type == 'issue'
+        ? Icons.report_outlined
+        : conversation.type == 'team'
+            ? Icons.groups_outlined
+            : Icons.campaign_outlined;
+    final title = issue?['title']?.toString() ?? conversation.title;
+
+    final parts = <String>[];
+    bool? connected;
+    if (conversation.type == 'general') {
+      connected = _liveConnected;
+      parts.add(_liveConnected
+          ? (_es ? 'Conectado' : 'Connected')
+          : (_es ? 'Sin conexión en directo' : 'Live connection unavailable'));
+    }
+    if (conversation.type == 'issue') {
+      parts.add(issue?['assigneeName'] == null
+          ? (_es ? 'Sin asignar' : 'Unassigned')
+          : '${_es ? 'Asignada a' : 'Assigned to'} ${issue!['assigneeName']}');
+      if (issue?['status'] != null) {
+        parts.add(_statusLabel(issue!['status'].toString()));
+      }
+    }
+    final participantLabel =
+        conversation.type == 'team' || conversation.type == 'issue'
+            ? (_es
+                ? '${conversation.participantIds.length} participantes'
+                : '${conversation.participantIds.length} participants')
+            : null;
+    final clientEvent = [issue?['clientName'], issue?['eventTitle']]
+        .whereType<String>()
+        .join(' · ');
+    if (clientEvent.isNotEmpty) parts.add(clientEvent);
+
+    final canManageParticipants =
+        (conversation.type == 'team' || conversation.type == 'issue') &&
+            conversation.canManageParticipants;
+    final overflow = _threadOverflowMenu(conversation);
+
+    final trailing = <Widget>[
+      if (!narrow && _canCreateIssues)
+        TextButton.icon(
+          onPressed: _createIssue,
+          icon: const Icon(Icons.add_alert_outlined, size: 18),
+          label: Text(_es ? 'Nueva incidencia' : 'New incident'),
+          style: TextButton.styleFrom(
+            foregroundColor: colors.primary,
+            minimumSize: const Size(0, 34),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+          ),
+        ),
+      IconButton(
+        tooltip: _es ? 'Buscar mensajes' : 'Search messages',
+        visualDensity: VisualDensity.compact,
+        onPressed: _searchHistory,
+        icon: const Icon(Icons.search, size: 20),
+      ),
+      if (conversation.type == 'general')
+        IconButton(
+          tooltip: _es ? 'Miembros' : 'Members',
+          visualDensity: VisualDensity.compact,
+          onPressed: _showGeneralMembers,
+          icon: const Icon(Icons.groups_outlined, size: 20),
+        ),
+      if (canManageParticipants)
+        IconButton(
+          tooltip: _es ? 'Participantes' : 'Participants',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => _manageParticipants(conversation),
+          icon: const Icon(Icons.manage_accounts_outlined, size: 20),
+        ),
+      IconButton(
+        tooltip: conversation.muted
+            ? (_es ? 'Activar avisos de mensajes' : 'Unmute messages')
+            : (_es ? 'Silenciar avisos de mensajes' : 'Mute messages'),
+        visualDensity: VisualDensity.compact,
+        onPressed: () => _toggleMute(conversation),
+        icon: Icon(
+            conversation.muted
+                ? Icons.notifications_off_outlined
+                : Icons.notifications_active_outlined,
+            size: 20),
+      ),
+      if (overflow != null) overflow,
+    ];
+
+    return Material(
+      color: colors.surfaceContainerLow,
+      child: Column(children: [
+        ChatChannelHeader(
+          icon: icon,
+          title: title,
+          subtitle: parts.join(' · '),
+          subtitleActionLabel: participantLabel,
+          onSubtitleActionTap: canManageParticipants
+              ? () => _manageParticipants(conversation)
+              : null,
+          connected: connected,
+          onBack:
+              narrow ? () => setState(() => _showChatOnNarrow = false) : null,
+          trailing: trailing,
+        ),
+        const Divider(height: 1),
+      ]),
+    );
+  }
+
+  Widget _buildConversationHeader(
+      BuildContext context, bool narrow, ColorScheme colors) {
+    final totalUnread =
+        _conversations.fold<int>(0, (sum, item) => sum + item.unreadCount);
+    // ignore: unused_local_variable
+    final wifi = Tooltip(
+      message: _liveConnected
+          ? (_es ? 'Actualizaciones en directo' : 'Live updates')
+          : (_es
+              ? 'Sin conexión en directo; se actualiza cada minuto'
+              : 'Live connection unavailable; checks every minute'),
+      child: Icon(_liveConnected ? Icons.wifi : Icons.wifi_off,
+          size: 18, color: _liveConnected ? colors.primary : colors.outline),
+    );
+    // ignore: unused_local_variable
+    final refreshButton = IconButton(
+      onPressed: _loading ? null : _refresh,
+      tooltip: _es ? 'Actualizar' : 'Refresh',
+      visualDensity: VisualDensity.compact,
+      icon: const Icon(Icons.refresh),
+    );
+
+    if (narrow) {
+      // One compact inbox header: title, small connection dot, members and a
+      // single overflow for refresh / connection info / creation actions.
+      return Material(
+        color: colors.surfaceContainerLow,
+        child: Column(children: [
+          MobileChatInboxHeader(
+            title: _es ? 'Hexora Chat' : 'Hexora Chat',
+            connected: _liveConnected,
+            statusLabel: _liveConnected
+                ? (_es ? 'Conectado' : 'Connected')
+                : (_es ? 'Sin conexión en directo' : 'Offline'),
+            unreadTotal: totalUnread,
+            onBack: widget.onExit,
+            trailing: [
+              IconButton(
+                onPressed: _showMemberPresence,
+                tooltip: _es ? 'Miembros' : 'Members',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.people_alt_outlined, size: 20),
+              ),
+              PopupMenuButton<String>(
+                tooltip: _es ? 'Más opciones' : 'More options',
+                icon: const Icon(Icons.more_vert_rounded, size: 20),
+                onSelected: (value) {
+                  if (value == 'refresh') _refresh();
+                  if (value == 'connection') _showConnectionInfo();
+                  if (value == 'issue') _createIssue();
+                  if (value == 'team') _createTeam();
+                },
+                itemBuilder: (_) => [
+                  PopupMenuItem<String>(
+                    value: 'refresh',
+                    enabled: !_loading,
+                    child: Row(children: [
+                      const Icon(Icons.refresh, size: 18),
+                      const SizedBox(width: 10),
+                      Text(_es ? 'Actualizar' : 'Refresh'),
+                    ]),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'connection',
+                    child: Row(children: [
+                      Icon(
+                          _liveConnected
+                              ? Icons.cloud_done_outlined
+                              : Icons.cloud_off_outlined,
+                          size: 18),
+                      const SizedBox(width: 10),
+                      Text(_es ? 'Estado de conexión' : 'Connection status'),
+                    ]),
+                  ),
+                  if (_canCreateIssues)
+                    PopupMenuItem<String>(
+                      value: 'issue',
+                      child: Row(children: [
+                        const Icon(Icons.report_gmailerrorred_outlined,
+                            size: 18),
+                        const SizedBox(width: 10),
+                        Text(_es ? 'Nueva incidencia' : 'New incident'),
+                      ]),
+                    ),
+                  if (_canCreateTeam)
+                    PopupMenuItem<String>(
+                      value: 'team',
+                      child: Row(children: [
+                        const Icon(Icons.group_add_outlined, size: 18),
+                        const SizedBox(width: 10),
+                        Text(_es ? 'Nuevo chat de equipo' : 'New team chat'),
+                      ]),
+                    ),
+                ],
+              ),
+            ],
+          ),
+          const Divider(height: 1),
+        ]),
+      );
+    }
+
+    // Desktop no longer has an inbox-wide toolbar. Its controls live in the
+    // active conversation header, keeping both panes aligned at their top edge.
+    return const SizedBox.shrink();
+  }
+
+  String _conversationTimestamp(DateTime? value) {
+    if (value == null) return '';
+    final local = value.toLocal();
+    final now = DateTime.now();
+    final sameDay = local.year == now.year &&
+        local.month == now.month &&
+        local.day == now.day;
+    return sameDay
+        ? DateFormat('HH:mm').format(local)
+        : DateFormat(_es ? 'dd/MM' : 'MM/dd').format(local);
+  }
+
+  bool get _hasBusinessActions =>
+      _canShareBankTransactions || _canRequestDocumentReview;
+
+  void _runBusinessAction(String action) {
+    setState(() => _activeBusinessAction = action);
+    switch (action) {
+      case 'bank':
+        _shareBankTransactionFromChat();
+        break;
+      case 'invoice':
+        _requestDocumentReview('invoice');
+        break;
+      case 'expense':
+        _requestDocumentReview('expense');
+        break;
+      case 'hours':
+        _requestDocumentReview('worker_hours');
+        break;
+    }
+  }
+
+  Widget _buildBusinessActionsList() {
+    final actions = <_BusinessRailAction>[
+      if (_canShareBankTransactions)
+        _BusinessRailAction(
+          id: 'bank',
+          icon: Icons.account_balance_outlined,
+          label: _es ? 'Compartir movimiento' : 'Share transaction',
+        ),
+      if (_canRequestDocumentReview)
+        _BusinessRailAction(
+          id: 'invoice',
+          icon: Icons.receipt_long_outlined,
+          label: _es ? 'Revisar factura' : 'Review invoice',
+        ),
+      if (_canRequestDocumentReview)
+        _BusinessRailAction(
+          id: 'expense',
+          icon: Icons.payments_outlined,
+          label: _es ? 'Revisar gasto' : 'Review expense',
+        ),
+      if (_canRequestDocumentReview)
+        _BusinessRailAction(
+          id: 'hours',
+          icon: Icons.access_time_outlined,
+          label: _es ? 'Revisar horas' : 'Review hours',
+        ),
+    ];
+
+    return ColoredBox(
+      color: Colors.transparent,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 8),
+          for (final action in actions)
+            _BusinessRailButton(
+              action: action,
+              expanded: true,
+              navySurface: true,
+              selected: _activeBusinessAction == action.id,
+              onTap: () => _runBusinessAction(action.id),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeftNavigationTabs(ColorScheme colors) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+      child: Container(
+        height: 34,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: .10),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            _ChatNavigationTab(
+              icon: Icons.forum_outlined,
+              label: _es ? 'Chats' : 'Chats',
+              selected: !_showActions,
+              onTap: () => setState(() => _showActions = false),
+            ),
+            _ChatNavigationTab(
+              icon: Icons.bolt_outlined,
+              label: _es ? 'Acciones' : 'Actions',
+              selected: _showActions,
+              onTap: () => setState(() => _showActions = true),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final workspaceChrome = WorkspaceTabChromeScope.maybeOf(context);
+    final isNarrowViewport = MediaQuery.sizeOf(context).width < 700;
     final query = _conversationSearch.text.trim().toLowerCase();
     final visibleConversations = query.isEmpty
         ? _conversations
@@ -1538,792 +2680,796 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                   conversation.lastMessage?.body ?? '',
                 ].join(' ').toLowerCase().contains(query))
             .toList();
-    return Column(children: [
-      Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Row(children: [
-            Badge(
-                isLabelVisible: _conversations.fold<int>(
-                        0, (sum, item) => sum + item.unreadCount) >
-                    0,
-                label: Text(
-                    '${_conversations.fold<int>(0, (sum, item) => sum + item.unreadCount)}'),
-                child: Icon(Icons.forum_outlined, color: colors.primary)),
-            const SizedBox(width: 10),
-            Expanded(
-                child: Text(_es ? 'Hexora Chat' : 'Hexora Chat',
-                    style: Theme.of(context).textTheme.titleMedium)),
-            Tooltip(
-                message: _liveConnected
-                    ? (_es ? 'Actualizaciones en directo' : 'Live updates')
-                    : (_es
-                        ? 'Sin conexión en directo; se actualiza cada minuto'
-                        : 'Live connection unavailable; checks every minute'),
-                child: Icon(_liveConnected ? Icons.wifi : Icons.wifi_off,
-                    size: 18,
-                    color: _liveConnected ? colors.primary : colors.outline)),
-            const SizedBox(width: 8),
-            IconButton(
-                onPressed: _loading ? null : _refresh,
-                tooltip: _es ? 'Actualizar' : 'Refresh',
-                icon: const Icon(Icons.refresh)),
-            TextButton.icon(
-                onPressed: _showMemberPresence,
-                icon: const Icon(Icons.people_alt_outlined, size: 18),
-                label: Text(_es ? 'Miembros' : 'Members')),
-            if (_canCreateIssues)
-              IconButton(
-                  onPressed: _createIssue,
-                  tooltip: _es ? 'Nueva incidencia' : 'New incident',
-                  icon: const Icon(Icons.report_gmailerrorred_outlined)),
-            if (_canCreateTeam)
-              IconButton(
-                  onPressed: _createTeam,
-                  tooltip: _es ? 'Nuevo chat de equipo' : 'New team chat',
-                  icon: const Icon(Icons.group_add_outlined)),
-          ])),
-      const Divider(height: 1),
-      Expanded(child: LayoutBuilder(builder: (context, constraints) {
-        final narrow = constraints.maxWidth < 700;
-        return Row(children: [
-          if (!narrow || !_showChatOnNarrow)
-            SizedBox(
-                width: narrow ? constraints.maxWidth : 250,
-                child: Column(children: [
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: TextField(
-                      controller: _conversationSearch,
-                      onChanged: (_) => setState(() {}),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        prefixIcon: const Icon(Icons.search),
-                        hintText: _es
-                            ? 'Buscar conversaciones'
-                            : 'Search conversations',
-                        suffixIcon: query.isEmpty
+    return SafeArea(
+        top: widget.onExit != null,
+        bottom: false,
+        child: Stack(children: [
+          Column(children: [
+            if (isNarrowViewport && !_showChatOnNarrow) ...[
+              _buildConversationHeader(context, isNarrowViewport, colors),
+              const Divider(height: 1),
+            ],
+            Expanded(child: LayoutBuilder(builder: (context, constraints) {
+              final narrow = constraints.maxWidth < 700;
+              return Row(children: [
+                if (!narrow || !_showChatOnNarrow)
+                  SizedBox(
+                      width: narrow
+                          ? constraints.maxWidth
+                          : (_chatPaneCollapsed
+                              ? NavigationTokens.railWidth
+                              : 250),
+                      child: SidebarEdgeShell(
+                        collapsed: !narrow && _chatPaneCollapsed,
+                        onToggle: narrow
                             ? null
-                            : IconButton(
-                                tooltip:
-                                    _es ? 'Borrar búsqueda' : 'Clear search',
-                                icon: const Icon(Icons.close),
-                                onPressed: () =>
-                                    setState(_conversationSearch.clear),
+                            : () => setState(
+                                () => _chatPaneCollapsed = !_chatPaneCollapsed),
+                        showHandle: !narrow,
+                        expandTooltip: _es
+                            ? 'Mostrar conversaciones'
+                            : 'Show conversations',
+                        collapseTooltip: _es
+                            ? 'Compactar conversaciones'
+                            : 'Compact conversations',
+                        backgroundColor: narrow
+                            ? Colors.transparent
+                            : AppColors.dashboardTopBar,
+                        child: Column(children: [
+                          if (narrow)
+                            ChatInboxSearch(
+                              controller: _conversationSearch,
+                              onChanged: (_) => setState(() {}),
+                              onClear: () =>
+                                  setState(_conversationSearch.clear),
+                              hintText: _es
+                                  ? 'Buscar conversaciones'
+                                  : 'Search conversations',
+                              clearTooltip:
+                                  _es ? 'Borrar búsqueda' : 'Clear search',
+                            )
+                          else ...[
+                            if (!_chatPaneCollapsed) ...[
+                              _buildLeftNavigationTabs(colors),
+                            ],
+                            if (!_showActions && !_chatPaneCollapsed)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                                child: TextField(
+                                  controller: _conversationSearch,
+                                  onChanged: (_) => setState(() {}),
+                                  style: const TextStyle(
+                                    color: Color(0xFFF1F5FC),
+                                  ),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    filled: true,
+                                    fillColor:
+                                        Colors.white.withValues(alpha: .08),
+                                    prefixIcon: const Icon(Icons.search,
+                                        size: 20, color: Color(0xFFB8C7DB)),
+                                    hintText: _es
+                                        ? 'Buscar conversaciones'
+                                        : 'Search conversations',
+                                    hintStyle: const TextStyle(
+                                      color: Color(0xFFB8C7DB),
+                                    ),
+                                    suffixIcon: query.isEmpty
+                                        ? null
+                                        : IconButton(
+                                            tooltip: _es
+                                                ? 'Borrar búsqueda'
+                                                : 'Clear search',
+                                            icon: const Icon(Icons.close,
+                                                color: Color(0xFFB8C7DB)),
+                                            onPressed: () => setState(
+                                                _conversationSearch.clear),
+                                          ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        vertical: 10),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: BorderSide(
+                                        color:
+                                            Colors.white.withValues(alpha: .22),
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ),
-                        border: const OutlineInputBorder(),
+                          ],
+                          Expanded(
+                              child: _showActions &&
+                                      !narrow &&
+                                      !_chatPaneCollapsed
+                                  ? _buildBusinessActionsList()
+                                  : visibleConversations.isEmpty
+                                      ? Center(
+                                          child: _loading
+                                              ? const CircularProgressIndicator()
+                                              : Padding(
+                                                  padding:
+                                                      const EdgeInsets.all(20),
+                                                  child: Text(
+                                                      _error ??
+                                                          (query.isNotEmpty
+                                                              ? (_es
+                                                                  ? 'Sin resultados'
+                                                                  : 'No results')
+                                                              : (_es
+                                                                  ? 'No hay conversaciones'
+                                                                  : 'No conversations')),
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      style: TextStyle(
+                                                        color: narrow
+                                                            ? null
+                                                            : Colors.white
+                                                                .withValues(
+                                                                    alpha: .78),
+                                                      ))))
+                                      : ListView.separated(
+                                          key: const PageStorageKey(
+                                              'business-chat-conversations'),
+                                          itemCount:
+                                              visibleConversations.length,
+                                          separatorBuilder: (_, __) => Divider(
+                                                height: 1,
+                                                indent: 64,
+                                                color: narrow
+                                                    ? colors.outlineVariant
+                                                        .withValues(alpha: .45)
+                                                    : Colors.white
+                                                        .withValues(alpha: .10),
+                                              ),
+                                          itemBuilder: (context, index) {
+                                            final conversation =
+                                                visibleConversations[index];
+                                            final selected = _selected?.id ==
+                                                conversation.id;
+                                            final status =
+                                                conversation.issue?['status'];
+                                            final lastMessage =
+                                                conversation.lastMessage;
+                                            final preview = lastMessage == null
+                                                ? (status == null
+                                                    ? _typeLabel(
+                                                        conversation.type)
+                                                    : _statusLabel(
+                                                        status.toString()))
+                                                : lastMessage.isDeleted
+                                                    ? (_es
+                                                        ? 'Mensaje eliminado'
+                                                        : 'Message deleted')
+                                                    : lastMessage
+                                                                .bankTransaction !=
+                                                            null
+                                                        ? (_es
+                                                            ? 'Movimiento bancario compartido'
+                                                            : 'Shared bank transaction')
+                                                        : lastMessage.review !=
+                                                                null
+                                                            ? (_es
+                                                                ? 'Revisión solicitada'
+                                                                : 'Review requested')
+                                                            : lastMessage.body
+                                                                    .trim()
+                                                                    .isNotEmpty
+                                                                ? lastMessage
+                                                                    .body
+                                                                : (lastMessage.attachment?[
+                                                                            'fileName'] ??
+                                                                        (_es
+                                                                            ? 'Archivo adjunto'
+                                                                            : 'Attachment'))
+                                                                    .toString();
+                                            if (_chatPaneCollapsed && !narrow) {
+                                              return _CompactConversationRailItem(
+                                                icon: conversation.type ==
+                                                        'issue'
+                                                    ? Icons.report_outlined
+                                                    : conversation.type ==
+                                                            'team'
+                                                        ? Icons.groups_outlined
+                                                        : Icons
+                                                            .campaign_outlined,
+                                                title: conversation
+                                                        .issue?['title']
+                                                        ?.toString() ??
+                                                    conversation.title,
+                                                selected: selected,
+                                                unreadCount:
+                                                    conversation.unreadCount,
+                                                onTap: () {
+                                                  final oldId = _selected?.id;
+                                                  setState(() {
+                                                    _selected = conversation;
+                                                    _messages = const [];
+                                                    _activeBusinessAction =
+                                                        null;
+                                                  });
+                                                  _switchDraft(
+                                                      oldId, conversation.id);
+                                                  _loadMessages(conversation,
+                                                      forceScroll: true);
+                                                },
+                                              );
+                                            }
+                                            return CompactConversationTile(
+                                              icon: conversation.type == 'issue'
+                                                  ? Icons.report_outlined
+                                                  : conversation.type == 'team'
+                                                      ? Icons.groups_outlined
+                                                      : Icons.campaign_outlined,
+                                              title: conversation
+                                                      .issue?['title']
+                                                      ?.toString() ??
+                                                  conversation.title,
+                                              preview: preview,
+                                              timestamp: _conversationTimestamp(
+                                                  lastMessage?.createdAt),
+                                              unreadCount:
+                                                  conversation.unreadCount,
+                                              selected: selected,
+                                              muted: conversation.muted,
+                                              circularAvatar: narrow,
+                                              navySurface: !narrow,
+                                              onTap: () {
+                                                final oldId = _selected?.id;
+                                                setState(() {
+                                                  _selected = conversation;
+                                                  _messages = const [];
+                                                  _showChatOnNarrow = true;
+                                                  _activeBusinessAction = null;
+                                                });
+                                                _switchDraft(
+                                                    oldId, conversation.id);
+                                                _loadMessages(conversation,
+                                                    forceScroll: true);
+                                              },
+                                            );
+                                          })),
+                        ]),
+                      )),
+                if (!narrow)
+                  VerticalDivider(
+                    width: 1,
+                    color: Colors.white.withValues(alpha: .10),
+                  ),
+                if (!narrow || _showChatOnNarrow)
+                  Expanded(
+                      child: Column(children: [
+                    if (!narrow && workspaceChrome?.active == true)
+                      workspaceChrome!.tabBarBuilder(context),
+                    Expanded(
+                        child: Row(children: [
+                      // Keep the review workspace below the shared Chrome
+                      // strip, alongside the conversation rather than above it.
+                      if (_reviewPanel != null &&
+                          !narrow &&
+                          constraints.maxWidth >= 1240) ...[
+                        const VerticalDivider(width: 1),
+                        Offstage(
+                          offstage: !_reviewCollapsed,
+                          child: _ReviewReopenRail(
+                            es: _es,
+                            onReopen: () =>
+                                setState(() => _reviewCollapsed = false),
+                          ),
+                        ),
+                        Offstage(
+                          offstage: _reviewCollapsed,
+                          child: SizedBox(
+                            width: (constraints.maxWidth * .42)
+                                .clamp(600.0, 800.0)
+                                .toDouble(),
+                            child: _reviewPanel!,
+                          ),
+                        ),
+                      ],
+                      Expanded(
+                        child: Column(children: [
+                          if (_selected != null) _buildThreadHeader(narrow),
+                          Expanded(
+                              child: _error != null && _messages.isEmpty
+                                  ? Center(
+                                      child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                          Padding(
+                                              padding: const EdgeInsets.all(16),
+                                              child: Text(_error!,
+                                                  textAlign: TextAlign.center)),
+                                          TextButton(
+                                              onPressed: _refresh,
+                                              child: Text(
+                                                  _es ? 'Reintentar' : 'Retry'))
+                                        ]))
+                                  : _selected == null
+                                      ? Center(
+                                          child: _loading
+                                              ? const CircularProgressIndicator()
+                                              : Text(_es
+                                                  ? 'Selecciona una conversación.'
+                                                  : 'Select a conversation.'))
+                                      : _messages.isEmpty
+                                          ? Center(
+                                              child: Text(_es
+                                                  ? 'Todavía no hay mensajes.'
+                                                  : 'No messages yet.'))
+                                          : _buildMessageList(
+                                              narrow, constraints.maxWidth)),
+                          const Divider(height: 1),
+                          Padding(
+                              padding: EdgeInsets.all(narrow ? 8 : 10),
+                              child: SafeArea(
+                                  top: false,
+                                  child: Center(
+                                      child: ConstrainedBox(
+                                          constraints: BoxConstraints(
+                                              maxWidth: narrow
+                                                  ? double.infinity
+                                                  : 1000),
+                                          child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                if (_replyingTo != null)
+                                                  Card(
+                                                    child: ListTile(
+                                                      dense: true,
+                                                      leading: const Icon(
+                                                          Icons.reply),
+                                                      title: Text(_es
+                                                          ? 'Respondiendo a ${_replyingTo!.senderName}'
+                                                          : 'Replying to ${_replyingTo!.senderName}'),
+                                                      subtitle: Text(
+                                                        _replyingTo!
+                                                                .body.isNotEmpty
+                                                            ? _replyingTo!.body
+                                                            : (_es
+                                                                ? 'Adjunto o referencia'
+                                                                : 'Attachment or reference'),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                      trailing: IconButton(
+                                                        tooltip: _es
+                                                            ? 'Cancelar respuesta'
+                                                            : 'Cancel reply',
+                                                        onPressed: () =>
+                                                            setState(() =>
+                                                                _replyingTo =
+                                                                    null),
+                                                        icon: const Icon(
+                                                            Icons.close),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ChatComposer(
+                                                  controller: _composer,
+                                                  focusNode: _composerFocus,
+                                                  enabled: _selected != null,
+                                                  sending: _sending,
+                                                  narrow: narrow,
+                                                  onSend: _send,
+                                                  onPlus:
+                                                      _showBusinessActionsSheet,
+                                                  hintText: _es
+                                                      ? 'Escribe un mensaje…'
+                                                      : 'Write a message…',
+                                                  plusTooltip: _es
+                                                      ? 'Acciones y adjuntos'
+                                                      : 'Actions and attachments',
+                                                  sendTooltip:
+                                                      _es ? 'Enviar' : 'Send',
+                                                ),
+                                                if (_selected != null &&
+                                                    !narrow &&
+                                                    !_hasBusinessActions &&
+                                                    _sending)
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                            left: 48, top: 4),
+                                                    child: Align(
+                                                      alignment:
+                                                          Alignment.centerLeft,
+                                                      child: Wrap(
+                                                        crossAxisAlignment:
+                                                            WrapCrossAlignment
+                                                                .center,
+                                                        spacing: 8,
+                                                        children: [
+                                                          if (_canShareBankTransactions)
+                                                            TextButton.icon(
+                                                              onPressed:
+                                                                  _shareBankTransactionFromChat,
+                                                              icon: const Icon(
+                                                                  Icons
+                                                                      .account_balance_outlined,
+                                                                  size: 17),
+                                                              label: Text(_es
+                                                                  ? 'Compartir movimiento bancario'
+                                                                  : 'Share bank transaction'),
+                                                            ),
+                                                          if (_canRequestDocumentReview)
+                                                            TextButton.icon(
+                                                              onPressed: () =>
+                                                                  _requestDocumentReview(
+                                                                      'invoice'),
+                                                              icon: const Icon(
+                                                                  Icons
+                                                                      .receipt_long_outlined,
+                                                                  size: 17),
+                                                              label: Text(_es
+                                                                  ? 'Revisar factura'
+                                                                  : 'Review invoice'),
+                                                            ),
+                                                          if (_canRequestDocumentReview)
+                                                            TextButton.icon(
+                                                              onPressed: () =>
+                                                                  _requestDocumentReview(
+                                                                      'expense'),
+                                                              icon: const Icon(
+                                                                  Icons
+                                                                      .payments_outlined,
+                                                                  size: 17),
+                                                              label: Text(_es
+                                                                  ? 'Revisar gasto'
+                                                                  : 'Review expense'),
+                                                            ),
+                                                          if (_canRequestDocumentReview)
+                                                            TextButton.icon(
+                                                              onPressed: () =>
+                                                                  _requestDocumentReview(
+                                                                      'worker_hours'),
+                                                              icon: const Icon(
+                                                                  Icons
+                                                                      .access_time_outlined,
+                                                                  size: 17),
+                                                              label: Text(_es
+                                                                  ? 'Revisar horas'
+                                                                  : 'Review hours'),
+                                                            ),
+                                                          Text(
+                                                            _es
+                                                                ? 'Adjuntos: JPG, PNG, WebP o PDF · máximo 10 MB'
+                                                                : 'Attachments: JPG, PNG, WebP, or PDF · max 10 MB',
+                                                            style: Theme.of(
+                                                                    context)
+                                                                .textTheme
+                                                                .labelSmall,
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ]))))),
+                        ]),
+                      ),
+                    ])),
+                  ])),
+              ]);
+            })),
+          ]),
+          if (_reviewPanel != null &&
+              !isNarrowViewport &&
+              MediaQuery.sizeOf(context).width < 1240) ...[
+            // Keep the overlay panel mounted while collapsed to preserve its
+            // state; Offstage hides it without disposing.
+            Padding(
+              padding: EdgeInsets.only(
+                top: workspaceChrome?.active == true ? 36 : 0,
+              ),
+              child: Offstage(
+                offstage: _reviewCollapsed,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Material(
+                    elevation: 12,
+                    color: Theme.of(context).colorScheme.surface,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: (MediaQuery.sizeOf(context).width - 24)
+                            .clamp(320.0, 800.0)
+                            .toDouble(),
+                      ),
+                      child: SizedBox(
+                        width: (MediaQuery.sizeOf(context).width * .46)
+                            .clamp(600.0, 800.0)
+                            .toDouble(),
+                        height: double.infinity,
+                        child: _reviewPanel!,
                       ),
                     ),
                   ),
-                  Expanded(
-                      child: visibleConversations.isEmpty
-                          ? Center(
-                              child: _loading
-                                  ? const CircularProgressIndicator()
-                                  : Padding(
-                                      padding: const EdgeInsets.all(20),
-                                      child: Text(
-                                          _error ??
-                                              (query.isNotEmpty
-                                                  ? (_es
-                                                      ? 'Sin resultados'
-                                                      : 'No results')
-                                                  : (_es
-                                                      ? 'No hay conversaciones'
-                                                      : 'No conversations')),
-                                          textAlign: TextAlign.center)))
-                          : ListView.builder(
-                              itemCount: visibleConversations.length,
-                              itemBuilder: (context, index) {
-                                final conversation =
-                                    visibleConversations[index];
-                                final selected =
-                                    _selected?.id == conversation.id;
-                                final status = conversation.issue?['status'];
-                                final lastMessage = conversation.lastMessage;
-                                final preview = lastMessage == null
-                                    ? (status == null
-                                        ? _typeLabel(conversation.type)
-                                        : _statusLabel(status.toString()))
-                                    : lastMessage.isDeleted
-                                        ? (_es
-                                            ? 'Mensaje eliminado'
-                                            : 'Message deleted')
-                                        : lastMessage.bankTransaction != null
-                                            ? (_es
-                                                ? 'Movimiento bancario compartido'
-                                                : 'Shared bank transaction')
-                                            : lastMessage.review != null
-                                                ? (_es
-                                                    ? 'Revisión solicitada'
-                                                    : 'Review requested')
-                                                : lastMessage.body
-                                                        .trim()
-                                                        .isNotEmpty
-                                                    ? lastMessage.body
-                                                    : (lastMessage.attachment?[
-                                                                'fileName'] ??
-                                                            (_es
-                                                                ? 'Archivo adjunto'
-                                                                : 'Attachment'))
-                                                        .toString();
-                                return ListTile(
-                                    selected: selected,
-                                    leading: Icon(conversation.type == 'issue'
-                                        ? Icons.report_outlined
-                                        : conversation.type == 'team'
-                                            ? Icons.groups_outlined
-                                            : Icons.campaign_outlined),
-                                    title: Text(
-                                        conversation.issue?['title']
-                                                ?.toString() ??
-                                            conversation.title,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis),
-                                    subtitle: Text(preview,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis),
-                                    trailing: conversation.unreadCount > 0
-                                        ? Badge(
-                                            label: Text(
-                                                '${conversation.unreadCount}'))
-                                        : conversation.muted
-                                            ? const Icon(
-                                                Icons
-                                                    .notifications_off_outlined,
-                                                size: 17)
-                                            : null,
-                                    onTap: () {
-                                      final oldId = _selected?.id;
-                                      setState(() {
-                                        _selected = conversation;
-                                        _messages = const [];
-                                        _showChatOnNarrow = true;
-                                      });
-                                      _switchDraft(oldId, conversation.id);
-                                      _loadMessages(conversation,
-                                          forceScroll: true);
-                                    });
-                              })),
-                ])),
-          if (!narrow) const VerticalDivider(width: 1),
-          if (!narrow || _showChatOnNarrow)
-            Expanded(
-                child: Column(children: [
-              if (_selected != null)
-                Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(10),
-                    color: colors.surfaceContainerLow,
-                    child: Row(children: [
-                      if (narrow)
-                        IconButton(
-                            tooltip: _es ? 'Conversaciones' : 'Conversations',
-                            onPressed: () =>
-                                setState(() => _showChatOnNarrow = false),
-                            icon: const Icon(Icons.arrow_back)),
-                      Expanded(
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                            Text(
-                                _selected!.issue?['title']?.toString() ??
-                                    _selected!.title,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600)),
-                            if (_selected!.type == 'issue')
-                              Text(
-                                  _selected!.issue?['assigneeName'] == null
-                                      ? (_es ? 'Sin asignar' : 'Unassigned')
-                                      : '${_es ? 'Asignada a' : 'Assigned to'} ${_selected!.issue!['assigneeName']}',
-                                  style: Theme.of(context).textTheme.bodySmall),
-                            if (_selected!.type == 'team' ||
-                                _selected!.type == 'issue')
-                              Text(
-                                  _es
-                                      ? '${_selected!.participantIds.length} participantes'
-                                      : '${_selected!.participantIds.length} participants',
-                                  style: Theme.of(context).textTheme.bodySmall),
-                            if (_selected!.issue?['clientName'] != null ||
-                                _selected!.issue?['eventTitle'] != null)
-                              Text(
-                                  [
-                                    _selected!.issue?['clientName'],
-                                    _selected!.issue?['eventTitle']
-                                  ].whereType<String>().join(' · '),
-                                  style: Theme.of(context).textTheme.bodySmall)
-                          ])),
-                      if (!narrow) Text(_typeLabel(_selected!.type)),
-                      IconButton(
-                          tooltip: _es ? 'Buscar mensajes' : 'Search messages',
-                          onPressed: _searchHistory,
-                          icon: const Icon(Icons.search)),
-                      if (_selected!.type == 'general')
-                        IconButton(
-                            tooltip: _es
-                                ? 'Miembros de General (se gestionan en Miembros)'
-                                : 'General members (managed in Business Members)',
-                            onPressed: _showGeneralMembers,
-                            icon: const Icon(Icons.groups_outlined)),
-                      if ((_selected!.type == 'team' ||
-                              _selected!.type == 'issue') &&
-                          _selected!.canManageParticipants)
-                        narrow
-                            ? IconButton(
-                                tooltip: _es
-                                    ? 'Añadir o quitar participantes'
-                                    : 'Add or remove participants',
-                                onPressed: () =>
-                                    _manageParticipants(_selected!),
-                                icon:
-                                    const Icon(Icons.manage_accounts_outlined))
-                            : TextButton.icon(
-                                onPressed: () =>
-                                    _manageParticipants(_selected!),
-                                icon:
-                                    const Icon(Icons.manage_accounts_outlined),
-                                label: Text(
-                                    _es ? 'Participantes' : 'Participants')),
-                      if (_selected!.type != 'general' &&
-                          widget.currentUserId != null &&
-                          _selected!.participantIds
-                              .contains(widget.currentUserId))
-                        IconButton(
-                            tooltip: _es ? 'Salir del chat' : 'Leave chat',
-                            onPressed: () => _leaveConversation(_selected!),
-                            icon: const Icon(Icons.exit_to_app_outlined)),
-                      if (_selected!.type == 'issue')
-                        IconButton(
-                            tooltip: _es ? 'Ver incidencia' : 'View incident',
-                            onPressed: () => _showIssueDetails(_selected!),
-                            icon: const Icon(Icons.info_outline)),
-                      IconButton(
-                          tooltip: _selected!.muted
-                              ? (_es
-                                  ? 'Activar avisos de mensajes'
-                                  : 'Unmute messages')
-                              : (_es
-                                  ? 'Silenciar avisos de mensajes'
-                                  : 'Mute messages'),
-                          onPressed: () => _toggleMute(_selected!),
-                          icon: Icon(_selected!.muted
-                              ? Icons.notifications_off_outlined
-                              : Icons.notifications_active_outlined)),
-                      if (_selected!.issue?['status'] != null &&
-                          _canAssignIssues)
-                        IconButton(
-                            tooltip:
-                                _es ? 'Cambiar responsable' : 'Change assignee',
-                            onPressed: () => _assignIssue(_selected!),
-                            icon: const Icon(Icons.assignment_ind_outlined)),
-                      if (_selected!.issue?['status'] != null)
-                        Padding(
-                            padding: const EdgeInsets.only(left: 8),
-                            child: _canManageIssues
-                                ? DropdownButton<String>(
-                                    value:
-                                        _selected!.issue!['status'].toString(),
-                                    items: [
-                                      DropdownMenuItem(
-                                          value: 'open',
-                                          child: Text(_statusLabel('open'))),
-                                      DropdownMenuItem(
-                                          value: 'in_progress',
-                                          child: Text(
-                                              _statusLabel('in_progress'))),
-                                      DropdownMenuItem(
-                                          value: 'review',
-                                          child: Text(_statusLabel('review'))),
-                                      DropdownMenuItem(
-                                          value: 'resolved',
-                                          child:
-                                              Text(_statusLabel('resolved'))),
-                                      DropdownMenuItem(
-                                          value: 'closed',
-                                          child: Text(_statusLabel('closed')))
-                                    ],
-                                    onChanged: (value) {
-                                      if (value != null) _setIssueStatus(value);
-                                    })
-                                : Chip(
-                                    label: Text(_statusLabel(_selected!
-                                        .issue!['status']
-                                        .toString()))))
-                    ])),
-              Expanded(
-                  child: _error != null && _messages.isEmpty
-                      ? Center(
-                          child:
-                              Column(mainAxisSize: MainAxisSize.min, children: [
-                          Padding(
-                              padding: const EdgeInsets.all(16),
-                              child:
-                                  Text(_error!, textAlign: TextAlign.center)),
-                          TextButton(
-                              onPressed: _refresh,
-                              child: Text(_es ? 'Reintentar' : 'Retry'))
-                        ]))
-                      : _selected == null
-                          ? Center(
-                              child: _loading
-                                  ? const CircularProgressIndicator()
-                                  : Text(_es
-                                      ? 'Selecciona una conversación.'
-                                      : 'Select a conversation.'))
-                          : _messages.isEmpty
-                              ? Center(
-                                  child: Text(_es
-                                      ? 'Todavía no hay mensajes.'
-                                      : 'No messages yet.'))
-                              : ListView.builder(
-                                  controller: _scroll,
-                                  padding: const EdgeInsets.all(14),
-                                  itemCount: _messages.length +
-                                      (_hasOlderMessages ? 1 : 0),
-                                  itemBuilder: (context, index) {
-                                    if (_hasOlderMessages && index == 0) {
-                                      return Center(
-                                          child: TextButton.icon(
-                                        onPressed: _loadingOlderMessages
-                                            ? null
-                                            : _loadOlderMessages,
-                                        icon: _loadingOlderMessages
-                                            ? const SizedBox(
-                                                width: 16,
-                                                height: 16,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                        strokeWidth: 2))
-                                            : const Icon(Icons.history),
-                                        label: Text(_es
-                                            ? 'Cargar mensajes anteriores'
-                                            : 'Load older messages'),
-                                      ));
-                                    }
-                                    final message = _messages[
-                                        index - (_hasOlderMessages ? 1 : 0)];
-                                    final mine = message.senderId ==
-                                        widget.currentUserId;
-                                    final canEdit = mine &&
-                                        !message.isDeleted &&
-                                        DateTime.now()
-                                                .difference(
-                                                    message.createdAt.toLocal())
-                                                .inMinutes <
-                                            15;
-                                    final canDelete = !message.isDeleted &&
-                                        (mine ||
-                                            (_selected?.canModerateMessages ==
-                                                true));
-                                    return Align(
-                                        alignment: mine
-                                            ? Alignment.centerRight
-                                            : Alignment.centerLeft,
-                                        child: ConstrainedBox(
-                                            constraints: const BoxConstraints(
-                                                maxWidth: 520),
-                                            child: Card(
-                                                color: mine
-                                                    ? colors.primaryContainer
-                                                    : colors
-                                                        .surfaceContainerHighest,
-                                                child: Padding(
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                            10),
-                                                    child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          Row(children: [
-                                                            Expanded(
-                                                                child: Text(
-                                                                    message
-                                                                        .senderName,
-                                                                    style: const TextStyle(
-                                                                        fontWeight:
-                                                                            FontWeight.w700))),
-                                                            if (!message
-                                                                .isDeleted)
-                                                              IconButton(
-                                                                  visualDensity:
-                                                                      VisualDensity
-                                                                          .compact,
-                                                                  tooltip: _es
-                                                                      ? 'Responder a este mensaje'
-                                                                      : 'Reply to this message',
-                                                                  onPressed: () =>
-                                                                      setState(() =>
-                                                                          _replyingTo =
-                                                                              message),
-                                                                  icon: const Icon(
-                                                                      Icons
-                                                                          .reply,
-                                                                      size:
-                                                                          18)),
-                                                            if (canEdit ||
-                                                                canDelete)
-                                                              PopupMenuButton<
-                                                                      String>(
-                                                                  onSelected: (value) =>
-                                                                      _messageAction(
-                                                                          message,
-                                                                          value),
-                                                                  itemBuilder:
-                                                                      (_) => [
-                                                                            if (canEdit)
-                                                                              PopupMenuItem(value: 'edit', child: Text(_es ? 'Editar' : 'Edit')),
-                                                                            if (canDelete)
-                                                                              PopupMenuItem(value: 'delete', child: Text(_es ? 'Eliminar' : 'Delete'))
-                                                                          ])
-                                                          ]),
-                                                          if (message.replyTo !=
-                                                              null)
-                                                            Container(
-                                                              width: double
-                                                                  .infinity,
-                                                              margin:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      bottom:
-                                                                          6),
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(6),
-                                                              decoration:
-                                                                  BoxDecoration(
-                                                                color: colors
-                                                                    .surface
-                                                                    .withValues(
-                                                                        alpha:
-                                                                            0.55),
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            6),
-                                                              ),
-                                                              child: Text(
-                                                                message.replyTo![
-                                                                            'unavailable'] ==
-                                                                        true
-                                                                    ? (_es
-                                                                        ? 'Mensaje original no disponible'
-                                                                        : 'Original message unavailable')
-                                                                    : '${message.replyTo!['senderName'] ?? ''}: ${message.replyTo!['body']?.toString().isNotEmpty == true ? message.replyTo!['body'] : (_es ? 'Adjunto o referencia' : 'Attachment or reference')}',
-                                                                maxLines: 2,
-                                                                overflow:
-                                                                    TextOverflow
-                                                                        .ellipsis,
-                                                                style: Theme.of(
-                                                                        context)
-                                                                    .textTheme
-                                                                    .labelSmall,
-                                                              ),
-                                                            ),
-                                                          if (message
-                                                                  .isDeleted ||
-                                                              message.body
-                                                                  .isNotEmpty)
-                                                            Text(message
-                                                                    .isDeleted
-                                                                ? (_es
-                                                                    ? 'Mensaje eliminado'
-                                                                    : 'Message deleted')
-                                                                : message.body),
-                                                          if (!message
-                                                                  .isDeleted &&
-                                                              message.bankTransaction !=
-                                                                  null)
-                                                            BankTransactionChatCard(
-                                                              transaction: message
-                                                                  .bankTransaction!,
-                                                              onOpen: () =>
-                                                                  _openBankTransaction(
-                                                                      message
-                                                                          .bankTransaction!),
-                                                              onReview: () =>
-                                                                  _openBankTransaction(
-                                                                      message
-                                                                          .bankTransaction!,
-                                                                      reviewLink:
-                                                                          true),
-                                                              onRequestReview:
-                                                                  () {
-                                                                setState(() {
-                                                                  _replyingTo =
-                                                                      message;
-                                                                  if (_composer
-                                                                      .text
-                                                                      .trim()
-                                                                      .isEmpty) {
-                                                                    _composer.text = _es
-                                                                        ? '¿Podéis revisar este movimiento y confirmar si está vinculado correctamente?'
-                                                                        : 'Could you review this transaction and confirm its link is correct?';
-                                                                  }
-                                                                });
-                                                              },
-                                                              sharedBy: message
-                                                                  .senderName,
-                                                              sharedAt: message
-                                                                  .createdAt,
-                                                            ),
-                                                          if (!message
-                                                                  .isDeleted &&
-                                                              message.review !=
-                                                                  null)
-                                                            Card(
-                                                              child: Padding(
-                                                                padding:
-                                                                    const EdgeInsets
-                                                                        .all(
-                                                                        10),
-                                                                child: Column(
-                                                                  crossAxisAlignment:
-                                                                      CrossAxisAlignment
-                                                                          .start,
-                                                                  children: [
-                                                                    Text(
-                                                                        switch (message.review![
-                                                                            'kind']) {
-                                                                          'invoice' => _es
-                                                                              ? 'Revisión de factura'
-                                                                              : 'Invoice review',
-                                                                          'expense' => _es
-                                                                              ? 'Revisión de gasto'
-                                                                              : 'Expense review',
-                                                                          _ => _es
-                                                                              ? 'Revisión de horas'
-                                                                              : 'Hours review',
-                                                                        },
-                                                                        style: Theme.of(context)
-                                                                            .textTheme
-                                                                            .titleSmall),
-                                                                    Text(_reviewSubtitle(
-                                                                        message
-                                                                            .review!)),
-                                                                    TextButton
-                                                                        .icon(
-                                                                      onPressed:
-                                                                          () =>
-                                                                              _openReviewDocument(message.review!),
-                                                                      icon: const Icon(
-                                                                          Icons
-                                                                              .open_in_new),
-                                                                      label: Text(
-                                                                          switch (
-                                                                              message.review!['kind']) {
-                                                                        'invoice' => _es
-                                                                            ? 'Abrir factura'
-                                                                            : 'Open invoice',
-                                                                        'expense' => _es
-                                                                            ? 'Abrir gasto'
-                                                                            : 'Open expense',
-                                                                        _ => _es
-                                                                            ? 'Abrir trabajadores'
-                                                                            : 'Open workers',
-                                                                      }),
-                                                                    ),
-                                                                    if (message.review!['kind'] !=
-                                                                            'worker_hours' &&
-                                                                        message.review!['bankLinkAvailable'] ==
-                                                                            true)
-                                                                      Text((message.review!['linkedTransactionIds'] as List? ?? const [])
-                                                                              .isEmpty
-                                                                          ? (_es
-                                                                              ? 'Sin movimiento vinculado'
-                                                                              : 'No linked transaction')
-                                                                          : (_es
-                                                                              ? 'Movimiento vinculado'
-                                                                              : 'Linked transaction')),
-                                                                    if (message.review!['bankLinkAvailable'] ==
-                                                                            true &&
-                                                                        (message.review!['linkedTransactionIds'] as List? ??
-                                                                                const [])
-                                                                            .isNotEmpty)
-                                                                      Wrap(
-                                                                          children: [
-                                                                            for (final (
-                                                                                  index,
-                                                                                  entryId
-                                                                                )
-                                                                                in (message.review!['linkedTransactionIds'] as List).indexed)
-                                                                              TextButton.icon(
-                                                                                onPressed: () => _openBankTransaction({
-                                                                                  'entryId': entryId.toString(),
-                                                                                }),
-                                                                                icon: const Icon(Icons.account_balance_outlined),
-                                                                                label: Text(_es ? 'Movimiento ${index + 1}' : 'Transaction ${index + 1}'),
-                                                                              ),
-                                                                          ]),
-                                                                  ],
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          if (!message.isDeleted &&
-                                                              message.attachment !=
-                                                                  null)
-                                                            TextButton.icon(
-                                                                onPressed: () =>
-                                                                    _openAttachment(
-                                                                        message),
-                                                                icon: Icon((message.attachment!['mimeType'] ??
-                                                                            '')
-                                                                        .toString()
-                                                                        .startsWith(
-                                                                            'image/')
-                                                                    ? Icons
-                                                                        .image_outlined
-                                                                    : Icons
-                                                                        .attach_file),
-                                                                label: Text((message.attachment!['fileName'] ??
-                                                                        (_es
-                                                                            ? 'Adjunto'
-                                                                            : 'Attachment'))
-                                                                    .toString())),
-                                                          Align(
-                                                              alignment: Alignment
-                                                                  .centerRight,
-                                                              child: Text(
-                                                                  '${DateFormat('HH:mm').format(message.createdAt.toLocal())}${message.editedAt != null ? (_es ? ' · Editado' : ' · Edited') : ''}',
-                                                                  style: Theme.of(
-                                                                          context)
-                                                                      .textTheme
-                                                                      .labelSmall)),
-                                                        ])))));
-                                  })),
-              const Divider(height: 1),
+                ),
+              ),
+            ),
+            if (_reviewCollapsed)
               Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: SafeArea(
-                      top: false,
-                      child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        if (_replyingTo != null)
-                          Card(
-                            child: ListTile(
-                              dense: true,
-                              leading: const Icon(Icons.reply),
-                              title: Text(_es
-                                  ? 'Respondiendo a ${_replyingTo!.senderName}'
-                                  : 'Replying to ${_replyingTo!.senderName}'),
-                              subtitle: Text(
-                                _replyingTo!.body.isNotEmpty
-                                    ? _replyingTo!.body
-                                    : (_es
-                                        ? 'Adjunto o referencia'
-                                        : 'Attachment or reference'),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: IconButton(
-                                tooltip:
-                                    _es ? 'Cancelar respuesta' : 'Cancel reply',
-                                onPressed: () =>
-                                    setState(() => _replyingTo = null),
-                                icon: const Icon(Icons.close),
-                              ),
-                            ),
-                          ),
-                        Row(children: [
-                          IconButton(
-                              onPressed: _sending || _selected == null
-                                  ? null
-                                  : _attach,
-                              tooltip: _es
-                                  ? 'Adjuntar foto o PDF'
-                                  : 'Attach photo or PDF',
-                              icon: const Icon(Icons.attach_file)),
-                          Expanded(
-                              child: TextField(
-                                  controller: _composer,
-                                  enabled: _selected != null && !_sending,
-                                  maxLength: 2000,
-                                  minLines: 1,
-                                  maxLines: 4,
-                                  decoration: InputDecoration(
-                                      hintText: _es
-                                          ? 'Escribe un mensaje…'
-                                          : 'Write a message…',
-                                      counterText: '',
-                                      border: const OutlineInputBorder()))),
-                          const SizedBox(width: 8),
-                          IconButton.filled(
-                              onPressed:
-                                  _sending || _selected == null ? null : _send,
-                              icon: _sending
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2))
-                                  : const Icon(Icons.send))
-                        ]),
-                        if (_selected != null)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 48, top: 4),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Wrap(
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 8,
-                                children: [
-                                  if (_canShareBankTransactions)
-                                    TextButton.icon(
-                                      onPressed: _shareBankTransactionFromChat,
-                                      icon: const Icon(
-                                          Icons.account_balance_outlined,
-                                          size: 17),
-                                      label: Text(_es
-                                          ? 'Compartir movimiento bancario'
-                                          : 'Share bank transaction'),
-                                    ),
-                                  if (_canRequestDocumentReview)
-                                    TextButton.icon(
-                                      onPressed: () =>
-                                          _requestDocumentReview('invoice'),
-                                      icon: const Icon(
-                                          Icons.receipt_long_outlined,
-                                          size: 17),
-                                      label: Text(_es
-                                          ? 'Revisar factura'
-                                          : 'Review invoice'),
-                                    ),
-                                  if (_canRequestDocumentReview)
-                                    TextButton.icon(
-                                      onPressed: () =>
-                                          _requestDocumentReview('expense'),
-                                      icon: const Icon(Icons.payments_outlined,
-                                          size: 17),
-                                      label: Text(_es
-                                          ? 'Revisar gasto'
-                                          : 'Review expense'),
-                                    ),
-                                  if (_canRequestDocumentReview)
-                                    TextButton.icon(
-                                      onPressed: () => _requestDocumentReview(
-                                          'worker_hours'),
-                                      icon: const Icon(
-                                          Icons.access_time_outlined,
-                                          size: 17),
-                                      label: Text(_es
-                                          ? 'Revisar horas'
-                                          : 'Review hours'),
-                                    ),
-                                  Text(
-                                    _es
-                                        ? 'Adjuntos: JPG, PNG, WebP o PDF · máximo 10 MB'
-                                        : 'Attachments: JPG, PNG, WebP, or PDF · max 10 MB',
-                                    style:
-                                        Theme.of(context).textTheme.labelSmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                      ]))),
-            ])),
-        ]);
-      })),
-    ]);
+                padding: EdgeInsets.only(
+                  top: workspaceChrome?.active == true ? 36 : 0,
+                ),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: SizedBox(
+                    height: double.infinity,
+                    child: Material(
+                      elevation: 12,
+                      color: Theme.of(context).colorScheme.surface,
+                      child: _ReviewReopenRail(
+                        es: _es,
+                        onReopen: () =>
+                            setState(() => _reviewCollapsed = false),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ]));
+  }
+}
+
+/// Slim vertical rail shown where the invoice review panel was, letting the
+/// user reopen it. The panel itself stays mounted (via Offstage) so its state
+/// is preserved while collapsed.
+class _ReviewReopenRail extends StatelessWidget {
+  const _ReviewReopenRail({required this.es, required this.onReopen});
+
+  final bool es;
+  final VoidCallback onReopen;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final label = es ? 'Revisar factura' : 'Review invoice';
+    return Container(
+      width: 44,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        border: Border(
+          left: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6)),
+        ),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          IconButton(
+            tooltip: es ? 'Mostrar panel de revisión' : 'Show review panel',
+            onPressed: onReopen,
+            icon: const Icon(Icons.chevron_left_rounded, size: 20),
+            style: IconButton.styleFrom(
+              backgroundColor: cs.primary.withValues(alpha: 0.10),
+              foregroundColor: cs.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(9),
+              ),
+            ),
+            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+            padding: EdgeInsets.zero,
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: RotatedBox(
+              quarterTurns: 3,
+              child: Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.receipt_long_outlined,
+                        size: 14, color: cs.onSurfaceVariant),
+                    const SizedBox(width: 6),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: cs.onSurfaceVariant,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BusinessRailAction {
+  const _BusinessRailAction({
+    required this.id,
+    required this.icon,
+    required this.label,
+  });
+
+  final String id;
+  final IconData icon;
+  final String label;
+}
+
+class _CompactConversationRailItem extends StatelessWidget {
+  const _CompactConversationRailItem({
+    required this.icon,
+    required this.title,
+    required this.selected,
+    required this.unreadCount,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final bool selected;
+  final int unreadCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: title,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          height: 56,
+          alignment: Alignment.center,
+          color: selected
+              ? Colors.white.withValues(alpha: .12)
+              : Colors.transparent,
+          child: Badge(
+            isLabelVisible: unreadCount > 0,
+            label: Text(unreadCount > 9 ? '9+' : '$unreadCount'),
+            backgroundColor: const Color(0xFF60A5FA),
+            child: Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: selected
+                    ? const Color(0xFF2563EB).withValues(alpha: .28)
+                    : Colors.white.withValues(alpha: .08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                size: 18,
+                color: selected
+                    ? const Color(0xFFBFDBFE)
+                    : const Color(0xFFB8C7DB),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatNavigationTab extends StatelessWidget {
+  const _ChatNavigationTab({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected
+                ? Colors.white.withValues(alpha: .14)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon,
+                  size: 16,
+                  color: selected
+                      ? const Color(0xFF93C5FD)
+                      : const Color(0xFFB8C7DB)),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: selected
+                            ? const Color(0xFFF1F5FC)
+                            : const Color(0xFFB8C7DB),
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w600,
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BusinessRailButton extends StatelessWidget {
+  const _BusinessRailButton({
+    required this.action,
+    required this.expanded,
+    this.navySurface = false,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _BusinessRailAction action;
+  final bool expanded;
+  final bool navySurface;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final color = navySurface
+        ? (selected ? const Color(0xFF93C5FD) : const Color(0xFFB8C7DB))
+        : (selected ? cs.primary : cs.onSurfaceVariant);
+    final content = InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: 40,
+        margin: EdgeInsets.symmetric(horizontal: expanded ? 8 : 6, vertical: 2),
+        padding: EdgeInsets.symmetric(horizontal: expanded ? 10 : 0),
+        decoration: BoxDecoration(
+          color: selected
+              ? (navySurface
+                  ? cs.primary.withValues(alpha: .28)
+                  : cs.primaryContainer.withValues(alpha: .65))
+              : null,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisAlignment:
+              expanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+          children: [
+            Icon(action.icon, size: 19, color: color),
+            if (expanded) ...[
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  action.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: color,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w600,
+                      ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+    return expanded ? content : Tooltip(message: action.label, child: content);
   }
 }
 
