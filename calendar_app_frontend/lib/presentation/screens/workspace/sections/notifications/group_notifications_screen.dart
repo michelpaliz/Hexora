@@ -226,12 +226,12 @@ class _GroupNotificationsScreenState extends State<GroupNotificationsScreen> {
         .trim();
     if (conversationId.isEmpty || groupId != widget.group.id) return;
     await Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => Scaffold(
-        appBar: AppBar(title: const Text('Hexora Chat')),
+      builder: (routeContext) => Scaffold(
         body: BusinessChatScreen(
           groupId: groupId,
           currentUserId: context.read<UserDomain>().user?.id,
           initialConversationId: conversationId,
+          onExit: () => Navigator.of(routeContext).pop(),
         ),
       ),
     ));

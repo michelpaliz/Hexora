@@ -10,7 +10,9 @@ Set<HexoraFinancialColumn> _columnsForWidth(
   Set<HexoraFinancialColumn> requested,
 ) {
   final columns = Set<HexoraFinancialColumn>.of(requested);
-  columns.remove(HexoraFinancialColumn.concept);
+  columns
+    ..remove(HexoraFinancialColumn.concept)
+    ..remove(HexoraFinancialColumn.notes);
   if (width < 860) {
     columns
       ..remove(HexoraFinancialColumn.taxableBase)
@@ -39,6 +41,7 @@ enum CompactDocumentColumn {
   delivery,
   payment,
   date,
+  notes,
   taxableBase,
   vat,
   total,
@@ -55,6 +58,7 @@ class _DocumentColumnLayout {
     required this.payment,
     required this.date,
     required this.concept,
+    required this.notes,
     required this.base,
     required this.vat,
     required this.total,
@@ -72,6 +76,7 @@ class _DocumentColumnLayout {
   final double payment;
   final double date;
   final double concept;
+  final double notes;
   final double base;
   final double vat;
   final double total;
@@ -88,6 +93,7 @@ double _compactInlineFixedWidth(_DocumentColumnLayout layout) =>
     layout.payment +
     layout.date +
     layout.concept +
+    layout.notes +
     layout.base +
     layout.vat +
     layout.total +
@@ -125,6 +131,7 @@ _DocumentColumnLayout _documentColumnLayout(
       payment: columns.contains(HexoraFinancialColumn.payment) ? 108 : 0,
       date: columns.contains(HexoraFinancialColumn.date) ? 104 : 0,
       concept: 0,
+      notes: 0,
       base: columns.contains(HexoraFinancialColumn.taxableBase) ? 112 : 0,
       vat: columns.contains(HexoraFinancialColumn.vat) ? 96 : 0,
       total: columns.contains(HexoraFinancialColumn.total) ? 120 : 0,
@@ -144,6 +151,9 @@ _DocumentColumnLayout _documentColumnLayout(
       ? width * (preferWideClient ? .09 : .10)
       : 0.0;
   final concept = columns.contains(HexoraFinancialColumn.concept)
+      ? width * (preferWideClient ? .12 : .14)
+      : 0.0;
+  final notes = columns.contains(HexoraFinancialColumn.notes)
       ? width * (preferWideClient ? .12 : .14)
       : 0.0;
   final base = columns.contains(HexoraFinancialColumn.taxableBase)
@@ -166,6 +176,7 @@ _DocumentColumnLayout _documentColumnLayout(
       payment -
       date -
       concept -
+      notes -
       base -
       vat -
       total -
@@ -189,6 +200,7 @@ _DocumentColumnLayout _documentColumnLayout(
     payment: payment,
     date: date,
     concept: concept,
+    notes: notes,
     base: base,
     vat: vat,
     total: total,
@@ -199,13 +211,23 @@ _DocumentColumnLayout _documentColumnLayout(
 }
 
 class CompactDocumentAction {
-  const CompactDocumentAction(this.label, this.onPressed,
-      {this.destructive = false, this.primary = false, this.icon});
+  const CompactDocumentAction(
+    this.label,
+    this.onPressed, {
+    this.destructive = false,
+    this.primary = false,
+    this.icon,
+    this.opensPreviewDrawer = false,
+  });
   final String label;
   final VoidCallback? onPressed;
   final bool destructive;
   final bool primary;
   final IconData? icon;
+
+  /// Opens the shared document preview drawer before running this action.
+  /// This keeps explicit preview actions consistent in every list mode.
+  final bool opensPreviewDrawer;
 }
 
 /// Always-visible icon action (e.g. download, edit). Replaces the default
@@ -436,6 +458,8 @@ class CompactDocumentTableHeader extends StatelessWidget {
           if (layout.columns.contains(HexoraFinancialColumn.concept))
             HexoraFinancialHeaderCell(
                 label: conceptLabel, width: layout.concept),
+          if (layout.columns.contains(HexoraFinancialColumn.notes))
+            _cell(context, CompactDocumentColumn.notes, 'Notas', layout.notes),
           if (layout.columns.contains(HexoraFinancialColumn.taxableBase))
             _cell(context, CompactDocumentColumn.taxableBase, 'Base imponible',
                 layout.base,
@@ -555,6 +579,10 @@ class CompactDocumentFinancialFooter extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        // During split-view/sidebar transitions this footer can briefly
+        // receive a very narrow constraint. Do not subtract its horizontal
+        // padding from that width and create a negative BoxConstraints value.
+        if (constraints.maxWidth < 560) return compactFallback;
         final contentWidth = constraints.maxWidth - 24;
         final layout = _documentColumnLayout(
           contentWidth,
@@ -625,6 +653,8 @@ class CompactDocumentFinancialFooter extends StatelessWidget {
                 SizedBox(width: layout.date),
               if (layout.columns.contains(HexoraFinancialColumn.concept))
                 SizedBox(width: layout.concept),
+              if (layout.columns.contains(HexoraFinancialColumn.notes))
+                SizedBox(width: layout.notes),
               if (layout.columns.contains(HexoraFinancialColumn.taxableBase))
                 _moneyCell(
                   context,
@@ -693,6 +723,7 @@ class CompactDocumentRow extends StatelessWidget {
       this.payment,
       this.delivery,
       this.concept,
+      this.notes,
       this.showDeliveryColumn = false,
       this.invoiceColumnOrder = false,
       this.preferWideClient = false,
@@ -729,6 +760,7 @@ class CompactDocumentRow extends StatelessWidget {
   final Widget? payment;
   final Widget? delivery;
   final Widget? concept;
+  final Widget? notes;
   final bool showDeliveryColumn;
   final bool invoiceColumnOrder;
   final bool preferWideClient;
@@ -979,7 +1011,12 @@ class CompactDocumentRow extends StatelessWidget {
                         height: target,
                         child: IconButton(
                             tooltip: previewLabel,
-                            onPressed: previewBusy ? null : onPreview,
+                            onPressed: previewBusy || onPreview == null
+                                ? null
+                                : () {
+                                    workspace?.openPreviewDrawer();
+                                    onPreview!.call();
+                                  },
                             iconSize: 16,
                             padding: EdgeInsets.zero,
                             style: IconButton.styleFrom(
@@ -1008,8 +1045,13 @@ class CompactDocumentRow extends StatelessWidget {
                                 tooltip: MaterialLocalizations.of(context)
                                     .moreButtonTooltip,
                                 icon: const Icon(Icons.more_vert, size: 16),
-                                onSelected: (index) =>
-                                    actions[index].onPressed?.call(),
+                                onSelected: (index) {
+                                  final action = actions[index];
+                                  if (action.opensPreviewDrawer) {
+                                    workspace?.openPreviewDrawer();
+                                  }
+                                  action.onPressed?.call();
+                                },
                                 itemBuilder: (_) {
                                   final entries = <PopupMenuEntry<int>>[];
                                   for (var i = 0; i < actions.length; i++) {
@@ -1295,6 +1337,16 @@ class CompactDocumentRow extends StatelessWidget {
                               child: Align(
                                 alignment: AlignmentDirectional.centerStart,
                                 child: concept ?? const SizedBox.shrink(),
+                              ),
+                            ),
+                          if (columns.contains(HexoraFinancialColumn.notes))
+                            SizedBox(
+                              key: const ValueKey('document-notes-column'),
+                              width: layout.notes,
+                              height: _compactCellHeight,
+                              child: Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: notes ?? const SizedBox.shrink(),
                               ),
                             ),
                           if (columns

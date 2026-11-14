@@ -57,16 +57,49 @@ extension _ExpenseRecentUploadsEditorSection on _ExpenseRecentUploadsTabState {
                 builder: (context, constraints) {
                   final useSplitView = constraints.maxWidth >= 860;
                   if (useSplitView) {
+                    const dividerWidth = 12.0;
+                    final workspaceWidth = constraints.maxWidth - dividerWidth;
+                    final formWidth = (workspaceWidth * _editorFormFraction)
+                        .clamp(410.0, workspaceWidth - 360.0)
+                        .toDouble();
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(
-                          flex: 9,
+                        SizedBox(
+                          width: formWidth,
                           child: _buildEditorFormPanel(editing, l, t, cs),
                         ),
-                        Container(width: 1, color: border),
+                        Semantics(
+                          label: 'Redimensionar formulario y documento',
+                          child: Tooltip(
+                            message: 'Arrastra para ajustar la vista',
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.resizeColumn,
+                              child: GestureDetector(
+                                key: const ValueKey(
+                                    'expense-editor-resizable-divider'),
+                                behavior: HitTestBehavior.opaque,
+                                onHorizontalDragUpdate: (details) {
+                                  final nextWidth =
+                                      formWidth + details.delta.dx;
+                                  _setEditorFormFraction(
+                                    nextWidth / workspaceWidth,
+                                  );
+                                },
+                                child: SizedBox(
+                                  width: dividerWidth,
+                                  child: Center(
+                                    child: Container(
+                                      width: 2,
+                                      color: border,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                         Expanded(
-                          flex: 11,
                           child: _buildEditorPreviewPanel(editing, l, t, cs),
                         ),
                       ],
@@ -96,7 +129,16 @@ extension _ExpenseRecentUploadsEditorSection on _ExpenseRecentUploadsTabState {
         ],
       ),
     );
-    return panel;
+    return ValueListenableBuilder<bool>(
+      valueListenable: _editorDirty,
+      builder: (context, dirty, _) => PopScope(
+        canPop: !dirty,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _closeExpenseEditor();
+        },
+        child: panel,
+      ),
+    );
   }
 
   Widget _buildEditorFormPanel(
@@ -114,6 +156,7 @@ extension _ExpenseRecentUploadsEditorSection on _ExpenseRecentUploadsTabState {
         seedItem: editing,
         availableAdvanceExpenses: widget.recentUploads,
         onPreviewTotalsChanged: (totals) => _editorPreviewTotals.value = totals,
+        onDirtyChanged: (dirty) => _editorDirty.value = dirty,
         onSaved: _applyEditedExpense,
         onCancel: _closeExpenseEditor,
       ),
@@ -225,6 +268,7 @@ class _ExpenseInlineEditor extends StatefulWidget {
   final Map<String, String> seedItem;
   final List<Map<String, String>> availableAdvanceExpenses;
   final ValueChanged<_ExpensePreviewTotals> onPreviewTotalsChanged;
+  final ValueChanged<bool> onDirtyChanged;
   final ValueChanged<Map<String, String>> onSaved;
   final VoidCallback onCancel;
 
@@ -235,6 +279,7 @@ class _ExpenseInlineEditor extends StatefulWidget {
     required this.seedItem,
     required this.availableAdvanceExpenses,
     required this.onPreviewTotalsChanged,
+    required this.onDirtyChanged,
     required this.onSaved,
     required this.onCancel,
   });
@@ -312,10 +357,15 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
   _ExpenseTotalsSnapshot? _extractedDocumentTotals;
   String? _error;
   _ExpenseEditorTab _activeTab = _ExpenseEditorTab.general;
+  int _wizardStep = 1;
+  bool _dataSectionsExpanded = true;
+  bool _wizardCollapsed = false;
   final Set<_ExpenseEditorTab> _tabsWithErrors = {};
   List<Map<String, dynamic>> _providers = const [];
   String? _selectedProviderId;
   bool _manualProviderMode = false;
+  bool _dirty = false;
+  bool _acceptingChanges = false;
 
   @override
   void initState() {
@@ -340,6 +390,19 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
     _taxController.addListener(_syncBaseFromTotalTax);
     _baseController.addListener(_syncTotalFromBaseTax);
     _currencyController.addListener(_publishPreviewTotals);
+    for (final controller in [
+      _vendorController,
+      _invoiceController,
+      _issueDateController,
+      _dueDateController,
+      _baseController,
+      _totalController,
+      _taxController,
+      _currencyController,
+      _notesController,
+    ]) {
+      controller.addListener(_markDirty);
+    }
     final seedProviderId = (widget.seedItem['providerId'] ?? '').trim();
     _selectedProviderId = seedProviderId.isEmpty ? null : seedProviderId;
     _manualProviderMode =
@@ -376,7 +439,20 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
 
   bool get _hasEditableLines => _lineEditorEnabled && _lines.isNotEmpty;
 
+  void _markDirty() {
+    if (!_acceptingChanges || _dirty) return;
+    setState(() => _dirty = true);
+    widget.onDirtyChanged(true);
+  }
+
+  void _markClean() {
+    if (!_dirty) return;
+    setState(() => _dirty = false);
+    widget.onDirtyChanged(false);
+  }
+
   void _addLine() {
+    _markDirty();
     setState(() {
       _lineEditorEnabled = true;
       _lines.add(ExpenseLineDraft());
@@ -385,6 +461,7 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
   }
 
   void _removeLine(int index) {
+    _markDirty();
     final line = _lines.removeAt(index);
     line.dispose();
     setState(() {
@@ -580,6 +657,7 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
   }
 
   Future<void> _loadExpense() async {
+    _acceptingChanges = false;
     setState(() {
       _loading = true;
       _error = null;
@@ -669,7 +747,14 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
       if (!mounted) return;
       _error = e.toString();
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _dirty = false;
+          _acceptingChanges = true;
+        });
+        widget.onDirtyChanged(false);
+      }
     }
   }
 
@@ -805,6 +890,7 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
       lastDate: DateTime(2100),
     );
     if (picked != null && mounted) {
+      _markDirty();
       setState(() {
         ctrl.text =
             '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
@@ -945,6 +1031,7 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
                 : null,
       );
       if (!mounted) return;
+      _markClean();
       widget.onSaved(<String, String>{
         ...widget.seedItem,
         'id': widget.expenseId,
@@ -1054,6 +1141,8 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
 
   void _showTabError(_ExpenseEditorTab tab, String message) {
     setState(() {
+      _wizardStep = 1;
+      _dataSectionsExpanded = true;
       _activeTab = tab;
       _tabsWithErrors.add(tab);
       _error = message;
@@ -1146,100 +1235,6 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
     return currency.isEmpty ? 'EUR' : currency;
   }
 
-  Widget _buildTabBar(ColorScheme cs, TextTheme ts) {
-    Widget tab({
-      required _ExpenseEditorTab value,
-      required IconData icon,
-      required String label,
-    }) {
-      final selected = _activeTab == value;
-      final hasError = _tabsWithErrors.contains(value);
-      return Expanded(
-        child: Semantics(
-          button: true,
-          selected: selected,
-          child: InkWell(
-            key: ValueKey('expense-editor-tab-${value.name}'),
-            onTap: () => setState(() => _activeTab = value),
-            borderRadius: BorderRadius.circular(7),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              height: 38,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(
-                color: selected
-                    ? cs.primary.withValues(alpha: 0.12)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(7),
-                border: selected
-                    ? Border.all(color: cs.primary.withValues(alpha: 0.55))
-                    : null,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    hasError ? Icons.error_outline_rounded : icon,
-                    size: 15,
-                    color: hasError
-                        ? cs.error
-                        : selected
-                            ? cs.primary
-                            : cs.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: ts.labelMedium?.copyWith(
-                        fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.w600,
-                        color: hasError
-                            ? cs.error
-                            : selected
-                                ? cs.primary
-                                : cs.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.32),
-        borderRadius: BorderRadius.circular(9),
-      ),
-      child: Row(
-        children: [
-          tab(
-            value: _ExpenseEditorTab.general,
-            icon: Icons.receipt_long_outlined,
-            label: 'General',
-          ),
-          tab(
-            value: _ExpenseEditorTab.amounts,
-            icon: Icons.calculate_outlined,
-            label: 'Importes',
-          ),
-          tab(
-            value: _ExpenseEditorTab.lines,
-            icon: Icons.list_alt_outlined,
-            label: 'Líneas (${_lines.length})',
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildErrorStrip(ColorScheme cs) {
     if ((_error ?? '').isEmpty) return const SizedBox.shrink();
     return Container(
@@ -1302,6 +1297,31 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
                     ),
                   ),
                 ),
+                if (_dirty) ...[
+                  const SizedBox(width: 10),
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: cs.tertiary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      l.localeName.startsWith('es')
+                          ? 'Cambios sin guardar'
+                          : 'Unsaved changes',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1411,6 +1431,7 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
               onRemoveLine: _removeLine,
               compactWorkspace: true,
               onLinesChanged: () {
+                _markDirty();
                 setState(() {
                   _lineEditorEnabled = true;
                   _tabsWithErrors.remove(_ExpenseEditorTab.lines);
@@ -1422,13 +1443,18 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
               settlement: _settlement,
               advanceOptions: _advanceOptions(),
               enabled: !_saving,
-              onTypeChanged: (type) => setState(() {
-                _settlement.setExpenseType(type);
-              }),
-              onAdvanceExpenseChanged: (id) => setState(() {
-                _settlement.selectedAdvanceExpenseId = id;
-              }),
-              onChanged: () => setState(() {}),
+              onTypeChanged: (type) {
+                _markDirty();
+                setState(() => _settlement.setExpenseType(type));
+              },
+              onAdvanceExpenseChanged: (id) {
+                _markDirty();
+                setState(() => _settlement.selectedAdvanceExpenseId = id);
+              },
+              onChanged: () {
+                _markDirty();
+                setState(() {});
+              },
             );
             final financialPreview = _documentDiscountPreview();
             final displayedFinancialPreview = financialPreview ??
@@ -1459,11 +1485,14 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
               preview: financialPreview,
               compactSummary: true,
               showPreview: false,
-              onChanged: () => setState(() {
-                if (_hasEditableLines && !_useSummaryTotals) {
-                  _syncControllersFromLines();
-                }
-              }),
+              onChanged: () {
+                _markDirty();
+                setState(() {
+                  if (_hasEditableLines && !_useSummaryTotals) {
+                    _syncControllersFromLines();
+                  }
+                });
+              },
             );
             final totalsFields = ExpenseDocumentTotalsFields(
               baseController: _baseController,
@@ -1481,35 +1510,40 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
                 extractedDocumentTotals: _extractedDocumentTotals,
                 lineTotals: lineTotals,
                 differences: reconciliationDifferences,
-                onReviewDifference: (difference) => setState(
-                  () => _activeTab = difference.targetTab,
-                ),
+                onReviewDifference: (difference) => setState(() {
+                  _wizardStep = 1;
+                  _dataSectionsExpanded = true;
+                  _activeTab = difference.targetTab;
+                }),
               ),
-              onSummaryModeChanged: (value) => setState(() {
-                if (!value) {
-                  _summaryTotalsDraft = (
-                    base: _baseController.text,
-                    tax: _taxController.text,
-                    total: _totalController.text,
-                  );
-                }
-                _useSummaryTotals = value;
-                if (!_useSummaryTotals && _hasEditableLines) {
-                  _syncControllersFromLines();
-                } else if (_useSummaryTotals) {
-                  final saved = _summaryTotalsDraft;
-                  if (saved != null) {
-                    _syncingAmounts = true;
-                    _baseController.text = saved.base;
-                    _taxController.text = saved.tax;
-                    _totalController.text = saved.total;
-                    _syncingAmounts = false;
-                  } else {
-                    _syncSummaryControllers(
-                        _ExpenseEditorDocumentTotalField.total);
+              onSummaryModeChanged: (value) {
+                _markDirty();
+                setState(() {
+                  if (!value) {
+                    _summaryTotalsDraft = (
+                      base: _baseController.text,
+                      tax: _taxController.text,
+                      total: _totalController.text,
+                    );
                   }
-                }
-              }),
+                  _useSummaryTotals = value;
+                  if (!_useSummaryTotals && _hasEditableLines) {
+                    _syncControllersFromLines();
+                  } else if (_useSummaryTotals) {
+                    final saved = _summaryTotalsDraft;
+                    if (saved != null) {
+                      _syncingAmounts = true;
+                      _baseController.text = saved.base;
+                      _taxController.text = saved.tax;
+                      _totalController.text = saved.total;
+                      _syncingAmounts = false;
+                    } else {
+                      _syncSummaryControllers(
+                          _ExpenseEditorDocumentTotalField.total);
+                    }
+                  }
+                });
+              },
               onBaseChanged: (_) {
                 _syncSummaryControllers(_ExpenseEditorDocumentTotalField.base);
                 setState(() {});
@@ -1524,139 +1558,288 @@ class _ExpenseInlineEditorState extends State<_ExpenseInlineEditor> {
               },
             );
 
-            return Column(
+            final editorContent = Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildTabBar(cs, ts),
-                const SizedBox(height: 8),
                 Expanded(
-                  child: ListView(
-                    key: ValueKey('expense-editor-${_activeTab.name}-content'),
-                    padding: const EdgeInsets.only(bottom: 76),
-                    children: [
-                      // ── Proveedor ──────────────────────────────────────
-                      if (_activeTab == _ExpenseEditorTab.general) ...[
-                        sectionLabel(l.expenseUploadVendorLabel,
-                            Icons.business_outlined),
-                        ExpenseProviderPicker(
-                          providers: _providers,
-                          selectedProviderId: _selectedProviderId,
-                          providersError: null,
-                          loading: _loadingProviders,
-                          manualMode: _manualProviderMode,
-                          onSelectProvider: (id) {
-                            setState(() {
-                              _selectedProviderId = id;
-                              _manualProviderMode = false;
-                              _tabsWithErrors.remove(_ExpenseEditorTab.general);
-                            });
-                            if (id == null) return;
-                            final provider = _providers.firstWhere(
-                              (p) => _providerId(p) == id,
-                              orElse: () => const <String, dynamic>{},
-                            );
-                            final name = _providerName(provider);
-                            if (name.isNotEmpty && name != '-') {
-                              _vendorController.text = name;
-                            }
-                          },
-                          onManualMode: () => setState(() {
-                            _selectedProviderId = null;
-                            _manualProviderMode = true;
-                            _tabsWithErrors.remove(_ExpenseEditorTab.general);
-                          }),
+                  child: _wizardStep == 1
+                      ? ListView(
+                          key: ValueKey(
+                              'expense-editor-${_activeTab.name}-content'),
+                          padding: const EdgeInsets.only(bottom: 76),
+                          children: [
+                            // ── Proveedor ──────────────────────────────────────
+                            if (_activeTab == _ExpenseEditorTab.general) ...[
+                              sectionLabel(l.expenseUploadVendorLabel,
+                                  Icons.business_outlined),
+                              ExpenseProviderPicker(
+                                providers: _providers,
+                                selectedProviderId: _selectedProviderId,
+                                providersError: null,
+                                loading: _loadingProviders,
+                                manualMode: _manualProviderMode,
+                                onSelectProvider: (id) {
+                                  _markDirty();
+                                  setState(() {
+                                    _selectedProviderId = id;
+                                    _manualProviderMode = false;
+                                    _tabsWithErrors
+                                        .remove(_ExpenseEditorTab.general);
+                                  });
+                                  if (id == null) return;
+                                  final provider = _providers.firstWhere(
+                                    (p) => _providerId(p) == id,
+                                    orElse: () => const <String, dynamic>{},
+                                  );
+                                  final name = _providerName(provider);
+                                  if (name.isNotEmpty && name != '-') {
+                                    _vendorController.text = name;
+                                  }
+                                },
+                                onManualMode: () {
+                                  _markDirty();
+                                  setState(() {
+                                    _selectedProviderId = null;
+                                    _manualProviderMode = true;
+                                    _tabsWithErrors
+                                        .remove(_ExpenseEditorTab.general);
+                                  });
+                                },
+                              ),
+                              if (_manualProviderMode) ...[
+                                gap,
+                                _field(
+                                  _vendorController,
+                                  l.expenseUploadVendorLabel,
+                                  icon: Icons.storefront_outlined,
+                                  required: true,
+                                  cs: cs,
+                                ),
+                              ],
+                              sectionGap,
+
+                              // ── Factura ────────────────────────────────────────
+                              sectionLabel(
+                                  'Datos del gasto', Icons.receipt_outlined),
+                              row([
+                                _field(
+                                  _invoiceController,
+                                  l.expenseUploadInvoiceNumberLabel,
+                                  icon: Icons.tag_outlined,
+                                  cs: cs,
+                                ),
+                                _field(
+                                  _currencyController,
+                                  l.expenseUploadCurrencyLabel,
+                                  icon: Icons.euro_outlined,
+                                  onChanged: (_) => setState(() {}),
+                                  cs: cs,
+                                ),
+                              ]),
+                              gap,
+                              row([
+                                _dateField(
+                                  _issueDateController,
+                                  l.expenseUploadIssueDateLabel,
+                                  cs: cs,
+                                ),
+                                _dateField(
+                                  _dueDateController,
+                                  l.expenseUploadDueDateLabel,
+                                  cs: cs,
+                                ),
+                              ]),
+                              sectionGap,
+
+                              // ── Importes ───────────────────────────────────────
+                              sectionLabel(
+                                  'Tipo de gasto', Icons.tune_outlined),
+                              settlementFields,
+                              sectionGap,
+                            ],
+
+                            if (_activeTab == _ExpenseEditorTab.amounts) ...[
+                              documentDiscountFields,
+                              const SizedBox(height: 6),
+                              ExpenseDocumentWithholdingFields(
+                                withholding: _withholding,
+                                enabled: !_saving,
+                                compactSummary: true,
+                                showPreview: false,
+                                dense: true,
+                                preview: withholdingPreview,
+                                onChanged: () {
+                                  _markDirty();
+                                  setState(() {});
+                                },
+                              ),
+                              const SizedBox(height: 10),
+                              totalsFields,
+                              const SizedBox(height: 8),
+                            ],
+
+                            // ── Notas ──────────────────────────────────────────
+                            if (_activeTab == _ExpenseEditorTab.general) ...[
+                              _field(
+                                _notesController,
+                                l.expenseUploadNotesLabel,
+                                icon: Icons.notes_outlined,
+                                minLines: 3,
+                                maxLines: 6,
+                                cs: cs,
+                              ),
+                              sectionGap,
+                            ],
+
+                            // ── Líneas ─────────────────────────────────────────
+                            if (_activeTab == _ExpenseEditorTab.lines)
+                              linesEditor,
+
+                            // ── Error ──────────────────────────────────────────
+                            const SizedBox(height: 8),
+                          ],
+                        )
+                      : Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 420),
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _wizardStep == 0
+                                        ? Icons.description_outlined
+                                        : _wizardStep == 2
+                                            ? Icons.fact_check_outlined
+                                            : Icons.save_outlined,
+                                    size: 30,
+                                    color: cs.primary,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    _wizardStep == 0
+                                        ? 'Documento del gasto'
+                                        : _wizardStep == 2
+                                            ? 'Revisión del gasto'
+                                            : 'Guardar cambios',
+                                    textAlign: TextAlign.center,
+                                    style: ts.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    _wizardStep == 0
+                                        ? 'La vista previa del documento permanece disponible a la derecha.'
+                                        : _wizardStep == 2
+                                            ? '${_vendorController.text.trim().isEmpty ? 'Proveedor pendiente' : _vendorController.text.trim()} · ${ExpenseFormHelpers.formatAmount(_currentTotal())} ${_currencyLabel()}'
+                                            : 'Usa Guardar cambios para conservar toda la información del gasto.',
+                                    textAlign: TextAlign.center,
+                                    style: ts.bodySmall?.copyWith(
+                                      color: cs.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                        if (_manualProviderMode) ...[
-                          gap,
-                          _field(
-                            _vendorController,
-                            l.expenseUploadVendorLabel,
-                            icon: Icons.storefront_outlined,
-                            required: true,
-                            cs: cs,
-                          ),
-                        ],
-                        sectionGap,
-
-                        // ── Factura ────────────────────────────────────────
-                        sectionLabel('Datos del gasto', Icons.receipt_outlined),
-                        row([
-                          _field(
-                            _invoiceController,
-                            l.expenseUploadInvoiceNumberLabel,
-                            icon: Icons.tag_outlined,
-                            cs: cs,
-                          ),
-                          _field(
-                            _currencyController,
-                            l.expenseUploadCurrencyLabel,
-                            icon: Icons.euro_outlined,
-                            onChanged: (_) => setState(() {}),
-                            cs: cs,
-                          ),
-                        ]),
-                        gap,
-                        row([
-                          _dateField(
-                            _issueDateController,
-                            l.expenseUploadIssueDateLabel,
-                            cs: cs,
-                          ),
-                          _dateField(
-                            _dueDateController,
-                            l.expenseUploadDueDateLabel,
-                            cs: cs,
-                          ),
-                        ]),
-                        sectionGap,
-
-                        // ── Importes ───────────────────────────────────────
-                        sectionLabel('Tipo de gasto', Icons.tune_outlined),
-                        settlementFields,
-                        sectionGap,
-                      ],
-
-                      if (_activeTab == _ExpenseEditorTab.amounts) ...[
-                        documentDiscountFields,
-                        const SizedBox(height: 6),
-                        ExpenseDocumentWithholdingFields(
-                          withholding: _withholding,
-                          enabled: !_saving,
-                          compactSummary: true,
-                          showPreview: false,
-                          dense: true,
-                          preview: withholdingPreview,
-                          onChanged: () => setState(() {}),
-                        ),
-                        const SizedBox(height: 10),
-                        totalsFields,
-                        const SizedBox(height: 8),
-                      ],
-
-                      // ── Notas ──────────────────────────────────────────
-                      if (_activeTab == _ExpenseEditorTab.general) ...[
-                        sectionLabel(
-                            l.expenseUploadNotesLabel, Icons.notes_outlined),
-                        _field(
-                          _notesController,
-                          l.expenseUploadNotesLabel,
-                          icon: Icons.notes_outlined,
-                          maxLines: 2,
-                          cs: cs,
-                        ),
-                        sectionGap,
-                      ],
-
-                      // ── Líneas ─────────────────────────────────────────
-                      if (_activeTab == _ExpenseEditorTab.lines) linesEditor,
-
-                      // ── Error ──────────────────────────────────────────
-                      const SizedBox(height: 8),
-                    ],
-                  ),
                 ),
                 _buildErrorStrip(cs),
                 _buildStickyFooter(l, cs),
+              ],
+            );
+
+            final wizardSteps = <DocumentWizardStep>[
+              const DocumentWizardStep(
+                label: 'Documento',
+                icon: Icons.description_outlined,
+              ),
+              DocumentWizardStep(
+                label: 'Datos',
+                icon: Icons.edit_note_outlined,
+                sections: [
+                  const DocumentWizardSection(
+                    id: 'general',
+                    label: 'General',
+                    icon: Icons.description_outlined,
+                  ),
+                  const DocumentWizardSection(
+                    id: 'amounts',
+                    label: 'Importes',
+                    icon: Icons.calculate_outlined,
+                  ),
+                  DocumentWizardSection(
+                    id: 'lines',
+                    label: 'Líneas (${_lines.length})',
+                    icon: Icons.view_list_outlined,
+                  ),
+                ],
+              ),
+              const DocumentWizardStep(
+                label: 'Revisión',
+                icon: Icons.fact_check_outlined,
+              ),
+              const DocumentWizardStep(
+                label: 'Guardado',
+                icon: Icons.save_outlined,
+              ),
+            ];
+            final selectedSection = _activeTab.name;
+            void selectStep(int step) => setState(() {
+                  _wizardStep = step.clamp(0, 3);
+                  _dataSectionsExpanded = _wizardStep == 1;
+                });
+            void selectSection(String section) => setState(() {
+                  _wizardStep = 1;
+                  _dataSectionsExpanded = true;
+                  _activeTab = switch (section) {
+                    'amounts' => _ExpenseEditorTab.amounts,
+                    'lines' => _ExpenseEditorTab.lines,
+                    _ => _ExpenseEditorTab.general,
+                  };
+                });
+
+            if (constraints.maxWidth < 440) {
+              return Column(
+                children: [
+                  DocumentWizardMobileSelector(
+                    keyPrefix: 'expense-editor-wizard',
+                    steps: wizardSteps,
+                    currentStep: _wizardStep,
+                    selectedSectionId: selectedSection,
+                    onStepSelected: selectStep,
+                    onSectionSelected: selectSection,
+                  ),
+                  Expanded(child: editorContent),
+                ],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DocumentWizardRail(
+                  keyPrefix: 'expense-editor-wizard',
+                  steps: wizardSteps,
+                  currentStep: _wizardStep,
+                  selectedSectionId: selectedSection,
+                  groupExpanded: _dataSectionsExpanded,
+                  collapsed: _wizardCollapsed || constraints.maxWidth < 620,
+                  expandedWidth: 196,
+                  title: l.localeName.startsWith('es')
+                      ? 'Editar gasto'
+                      : 'Edit expense',
+                  onStepSelected: selectStep,
+                  onSectionSelected: selectSection,
+                  onToggleGroup: () => setState(
+                    () => _dataSectionsExpanded = !_dataSectionsExpanded,
+                  ),
+                  onToggleCollapsed: () => setState(
+                    () => _wizardCollapsed = !_wizardCollapsed,
+                  ),
+                ),
+                Expanded(child: editorContent),
               ],
             );
           },
@@ -1818,11 +2001,16 @@ class _ExpenseTotalsSources extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final ts = Theme.of(context).textTheme;
+    final storedTotal = storedTotals?.total;
+    final storedDifference =
+        storedTotal == null ? null : currentTotal - storedTotal;
+    final hasStoredDifference = storedDifference != null &&
+        storedDifference.abs() > ExpenseFormHelpers.summaryTotalsTolerance;
     String valueOf(_ExpenseTotalsSnapshot? value,
             {String empty = 'Sin datos de OCR'}) =>
         value?.total == null ? empty : format(value!.total!);
 
-    Widget source(String label, String value) => Row(
+    Widget source(String label, String value, {bool warning = false}) => Row(
           children: [
             Expanded(
               child: Text(
@@ -1838,23 +2026,58 @@ class _ExpenseTotalsSources extends StatelessWidget {
               style: ts.bodySmall?.copyWith(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
+                color: warning ? cs.error : cs.onSurface,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ],
         );
 
-    return Column(
-      children: [
-        source('Total guardado', valueOf(storedTotals, empty: 'Sin datos')),
-        const SizedBox(height: 3),
-        source('Total actual del formulario', format(currentTotal)),
-        const SizedBox(height: 3),
-        source('Total calculado por líneas',
-            valueOf(lineTotals, empty: 'Sin datos')),
-        const SizedBox(height: 3),
-        source('Total detectado por OCR', valueOf(extractedDocumentTotals)),
-      ],
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow.withValues(alpha: .55),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          source(
+            'Total registrado · gasto guardado',
+            valueOf(storedTotals, empty: 'Sin datos'),
+          ),
+          const SizedBox(height: 3),
+          source('Total editable · formulario', format(currentTotal)),
+          const SizedBox(height: 3),
+          source(
+            'Total calculado · líneas',
+            valueOf(lineTotals, empty: 'Sin datos'),
+          ),
+          const SizedBox(height: 3),
+          source(
+            'Total detectado · OCR/documento',
+            valueOf(extractedDocumentTotals),
+          ),
+          if (hasStoredDifference) ...[
+            const Divider(height: 12),
+            source(
+              'Diferencia pendiente',
+              format(storedDifference.abs()),
+              warning: true,
+            ),
+            const SizedBox(height: 5),
+            Text(
+              'El formulario difiere del gasto guardado. Revisa importes, descuentos, retenciones o líneas antes de guardar; ningún valor se sobrescribe automáticamente.',
+              style: ts.bodySmall?.copyWith(
+                fontSize: 10,
+                height: 1.25,
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -1967,6 +2190,7 @@ extension _ExpenseInlineEditorFields on _ExpenseInlineEditorState {
     IconData? icon,
     ValueChanged<String>? onChanged,
     bool required = false,
+    int? minLines,
     int maxLines = 1,
     bool readOnly = false,
     required ColorScheme cs,
@@ -1975,6 +2199,7 @@ extension _ExpenseInlineEditorFields on _ExpenseInlineEditorState {
       padding: const EdgeInsets.only(bottom: 0),
       child: TextFormField(
         controller: controller,
+        minLines: minLines,
         maxLines: maxLines,
         readOnly: readOnly,
         onChanged: onChanged,

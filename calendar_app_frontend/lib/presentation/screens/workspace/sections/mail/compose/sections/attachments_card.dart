@@ -13,11 +13,6 @@ Widget _composeAttachmentsCard(
         key: const ValueKey('mail-compose-attached-document-summary'),
         height: 40,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: .45)),
-        ),
         child: Row(
           children: [
             if (compact) ...[

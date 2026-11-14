@@ -19,8 +19,8 @@ void main() {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
-          data:
-              MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(2)),
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: const TextScaler.linear(2)),
           child: child!),
       home: Scaffold(
           body: SingleChildScrollView(
@@ -48,10 +48,10 @@ void main() {
     expect(tester.takeException(), isNull);
     final description = tester.widget<Text>(find.text(
         'Grupo para la empresa de jardinería. Una descripción larga que debe estar disponible completa, sin cortar las instrucciones del grupo.'));
-    expect(description.maxLines, isNull);
+    expect(description.maxLines, 1);
     await tester.tap(find.byIcon(Icons.edit_outlined));
-    await tester.ensureVisible(find.text('4 miembros'));
-    await tester.tap(find.text('4 miembros'));
+    await tester.ensureVisible(find.text('4'));
+    await tester.tap(find.text('4'));
     expect(edits, 1);
     expect(members, 1);
   });

@@ -90,22 +90,34 @@ void _emit(
   String? actionLabel,
   SnackBarAction? action,
 }) {
-  if (!context.mounted) return;
-  final messenger = ScaffoldMessenger.maybeOf(context);
-  if (messenger == null) return;
-  messenger
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      _build(
-        context,
-        message,
-        kind,
-        title: title,
-        details: details,
-        actionLabel: actionLabel,
-        action: action,
-      ),
-    );
+  // A save or validation callback can complete while its editor is being
+  // replaced by a workspace navigation update. Resolve the ScaffoldMessenger
+  // on the next stable frame instead of looking up an ancestor from a
+  // deactivating element.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!context.mounted) return;
+    try {
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      if (messenger == null) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          _build(
+            context,
+            message,
+            kind,
+            title: title,
+            details: details,
+            actionLabel: actionLabel,
+            action: action,
+          ),
+        );
+    } on FlutterError {
+      // The originating view was removed between the mounted check and the
+      // inherited-widget lookup. It no longer has a safe place to present
+      // feedback, so silently discard this obsolete notification.
+    }
+  });
 }
 
 void _showDetails(

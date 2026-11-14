@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/presentation/shared/widgets/mobile_navigation_components.dart';
 
 /// Bank-style section navigation, wrapping so every destination stays visible.
 class MobileSectionTabs extends StatelessWidget {
@@ -20,23 +21,9 @@ class MobileSectionTabs extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
     if (scrollable) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: TabBar(
-          controller: controller,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          labelPadding: const EdgeInsets.symmetric(horizontal: 18),
-          labelColor: cs.primary,
-          unselectedLabelColor: cs.onSurfaceVariant,
-          labelStyle: Theme.of(context)
-              .textTheme
-              .titleSmall
-              ?.copyWith(fontWeight: FontWeight.w700),
-          indicatorSize: TabBarIndicatorSize.label,
-          tabs: labels.map((label) => Tab(text: label, height: 48)).toList(),
-        ),
+      return HexoraMobileTabs(
+        controller: controller,
+        tabs: labels.map((label) => Tab(text: label)).toList(),
       );
     }
     return Padding(
@@ -63,15 +50,15 @@ class MobileSectionTabs extends StatelessWidget {
                       child: TextButton(
                         onPressed: () => controller.animateTo(i),
                         style: TextButton.styleFrom(
-                          minimumSize: const Size(0, 48),
+                          minimumSize: const Size(0, 40),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 12),
                           foregroundColor: controller.index == i
-                              ? ThemeColors.contrastOn(cs.primary)
+                              ? cs.onPrimaryContainer
                               : ThemeColors.textPrimary(context)
                                   .withValues(alpha: 0.7),
                           backgroundColor: controller.index == i
-                              ? cs.primary
+                              ? cs.primaryContainer
                               : Colors.transparent,
                           textStyle: t.bodySmall.copyWith(
                             fontWeight: controller.index == i

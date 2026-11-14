@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/mobile_navigation_components.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 class CalendarTopBar extends StatelessWidget implements PreferredSizeWidget {
@@ -29,7 +30,7 @@ class CalendarTopBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize => showTabs && tabs.isNotEmpty
-      ? const Size.fromHeight(kToolbarHeight + kTextTabBarHeight)
+      ? const Size.fromHeight(kToolbarHeight + 48)
       : const Size.fromHeight(kToolbarHeight);
 
   @override
@@ -80,21 +81,12 @@ class CalendarTopBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       actions: trailing,
       bottom: showTabs && tabs.isNotEmpty
-          ? TabBar(
-              isScrollable: false,
-              tabs: tabs,
-              onTap: onTabChanged,
-              labelStyle: typo.bodySmall.copyWith(fontWeight: FontWeight.w700),
-              unselectedLabelStyle: typo.bodySmall.copyWith(fontSize: 11),
-              labelColor: cs.primary, // selected label color
-              unselectedLabelColor: cs.onSurfaceVariant,
-              indicator: const UnderlineTabIndicator(
-                // classic underline
-                borderSide: BorderSide(width: 2),
+          ? PreferredSize(
+              preferredSize: const Size.fromHeight(48),
+              child: HexoraMobileTabs(
+                tabs: tabs,
+                onTap: onTabChanged,
               ),
-              indicatorColor: cs.primary,
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
             )
           : null,
     );

@@ -18,6 +18,7 @@ import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/e
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/operations/form_helpers.dart';
 import 'package:hexora/presentation/shared/utils/formatting/money_format_utils.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_wizard_navigation.dart';
 import 'package:hexora/presentation/shared/widgets/financial/hexora_financial_table.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/shared/jobs/vat_ocr_reprocess_job_store.dart';
@@ -124,6 +125,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   bool _showOnlyDuplicateInvoiceIds = false;
   bool _showOnlyPotentialDuplicates = false;
   bool _showOnlyZeroVat = false;
+  bool _advancedFiltersOpen = false;
   Set<String> _vendorColumnFilters = <String>{};
   String _invoiceColumnQuery = '';
   DateTimeRange? _dateColumnRange;
@@ -142,6 +144,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   };
   int _mobilePanelIndex = 0;
   int _editorPanelIndex = 0;
+  double _editorFormFraction = 0.47;
   StateSetter? _editorRouteSetState;
   bool _suspendBackgroundPreview = false;
   String _searchQuery = '';
@@ -157,6 +160,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   final Map<String, Future<Uint8List?>> _pdfPreviewInflight = {};
   final ValueNotifier<_ExpensePreviewTotals?> _editorPreviewTotals =
       ValueNotifier<_ExpensePreviewTotals?>(null);
+  final ValueNotifier<bool> _editorDirty = ValueNotifier<bool>(false);
   final Set<String> _reprocessingExpenseIds = <String>{};
   final Set<String> _deletingExpenseIds = <String>{};
   bool _bulkReprocessingVat = false;
@@ -221,6 +225,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     _searchDebounce?.cancel();
     _columnFilterBusy.dispose();
     _editorPreviewTotals.dispose();
+    _editorDirty.dispose();
     _tabs.dispose();
     _searchController.dispose();
     _desktopToolbarScrollController.removeListener(_syncToolbarScrollState);
@@ -1236,6 +1241,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       _editorPanelIndex = 0;
     });
     _editorPreviewTotals.value = null;
+    _editorDirty.value = false;
 
     if (!mounted || MediaQuery.sizeOf(context).width >= 760) return;
 
@@ -1275,6 +1281,12 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     if (_editorPanelIndex == index) return;
     setState(() => _editorPanelIndex = index);
     _editorRouteSetState?.call(() {});
+  }
+
+  void _setEditorFormFraction(double value) {
+    final next = value.clamp(0.38, 0.64).toDouble();
+    if ((_editorFormFraction - next).abs() < 0.001) return;
+    setState(() => _editorFormFraction = next);
   }
 
   // Kept for the editor's legacy tablet route while that flow is migrated.
@@ -1350,6 +1362,37 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
   }
 
   void _closeExpenseEditor() {
+    unawaited(_closeExpenseEditorIfAllowed());
+  }
+
+  Future<void> _closeExpenseEditorIfAllowed() async {
+    if (_editorDirty.value) {
+      final isEs = Localizations.localeOf(context).languageCode == 'es';
+      final discard = await showDialog<bool>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: Text(isEs ? 'Cambios sin guardar' : 'Unsaved changes'),
+              content: Text(
+                isEs
+                    ? 'Hay cambios pendientes en este gasto. ¿Quieres descartarlos?'
+                    : 'This expense has pending changes. Do you want to discard them?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: Text(isEs ? 'Seguir editando' : 'Keep editing'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: Text(isEs ? 'Descartar cambios' : 'Discard changes'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (!discard || !mounted) return;
+    }
+    _editorDirty.value = false;
     final wasPushedAsRoute = _editorPushedAsRoute;
     setState(() => _editingExpense = null);
     _editorPreviewTotals.value = null;
@@ -1365,6 +1408,7 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       widget.recentUploads[idx] = updated;
     }
     widget.onSelectExpense(updated);
+    _editorDirty.value = false;
     _closeExpenseEditor();
     _reloadRecentUploadsAfterEdit(selectedId: id);
   }
@@ -1827,6 +1871,35 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
       _totalColumnMax != null ||
       _vatColumnStates.isNotEmpty;
 
+  int get _activeAdvancedExpenseFilterCount =>
+      (_selectedFileType == _ExpenseFileTypeFilter.all ? 0 : 1) +
+      (_showOnlyDuplicateInvoiceIds ? 1 : 0) +
+      (_showOnlyPotentialDuplicates ? 1 : 0) +
+      (_showOnlyZeroVat ? 1 : 0) +
+      (_hasActiveExpenseColumnFilters ? 1 : 0);
+
+  void _resetAdvancedExpenseFilters() {
+    _columnFilterFeedbackVersion++;
+    _columnFilterBusy.value = false;
+    setState(() {
+      _selectedFileType = _ExpenseFileTypeFilter.all;
+      _showOnlyDuplicateInvoiceIds = false;
+      _showOnlyPotentialDuplicates = false;
+      _showOnlyZeroVat = false;
+      _vendorColumnFilters = <String>{};
+      _invoiceColumnQuery = '';
+      _dateColumnRange = null;
+      _baseColumnMin = null;
+      _baseColumnMax = null;
+      _vatColumnMin = null;
+      _vatColumnMax = null;
+      _totalColumnMin = null;
+      _totalColumnMax = null;
+      _vatColumnStates = <String>{};
+    });
+    _reloadActiveSummary();
+  }
+
   void _resetExpenseFilters() {
     _searchDebounce?.cancel();
     _columnFilterFeedbackVersion++;
@@ -1866,92 +1939,361 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
     return Builder(builder: (listContext) {
       final mode = DocumentWorkspaceScope.maybeOf(listContext)?.mode;
       final useFullTable = mode == DocumentViewMode.list;
+      final results = widget.loadingRecentUploads &&
+              widget.recentUploads.isEmpty
+          ? _buildLoadingExpensesState(t, cs, isSpanish)
+          : visibleUploads.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        widget.recentUploads.isEmpty
+                            ? Icons.receipt_long_outlined
+                            : Icons.filter_alt_off_outlined,
+                        size: 28,
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        widget.recentUploads.isNotEmpty &&
+                                _hasActiveExpenseFilters
+                            ? (isSpanish
+                                ? 'No hay gastos que coincidan con los filtros'
+                                : 'No expenses match the current filters')
+                            : (isSpanish
+                                ? 'Todavía no hay gastos'
+                                : 'No expenses yet'),
+                        style: t.bodySmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.recentUploads.isNotEmpty &&
+                                _hasActiveExpenseFilters
+                            ? (isSpanish
+                                ? 'Prueba con otros filtros o vuelve a Todos.'
+                                : 'Try other filters or switch back to All.')
+                            : (isSpanish
+                                ? 'Los gastos registrados aparecerán aquí.'
+                                : 'Registered expenses will appear here.'),
+                        style: t.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (widget.recentUploads.isNotEmpty &&
+                          _hasActiveExpenseFilters) ...[
+                        const SizedBox(height: 10),
+                        TextButton.icon(
+                          onPressed: _resetExpenseFilters,
+                          icon: const Icon(
+                            Icons.filter_alt_off_outlined,
+                            size: 16,
+                          ),
+                          label: Text(
+                            isSpanish ? 'Restablecer filtros' : 'Reset filters',
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                )
+              : useFullTable
+                  ? _buildExpenseTable(visibleUploads, l, t, cs, isSpanish)
+                  : ListView.separated(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      itemCount: visibleUploads.length,
+                      separatorBuilder: (_, __) => Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: cs.outlineVariant.withValues(alpha: .28),
+                      ),
+                      itemBuilder: (_, index) => _buildExpenseSplitRow(
+                        visibleUploads[index],
+                        l,
+                        t,
+                        cs,
+                        isSpanish,
+                      ),
+                    );
       return Column(children: [
         _buildCompactListToolbar(l, t, cs, isSpanish),
         const SizedBox(height: 8),
         _buildExpenseResultsAmountStrip(t, cs, isSpanish),
         const SizedBox(height: 8),
         Expanded(
-          child: widget.loadingRecentUploads && widget.recentUploads.isEmpty
-              ? _buildLoadingExpensesState(t, cs, isSpanish)
-              : visibleUploads.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            widget.recentUploads.isEmpty
-                                ? Icons.receipt_long_outlined
-                                : Icons.filter_alt_off_outlined,
-                            size: 28,
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.4),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            widget.recentUploads.isNotEmpty &&
-                                    _hasActiveExpenseFilters
-                                ? (isSpanish
-                                    ? 'No hay gastos que coincidan con los filtros'
-                                    : 'No expenses match the current filters')
-                                : (isSpanish
-                                    ? 'Todavía no hay gastos'
-                                    : 'No expenses yet'),
-                            style: t.bodySmall.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: cs.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            widget.recentUploads.isNotEmpty &&
-                                    _hasActiveExpenseFilters
-                                ? (isSpanish
-                                    ? 'Prueba con otros filtros o vuelve a Todos.'
-                                    : 'Try other filters or switch back to All.')
-                                : (isSpanish
-                                    ? 'Los gastos registrados aparecerán aquí.'
-                                    : 'Registered expenses will appear here.'),
-                            style: t.bodySmall.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          if (widget.recentUploads.isNotEmpty &&
-                              _hasActiveExpenseFilters) ...[
-                            const SizedBox(height: 10),
-                            TextButton.icon(
-                              onPressed: _resetExpenseFilters,
-                              icon: const Icon(Icons.filter_alt_off_outlined,
-                                  size: 16),
-                              label: Text(isSpanish
-                                  ? 'Restablecer filtros'
-                                  : 'Reset filters'),
-                            ),
-                          ],
-                        ],
-                      ),
-                    )
-                  : useFullTable
-                      ? _buildExpenseTable(visibleUploads, l, t, cs, isSpanish)
-                      : ListView.separated(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          itemCount: visibleUploads.length,
-                          separatorBuilder: (_, __) => Divider(
-                            height: 1,
-                            thickness: 1,
-                            color: cs.outlineVariant.withValues(alpha: .28),
-                          ),
-                          itemBuilder: (_, index) => _buildExpenseSplitRow(
-                            visibleUploads[index],
-                            l,
-                            t,
-                            cs,
-                            isSpanish,
-                          ),
-                        ),
+          child: LayoutBuilder(
+            builder: (context, constraints) => _buildExpenseResultsWorkspace(
+              results: results,
+              t: t,
+              cs: cs,
+              isSpanish: isSpanish,
+              availableWidth: constraints.maxWidth,
+            ),
+          ),
         ),
       ]);
     });
+  }
+
+  Widget _buildExpenseResultsWorkspace({
+    required Widget results,
+    required AppTypography t,
+    required ColorScheme cs,
+    required bool isSpanish,
+    required double availableWidth,
+  }) {
+    if (!_advancedFiltersOpen) return results;
+    const panelWidth = 216.0;
+    final panel = _buildAdvancedExpenseFilters(t, cs, isSpanish);
+    if (availableWidth >= 820) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(width: panelWidth, child: panel),
+          VerticalDivider(
+            width: 10,
+            thickness: 1,
+            color: cs.outlineVariant.withValues(alpha: .35),
+          ),
+          Expanded(child: results),
+        ],
+      );
+    }
+    return Stack(
+      children: [
+        Positioned.fill(child: results),
+        PositionedDirectional(
+          top: 0,
+          bottom: 0,
+          start: 0,
+          width: panelWidth.clamp(0, availableWidth * .82).toDouble(),
+          child: Material(
+            elevation: 8,
+            color: cs.surface,
+            borderRadius: const BorderRadiusDirectional.only(
+              topEnd: Radius.circular(10),
+              bottomEnd: Radius.circular(10),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: panel,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdvancedExpenseFilters(
+    AppTypography t,
+    ColorScheme cs,
+    bool isSpanish,
+  ) {
+    Widget sectionLabel(String label) => Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            label.toUpperCase(),
+            style: t.bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: .7,
+            ),
+          ),
+        );
+
+    Widget auditSwitch({
+      required String label,
+      required int count,
+      required bool value,
+      required ValueChanged<bool> onChanged,
+    }) {
+      return SwitchListTile.adaptive(
+        value: value,
+        onChanged: (next) {
+          onChanged(next);
+          _reloadActiveSummary();
+        },
+        dense: true,
+        visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
+        contentPadding: EdgeInsets.zero,
+        title: Text(
+          label,
+          style: t.bodySmall.copyWith(fontSize: 11.5),
+        ),
+        subtitle: Text(
+          '$count',
+          style: t.bodySmall.copyWith(
+            fontSize: 10,
+            color: cs.onSurfaceVariant,
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      key: const ValueKey('expense-advanced-filters-panel'),
+      color: cs.surfaceContainerLow.withValues(alpha: .45),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            height: 38,
+            child: Row(
+              children: [
+                const SizedBox(width: 10),
+                Icon(Icons.tune_rounded, size: 16, color: cs.primary),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    isSpanish ? 'Filtros avanzados' : 'Advanced filters',
+                    style: t.bodySmall.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                IconButton(
+                  tooltip: isSpanish ? 'Cerrar filtros' : 'Close filters',
+                  onPressed: () => setState(() => _advancedFiltersOpen = false),
+                  icon: const Icon(Icons.close_rounded, size: 17),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .35)),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
+              children: [
+                sectionLabel(isSpanish ? 'Archivo' : 'File'),
+                InputDecorator(
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<_ExpenseFileTypeFilter>(
+                      value: _selectedFileType,
+                      isExpanded: true,
+                      isDense: true,
+                      items: [
+                        DropdownMenuItem(
+                          value: _ExpenseFileTypeFilter.all,
+                          child: Text(isSpanish ? 'Todos' : 'All'),
+                        ),
+                        const DropdownMenuItem(
+                          value: _ExpenseFileTypeFilter.pdf,
+                          child: Text('PDF'),
+                        ),
+                        DropdownMenuItem(
+                          value: _ExpenseFileTypeFilter.image,
+                          child: Text(isSpanish ? 'Imagen' : 'Image'),
+                        ),
+                        DropdownMenuItem(
+                          value: _ExpenseFileTypeFilter.other,
+                          child: Text(isSpanish ? 'Otros' : 'Other'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _selectedFileType = value);
+                        _reloadActiveSummary();
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                sectionLabel(isSpanish ? 'Incidencias' : 'Issues'),
+                auditSwitch(
+                  label: isSpanish ? 'IDs duplicados' : 'Duplicate IDs',
+                  count: _duplicateInvoiceItemCount,
+                  value: _showOnlyDuplicateInvoiceIds,
+                  onChanged: (value) =>
+                      setState(() => _showOnlyDuplicateInvoiceIds = value),
+                ),
+                auditSwitch(
+                  label:
+                      isSpanish ? 'Posibles duplicados' : 'Possible duplicates',
+                  count: _potentialDuplicateItemCount,
+                  value: _showOnlyPotentialDuplicates,
+                  onChanged: (value) =>
+                      setState(() => _showOnlyPotentialDuplicates = value),
+                ),
+                auditSwitch(
+                  label: 'IVA 0',
+                  count: _zeroVatItemCount,
+                  value: _showOnlyZeroVat,
+                  onChanged: (value) =>
+                      setState(() => _showOnlyZeroVat = value),
+                ),
+                const SizedBox(height: 12),
+                sectionLabel(isSpanish ? 'Columnas' : 'Columns'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        isSpanish
+                            ? 'Columnas financieras visibles'
+                            : 'Visible financial columns',
+                        style: t.bodySmall.copyWith(fontSize: 11.5),
+                      ),
+                    ),
+                    HexoraColumnVisibilityMenu(
+                      moduleKey: 'expenses',
+                      availableColumns: const {
+                        HexoraFinancialColumn.date,
+                        HexoraFinancialColumn.taxableBase,
+                        HexoraFinancialColumn.vat,
+                        HexoraFinancialColumn.total,
+                      },
+                      visibleColumns: _visibleFinancialColumns,
+                      onChanged: (columns) => setState(
+                        () => _visibleFinancialColumns = columns,
+                      ),
+                    ),
+                  ],
+                ),
+                if (_hasActiveExpenseColumnFilters) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    isSpanish
+                        ? 'Hay filtros activos en las cabeceras de la tabla.'
+                        : 'Table header filters are active.',
+                    style: t.bodySmall.copyWith(
+                      fontSize: 10.5,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+                if (_duplicateInvoiceItemCount > 0) ...[
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: _resolveDuplicatesButton(cs, t, isSpanish),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (_activeAdvancedExpenseFilterCount > 0)
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: OutlinedButton.icon(
+                onPressed: _resetAdvancedExpenseFilters,
+                icon: const Icon(Icons.filter_alt_off_rounded, size: 15),
+                label: Text(
+                  isSpanish ? 'Limpiar avanzados' : 'Clear advanced',
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _buildLoadingExpensesState(
@@ -2025,20 +2367,6 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                 children: [
                   _buildQuarterFilterBar(t, cs, isSpanish),
                   const SizedBox(width: 8),
-                  HexoraColumnVisibilityMenu(
-                    moduleKey: 'expenses',
-                    availableColumns: const {
-                      HexoraFinancialColumn.date,
-                      HexoraFinancialColumn.taxableBase,
-                      HexoraFinancialColumn.vat,
-                      HexoraFinancialColumn.total,
-                    },
-                    visibleColumns: _visibleFinancialColumns,
-                    onChanged: (columns) => setState(
-                      () => _visibleFinancialColumns = columns,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
                   if (_bulkReprocessJob != null) ...[
                     _buildOcrQueueIndicator(cs, t, isSpanish),
                     const SizedBox(width: 8),
@@ -2098,6 +2426,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                   Expanded(
                     child: _buildSearchBar(cs, isSpanish, compact: true),
                   ),
+                  const SizedBox(width: 8),
+                  _buildAdvancedFiltersToggle(t, cs, isSpanish),
                 ]),
                 const SizedBox(height: 7),
                 controlsRow(),
@@ -2120,6 +2450,8 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
                 child: _buildSearchBar(cs, isSpanish, compact: true),
               ),
               const SizedBox(width: 8),
+              _buildAdvancedFiltersToggle(t, cs, isSpanish),
+              const SizedBox(width: 8),
               Expanded(
                 child: controlsRow(showScrollbar: true),
               ),
@@ -2127,6 +2459,48 @@ class _ExpenseRecentUploadsTabState extends State<ExpenseRecentUploadsTab>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAdvancedFiltersToggle(
+    AppTypography t,
+    ColorScheme cs,
+    bool isSpanish,
+  ) {
+    final count = _activeAdvancedExpenseFilterCount;
+    final active = _advancedFiltersOpen || count > 0;
+    return SizedBox(
+      height: 34,
+      child: OutlinedButton.icon(
+        key: const ValueKey('expense-advanced-filters-toggle'),
+        onPressed: () =>
+            setState(() => _advancedFiltersOpen = !_advancedFiltersOpen),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          visualDensity: VisualDensity.compact,
+          foregroundColor: active ? cs.primary : cs.onSurfaceVariant,
+          backgroundColor:
+              active ? cs.primary.withValues(alpha: .08) : cs.surface,
+          side: BorderSide(
+            color: active
+                ? cs.primary.withValues(alpha: .5)
+                : cs.outlineVariant.withValues(alpha: .4),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        icon: const Icon(Icons.tune_rounded, size: 15),
+        label: Text(
+          count == 0
+              ? (isSpanish ? 'Filtros' : 'Filters')
+              : '${isSpanish ? 'Filtros' : 'Filters'} · $count',
+          style: t.bodySmall.copyWith(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
     );
   }
 

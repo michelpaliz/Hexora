@@ -4,6 +4,63 @@ part of '../presupuestos_view.dart';
 
 extension _GroupInvoicesBudgetsViewDetailsSection
     on _GroupInvoicesBudgetsViewState {
+  Widget _buildConversionTargetSelector(ColorScheme cs) {
+    final es = _isSpanishLocale;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final enabled = _isDraftEditable && _draftId == null;
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Tooltip(
+        message: es
+            ? 'Los recibos no admiten IVA y su PDF no muestra la cuenta bancaria.'
+            : 'Receipts do not support VAT and their PDF does not show bank-account information.',
+        child: Icon(Icons.info_outline_rounded,
+            size: 18, color: cs.onSurfaceVariant),
+      ),
+      const SizedBox(width: 6),
+      SizedBox(
+        height: 36,
+        child: SegmentedButton<_PresupuestoConversionTarget>(
+          showSelectedIcon: false,
+          segments: [
+            ButtonSegment(
+              value: _PresupuestoConversionTarget.invoice,
+              icon: const Icon(Icons.receipt_long_outlined, size: 16),
+              label: Text(es ? 'Factura' : 'Invoice'),
+            ),
+            ButtonSegment(
+              value: _PresupuestoConversionTarget.receipt,
+              icon: const Icon(Icons.receipt_outlined, size: 16),
+              label: Text(es ? 'Recibo' : 'Receipt'),
+            ),
+          ],
+          selected: {_conversionTarget},
+          style: SegmentedButton.styleFrom(
+            visualDensity: VisualDensity.compact,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            minimumSize: const Size(0, 36),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            foregroundColor: cs.onSurfaceVariant,
+            selectedForegroundColor: cs.primary,
+            selectedBackgroundColor:
+                cs.primary.withValues(alpha: isDark ? .22 : .12),
+            side: BorderSide(color: cs.outlineVariant.withValues(alpha: .9)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          onSelectionChanged: enabled
+              ? (selection) => setState(() {
+                    _conversionTarget = selection.first;
+                    _markDraftDirty();
+                    _error = null;
+                  })
+              : null,
+        ),
+      ),
+    ]);
+  }
+
   Widget _buildBudgetDetails(ColorScheme cs, AppLocalizations l) {
     final es = _isSpanishLocale;
     final valid = _isBudgetAdvancePercentValid;

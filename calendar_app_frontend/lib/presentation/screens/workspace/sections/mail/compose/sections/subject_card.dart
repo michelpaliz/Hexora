@@ -5,15 +5,9 @@ Widget _composeSubjectCard(
         required AppTypography t,
         required ColorScheme cs,
         required AppLocalizations l,
-        required bool compact,
-        required Color inputFill}) =>
+        required bool compact}) =>
     Container(
       key: const ValueKey('mail-compose-subject-input-surface'),
-      decoration: BoxDecoration(
-        color: inputFill,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: .5)),
-      ),
       padding: const EdgeInsets.fromLTRB(10, 4, 6, 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,

@@ -1722,6 +1722,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get roleCardTapHint => 'Toca para ver todas las capacidades del rol.';
 
   @override
+  String get accessPermissionsTitle => 'Permisos de acceso';
+
+  @override
+  String get accessFullBusiness => 'Acceso completo al negocio';
+
+  @override
+  String get viewRolePermissions => 'Ver permisos del rol';
+
+  @override
+  String get businessHoursScheduleHint =>
+      'Establece el horario permitido para programar eventos.';
+
+  @override
   String get createdByLabel => 'Creado por';
 
   @override

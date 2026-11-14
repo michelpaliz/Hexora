@@ -7,6 +7,7 @@ import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/providers/providers_api.dart';
 import 'package:hexora/presentation/shared/widgets/panels/hexora_side_panel.dart';
 import 'package:hexora/presentation/shared/widgets/wizard_steps_header.dart';
+import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 import '../../statements_controller.dart';
@@ -593,6 +594,24 @@ class InvoiceLinkDialog {
                         ),
                       ),
                     ),
+                  );
+                }
+                // Plain success: the special cases above carry their own
+                // message, so confirm only when none of them fired.
+                if (!outcome.alreadyLinked &&
+                    !outcome.hasRepetitiveInvoiceLink) {
+                  final isEs =
+                      Localizations.localeOf(dialogContext).languageCode ==
+                          'es';
+                  showSuccessSnack(
+                    dialogContext,
+                    expenseOnly
+                        ? (isEs
+                            ? 'Gasto vinculado al movimiento bancario.'
+                            : 'Expense linked to the bank transaction.')
+                        : (isEs
+                            ? 'Factura vinculada al movimiento bancario.'
+                            : 'Invoice linked to the bank transaction.'),
                   );
                 }
                 closeSurface();

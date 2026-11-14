@@ -109,7 +109,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).first, 'Proposal 0');
       await tester.pumpAndSettle();
-      final rowLabel = width >= 1150 ? 'P-1' : 'Proposal 0';
+      // Narrow rows lead with the client name (the mobile hierarchy), while the
+      // wide table still shows the proposal number cell.
+      final rowLabel = width >= 1150 ? 'P-1' : 'Client 0';
       await tester.tap(find.text(rowLabel, findRichText: false).last);
       await tester.pumpAndSettle();
       expect(find.byType(Dialog), findsNothing);

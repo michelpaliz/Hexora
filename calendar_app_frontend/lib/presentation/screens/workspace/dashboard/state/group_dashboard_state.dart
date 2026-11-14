@@ -19,6 +19,7 @@ import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab.dart';
@@ -311,7 +312,6 @@ class GroupDashboardState extends ChangeNotifier {
       }
     }
     if (!_sectionChosenSinceOpen && canSeeAdmin) {
-      if (!isWide) activeSection = Sections.invoices;
       invoicesInitialMenu = 'invoices_issued';
     }
     if (_adminOnlySections.contains(activeSection) && !canSeeAdmin) {
@@ -654,7 +654,8 @@ class GroupDashboardState extends ChangeNotifier {
       surfaceTintColor: Colors.transparent,
       iconTheme: IconThemeData(color: onTopBar),
       actionsIconTheme: IconThemeData(color: onTopBar),
-      toolbarHeight: isWide ? 0 : null,
+      toolbarHeight:
+          isWide ? 0 : (activeSection == Sections.calendar ? 62 : null),
       titleSpacing: isWide ? 0 : null,
       automaticallyImplyLeading: !isWide,
       leadingWidth: isWide ? 0 : null,
@@ -666,20 +667,44 @@ class GroupDashboardState extends ChangeNotifier {
               tooltip: MaterialLocalizations.of(context).backButtonTooltip,
               onPressed: () => Navigator.of(context).maybePop(),
             ),
-      title: isWide || activeSection == Sections.calendar
+      title: isWide
           ? null
-          : Text(
-              group.name,
-              style: t.bodyLarge.copyWith(
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2,
-                color: onTopBar,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+          : activeSection == Sections.calendar
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l.localeName.startsWith('es')
+                          ? 'Resumen del negocio'
+                          : 'Business overview',
+                      style: t.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: onTopBar,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      DateFormat.yMMMd(l.localeName).format(DateTime.now()),
+                      style: t.bodySmall.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                )
+              : Text(
+                  group.name,
+                  style: t.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
+                    color: onTopBar,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
       actions: [
-        if (!isWide)
+        if (!isWide && activeSection != Sections.calendar)
           DownloadJobsTopMenu(
             groupId: group.id,
             onViewAllDownloads: () => Navigator.of(context).push(

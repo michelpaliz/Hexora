@@ -179,6 +179,7 @@ class _TaxReportingViewState extends State<TaxReportingView> {
     ];
     return CollapsibleSidebar(
       title: 'Impuestos',
+      secondaryHeader: true,
       titleTextStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
             color: AppColors.navigationForeground,
             fontWeight: FontWeight.w900,

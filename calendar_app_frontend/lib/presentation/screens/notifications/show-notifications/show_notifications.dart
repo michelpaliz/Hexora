@@ -418,12 +418,12 @@ class _ShowNotificationsState extends State<ShowNotifications>
           .trim();
       if (groupId.isEmpty) throw StateError('Missing chat group');
       await Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => Scaffold(
-          appBar: AppBar(title: const Text('Hexora Chat')),
+        builder: (routeContext) => Scaffold(
           body: BusinessChatScreen(
             groupId: groupId,
             currentUserId: widget.user.id,
             initialConversationId: chatId,
+            onExit: () => Navigator.of(routeContext).pop(),
           ),
         ),
       ));

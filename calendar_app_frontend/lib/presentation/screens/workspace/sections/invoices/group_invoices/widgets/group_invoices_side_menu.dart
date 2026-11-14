@@ -1,8 +1,6 @@
-import 'package:hexora/navigation/shell/hexora_nav_components.dart';
-import 'package:hexora/presentation/shared/widgets/sidebar_item.dart';
-import 'package:hexora/presentation/shared/widgets/navigation_menu_header.dart';
+import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
+import 'package:hexora/presentation/shared/widgets/navigation_group.dart';
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
@@ -10,7 +8,6 @@ import 'package:hexora/l10n/app_localizations.dart';
 
 import 'side_menu/billing_details_edit.dart';
 import 'side_menu/nav_section.dart';
-import 'side_menu/section_label.dart';
 import 'side_menu/sub_menu_item.dart';
 
 bool get _showTaxesInInvoiceSideMenu => false;
@@ -48,6 +45,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
   final ValueChanged<String> onMenuChanged;
   final bool collapsed;
   final bool compactMode;
+  final bool showOperations;
   final VoidCallback onToggleCollapse;
 
   const GroupInvoicesSideMenu({
@@ -77,6 +75,7 @@ class GroupInvoicesSideMenu extends StatelessWidget {
     required this.onMenuChanged,
     required this.collapsed,
     this.compactMode = false,
+    required this.showOperations,
     required this.onToggleCollapse,
   });
 
@@ -84,37 +83,133 @@ class GroupInvoicesSideMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Theme(
       data: navigationTheme(Theme.of(context)),
-      child: ColoredBox(
-        color: AppColors.dashboardTopBar,
-        child: Builder(builder: _buildMenu),
-      ),
+      child: Builder(builder: _buildMenu),
     );
   }
 
   Widget _buildMenu(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final menuWidth = collapsed ? collapsedWidth : expandedWidth;
-    final cs = Theme.of(context).colorScheme;
     final isEs = Localizations.localeOf(context)
         .languageCode
         .toLowerCase()
         .startsWith('es');
-    const childIndent = NavigationTokens.nestedIndent;
+    const childIndent = 0.0;
 
     if (collapsed) {
-      final items = <({String key, IconData icon, String label})>[
-        (key: 'clients', icon: Icons.people_outline, label: 'Clientes'),
+      final items = <({
+        String key,
+        IconData icon,
+        String label,
+        List<CollapsedNavigationDestination> destinations,
+      })>[
+        (
+          key: 'clients',
+          icon: Icons.people_outline,
+          label: 'Clientes',
+          destinations: [
+            CollapsedNavigationDestination(
+              icon: Icons.people_outline,
+              label: isEs ? 'Todos' : 'All',
+              selected: selectedMenu == 'clients',
+              onTap: () => onMenuChanged('clients'),
+            ),
+            CollapsedNavigationDestination(
+              icon: Icons.category_outlined,
+              label: l.clientClassificationTitle,
+              selected: selectedMenu == 'client_classifications',
+              onTap: () => onMenuChanged('client_classifications'),
+            ),
+            CollapsedNavigationDestination(
+              icon: Icons.insights_outlined,
+              label: 'Análisis de ingresos',
+              selected: selectedMenu == 'client_invoice_stats',
+              onTap: () => onMenuChanged('client_invoice_stats'),
+            ),
+            if (showOperations)
+              CollapsedNavigationDestination(
+                icon: Icons.design_services_outlined,
+                label: isEs ? 'Crear cliente o servicios' : 'Create client or services',
+                selected: selectedMenu == 'operations',
+                onTap: () => onMenuChanged('operations'),
+              ),
+          ],
+        ),
         (
           key: 'invoices',
           icon: Icons.receipt_long_outlined,
-          label: 'Facturacion'
+          label: 'Facturación',
+          destinations: [
+            CollapsedNavigationDestination(
+              icon: Icons.add_rounded,
+              label: l.createInvoiceCta,
+              onTap: onCreateInvoice,
+            ),
+            CollapsedNavigationDestination(
+              icon: Icons.receipt_long_outlined,
+              label: 'Facturas emitidas',
+              count: issuedCount + draftsCount,
+              selected: selectedMenu == 'invoices_issued' ||
+                  selectedMenu == 'invoices_drafts',
+              onTap: () => onMenuChanged('invoices_issued'),
+            ),
+            CollapsedNavigationDestination(
+              icon: Icons.sync_alt_rounded,
+              label: 'Recurrentes',
+              selected: selectedMenu == 'recurring',
+              onTap: () => onMenuChanged('recurring'),
+            ),
+          ],
         ),
         (
           key: 'budgets',
           icon: Icons.request_quote_outlined,
-          label: 'Presupuestos por partidas'
+          label: isEs ? 'Presupuestos por partidas' : 'Itemized budgets',
+          destinations: [
+            CollapsedNavigationDestination(
+              icon: Icons.add_rounded,
+              label: isEs ? 'Nuevo presupuesto por partidas' : 'New budget',
+              onTap: () => onMenuChanged('budgets_new'),
+            ),
+            CollapsedNavigationDestination(
+              icon: Icons.format_list_bulleted_rounded,
+              label: isEs ? 'Todos' : 'All',
+              selected: selectedMenu == 'budgets_list',
+              onTap: () => onMenuChanged('budgets_list'),
+            ),
+            CollapsedNavigationDestination(
+              icon: Icons.account_tree_outlined,
+              label: isEs ? 'Convertir presupuesto' : 'Convert budget',
+              selected: selectedMenu == 'budgets_convert',
+              onTap: () => onMenuChanged('budgets_convert'),
+            ),
+          ],
         ),
-        (key: 'receipts', icon: Icons.description_outlined, label: 'Recibos'),
+        (
+          key: 'receipts',
+          icon: Icons.description_outlined,
+          label: isEs ? 'Recibos' : 'Receipts',
+          destinations: [
+            CollapsedNavigationDestination(
+              icon: Icons.add_rounded,
+              label: l.createReceiptCta,
+              onTap: onCreateReceipt,
+            ),
+            CollapsedNavigationDestination(
+              icon: Icons.description_outlined,
+              label: isEs ? 'Recibos' : 'Receipts',
+              count: receiptsCount,
+              selected: selectedMenu == 'receipts',
+              onTap: () => onMenuChanged('receipts'),
+            ),
+            CollapsedNavigationDestination(
+              icon: Icons.sync_alt_rounded,
+              label: 'Recurrentes',
+              selected: selectedMenu == 'recurring_receipts',
+              onTap: () => onMenuChanged('recurring_receipts'),
+            ),
+          ],
+        ),
       ];
       final activeKey =
           selectedMenu.startsWith('invoice') || selectedMenu == 'recurring'
@@ -129,52 +224,29 @@ class GroupInvoicesSideMenu extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
         width: menuWidth,
-        padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
-        decoration: BoxDecoration(
-          border: Border(
-            right: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.42)),
+        child: SidebarEdgeShell(
+          collapsed: true,
+          onToggle: onToggleCollapse,
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(8, 20, 8, 12),
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 6),
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    return CollapsedNavigationGroup(
+                      icon: item.icon,
+                      title: item.label,
+                      selected: item.key == activeKey,
+                      destinations: item.destinations,
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-        ),
-        child: Column(
-          children: [
-            Align(
-              alignment: Alignment.center,
-              child: SidebarCollapseToggle(
-                collapsed: true,
-                onPressed: onToggleCollapse,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: ListView.separated(
-                padding: EdgeInsets.zero,
-                itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 6),
-                itemBuilder: (context, index) {
-                  final item = items[index];
-                  final selected = item.key == activeKey;
-                  return SidebarItem(icon: item.icon, label: item.label,
- isSelected: selected, collapsed: true,
- onTap: () {
-                          switch (item.key) {
-                            case 'invoices':
-                              onMenuChanged('invoices_issued');
-                              break;
-                            case 'budgets':
-                              onMenuChanged('budgets_list');
-                              break;
-                            case 'receipts':
-                              onMenuChanged('receipts');
-                              break;
-                            case 'clients':
-                              onMenuChanged('clients');
-                              break;
-                          }
-                        },);
-              },
-              ),
-            ),
-          ],
         ),
       );
     }
@@ -183,165 +255,18 @@ class GroupInvoicesSideMenu extends StatelessWidget {
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
       width: menuWidth,
-      decoration: BoxDecoration(
-        border: Border(
-          right: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.36)),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          NavigationMenuHeader(
-              title: 'Ingresos',
-              icon: Icons.receipt_long_outlined,
-              onToggle: onToggleCollapse),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  GroupInvoicesNavSection(
-                    title: 'Clientes',
-                    icon: Icons.people_outline,
-                    expanded: clientsExpanded,
-                    onToggle: onToggleClientsExpanded,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.people_outline,
-                          label: isEs ? 'Todos' : 'All',
-                          selected: selectedMenu == 'clients',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('clients'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.category_outlined,
-                          label: l.clientClassificationTitle,
-                          selected: selectedMenu == 'client_classifications',
-                          indent: childIndent,
-                          onPressed: () =>
-                              onMenuChanged('client_classifications'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.insights_outlined,
-                          label: 'Análisis de ingresos',
-                          selected: selectedMenu == 'client_invoice_stats',
-                          indent: childIndent,
-                          onPressed: () =>
-                              onMenuChanged('client_invoice_stats'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_showBillingProfileInInvoiceSideMenu) ...[
-                    const SizedBox(height: 8),
-                    GroupInvoicesNavSection(
-                      title: l.billingDetails,
-                      icon: Icons.receipt_long_outlined,
-                      expanded: businessExpanded,
-                      onToggle: onToggleBusinessExpanded,
-                      child: GroupInvoicesBillingDetailsEdit(
-                        busy: busyProfile,
-                        onEdit: onEditBillingProfile,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  GroupInvoicesNavSection(
-                    title: 'Facturación',
-                    icon: Icons.receipt_long_outlined,
-                    expanded: facturacionExpanded,
-                    onToggle: onToggleFacturacionExpanded,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const GroupInvoicesSectionLabel('Facturas'),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.add_rounded,
-                          label: l.createInvoiceCta,
-                          selected: false,
-                          primaryAction: true,
-                          indent: childIndent,
-                          onPressed: onCreateInvoice,
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.receipt_long_outlined,
-                          label: 'Facturas emitidas',
-                          count: issuedCount + draftsCount,
-                          selected: selectedMenu == 'invoices_issued' ||
-                              selectedMenu == 'invoices_drafts',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('invoices_issued'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.repeat_rounded,
-                          label: 'Recurrentes',
-                          selected: selectedMenu == 'recurring',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('recurring'),
-                        ),
-                        const SizedBox(height: 4),
-                        GroupInvoicesSectionLabel(
-                          isEs
-                              ? 'Presupuestos por partidas'
-                              : 'Itemized budgets',
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.add_rounded,
-                          label: isEs
-                              ? 'Nuevo presupuesto por partidas'
-                              : 'New itemized budget',
-                          selected: selectedMenu == 'budgets_new',
-                          primaryAction: true,
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('budgets_new'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.format_list_bulleted_outlined,
-                          label: isEs ? 'Todos' : 'All',
-                          selected: selectedMenu == 'budgets_list',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('budgets_list'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.transform_outlined,
-                          label: 'Convertir presupuesto',
-                          selected: selectedMenu == 'budgets_convert',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('budgets_convert'),
-                        ),
-                        const SizedBox(height: 4),
-                        const GroupInvoicesSectionLabel('Recibos'),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.add_rounded,
-                          label: l.createReceiptCta,
-                          selected: false,
-                          primaryAction: true,
-                          indent: childIndent,
-                          onPressed: onCreateReceipt,
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.description_outlined,
-                          label: 'Recibos',
-                          count: receiptsCount,
-                          selected: selectedMenu == 'receipts',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('receipts'),
-                        ),
-                        GroupInvoicesSubMenuItem(
-                          icon: Icons.repeat_rounded,
-                          label: 'Recurrentes',
-                          selected: selectedMenu == 'recurring_receipts',
-                          indent: childIndent,
-                          onPressed: () => onMenuChanged('recurring_receipts'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_showLegacyClientsInInvoiceSideMenu) ...[
-                    const SizedBox(height: 8),
+      child: SidebarEdgeShell(
+        collapsed: false,
+        onToggle: onToggleCollapse,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                     GroupInvoicesNavSection(
                       title: 'Clientes',
                       icon: Icons.people_outline,
@@ -354,159 +279,326 @@ class GroupInvoicesSideMenu extends StatelessWidget {
                             icon: Icons.people_outline,
                             label: isEs ? 'Todos' : 'All',
                             selected: selectedMenu == 'clients',
+                            indent: childIndent,
                             onPressed: () => onMenuChanged('clients'),
-                          ),
-                          GroupInvoicesSubMenuItem(
-                            icon: Icons.insights_outlined,
-                            label: 'Análisis de ingresos',
-                            selected: selectedMenu == 'client_invoice_stats',
-                            onPressed: () =>
-                                onMenuChanged('client_invoice_stats'),
                           ),
                           GroupInvoicesSubMenuItem(
                             icon: Icons.category_outlined,
                             label: l.clientClassificationTitle,
                             selected: selectedMenu == 'client_classifications',
+                            indent: childIndent,
                             onPressed: () =>
                                 onMenuChanged('client_classifications'),
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  if (_showAccountingInInvoiceSideMenu) ...[
-                    const SizedBox(height: 8),
-                    GroupInvoicesNavSection(
-                      title: 'Gastos',
-                      icon: Icons.trending_down_outlined,
-                      expanded: gastosExpanded,
-                      onToggle: onToggleGastosExpanded,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
                           GroupInvoicesSubMenuItem(
-                            icon: Icons.receipt_outlined,
-                            label: 'Listar gastos',
-                            selected: selectedMenu == 'expenses_list',
-                            onPressed: () => onMenuChanged('expenses_list'),
-                          ),
-                          GroupInvoicesSubMenuItem(
-                            icon: Icons.upload_file_outlined,
-                            label: 'Subir gasto',
-                            selected: selectedMenu == 'expenses_upload',
-                            onPressed: () => onMenuChanged('expenses_upload'),
-                          ),
-                          GroupInvoicesSubMenuItem(
-                            icon: Icons.history_rounded,
-                            label: 'Historial de lotes',
-                            selected: selectedMenu == 'expenses_import_history',
+                            icon: Icons.insights_outlined,
+                            label: 'Análisis de ingresos',
+                            selected: selectedMenu == 'client_invoice_stats',
+                            indent: childIndent,
                             onPressed: () =>
-                                onMenuChanged('expenses_import_history'),
+                                onMenuChanged('client_invoice_stats'),
                           ),
-                          GroupInvoicesSubMenuItem(
-                            icon: Icons.store_mall_directory_outlined,
-                            label: 'Proveedores',
-                            selected: selectedMenu == 'providers',
-                            onPressed: () => onMenuChanged('providers'),
-                          ),
-                          GroupInvoicesSubMenuItem(
-                            icon: Icons.person_add_outlined,
-                            label: 'Nuevo proveedor',
-                            selected: selectedMenu == 'provider_new',
-                            onPressed: () => onMenuChanged('provider_new'),
-                          ),
+                          if (showOperations)
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.design_services_outlined,
+                              label: isEs ? 'Crear cliente o servicios' : 'Create client or services',
+                              selected: selectedMenu == 'operations',
+                              indent: childIndent,
+                              onPressed: () => onMenuChanged('operations'),
+                            ),
                         ],
                       ),
                     ),
-                  ],
-                  if (_showTaxesInInvoiceSideMenu) ...[
-                    const SizedBox(height: 8),
-                    GroupInvoicesNavSection(
-                      title: 'Impuestos',
-                      icon: Icons.percent,
-                      expanded: impuestosExpanded,
-                      onToggle: onToggleImpuestosExpanded,
+                    if (_showBillingProfileInInvoiceSideMenu) ...[
+                      const SizedBox(height: 8),
+                      GroupInvoicesNavSection(
+                        title: l.billingDetails,
+                        icon: Icons.receipt_long_outlined,
+                        expanded: businessExpanded,
+                        onToggle: onToggleBusinessExpanded,
+                        child: GroupInvoicesBillingDetailsEdit(
+                          busy: busyProfile,
+                          onEdit: onEditBillingProfile,
+                        ),
+                      ),
+                    ],
+                    NavigationGroup(
+                      title: isEs ? 'Facturas' : 'Invoices',
+                      icon: Icons.receipt_long_outlined,
+                      initiallyExpanded: facturacionExpanded,
+                      storageId: 'billing-tree-invoices',
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           GroupInvoicesSubMenuItem(
-                            icon: Icons.calendar_month_outlined,
-                            label: 'IVA por trimestre',
-                            selected: selectedMenu == 'vat',
-                            onPressed: () => onMenuChanged('vat'),
+                            icon: Icons.receipt_long_outlined,
+                            label: isEs ? 'Emitidas' : 'Issued',
+                            count: issuedCount + draftsCount,
+                            selected: selectedMenu == 'invoices_issued' ||
+                                selectedMenu == 'invoices_drafts',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('invoices_issued'),
                           ),
                           GroupInvoicesSubMenuItem(
-                            icon: Icons.warning_amber_rounded,
-                            label: isEs
-                                ? 'Auditoría IVA ingresos'
-                                : 'Income VAT audit',
-                            selected: selectedMenu == 'invoices_suspects',
-                            onPressed: () => onMenuChanged('invoices_suspects'),
+                            icon: Icons.repeat_rounded,
+                            label: 'Recurrentes',
+                            selected: selectedMenu == 'recurring',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('recurring'),
                           ),
                           GroupInvoicesSubMenuItem(
-                            icon: Icons.warning_amber_rounded,
-                            label: isEs
-                                ? 'Auditoría IVA gastos'
-                                : 'Expense VAT audit',
-                            selected: selectedMenu == 'expenses_suspects',
-                            onPressed: () => onMenuChanged('expenses_suspects'),
+                            icon: Icons.add_rounded,
+                            label: l.createInvoiceCta,
+                            selected: false,
+                            primaryAction: true,
+                            indent: childIndent,
+                            onPressed: onCreateInvoice,
+                          ),
+                        ],
+                      ),
+                    ),
+                    NavigationGroup(
+                      title: isEs
+                          ? 'Presupuestos por partidas'
+                          : 'Itemized budgets',
+                      icon: Icons.request_quote_outlined,
+                      initiallyExpanded: facturacionExpanded,
+                      storageId: 'billing-tree-budgets',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.format_list_bulleted_outlined,
+                            label: isEs ? 'Todos' : 'All',
+                            selected: selectedMenu == 'budgets_list',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('budgets_list'),
                           ),
                           GroupInvoicesSubMenuItem(
-                            icon: Icons.compare_arrows_rounded,
-                            label: isEs
-                                ? 'Comparar Excel de asesoría'
-                                : 'Compare accountant Excel',
-                            selected:
-                                selectedMenu == 'invoices_accountant_compare',
+                            icon: Icons.transform_outlined,
+                            label: isEs ? 'Convertir' : 'Convert',
+                            selected: selectedMenu == 'budgets_convert',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('budgets_convert'),
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.add_rounded,
+                            label: isEs ? 'Nuevo presupuesto' : 'New budget',
+                            selected: selectedMenu == 'budgets_new',
+                            primaryAction: true,
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('budgets_new'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    NavigationGroup(
+                      title: isEs ? 'Recibos' : 'Receipts',
+                      icon: Icons.description_outlined,
+                      initiallyExpanded: facturacionExpanded,
+                      storageId: 'billing-tree-receipts',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.description_outlined,
+                            label: isEs ? 'Todos' : 'All',
+                            count: receiptsCount,
+                            selected: selectedMenu == 'receipts',
+                            indent: childIndent,
+                            onPressed: () => onMenuChanged('receipts'),
+                          ),
+                          GroupInvoicesSubMenuItem(
+                            icon: Icons.repeat_rounded,
+                            label: 'Recurrentes',
+                            selected: selectedMenu == 'recurring_receipts',
+                            indent: childIndent,
                             onPressed: () =>
-                                onMenuChanged('invoices_accountant_compare'),
+                                onMenuChanged('recurring_receipts'),
                           ),
-                          const GroupInvoicesSubMenuItem(
-                            icon: Icons.history_toggle_off,
-                            label: 'Historico impuestos',
-                            selected: false,
-                            onPressed: null,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  if (_showReportsInInvoiceSideMenu)
-                    GroupInvoicesNavSection(
-                      title: 'Informes',
-                      icon: Icons.insights_outlined,
-                      expanded: informesExpanded,
-                      onToggle: onToggleInformesExpanded,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
                           GroupInvoicesSubMenuItem(
-                            icon: Icons.account_tree_outlined,
-                            label: l.groupInvoicesClientsFlowCta,
-                            selected: selectedMenu == 'clients_flow',
-                            onPressed: () => onMenuChanged('clients_flow'),
-                          ),
-                          const GroupInvoicesSubMenuItem(
-                            icon: Icons.stacked_line_chart_outlined,
-                            label: 'Ingresos vs Gastos',
+                            icon: Icons.add_rounded,
+                            label: l.createReceiptCta,
                             selected: false,
-                            onPressed: null,
-                          ),
-                          const GroupInvoicesSubMenuItem(
-                            icon: Icons.show_chart_outlined,
-                            label: 'Beneficio neto',
-                            selected: false,
-                            onPressed: null,
+                            primaryAction: true,
+                            indent: childIndent,
+                            onPressed: onCreateReceipt,
                           ),
                         ],
                       ),
                     ),
-                ],
+                    if (_showLegacyClientsInInvoiceSideMenu) ...[
+                      const SizedBox(height: 8),
+                      GroupInvoicesNavSection(
+                        title: 'Clientes',
+                        icon: Icons.people_outline,
+                        expanded: clientsExpanded,
+                        onToggle: onToggleClientsExpanded,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.people_outline,
+                              label: isEs ? 'Todos' : 'All',
+                              selected: selectedMenu == 'clients',
+                              onPressed: () => onMenuChanged('clients'),
+                            ),
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.insights_outlined,
+                              label: 'Análisis de ingresos',
+                              selected: selectedMenu == 'client_invoice_stats',
+                              onPressed: () =>
+                                  onMenuChanged('client_invoice_stats'),
+                            ),
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.category_outlined,
+                              label: l.clientClassificationTitle,
+                              selected:
+                                  selectedMenu == 'client_classifications',
+                              onPressed: () =>
+                                  onMenuChanged('client_classifications'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (_showAccountingInInvoiceSideMenu) ...[
+                      const SizedBox(height: 8),
+                      GroupInvoicesNavSection(
+                        title: 'Gastos',
+                        icon: Icons.trending_down_outlined,
+                        expanded: gastosExpanded,
+                        onToggle: onToggleGastosExpanded,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.receipt_outlined,
+                              label: 'Listar gastos',
+                              selected: selectedMenu == 'expenses_list',
+                              onPressed: () => onMenuChanged('expenses_list'),
+                            ),
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.upload_file_outlined,
+                              label: 'Subir gasto',
+                              selected: selectedMenu == 'expenses_upload',
+                              onPressed: () => onMenuChanged('expenses_upload'),
+                            ),
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.history_rounded,
+                              label: 'Historial de lotes',
+                              selected:
+                                  selectedMenu == 'expenses_import_history',
+                              onPressed: () =>
+                                  onMenuChanged('expenses_import_history'),
+                            ),
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.store_mall_directory_outlined,
+                              label: 'Proveedores',
+                              selected: selectedMenu == 'providers',
+                              onPressed: () => onMenuChanged('providers'),
+                            ),
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.person_add_outlined,
+                              label: 'Nuevo proveedor',
+                              selected: selectedMenu == 'provider_new',
+                              onPressed: () => onMenuChanged('provider_new'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (_showTaxesInInvoiceSideMenu) ...[
+                      const SizedBox(height: 8),
+                      GroupInvoicesNavSection(
+                        title: 'Impuestos',
+                        icon: Icons.percent,
+                        expanded: impuestosExpanded,
+                        onToggle: onToggleImpuestosExpanded,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.calendar_month_outlined,
+                              label: 'IVA por trimestre',
+                              selected: selectedMenu == 'vat',
+                              onPressed: () => onMenuChanged('vat'),
+                            ),
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.warning_amber_rounded,
+                              label: isEs
+                                  ? 'Auditoría IVA ingresos'
+                                  : 'Income VAT audit',
+                              selected: selectedMenu == 'invoices_suspects',
+                              onPressed: () =>
+                                  onMenuChanged('invoices_suspects'),
+                            ),
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.warning_amber_rounded,
+                              label: isEs
+                                  ? 'Auditoría IVA gastos'
+                                  : 'Expense VAT audit',
+                              selected: selectedMenu == 'expenses_suspects',
+                              onPressed: () =>
+                                  onMenuChanged('expenses_suspects'),
+                            ),
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.compare_arrows_rounded,
+                              label: isEs
+                                  ? 'Comparar Excel de asesoría'
+                                  : 'Compare accountant Excel',
+                              selected:
+                                  selectedMenu == 'invoices_accountant_compare',
+                              onPressed: () =>
+                                  onMenuChanged('invoices_accountant_compare'),
+                            ),
+                            const GroupInvoicesSubMenuItem(
+                              icon: Icons.history_toggle_off,
+                              label: 'Historico impuestos',
+                              selected: false,
+                              onPressed: null,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    if (_showReportsInInvoiceSideMenu)
+                      GroupInvoicesNavSection(
+                        title: 'Informes',
+                        icon: Icons.insights_outlined,
+                        expanded: informesExpanded,
+                        onToggle: onToggleInformesExpanded,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            GroupInvoicesSubMenuItem(
+                              icon: Icons.account_tree_outlined,
+                              label: l.groupInvoicesClientsFlowCta,
+                              selected: selectedMenu == 'clients_flow',
+                              onPressed: () => onMenuChanged('clients_flow'),
+                            ),
+                            const GroupInvoicesSubMenuItem(
+                              icon: Icons.stacked_line_chart_outlined,
+                              label: 'Ingresos vs Gastos',
+                              selected: false,
+                              onPressed: null,
+                            ),
+                            const GroupInvoicesSubMenuItem(
+                              icon: Icons.show_chart_outlined,
+                              label: 'Beneficio neto',
+                              selected: false,
+                              onPressed: null,
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

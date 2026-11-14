@@ -34,7 +34,8 @@ const _typography = AppTypography(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('desktop Email uses the compact two-pane header', (tester) async {
+  testWidgets('desktop Email uses the persistent folder sidebar',
+      (tester) async {
     await _setSurfaceSize(tester, const Size(1200, 800));
     final repository = _FakeMailRepository();
 
@@ -49,11 +50,12 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 250));
 
-    expect(find.byKey(const ValueKey('collapsible-sidebar')), findsNothing);
+    expect(find.byKey(const ValueKey('collapsible-sidebar')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mail-compose-action')), findsOneWidget);
     expect(find.byKey(const ValueKey('mail-desktop-compose-action')),
-        findsOneWidget);
+        findsNothing);
     expect(
-        find.byKey(const ValueKey('mail-desktop-more-action')), findsOneWidget);
+        find.byKey(const ValueKey('mail-desktop-more-action')), findsNothing);
     expect(find.byKey(const ValueKey('mail-list-filter-3')), findsOneWidget);
     expect(find.text('Select an email to read it'), findsOneWidget);
     final header = tester.widget<Container>(
@@ -71,8 +73,6 @@ void main() {
     );
     expect(listBackground.color, AppDarkColors.sidebar);
 
-    await tester.tap(find.text('Mail'));
-    await tester.pumpAndSettle();
     for (final label in const [
       'Inbox',
       'Sent',
@@ -80,7 +80,7 @@ void main() {
       'Trash',
       'Spam',
     ]) {
-      expect(find.text(label), findsOneWidget);
+      expect(find.text(label), findsWidgets);
     }
   });
 
@@ -97,20 +97,20 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 250));
 
-    await tester.tap(
-      find.byKey(const ValueKey('mail-desktop-compose-action')),
-    );
+    await tester.tap(find.byKey(const ValueKey('mail-compose-action')));
     await tester.pump();
 
-    expect(
-      find.byKey(const ValueKey('mail-desktop-compose-action')),
-      findsNothing,
-    );
+    expect(find.byKey(const ValueKey('collapsible-sidebar')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mail-compose-action')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('mail-desktop-more-action')),
       findsNothing,
     );
-    expect(find.text('Compose'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('mail-desktop-header-surface')),
+      findsNothing,
+    );
+    expect(find.text('Compose'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 

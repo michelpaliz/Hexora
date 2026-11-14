@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/services/tax/tax_reporting_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/expenses/tax/tax_reporting_view.dart';
@@ -510,7 +509,7 @@ void main() {
       Text label(String value) => tester
           .widget<Text>(find.descendant(of: menu, matching: find.text(value)));
       final expected = _typography.bodySmall.copyWith(
-        fontSize: 13,
+        fontSize: 12.5,
         fontWeight: FontWeight.w500,
         letterSpacing: 0,
       );
@@ -519,11 +518,10 @@ void main() {
       final active = label('IVA soportado').style!;
       expect(active,
           expected.copyWith(color: active.color, fontWeight: FontWeight.w600));
-      final header = label('Impuestos').style!;
-      expect(header.fontSize, 15);
-      expect(header.fontWeight, FontWeight.w600);
-      expect(header.color, AppColors.navigationForeground);
-      expect(header.fontFamily, equals('Inter'));
+      // The module title is intentionally no longer repeated inside the menu
+      // header (it is shown in the content area / global bar instead).
+      expect(find.descendant(of: menu, matching: find.text('Impuestos')),
+          findsNothing);
       expect(tester.takeException(), isNull);
     });
   }

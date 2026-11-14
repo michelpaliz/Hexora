@@ -37,6 +37,8 @@ class StatementsAllDataTable extends StatelessWidget {
     required this.clientProviderFilterActive,
     required this.onInvoiceSortTap,
     required this.invoiceSortMode,
+    this.onInvoiceFilterTap,
+    this.invoiceFilterActive = false,
   });
 
   final List<Map<String, dynamic>> entries;
@@ -66,6 +68,8 @@ class StatementsAllDataTable extends StatelessWidget {
   final bool clientProviderFilterActive;
   final VoidCallback onInvoiceSortTap;
   final int invoiceSortMode;
+  final VoidCallback? onInvoiceFilterTap;
+  final bool invoiceFilterActive;
 
   double _rowExtent(BuildContext context) =>
       HexoraTableTokens.rowMinHeight +
@@ -172,6 +176,8 @@ class StatementsAllDataTable extends StatelessWidget {
                 clientProviderFilterActive: clientProviderFilterActive,
                 onInvoiceSortTap: onInvoiceSortTap,
                 invoiceSortMode: invoiceSortMode,
+                onInvoiceFilterTap: onInvoiceFilterTap ?? () {},
+                invoiceFilterActive: invoiceFilterActive,
               ),
               Expanded(child: list),
             ],

@@ -121,7 +121,7 @@ class _BusinessHoursDialogState extends State<_BusinessHoursDialog> {
           Text(l.sectionBusinessHours, style: textTheme.titleLarge),
           const SizedBox(height: 6),
           Text(
-            l.businessHoursMemberSubtitle,
+            l.businessHoursScheduleHint,
             style: textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],

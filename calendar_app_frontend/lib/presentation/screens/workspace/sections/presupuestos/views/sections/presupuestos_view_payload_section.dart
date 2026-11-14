@@ -667,6 +667,11 @@ extension _GroupInvoicesBudgetsViewPayloadSection
             ? 'EUR'
             : (payload['currency'] ?? 'EUR').toString().trim().toUpperCase();
     _budgetNotesCtrl.text = (payload['notes'] ?? '').toString();
+    _conversionTarget =
+        (payload['conversionTarget'] ?? '').toString().toLowerCase() ==
+                'receipt'
+            ? _PresupuestoConversionTarget.receipt
+            : _PresupuestoConversionTarget.invoice;
     final clientId = (payload['clientId'] ?? '').toString().trim();
     final clientName = (payload['clientName'] ?? '').toString().trim();
     final clientSnapshot = payload['clientSnapshot'] is Map

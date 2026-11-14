@@ -1084,80 +1084,66 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
       setState(() => _endDate = date);
     }
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-      child: FolderPanel(
-        title: l.recurringInvoicesTitle,
-        onBack: widget.onBack,
-        showTab: true,
-        contentTopPadding: 0,
-        actions: [
-          _RecurringDetailActionBar(
-            status: status,
-            onPreview: () => previewSeries(context, widget.series, widget.api),
-            previewTooltip: l.recurringInvoicesPreviewCta,
-            canManage: widget.canManage,
-            isPaused: isPaused,
-            onTogglePause: handleTogglePause,
-            togglePauseTooltip: isPaused
-                ? l.recurringInvoicesResumeCta
-                : l.recurringInvoicesPauseCta,
-            onCancel: handleCancel,
-            cancelTooltip: l.recurringInvoicesCancelCta,
-            onRunNow: handleRunNow,
-            runNowTooltip: l.recurringInvoicesRunNowCta,
-            runningNow: _runningNow,
-          ),
+    Widget tabs(BuildContext context) {
+      return TabBar(
+        labelColor: cs.primary,
+        unselectedLabelColor: cs.onSurfaceVariant,
+        labelStyle:
+            t.bodySmall.copyWith(fontWeight: FontWeight.w800, fontSize: 12),
+        unselectedLabelStyle: t.bodySmall.copyWith(fontSize: 12),
+        indicator: UnderlineTabIndicator(
+          borderSide: BorderSide(color: cs.primary, width: 2),
+          insets: const EdgeInsets.symmetric(horizontal: 8),
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
+        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+        dividerColor: Colors.transparent,
+        tabs: [
+          Tab(text: l.recurringInvoicesRuleTab),
+          Tab(text: l.recurringInvoicesTemplateTab),
+          Tab(text: l.recurringInvoicesGeneratedTab),
+          Tab(text: l.recurringInvoicesActivityTab),
         ],
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: DefaultTabController(
-                  length: 4,
+      );
+    }
+
+    return DefaultTabController(
+      length: 4,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: FolderPanel(
+          title: l.recurringInvoicesTitle,
+          onBack: widget.onBack,
+          showTab: true,
+          contentTopPadding: 0,
+          tabContent: tabs(context),
+          actions: [
+            _RecurringDetailActionBar(
+              status: status,
+              onPreview: () =>
+                  previewSeries(context, widget.series, widget.api),
+              previewTooltip: l.recurringInvoicesPreviewCta,
+              canManage: widget.canManage,
+              isPaused: isPaused,
+              onTogglePause: handleTogglePause,
+              togglePauseTooltip: isPaused
+                  ? l.recurringInvoicesResumeCta
+                  : l.recurringInvoicesPauseCta,
+              onCancel: handleCancel,
+              cancelTooltip: l.recurringInvoicesCancelCta,
+              onRunNow: handleRunNow,
+              runNowTooltip: l.recurringInvoicesRunNowCta,
+              runningNow: _runningNow,
+            ),
+          ],
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
                   child: Column(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        child: TabBar(
-                          labelColor: cs.primary,
-                          unselectedLabelColor: cs.onSurfaceVariant,
-                          labelStyle: t.bodySmall.copyWith(
-                              fontWeight: FontWeight.w800, fontSize: 13),
-                          unselectedLabelStyle:
-                              t.bodySmall.copyWith(fontSize: 13),
-                          indicator: UnderlineTabIndicator(
-                            borderSide: BorderSide(color: cs.primary, width: 2),
-                            insets: const EdgeInsets.symmetric(horizontal: 18),
-                          ),
-                          indicatorSize: TabBarIndicatorSize.tab,
-                          labelPadding:
-                              const EdgeInsets.symmetric(horizontal: 12),
-                          dividerColor:
-                              cs.outlineVariant.withValues(alpha: 0.4),
-                          tabs: [
-                            Tab(
-                              height: 36,
-                              text: l.recurringInvoicesRuleTab,
-                            ),
-                            Tab(
-                              height: 36,
-                              text: l.recurringInvoicesTemplateTab,
-                            ),
-                            Tab(
-                              height: 36,
-                              text: l.recurringInvoicesGeneratedTab,
-                            ),
-                            Tab(
-                              height: 36,
-                              text: l.recurringInvoicesActivityTab,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
                       Expanded(
                         child: TabBarView(
                           children: [
@@ -1267,8 +1253,8 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
                     ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

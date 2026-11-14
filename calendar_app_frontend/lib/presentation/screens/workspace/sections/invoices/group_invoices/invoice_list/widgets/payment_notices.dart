@@ -4,11 +4,13 @@ class _UnlinkedInvoicesNotice extends StatelessWidget {
   const _UnlinkedInvoicesNotice({
     required this.loading,
     required this.error,
+    required this.unpaidOnly,
     required this.onRetry,
   });
 
   final bool loading;
   final String? error;
+  final bool unpaidOnly;
   final VoidCallback onRetry;
 
   @override
@@ -49,8 +51,12 @@ class _UnlinkedInvoicesNotice extends StatelessWidget {
               hasError
                   ? error!.trim()
                   : (isSpanish
-                      ? 'Facturas emitidas sin vínculo bancario: el pago no está confirmado por extracto.'
-                      : 'Issued invoices without a bank link: payment is not confirmed by statement.'),
+                      ? (unpaidOnly
+                          ? 'Facturas emitidas con saldo pendiente; incluye pagos parciales.'
+                          : 'Facturas emitidas sin ningún movimiento bancario vinculado.')
+                      : (unpaidOnly
+                          ? 'Issued invoices with an outstanding balance, including partial payments.'
+                          : 'Issued invoices without any linked bank transaction.')),
               style: t.bodySmall.copyWith(
                 color: hasError ? cs.error : cs.onSurfaceVariant,
                 fontWeight: FontWeight.w700,

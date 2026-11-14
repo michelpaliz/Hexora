@@ -1,4 +1,5 @@
 import 'package:hexora/services/groups/domain/group_domain.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -158,6 +159,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   bool _loadingRecipientClients = false;
   bool _useClientMode =
       false; // true = pick from client list, false = type email directly
+  bool _manualRecipientHintDismissed = false;
   bool _loadingRecentInvoices = false;
   _ComposePreparationMode _preparationMode = _ComposePreparationMode.clients;
   List<Invoice> _recentIssuedInvoices = const [];
@@ -190,6 +192,17 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   void update(VoidCallback fn) {
     if (!mounted) return;
     setState(fn);
+  }
+
+  void _setRecipientSelectionMode(
+    bool selective, {
+    bool loadClientWorkflow = true,
+  }) {
+    if (_sending || _useClientMode == selective) return;
+    setState(() => _useClientMode = selective);
+    if (selective && loadClientWorkflow) {
+      unawaited(_prepareInlineInvoiceFlow());
+    }
   }
 
   void _refreshCanSendState() {
@@ -701,6 +714,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       _showBcc = false;
       _invoiceExpanded = false;
       _useClientMode = false;
+      _manualRecipientHintDismissed = false;
       _preparationMode = _ComposePreparationMode.clients;
       _recentIssuedInvoices = const [];
       _recentInvoiceClients = const [];

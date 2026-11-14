@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/shared/widgets/client_search_select.dart';
 import 'package:hexora/theme/motion/hexora_motion.dart';
@@ -62,6 +63,9 @@ class DocumentClientStep extends StatelessWidget {
     this.adaptivePreview = false,
     this.compactSelectionMaxWidth = 620,
     this.showClientCount = true,
+    this.searchDriven = false,
+    this.searchDrivenDetails,
+    this.modeSelectorTrailing,
   });
 
   final List<GroupClient> clients;
@@ -86,6 +90,13 @@ class DocumentClientStep extends StatelessWidget {
   final bool adaptivePreview;
   final double compactSelectionMaxWidth;
   final bool showClientCount;
+  final bool searchDriven;
+  final Widget? searchDrivenDetails;
+
+  /// Optional controls aligned to the right of the mode selector, so a
+  /// document-type toggle (e.g. Factura / Recibo) and the client-source toggle
+  /// (Existente / Manual) share one compact toolbar row instead of stacking.
+  final Widget? modeSelectorTrailing;
 
   @override
   Widget build(BuildContext context) {
@@ -115,6 +126,8 @@ class DocumentClientStep extends StatelessWidget {
             searchController: clientSearchController,
             flat: flat,
             showVisibleCount: !showClientCount,
+            searchDriven: searchDriven,
+            searchDrivenDetails: searchDrivenDetails,
           );
           // Fade just the preview when the selection changes, so the list on
           // the left stays rock-steady during row changes.
@@ -133,7 +146,7 @@ class DocumentClientStep extends StatelessWidget {
             final showPreview = !adaptivePreview || hasSelection;
             final requestedListWidth = showPreview ? desktopListWidth : null;
             final availableListWidth = showPreview
-                ? (layoutWidth * .48).clamp(0.0, layoutWidth).toDouble()
+                ? (layoutWidth * .40).clamp(0.0, layoutWidth).toDouble()
                 : layoutWidth;
             final resolvedListWidth = requestedListWidth == null
                 ? availableListWidth
@@ -144,7 +157,7 @@ class DocumentClientStep extends StatelessWidget {
                 SizedBox(width: resolvedListWidth, child: list),
                 if (showPreview) ...[
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
                     child: VerticalDivider(
                       width: 1,
                       color: Theme.of(context)
@@ -155,7 +168,10 @@ class DocumentClientStep extends StatelessWidget {
                   ),
                   Expanded(
                     flex: 3,
-                    child: _PreviewEntrance(child: detailsBody),
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: _PreviewEntrance(child: detailsBody),
+                    ),
                   ),
                 ],
               ],
@@ -177,7 +193,14 @@ class DocumentClientStep extends StatelessWidget {
                 const SizedBox(height: 10),
                 _CompactPreviewSection(
                   emptyLabel: emptySelectionLabel,
-                  child: detailsBody,
+                  child: searchDriven
+                      ? SizedBox(
+                          height: (availableHeight * .56)
+                              .clamp(320.0, 520.0)
+                              .toDouble(),
+                          child: detailsBody,
+                        )
+                      : detailsBody,
                 ),
               ],
             ),
@@ -200,6 +223,7 @@ class DocumentClientStep extends StatelessWidget {
                   count: manualMode || !showClientCount ? null : clients.length,
                   showHeading: showSelectionHeading,
                   selectorAlignment: modeSelectorAlignment,
+                  trailing: modeSelectorTrailing,
                   selector: canUseManual
                       ? _ModeSelector(
                           mode: mode,
@@ -263,6 +287,7 @@ class _ClientModeHeader extends StatelessWidget {
     required this.selector,
     required this.showHeading,
     required this.selectorAlignment,
+    this.trailing,
   });
 
   final String title;
@@ -270,6 +295,7 @@ class _ClientModeHeader extends StatelessWidget {
   final Widget? selector;
   final bool showHeading;
   final AlignmentGeometry selectorAlignment;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -279,6 +305,62 @@ class _ClientModeHeader extends StatelessWidget {
         .languageCode
         .toLowerCase()
         .startsWith('es');
+    // Shared toolbar: the client-source selector (and the inline count) sit on
+    // the left, the document-type toggle on the right. Stacks only when the
+    // row cannot fit both groups.
+    if (selector != null && trailing != null && !showHeading) {
+      final countChip = count == null
+          ? null
+          : Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '$count',
+                style: textTheme.bodySmall?.copyWith(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            );
+      final leftGroup = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          selector!,
+          if (countChip != null) ...[
+            const SizedBox(width: 8),
+            countChip,
+          ],
+        ],
+      );
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final stack = constraints.maxWidth < 560;
+          if (stack) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                leftGroup,
+                const SizedBox(height: 8),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: trailing!,
+                ),
+              ],
+            );
+          }
+          return Row(
+            children: [
+              Flexible(child: leftGroup),
+              const SizedBox(width: 10),
+              trailing!,
+            ],
+          );
+        },
+      );
+    }
     final heading = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -429,10 +511,10 @@ class _ModeSelector extends StatelessWidget {
     }
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 320, minWidth: 240),
+      constraints: const BoxConstraints(maxWidth: 400, minWidth: 240),
       child: SizedBox(
         key: const ValueKey('document-client-mode-selector'),
-        width: 300,
+        width: 380,
         height: 36,
         child: Material(
           color: cs.surfaceContainerLow,
@@ -670,6 +752,8 @@ class _ExistingClientPanel extends StatelessWidget {
     this.searchController,
     required this.flat,
     required this.showVisibleCount,
+    required this.searchDriven,
+    this.searchDrivenDetails,
   });
 
   final List<GroupClient> clients;
@@ -680,6 +764,8 @@ class _ExistingClientPanel extends StatelessWidget {
   final TextEditingController? searchController;
   final bool flat;
   final bool showVisibleCount;
+  final bool searchDriven;
+  final Widget? searchDrivenDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -691,24 +777,49 @@ class _ExistingClientPanel extends StatelessWidget {
           child: IgnorePointer(
             ignoring: !enabled,
             child: Padding(
-              padding: EdgeInsets.fromLTRB(flat ? 0 : 10, 0, flat ? 0 : 10, 10),
+              padding: EdgeInsets.fromLTRB(
+                searchDriven ? 12 : 0,
+                0,
+                searchDriven ? 12 : 0,
+                6,
+              ),
               // compact + compactToolbar give us ~50 px rows, the
               // `_CompactClientIdentity` title (name + one secondary line)
               // and a full-width search input flush with the list.
-              child: ClientSearchSelect(
-                clients: clients,
-                selectedClientId: selectedClientId,
-                onClientChanged: onClientChanged,
-                useDefaultPropertyKind: false,
-                showAdvancedFilters: false,
-                compact: true,
-                compactToolbar: true,
-                flatRows: flat,
-                searchDesktopHeight: 42,
-                searchController: searchController,
-                maxListHeight: maxListHeight,
-                showVisibleCount: showVisibleCount,
-              ),
+              child: searchDriven
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _DialogClientSelect(
+                          clients: clients,
+                          selectedClientId: selectedClientId,
+                          onClientChanged: onClientChanged,
+                          enabled: enabled,
+                        ),
+                        if (searchDrivenDetails != null) ...[
+                          const SizedBox(height: 12),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              child: searchDrivenDetails,
+                            ),
+                          ),
+                        ],
+                      ],
+                    )
+                  : ClientSearchSelect(
+                      clients: clients,
+                      selectedClientId: selectedClientId,
+                      onClientChanged: onClientChanged,
+                      useDefaultPropertyKind: false,
+                      showAdvancedFilters: false,
+                      compact: true,
+                      compactToolbar: true,
+                      flatRows: flat,
+                      searchDesktopHeight: 42,
+                      searchController: searchController,
+                      maxListHeight: maxListHeight,
+                      showVisibleCount: showVisibleCount,
+                    ),
             ),
           ),
         ),
@@ -722,6 +833,324 @@ class _ExistingClientPanel extends StatelessWidget {
         border: Border.all(color: cs.outlineVariant.withValues(alpha: .38)),
       ),
       child: content,
+    );
+  }
+}
+
+class _DialogClientSelect extends StatelessWidget {
+  const _DialogClientSelect({
+    required this.clients,
+    required this.selectedClientId,
+    required this.onClientChanged,
+    required this.enabled,
+  });
+
+  final List<GroupClient> clients;
+  final String? selectedClientId;
+  final ValueChanged<String?> onClientChanged;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final selected = clients.cast<GroupClient?>().firstWhere(
+          (client) => client?.id == selectedClientId,
+          orElse: () => null,
+        );
+
+    Future<void> openSelector() async {
+      if (!enabled) return;
+      final result = await showDialog<GroupClient>(
+        context: context,
+        builder: (_) => _ClientSelectionDialog(
+          clients: clients,
+          selectedClientId: selectedClientId,
+        ),
+      );
+      if (result != null && result.id != selectedClientId) {
+        onClientChanged(result.id);
+      }
+    }
+
+    return Semantics(
+      button: true,
+      label: selected == null ? 'Buscar cliente' : 'Cambiar cliente',
+      child: InkWell(
+        onTap: openSelector,
+        borderRadius: BorderRadius.circular(10),
+        child: InputDecorator(
+          decoration: InputDecoration(
+            isDense: true,
+            prefixIcon: const Icon(Icons.search, size: 19),
+            suffixIcon: Icon(
+              Icons.unfold_more_rounded,
+              size: 18,
+              color: cs.onSurfaceVariant,
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+          ),
+          child: Text(
+            selected?.name ?? 'Buscar cliente...',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: selected == null ? cs.onSurfaceVariant : cs.onSurface,
+              fontWeight: selected == null ? FontWeight.w400 : FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ClientSelectionDialog extends StatefulWidget {
+  const _ClientSelectionDialog({
+    required this.clients,
+    required this.selectedClientId,
+  });
+
+  final List<GroupClient> clients;
+  final String? selectedClientId;
+
+  @override
+  State<_ClientSelectionDialog> createState() => _ClientSelectionDialogState();
+}
+
+class _ClientSelectionDialogState extends State<_ClientSelectionDialog> {
+  final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
+  int _highlightedIndex = 0;
+
+  List<GroupClient> get _matches {
+    final query = _searchController.text.trim().toLowerCase();
+    return widget.clients
+        .where((client) {
+          if (client.isActive == false) return false;
+          final searchable = [
+            client.name,
+            client.email ?? '',
+            client.billing?.email ?? '',
+            client.billing?.legalName ?? '',
+            client.billing?.taxId ?? '',
+          ].join(' ').toLowerCase();
+          return query.isEmpty || searchable.contains(query);
+        })
+        .take(80)
+        .toList();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _moveHighlight(int delta) {
+    final matches = _matches;
+    if (matches.isEmpty) return;
+    setState(() {
+      _highlightedIndex =
+          (_highlightedIndex + delta).clamp(0, matches.length - 1);
+    });
+    if (!_scrollController.hasClients) return;
+    _scrollController.animateTo(
+      (_highlightedIndex * 57.0)
+          .clamp(0, _scrollController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _selectHighlighted() {
+    final matches = _matches;
+    if (matches.isEmpty) return;
+    Navigator.of(context).pop(matches[_highlightedIndex]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final media = MediaQuery.sizeOf(context);
+    final compact = media.width < 700;
+    final matches = _matches;
+    if (_highlightedIndex >= matches.length) {
+      _highlightedIndex = matches.isEmpty ? 0 : matches.length - 1;
+    }
+
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
+            _moveHighlight(1),
+        const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
+            _moveHighlight(-1),
+        const SingleActivator(LogicalKeyboardKey.enter): _selectHighlighted,
+        const SingleActivator(LogicalKeyboardKey.escape): () =>
+            Navigator.of(context).maybePop(),
+      },
+      child: Dialog(
+        insetPadding: compact
+            ? EdgeInsets.zero
+            : const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        shape: compact
+            ? const RoundedRectangleBorder()
+            : Theme.of(context).dialogTheme.shape,
+        clipBehavior: Clip.antiAlias,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 640,
+            maxHeight: compact ? media.height : 620,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 14, 8, 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Seleccionar cliente',
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Cerrar',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  onChanged: (_) => setState(() => _highlightedIndex = 0),
+                  onSubmitted: (_) => _selectHighlighted(),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    hintText: 'Nombre, razón social, NIF/CIF o email',
+                    prefixIcon: Icon(Icons.search_rounded, size: 20),
+                  ),
+                ),
+              ),
+              Divider(height: 1, color: cs.outlineVariant),
+              Expanded(
+                child: matches.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No se encontraron clientes',
+                          style: TextStyle(color: cs.onSurfaceVariant),
+                        ),
+                      )
+                    : ListView.separated(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        itemCount: matches.length,
+                        separatorBuilder: (_, __) => Divider(
+                          height: 1,
+                          indent: 58,
+                          color: cs.outlineVariant.withValues(alpha: .45),
+                        ),
+                        itemBuilder: (context, index) {
+                          final client = matches[index];
+                          final email =
+                              (client.billing?.email ?? client.email ?? '')
+                                  .trim();
+                          final taxId = (client.billing?.taxId ?? '').trim();
+                          final selected = client.id == widget.selectedClientId;
+                          final highlighted = index == _highlightedIndex;
+                          return Material(
+                            color: highlighted
+                                ? cs.primaryContainer.withValues(alpha: .5)
+                                : Colors.transparent,
+                            child: InkWell(
+                              onHover: (hovering) {
+                                if (hovering) {
+                                  setState(() => _highlightedIndex = index);
+                                }
+                              },
+                              onTap: () => Navigator.of(context).pop(client),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 9,
+                                ),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 16,
+                                      backgroundColor:
+                                          cs.primary.withValues(alpha: .12),
+                                      child: Text(
+                                        client.name.trim().isEmpty
+                                            ? '?'
+                                            : client.name
+                                                .trim()[0]
+                                                .toUpperCase(),
+                                        style: TextStyle(
+                                          color: cs.primary,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            client.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          if (email.isNotEmpty ||
+                                              taxId.isNotEmpty)
+                                            Text(
+                                              [email, taxId]
+                                                  .where((value) =>
+                                                      value.isNotEmpty)
+                                                  .join(' · '),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: cs.onSurfaceVariant,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (selected)
+                                      Icon(
+                                        Icons.check_rounded,
+                                        color: cs.primary,
+                                        size: 19,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -743,7 +1172,22 @@ class _ClientDetailsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final content = hasSelection && child != null
-        ? Align(alignment: AlignmentDirectional.topStart, child: child)
+        ? LayoutBuilder(
+            builder: (context, constraints) {
+              final boundedHeight = constraints.maxHeight.isFinite;
+              return Align(
+                alignment: AlignmentDirectional.topStart,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: boundedHeight ? constraints.maxHeight : 0,
+                    maxHeight:
+                        boundedHeight ? constraints.maxHeight : double.infinity,
+                  ),
+                  child: child,
+                ),
+              );
+            },
+          )
         : Align(
             alignment: AlignmentDirectional.topStart,
             child: Padding(
@@ -880,7 +1324,7 @@ class _ManualClientPanel extends StatelessWidget {
           }),
         ],
         if ((config.helperText ?? '').trim().isNotEmpty) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             config.helperText!,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(

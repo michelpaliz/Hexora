@@ -127,6 +127,7 @@ extension _GroupInvoicesBudgetsViewFlowSection
 
           return _presupuestosApi.createDraft(
             groupId: widget.groupId.trim(),
+            conversionTarget: _conversionTarget.apiValue,
             clientId: clientId,
             clientName: clientName,
             addressStreet: _clientAddressCtrl.text.trim(),

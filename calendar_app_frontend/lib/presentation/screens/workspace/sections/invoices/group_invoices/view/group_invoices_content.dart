@@ -118,6 +118,76 @@ class _GroupInvoicesContent extends StatelessWidget {
           }
         },
         onOpenInvoiceDetail: state._openInvoiceDetail,
+        onEditInvoice:
+            state.canEditIssuedInvoices(context) ? state._openEditDraft : null,
+        onEditReceipt: state._openEditReceipt,
+        invoicePreviewBuilder: (
+          context,
+          invoice,
+          onClose,
+          onPrevious,
+          onNext,
+        ) =>
+            InvoiceDetailSheet(
+          key: ValueKey('client-invoice-preview-${invoice.id}'),
+          invoice: invoice,
+          client: state._resolveInvoiceClient(
+            invoice,
+            state._clients,
+            AppLocalizations.of(context)!,
+          ),
+          billingProfile: state._billingProfile,
+          group: state.widget.group,
+          onEditInvoice: state.canEditIssuedInvoices(context)
+              ? () => state._openEditDraft(invoice)
+              : null,
+          onInvoiceChanged: state._refreshInvoiceListsOnly,
+          onOpenRecurringSeries: (seriesId) => state._updateView(() {
+            state._recurringSeriesToOpen = seriesId;
+            state._selectedMenu = 'recurring';
+          }),
+          onOpenDeliveryRecord: () =>
+              state._updateView(() => state._selectedMenu = 'emails'),
+          onClose: onClose,
+          onPrevious: onPrevious,
+          onNext: onNext,
+          onExpand: null,
+          isExpanded: false,
+          actionsInHeader: true,
+        ),
+        receiptPreviewBuilder: (
+          context,
+          receipt,
+          onClose,
+          onPrevious,
+          onNext,
+        ) {
+          final client = state._clients.firstWhere(
+            (item) => item.id == receipt.clientId,
+            orElse: () => state._selectedClient!,
+          );
+          return ReceiptDetailCard(
+            key: ValueKey('client-receipt-preview-${receipt.id}'),
+            receipt: receipt,
+            client: client,
+            billingProfile: state._billingProfile,
+            onEdit: () => state._openEditReceipt(receipt),
+            onPreviewPdf: () => state._previewReceiptPdf(receipt),
+            onDownloadPdf: () => state._downloadReceiptPdf(receipt),
+            onIssue: () => state._issueReceipt(receipt),
+            onMarkSent: () => state._markReceiptSent(receipt),
+            onMarkUnsent: () => state._markReceiptUnsent(receipt),
+            onDeleteDraft: () => state._deleteReceipt(receipt),
+            onImportJson: () => state._openReceiptJsonImportDialog(receipt),
+            onLoadInlinePdf: () => state._loadReceiptInlinePdfBytes(receipt),
+            previewInteractive: !state._disableReceiptPreviewInteraction,
+            onPrevious: onPrevious,
+            onNext: onNext,
+            onClose: onClose,
+            onExpand: null,
+            isExpanded: false,
+          );
+        },
         onDeleteInvoice: state._deleteInvoice,
         onDownloadVisibleInvoices: state._downloadVisibleInvoicesPdfs,
         onAddClient: state._openCreateClient,

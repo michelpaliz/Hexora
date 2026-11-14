@@ -78,10 +78,10 @@ class RecurringScheduleForm extends StatelessWidget {
     final isEs = l.localeName.toLowerCase().startsWith('es');
 
     final fieldBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.55)),
+      borderRadius: BorderRadius.circular(9),
+      borderSide: BorderSide.none,
     );
-    final fieldFill = cs.surface;
+    final fieldFill = cs.surfaceContainerHighest.withValues(alpha: .28);
     final inputTextStyle =
         t.bodySmall.copyWith(color: cs.onSurface, fontSize: 13);
     final labelStyle = t.bodySmall.copyWith(
@@ -306,15 +306,6 @@ class RecurringScheduleForm extends StatelessWidget {
                 ? l.recurringInvoicesWeekDayHelper
                 : null;
         Widget invoiceModeSelector() {
-          final executionDayTooltip = isEs
-              ? 'Misma fecha de ejecucion.\nLa factura usa el mismo dia en que se ejecuta la recurrencia.\nEjemplo: ejecuta 24 -> factura 24.'
-              : 'Same as execution date.\nInvoice date matches recurrence execution day.\nExample: runs on 24 -> invoice dated 24.';
-          final fixedDayTooltip = isEs
-              ? 'Dia fijo del mes.\nLa factura siempre usa un dia concreto (1-31).\nEjemplo: ejecuta 24 -> factura 28.'
-              : 'Fixed day of month.\nInvoice always uses a specific day (1-31).\nExample: runs on 24 -> invoice dated 28.';
-          final offsetDaysTooltip = isEs
-              ? 'Dias respecto a ejecucion.\nLa fecha factura se calcula con desfase (+/- dias).\nEjemplo: +4 y ejecuta 24 -> factura 28.'
-              : 'Offset from execution date.\nInvoice date is calculated with +/- day offset.\nExample: +4 and run on 24 -> invoice dated 28.';
           final String selectedModeText;
           if (invoiceDateMode == 'fixed_day') {
             selectedModeText = isEs ? 'Dia fijo del mes' : 'Fixed day of month';
@@ -340,61 +331,45 @@ class RecurringScheduleForm extends StatelessWidget {
             return (executionDay: executionDay, issueDay: issueDay);
           }
 
-          Widget modeItem({
-            required String value,
-            required IconData icon,
-            required String tooltip,
-          }) {
-            final selected = invoiceDateMode == value;
-            return Tooltip(
-              message: tooltip,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(10),
-                onTap: () => onInvoiceDateModeChanged(value),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? cs.primaryContainer
-                        : cs.surfaceContainerHighest.withValues(alpha: 0.28),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: selected ? cs.primary : cs.outlineVariant,
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    icon,
-                    size: 18,
-                    color: selected ? cs.onPrimaryContainer : cs.onSurface,
-                  ),
-                ),
-              ),
-            );
-          }
-
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  modeItem(
-                    value: 'execution_day',
-                    icon: Icons.calendar_today_outlined,
-                    tooltip: executionDayTooltip,
-                  ),
-                  const SizedBox(width: 8),
-                  modeItem(
-                    value: 'fixed_day',
-                    icon: Icons.event_available_outlined,
-                    tooltip: fixedDayTooltip,
-                  ),
-                  const SizedBox(width: 8),
-                  modeItem(
-                    value: 'offset_days',
-                    icon: Icons.timeline_outlined,
-                    tooltip: offsetDaysTooltip,
+                  SegmentedButton<String>(
+                    segments: [
+                      ButtonSegment<String>(
+                        value: 'execution_day',
+                        label: Text(isEs ? 'Misma fecha' : 'Same date'),
+                        icon: const Icon(Icons.calendar_today_outlined),
+                      ),
+                      ButtonSegment<String>(
+                        value: 'fixed_day',
+                        label: Text(isEs ? 'Día fijo' : 'Fixed day'),
+                        icon: const Icon(Icons.event_available_outlined),
+                      ),
+                      ButtonSegment<String>(
+                        value: 'offset_days',
+                        label: Text(isEs ? 'Desfase' : 'Offset'),
+                        icon: const Icon(Icons.timeline_outlined),
+                      ),
+                    ],
+                    selected: {invoiceDateMode},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (selection) {
+                      if (selection.isNotEmpty) {
+                        onInvoiceDateModeChanged(selection.first);
+                      }
+                    },
+                    style: SegmentedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      textStyle: t.bodySmall.copyWith(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      side: BorderSide.none,
+                    ),
                   ),
                 ],
               ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_resizable_split.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
+import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/clients_view/client_detail_panel.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/clients_view/clients_list_panel.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/client_classification_store.dart';
@@ -17,6 +18,22 @@ class GroupInvoicesClientsView extends StatefulWidget {
   final VoidCallback onCreateReceipt;
   final VoidCallback onEditSelectedClient;
   final ValueChanged<Invoice> onOpenInvoiceDetail;
+  final ValueChanged<Invoice>? onEditInvoice;
+  final ValueChanged<Receipt> onEditReceipt;
+  final Widget Function(
+    BuildContext context,
+    Invoice invoice,
+    VoidCallback onClose,
+    VoidCallback? onPrevious,
+    VoidCallback? onNext,
+  ) invoicePreviewBuilder;
+  final Widget Function(
+    BuildContext context,
+    Receipt receipt,
+    VoidCallback onClose,
+    VoidCallback? onPrevious,
+    VoidCallback? onNext,
+  ) receiptPreviewBuilder;
   final ValueChanged<Invoice> onDeleteInvoice;
   final Future<void> Function(List<Invoice> invoices) onDownloadVisibleInvoices;
   final int initialDetailTabIndex;
@@ -44,6 +61,10 @@ class GroupInvoicesClientsView extends StatefulWidget {
     required this.onCreateReceipt,
     required this.onEditSelectedClient,
     required this.onOpenInvoiceDetail,
+    this.onEditInvoice,
+    required this.onEditReceipt,
+    required this.invoicePreviewBuilder,
+    required this.receiptPreviewBuilder,
     required this.onDeleteInvoice,
     required this.onDownloadVisibleInvoices,
     this.initialDetailTabIndex = 0,
@@ -211,7 +232,10 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             child: HexoraResizableSplit(
-              preferenceKey: 'invoices_clients_split_fraction_v1',
+              preferenceKey: 'invoices_clients_split_fraction_v2',
+              initialFraction: 0.30,
+              minStartWidth: 280,
+              minEndWidth: 520,
               start: ClientsListPanel(
                 allClients: widget.clients,
                 filteredClients: filteredClients,
@@ -260,6 +284,10 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
                     onCreateInvoice: widget.onCreateInvoice,
                     onCreateReceipt: widget.onCreateReceipt,
                     onOpenInvoiceDetail: widget.onOpenInvoiceDetail,
+                    onEditInvoice: widget.onEditInvoice,
+                    onEditReceipt: widget.onEditReceipt,
+                    invoicePreviewBuilder: widget.invoicePreviewBuilder,
+                    receiptPreviewBuilder: widget.receiptPreviewBuilder,
                     onDeleteInvoice: widget.onDeleteInvoice,
                     onDownloadVisibleInvoices: widget.onDownloadVisibleInvoices,
                     onAddClient: widget.onAddClient,

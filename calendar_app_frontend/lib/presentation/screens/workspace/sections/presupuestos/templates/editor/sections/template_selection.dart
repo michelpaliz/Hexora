@@ -223,6 +223,10 @@ extension _TemplateSelection on _PresupuestoTemplateEditorScreenState {
                   initialValue: selectedSavedTemplate == null
                       ? null
                       : selectedSavedTemplateId,
+                  // Let the field own the available width so a long template
+                  // name ellipsizes instead of overflowing past the trailing
+                  // action buttons on narrow (mobile) screens.
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Plantilla seleccionada',
                     hintText: 'Elige una base para editar',
@@ -234,6 +238,8 @@ extension _TemplateSelection on _PresupuestoTemplateEditorScreenState {
                             _string(template['_id']) ?? _string(template['id']),
                         child: Text(
                           _string(template['name']) ?? 'Plantilla sin nombre',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                   ],

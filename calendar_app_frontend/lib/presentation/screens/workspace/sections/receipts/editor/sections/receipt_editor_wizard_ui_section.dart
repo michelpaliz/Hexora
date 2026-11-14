@@ -5,7 +5,10 @@ part of '../receipt_editor_wizard_screen.dart';
 extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
   Widget _buildWizardToolbarContent(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final title = Text(
+    // The workflow navigation is rendered once in the vertical rail below.
+    // Keep the toolbar limited to the screen title so the same steps are not
+    // duplicated horizontally.
+    return Text(
       l.createReceiptCta,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
@@ -13,36 +16,16 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
             fontWeight: FontWeight.w800,
           ),
     );
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 760) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              title,
-              const SizedBox(height: 2),
-              _buildStepIndicator(context),
-            ],
-          );
-        }
-        return Row(
-          children: [
-            Flexible(flex: 2, child: title),
-            const SizedBox(width: 12),
-            Expanded(flex: 5, child: _buildStepIndicator(context)),
-          ],
-        );
-      },
-    );
   }
 
-  Widget _buildStepIndicator(BuildContext context) {
+  Widget _buildStepIndicator(BuildContext context, {bool vertical = false}) {
     final l = AppLocalizations.of(context)!;
     return HexoraDocumentStepper(
       steps: [
         HexoraDocumentStep(
-          label: l.invoiceBillToLabel,
+          label: l.localeName.toLowerCase().startsWith('es')
+              ? 'Recibo para'
+              : 'Receipt for',
           icon: Icons.person_outline_rounded,
         ),
         HexoraDocumentStep(
@@ -57,6 +40,7 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
       currentStep: _step,
       onStepTapped: _tryGoToStep,
       compactConnectors: true,
+      vertical: vertical,
       itemKeyBuilder: (index, _) => ValueKey('receipt-editor-step-$index'),
     );
   }
@@ -69,145 +53,175 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
     final isEs = l.localeName.toLowerCase().startsWith('es');
 
     Widget? selectedDetails;
+    Widget? searchDrivenDetails;
     if (client != null) {
-      selectedDetails = Padding(
-        padding: const EdgeInsets.all(10),
+      final billing = client.billing;
+      final billingName = (billing?.legalName ?? '').trim();
+      final taxId = (billing?.taxId ?? '').trim();
+      final billingEmail = (billing?.email ?? '').trim();
+      final email =
+          billingEmail.isNotEmpty ? billingEmail : (client.email ?? '').trim();
+      final address = <String>[
+        (billing?.addressStreet ?? '').trim(),
+        (billing?.addressPostalCode ?? '').trim(),
+        (billing?.addressCity ?? '').trim(),
+        (billing?.addressProvince ?? '').trim(),
+      ].where((value) => value.isNotEmpty).join(', ');
+      final classification = <String>[
+        (client.entityType ?? '').trim(),
+        (client.propertyKind ?? '').trim(),
+      ].where((value) => value.isNotEmpty).join(' · ');
+
+      Widget metadataLine(IconData icon, String value) => Padding(
+            padding: const EdgeInsets.only(top: 5),
+            child: Row(
+              children: [
+                Icon(icon, size: 14, color: cs.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ),
+              ],
+            ),
+          );
+
+      searchDrivenDetails = Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: cs.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      client.name.trim().isEmpty
-                          ? '?'
-                          : client.name.trim()[0].toUpperCase(),
-                      style: t.bodyLarge.copyWith(
-                        color: cs.primary,
-                        fontWeight: FontWeight.w900,
-                      ),
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: cs.primary.withValues(alpha: 0.12),
+                  child: Text(
+                    client.name.trim().isEmpty
+                        ? '?'
+                        : client.name.trim()[0].toUpperCase(),
+                    style: t.bodyMedium.copyWith(
+                      color: cs.primary,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        client.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      if (email.isNotEmpty)
                         Text(
-                          client.name,
-                          style: t.bodyLarge.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: cs.onSurface,
-                          ),
+                          email,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
                         ),
-                        const SizedBox(height: 3),
-                        Wrap(
-                          spacing: 5,
-                          runSpacing: 5,
-                          children: [
-                            if ((client.email ?? '').trim().isNotEmpty)
-                              _WizardClientChip(
-                                icon: Icons.email_outlined,
-                                label: client.email!.trim(),
-                              ),
-                            if ((client.phone ?? '').trim().isNotEmpty)
-                              _WizardClientChip(
-                                icon: Icons.phone_outlined,
-                                label: client.phone!.trim(),
-                              ),
-                            if ((client.entityType ?? '').trim().isNotEmpty)
-                              _WizardClientChip(
-                                icon: Icons.business_outlined,
-                                label: client.entityType!.trim(),
-                              ),
-                            if ((client.propertyKind ?? '').trim().isNotEmpty)
-                              _WizardClientChip(
-                                icon: Icons.home_work_outlined,
-                                label: client.propertyKind!.trim(),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(height: 6),
-            SizedBox(
-              height: 164,
-              child: _ClientReceiptStatsBox(
-                issuedCount: _clientIssuedCount,
-                draftCount: _clientDraftCount,
-                loading: _loadingReceiptStats,
-                pastReceipts: _clientPastReceipts,
-                onPreview: _previewHistoricalReceipt,
-              ),
-            ),
+            if (billingName.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              metadataLine(Icons.business_outlined, billingName),
+            ],
+            if (taxId.isNotEmpty) metadataLine(Icons.badge_outlined, taxId),
+            if (classification.isNotEmpty)
+              metadataLine(Icons.category_outlined, classification),
+            if (address.isNotEmpty)
+              metadataLine(Icons.location_on_outlined, address),
           ],
+        ),
+      );
+
+      selectedDetails = Padding(
+        padding: const EdgeInsets.fromLTRB(4, 0, 0, 0),
+        child: _ClientReceiptStatsBox(
+          issuedCount: _clientIssuedCount,
+          draftCount: _clientDraftCount,
+          loading: _loadingReceiptStats,
+          pastReceipts: _clientPastReceipts,
+          onPreview: _previewHistoricalReceipt,
         ),
       );
     }
 
-    return DocumentClientStep(
-      clients: widget.clients,
-      selectedClientId: _clientId,
-      onClientChanged: (value) {
-        setState(() {
-          _clientId = value;
-          _markDraftDirty();
-        });
-        _loadClientReceiptStats(value);
-      },
-      mode: _useManualClient
-          ? DocumentClientMode.manual
-          : DocumentClientMode.existing,
-      onModeChanged: (mode) {
-        setState(() {
-          _useManualClient = mode == DocumentClientMode.manual;
-          _markDraftDirty();
-        });
-      },
-      selectedDetails: selectedDetails,
-      manual: DocumentManualClientConfig(
-        nameController: _clientNameCtrl,
-        addressController: _clientAddressCtrl,
-        cityController: _clientCityCtrl,
-        postalCodeController: _clientPostalCodeCtrl,
-        nameLabel: isEs ? 'Nombre del cliente' : 'Client name',
-        addressLabel: isEs ? 'Dirección *' : 'Address *',
-        cityLabel: isEs ? 'Ciudad' : 'City',
-        postalCodeLabel: isEs ? 'CP *' : 'Postal code *',
-        helperText: isEs
-            ? 'La dirección y el CP son obligatorios y solo se usan en este recibo.'
-            : 'Address and postal code are required and only used for this receipt.',
-        onChanged: () => setState(_markDraftDirty),
+    return DefaultTabController(
+      length: 2,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+        child: DocumentClientStep(
+          clients: widget.clients,
+          selectedClientId: _clientId,
+          onClientChanged: (value) {
+            setState(() {
+              _clientId = value;
+              _markDraftDirty();
+            });
+            _loadClientReceiptStats(value);
+          },
+          mode: _useManualClient
+              ? DocumentClientMode.manual
+              : DocumentClientMode.existing,
+          onModeChanged: (mode) {
+            setState(() {
+              _useManualClient = mode == DocumentClientMode.manual;
+              _markDraftDirty();
+            });
+          },
+          selectedDetails: selectedDetails,
+          searchDrivenDetails: searchDrivenDetails,
+          manual: DocumentManualClientConfig(
+            nameController: _clientNameCtrl,
+            addressController: _clientAddressCtrl,
+            cityController: _clientCityCtrl,
+            postalCodeController: _clientPostalCodeCtrl,
+            nameLabel: isEs ? 'Nombre del cliente' : 'Client name',
+            addressLabel: isEs ? 'Dirección' : 'Address',
+            cityLabel: isEs ? 'Ciudad' : 'City',
+            postalCodeLabel: isEs ? 'CP' : 'Postal code',
+            helperText: isEs
+                ? 'La dirección y el CP son obligatorios y solo se usan en este recibo.'
+                : 'Address and postal code are required and only used for this receipt.',
+            onChanged: () => setState(_markDraftDirty),
+          ),
+          existingLabel: isEs ? 'Existente' : 'Existing',
+          manualLabel: isEs ? 'Manual' : 'Manual',
+          selectClientLabel: l.receiptSelectClientLabel,
+          emptySelectionLabel: isEs
+              ? 'Selecciona un cliente para continuar'
+              : 'Select a client to continue',
+          clientSearchController: _clientSearchCtrl,
+          twoColumnBreakpoint: 900,
+          desktopListWidth: null,
+          showSelectionHeading: false,
+          modeSelectorAlignment: AlignmentDirectional.centerStart,
+          modeSelectorTrailing: const _ReceiptPeriodTabs(),
+          adaptivePreview: false,
+          compactSelectionMaxWidth: 620,
+          // Keep the count beside the search field in the compact client toolbar
+          // instead of rendering a separate line above it.
+          showClientCount: false,
+          flat: true,
+          searchDriven: true,
+        ),
       ),
-      existingLabel: isEs ? 'Existente' : 'Existing',
-      manualLabel: isEs ? 'Manual' : 'Manual',
-      selectClientLabel: l.receiptSelectClientLabel,
-      emptySelectionLabel: isEs
-          ? 'Selecciona un cliente para continuar'
-          : 'Select a client to continue',
-      clientSearchController: _clientSearchCtrl,
-      desktopListWidth: 420,
-      showSelectionHeading: false,
-      modeSelectorAlignment: AlignmentDirectional.centerStart,
-      adaptivePreview: true,
-      compactSelectionMaxWidth: 620,
-      flat: true,
     );
   }
 
@@ -678,88 +692,118 @@ extension _ReceiptEditorWizardUiSection on _ReceiptEditorWizardScreenState {
       symbol: '€',
       decimalDigits: 2,
     ).format(receiptTotal);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (widget.embedded != true) _buildStepIndicator(context),
-        const SizedBox(height: 6),
-        Expanded(
-          child: HexoraStepTransition(
-            step: _step,
-            child: _step == 0
-                ? _buildClientStep(context)
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _buildStepBody(context),
-                  ),
-          ),
+    return LayoutBuilder(builder: (context, constraints) {
+      final desktopRail = constraints.maxWidth >= 820;
+      final stepContent = Expanded(
+        child: HexoraStepTransition(
+          step: _step,
+          child: _step == 0
+              ? _buildClientStep(context)
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildStepBody(context),
+                ),
         ),
-        HexoraDocumentFooter(
-          compact: true,
-          showStatusWhenNarrow: true,
-          status: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                _draftSaveFailed
-                    ? Icons.error_outline_rounded
-                    : _draftDirty
-                        ? Icons.edit_outlined
-                        : Icons.cloud_done_outlined,
-                size: 15,
-                color: _draftSaveFailed
-                    ? cs.error
-                    : _draftDirty
-                        ? cs.onSurfaceVariant
-                        : cs.primary,
+      );
+      final footer = HexoraDocumentFooter(
+        compact: true,
+        showStatusWhenNarrow: true,
+        status: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _draftSaveFailed
+                  ? Icons.error_outline_rounded
+                  : _draftDirty
+                      ? Icons.edit_outlined
+                      : Icons.cloud_done_outlined,
+              size: 15,
+              color: _draftSaveFailed
+                  ? cs.error
+                  : _draftDirty
+                      ? cs.onSurfaceVariant
+                      : cs.primary,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                statusText,
+                overflow: TextOverflow.ellipsis,
+                style: t.bodySmall.copyWith(fontSize: 12),
               ),
+            ),
+            if (_step == 1) ...[
+              const SizedBox(width: 16),
+              Text('Total',
+                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant)),
               const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  statusText,
-                  overflow: TextOverflow.ellipsis,
-                  style: t.bodySmall.copyWith(fontSize: 12),
-                ),
-              ),
-              if (_step == 1) ...[
-                const SizedBox(width: 16),
-                Text(
-                  l.localeName.startsWith('es') ? 'Total' : 'Total',
-                  style: t.bodySmall.copyWith(color: cs.onSurfaceVariant),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  totalLabel,
+              Text(totalLabel,
                   style: t.bodyMedium.copyWith(
                     fontWeight: FontWeight.w700,
                     fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ],
+                  )),
             ],
-          ),
-          back: HexoraButton(
-            onPressed:
-                _step == 0 ? _requestClose : () => _tryGoToStep(_step - 1),
-            icon: Icons.arrow_back_rounded,
-            label: _step == 0 ? l.close : l.back,
-            variant: HexoraButtonVariant.secondary,
-          ),
-          primary: HexoraButton(
-            onPressed: _savingDraft
-                ? null
-                : _step < 2
-                    ? () => _tryGoToStep(_step + 1)
-                    : _saveDraftAndFinish,
-            loading: _savingDraft,
-            icon: _step < 2 ? Icons.arrow_forward_rounded : Icons.save_outlined,
-            label: _step < 2
-                ? (l.localeName.startsWith('es') ? 'Continuar' : 'Continue')
-                : l.saveDraft,
-          ),
+          ],
         ),
-      ],
-    );
+        back: HexoraButton(
+          onPressed: _step == 0 ? _requestClose : () => _tryGoToStep(_step - 1),
+          icon: Icons.arrow_back_rounded,
+          label: _step == 0 ? l.close : l.back,
+          variant: HexoraButtonVariant.secondary,
+        ),
+        primary: HexoraButton(
+          onPressed: _savingDraft
+              ? null
+              : _step < 2
+                  ? () => _tryGoToStep(_step + 1)
+                  : _saveDraftAndFinish,
+          loading: _savingDraft,
+          icon: _step < 2 ? Icons.arrow_forward_rounded : Icons.save_outlined,
+          label: _step < 2
+              ? (l.localeName.startsWith('es') ? 'Continuar' : 'Continue')
+              : l.saveDraft,
+        ),
+      );
+
+      if (desktopRail) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    width: 174,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 2, right: 10),
+                      child: _buildStepIndicator(context, vertical: true),
+                    ),
+                  ),
+                  const VerticalDivider(width: 1),
+                  const SizedBox(width: 12),
+                  stepContent,
+                ],
+              ),
+            ),
+            footer,
+          ],
+        );
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (widget.embedded != true)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: _buildStepIndicator(context, vertical: true),
+            ),
+          stepContent,
+          footer,
+        ],
+      );
+    });
   }
 }
 
@@ -769,6 +813,50 @@ String _wizardMonthLabel(DateTime dt, String locale) {
   final formatter = DateFormat.yMMMM(locale);
   final raw = formatter.format(dt.toLocal());
   return raw[0].toUpperCase() + raw.substring(1);
+}
+
+class _ReceiptPeriodTabs extends StatelessWidget {
+  const _ReceiptPeriodTabs();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: 300,
+      height: 42,
+      child: TabBar(
+        dividerColor: Colors.transparent,
+        splashFactory: NoSplash.splashFactory,
+        overlayColor: WidgetStatePropertyAll(
+          cs.primary.withValues(alpha: 0.06),
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicator: BoxDecoration(
+          color: cs.primaryContainer,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        indicatorPadding: const EdgeInsets.symmetric(vertical: 3),
+        labelColor: cs.onPrimaryContainer,
+        unselectedLabelColor: cs.onSurfaceVariant,
+        labelStyle:
+            t.bodySmall.copyWith(fontWeight: FontWeight.w800, fontSize: 11),
+        unselectedLabelStyle:
+            t.bodySmall.copyWith(fontWeight: FontWeight.w700, fontSize: 11),
+        tabs: [
+          Tab(
+              text: l.localeName.toLowerCase().startsWith('es')
+                  ? 'Este mes'
+                  : 'This month'),
+          Tab(
+              text: l.localeName.toLowerCase().startsWith('es')
+                  ? 'Historial'
+                  : 'History'),
+        ],
+      ),
+    );
+  }
 }
 
 class _ClientReceiptStatsBox extends StatefulWidget {
@@ -790,21 +878,17 @@ class _ClientReceiptStatsBox extends StatefulWidget {
   State<_ClientReceiptStatsBox> createState() => _ClientReceiptStatsBoxState();
 }
 
-class _ClientReceiptStatsBoxState extends State<_ClientReceiptStatsBox>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tab;
+class _ClientReceiptStatsBoxState extends State<_ClientReceiptStatsBox> {
   Receipt? _previewingReceipt;
+  final Set<String> _collapsedReceiptMonths = <String>{};
+  bool _historyNewestFirst = true;
 
   @override
-  void initState() {
-    super.initState();
-    _tab = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tab.dispose();
-    super.dispose();
+  void didUpdateWidget(covariant _ClientReceiptStatsBox oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.pastReceipts, widget.pastReceipts)) {
+      _collapsedReceiptMonths.clear();
+    }
   }
 
   @override
@@ -813,67 +897,14 @@ class _ClientReceiptStatsBoxState extends State<_ClientReceiptStatsBox>
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final isEs = l.localeName.toLowerCase().startsWith('es');
+    final tabs = DefaultTabController.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
-          child: TabBar(
-            controller: _tab,
-            dividerColor: Colors.transparent,
-            splashFactory: NoSplash.splashFactory,
-            overlayColor: WidgetStatePropertyAll(
-              cs.primary.withValues(alpha: 0.06),
-            ),
-            indicatorSize: TabBarIndicatorSize.tab,
-            indicator: BoxDecoration(
-              color: cs.primaryContainer,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            indicatorPadding: const EdgeInsets.symmetric(vertical: 3),
-            labelColor: cs.onPrimaryContainer,
-            unselectedLabelColor: cs.onSurfaceVariant,
-            labelStyle:
-                t.bodySmall.copyWith(fontWeight: FontWeight.w800, fontSize: 11),
-            unselectedLabelStyle:
-                t.bodySmall.copyWith(fontWeight: FontWeight.w700, fontSize: 11),
-            tabs: [
-              Tab(text: isEs ? 'Este mes' : 'This month'),
-              Tab(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(isEs ? 'Historial' : 'History'),
-                    if (widget.pastReceipts.isNotEmpty) ...[
-                      const SizedBox(width: 5),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          '${widget.pastReceipts.length}',
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.3)),
         Expanded(
           child: TabBarView(
-            controller: _tab,
+            controller: tabs,
             children: [
               _buildThisMonthTab(context, isEs, t, cs),
               _buildHistoryTab(context, isEs, t, cs),
@@ -985,56 +1016,167 @@ class _ClientReceiptStatsBoxState extends State<_ClientReceiptStatsBox>
       );
     }
 
-    // Build grouped list (month headers + receipt items)
-    final items = <Object>[];
-    String? lastKey;
-    for (final r in widget.pastReceipts) {
+    final sortedReceipts = List<Receipt>.of(widget.pastReceipts)
+      ..sort((a, b) {
+        final da = a.issueDate ?? a.registeredAt;
+        final db = b.issueDate ?? b.registeredAt;
+        if (da == null && db == null) return 0;
+        if (da == null) return 1;
+        if (db == null) return -1;
+        return _historyNewestFirst ? db.compareTo(da) : da.compareTo(db);
+      });
+    final groups = <_ReceiptMonthGroup>[];
+    for (final r in sortedReceipts) {
       final date = r.issueDate ?? r.registeredAt;
       final key = date == null
           ? '__none__'
           : '${date.year}-${date.month.toString().padLeft(2, '0')}';
-      if (key != lastKey) {
-        items.add(date == null ? '—' : _wizardMonthLabel(date, locale));
-        lastKey = key;
+      if (groups.isEmpty || groups.last.key != key) {
+        groups.add(_ReceiptMonthGroup(
+          key: key,
+          label: date == null ? '—' : _wizardMonthLabel(date, locale),
+        ));
       }
-      items.add(r);
+      groups.last.receipts.add(r);
+    }
+    final items = <Object>[];
+    for (final group in groups) {
+      items.add(group);
+      if (!_collapsedReceiptMonths.contains(group.key)) {
+        items.addAll(group.receipts);
+      }
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-      itemCount: items.length,
-      itemBuilder: (_, i) {
-        final item = items[i];
-        if (item is String) {
-          return Padding(
-            padding: EdgeInsets.only(top: i == 0 ? 0 : 10, bottom: 4),
-            child: Text(
-              item,
-              style: t.bodySmall.copyWith(
-                fontSize: 10,
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w800,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    text: isEs ? 'Historial de recibos ' : 'Receipt history ',
+                    children: [
+                      TextSpan(
+                        text: '(${widget.pastReceipts.length})',
+                        style: TextStyle(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
+                ),
               ),
-            ),
-          );
-        }
-        final r = item as Receipt;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: _HistoryReceiptItem(
-            receipt: r,
-            onAudit: () => _showReceiptAuditHistory(r),
-            isPreviewing: _previewingReceipt?.id == r.id,
-            onPreview: widget.onPreview == null
-                ? null
-                : () async {
-                    setState(() => _previewingReceipt = r);
-                    await widget.onPreview!(r);
-                    if (mounted) setState(() => _previewingReceipt = null);
-                  },
+              OutlinedButton.icon(
+                onPressed: () => setState(
+                  () => _historyNewestFirst = !_historyNewestFirst,
+                ),
+                icon: const Icon(Icons.sort_rounded, size: 15),
+                label: Text(
+                  _historyNewestFirst
+                      ? (isEs ? 'Más recientes' : 'Most recent')
+                      : (isEs ? 'Más antiguos' : 'Oldest'),
+                ),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  minimumSize: const Size(0, 34),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  textStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+            itemCount: items.length,
+            itemBuilder: (_, i) {
+              final item = items[i];
+              if (item is _ReceiptMonthGroup) {
+                final count = item.receipts.length;
+                final collapsible = count > 1;
+                final collapsed = _collapsedReceiptMonths.contains(item.key);
+                return InkWell(
+                  onTap: collapsible
+                      ? () => setState(() {
+                            if (collapsed) {
+                              _collapsedReceiptMonths.remove(item.key);
+                            } else {
+                              _collapsedReceiptMonths.add(item.key);
+                            }
+                          })
+                      : null,
+                  child: Container(
+                    height: 30,
+                    margin: EdgeInsets.only(top: i == 0 ? 0 : 8),
+                    alignment: Alignment.centerLeft,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: cs.outlineVariant.withValues(alpha: .45),
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          item.label,
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '· $count ${isEs ? (count == 1 ? 'recibo' : 'recibos') : (count == 1 ? 'receipt' : 'receipts')}',
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontSize: 10,
+                          ),
+                        ),
+                        const Spacer(),
+                        if (collapsible)
+                          Icon(
+                            collapsed
+                                ? Icons.keyboard_arrow_right_rounded
+                                : Icons.keyboard_arrow_down_rounded,
+                            size: 17,
+                            color: cs.onSurfaceVariant,
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              final r = item as Receipt;
+              return _HistoryReceiptItem(
+                receipt: r,
+                onAudit: () => _showReceiptAuditHistory(r),
+                isPreviewing: _previewingReceipt?.id == r.id,
+                onPreview: widget.onPreview == null
+                    ? null
+                    : () async {
+                        setState(() => _previewingReceipt = r);
+                        try {
+                          await widget.onPreview!(r);
+                        } finally {
+                          if (mounted) {
+                            setState(() => _previewingReceipt = null);
+                          }
+                        }
+                      },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -1122,6 +1264,14 @@ class _ClientReceiptStatsBoxState extends State<_ClientReceiptStatsBox>
   }
 }
 
+class _ReceiptMonthGroup {
+  _ReceiptMonthGroup({required this.key, required this.label});
+
+  final String key;
+  final String label;
+  final List<Receipt> receipts = <Receipt>[];
+}
+
 class _HistoryReceiptItem extends StatelessWidget {
   final Receipt receipt;
   final VoidCallback? onPreview;
@@ -1150,77 +1300,153 @@ class _HistoryReceiptItem extends StatelessWidget {
         ? receipt.receiptNumber!.trim()
         : (isEs ? 'Borrador' : 'Draft');
     final isIssued = receipt.status == 'issued';
+    final concepts = receipt.lines
+        .map((line) => line.description.trim().replaceAll(RegExp(r'\s+'), ' '))
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList();
+    final concept = concepts.isEmpty
+        ? (isEs ? 'Sin concepto' : 'No concept')
+        : concepts.first;
+    final extraConcepts = concepts.length - 1;
+    final amount = receipt.total == null
+        ? '—'
+        : NumberFormat.currency(
+            locale: l.localeName,
+            symbol: '€',
+            decimalDigits: 2,
+          ).format(receipt.total);
+    final amountWidth = MediaQuery.sizeOf(context).width < 360 ? 74.0 : 94.0;
+    final effectivePreview = isIssued ? onPreview : null;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-      child: Row(
-        children: [
-          Icon(
-            isIssued ? Icons.receipt_long_rounded : Icons.edit_note_rounded,
-            size: 14,
-            color: isIssued
-                ? cs.primary.withValues(alpha: 0.7)
-                : cs.onSurfaceVariant.withValues(alpha: 0.5),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  number,
-                  style: t.bodySmall.copyWith(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
-                    color: cs.onSurface,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  dateLabel,
-                  style: t.bodySmall.copyWith(
-                    fontSize: 10,
-                    color: cs.onSurfaceVariant,
-                  ),
-                ),
-              ],
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: cs.outlineVariant.withValues(alpha: .24),
             ),
           ),
-          if (isIssued && onPreview != null)
-            isPreviewing
-                ? SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: cs.primary,
+        ),
+        child: InkWell(
+          onTap: effectivePreview,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                number,
+                                style: t.bodySmall.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                  color: cs.onSurface,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                dateLabel,
+                                style: t.bodySmall.copyWith(
+                                  fontSize: 10,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Tooltip(
+                          message:
+                              concepts.isEmpty ? concept : concepts.join('\n'),
+                          child: Text(
+                            extraConcepts > 0
+                                ? '$concept +$extraConcepts ${isEs ? 'conceptos' : 'concepts'}'
+                                : concept,
+                            style: t.bodySmall.copyWith(
+                              fontSize: 10,
+                              color: cs.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                  )
-                : IconButton(
-                    onPressed: onPreview,
-                    icon: const Icon(Icons.visibility_outlined),
-                    iconSize: 16,
-                    visualDensity: VisualDensity.compact,
-                    tooltip: isEs ? 'Vista previa' : 'Preview',
-                    color: cs.primary,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
                   ),
-          if (onAudit != null) ...[
-            const SizedBox(width: 8),
-            IconButton(
-              onPressed: onAudit,
-              icon: const Icon(Icons.history_rounded),
-              iconSize: 16,
-              visualDensity: VisualDensity.compact,
-              tooltip: isEs ? 'Ver cambios' : 'View changes',
-              color: cs.onSurfaceVariant,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: amountWidth,
+                    child: Text(
+                      amount,
+                      textAlign: TextAlign.end,
+                      maxLines: 1,
+                      overflow: TextOverflow.fade,
+                      softWrap: false,
+                      style: t.bodySmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                  ),
+                  if (effectivePreview != null)
+                    isPreviewing
+                        ? SizedBox.square(
+                            dimension: 40,
+                            child: Center(
+                              child: SizedBox.square(
+                                dimension: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: cs.primary,
+                                ),
+                              ),
+                            ),
+                          )
+                        : IconButton(
+                            onPressed: effectivePreview,
+                            icon: const Icon(Icons.visibility_outlined),
+                            iconSize: 16,
+                            tooltip: isEs ? 'Vista previa' : 'Preview',
+                            color: cs.primary,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints.tightFor(
+                              width: 40,
+                              height: 40,
+                            ),
+                          ),
+                  if (onAudit != null)
+                    IconButton(
+                      onPressed: onAudit,
+                      icon: const Icon(Icons.history_rounded),
+                      iconSize: 16,
+                      tooltip: isEs ? 'Ver cambios' : 'View changes',
+                      color: cs.onSurfaceVariant,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints.tightFor(
+                        width: 40,
+                        height: 40,
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ],
-        ],
+          ),
+        ),
       ),
     );
   }
@@ -1268,47 +1494,6 @@ class _StatCell extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WizardClientChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _WizardClientChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: cs.onSurfaceVariant),
-          const SizedBox(width: 5),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 160),
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: t.bodySmall.copyWith(
-                fontSize: 11,
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
           ),
         ],
       ),

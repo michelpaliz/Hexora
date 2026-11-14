@@ -37,10 +37,19 @@ class _WorkerStatusIndicatorState extends State<WorkerStatusIndicator> {
   bool _loading = true;
   bool _hasError = false;
   Timer? _refreshTimer;
+  late UserDomain _userDomain;
+  late ITimeTrackingRepository _repository;
+  bool _dependenciesReady = false;
+  int _loadGeneration = 0;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _userDomain = context.read<UserDomain>();
+    _repository = context.read<ITimeTrackingRepository>();
+    if (_dependenciesReady) return;
+
+    _dependenciesReady = true;
     _load();
     _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) => _load());
   }
@@ -48,29 +57,32 @@ class _WorkerStatusIndicatorState extends State<WorkerStatusIndicator> {
   @override
   void didUpdateWidget(covariant WorkerStatusIndicator oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.groupId != widget.groupId) _load();
+    if (_dependenciesReady && oldWidget.groupId != widget.groupId) _load();
   }
 
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _loadGeneration += 1;
     super.dispose();
   }
 
   Future<void> _load() async {
-    final userDomain = context.read<UserDomain>();
-    final repo = context.read<ITimeTrackingRepository>();
+    if (!_dependenciesReady || !mounted) return;
+    final generation = ++_loadGeneration;
+    final groupId = widget.groupId;
     try {
-      final token = await userDomain.getAuthToken();
-      final totals = await repo.getActiveWorkersTotals(widget.groupId, token);
-      if (!mounted) return;
+      final token = await _userDomain.getAuthToken();
+      if (!mounted || generation != _loadGeneration) return;
+      final totals = await _repository.getActiveWorkersTotals(groupId, token);
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _activeCount = (totals['activeWorkersCount'] as num?)?.toInt() ?? 0;
         _loading = false;
         _hasError = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _loading = false;
         _hasError = true;
@@ -142,8 +154,10 @@ class _WorkerStatusIndicatorState extends State<WorkerStatusIndicator> {
                 ),
               ),
             ],
-            const SizedBox(width: 2),
-            Icon(Icons.expand_more_rounded, size: 16, color: fg),
+            if (!compact) ...[
+              const SizedBox(width: 2),
+              Icon(Icons.expand_more_rounded, size: 16, color: fg),
+            ],
           ],
         ),
       ),

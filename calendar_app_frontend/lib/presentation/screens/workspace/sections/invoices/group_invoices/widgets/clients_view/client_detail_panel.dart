@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/client_property_image.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
+import 'package:hexora/models/receipt/receipt.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_split_view.dart';
 import 'package:hexora/services/clients/client_contracts_api.dart';
 import 'package:hexora/services/receipts/receipts_api.dart';
 import 'package:intl/intl.dart';
@@ -34,6 +36,22 @@ class ClientDetailPanel extends StatefulWidget {
   final VoidCallback onCreateInvoice;
   final VoidCallback onCreateReceipt;
   final ValueChanged<Invoice> onOpenInvoiceDetail;
+  final ValueChanged<Invoice>? onEditInvoice;
+  final ValueChanged<Receipt> onEditReceipt;
+  final Widget Function(
+    BuildContext context,
+    Invoice invoice,
+    VoidCallback onClose,
+    VoidCallback? onPrevious,
+    VoidCallback? onNext,
+  ) invoicePreviewBuilder;
+  final Widget Function(
+    BuildContext context,
+    Receipt receipt,
+    VoidCallback onClose,
+    VoidCallback? onPrevious,
+    VoidCallback? onNext,
+  ) receiptPreviewBuilder;
   final ValueChanged<Invoice> onDeleteInvoice;
   final Future<void> Function(List<Invoice> invoices) onDownloadVisibleInvoices;
   final VoidCallback? onAddClient;
@@ -56,6 +74,10 @@ class ClientDetailPanel extends StatefulWidget {
     required this.onCreateInvoice,
     required this.onCreateReceipt,
     required this.onOpenInvoiceDetail,
+    this.onEditInvoice,
+    required this.onEditReceipt,
+    required this.invoicePreviewBuilder,
+    required this.receiptPreviewBuilder,
     required this.onDeleteInvoice,
     required this.onDownloadVisibleInvoices,
     this.onAddClient,
@@ -75,6 +97,7 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
   int _receiptsCount = 0;
   String? _contractsCountClientId;
   String? _receiptsCountRequestKey;
+  Invoice? _selectedInvoice;
 
   String _classificationLabel(String value) =>
       {
@@ -119,6 +142,12 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
   @override
   void didUpdateWidget(covariant ClientDetailPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedClient?.id != widget.selectedClient?.id) {
+      _selectedInvoice = null;
+    } else if (_selectedInvoice != null &&
+        !widget.issuedInvoices.any((item) => item.id == _selectedInvoice!.id)) {
+      _selectedInvoice = null;
+    }
     if (oldWidget.selectedClient?.id != widget.selectedClient?.id ||
         oldWidget.groupId != widget.groupId) {
       setState(() {
@@ -314,22 +343,43 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
                   Expanded(
                     child: TabBarView(
                       children: [
-                        _InvoiceList(
-                          emptyTitle: l.noInvoicesYet,
-                          emptySubtitle: l.noInvoicesYetSubtitle,
-                          icon: Icons.receipt_long_outlined,
-                          invoices: widget.issuedInvoices,
-                          clients: widget.clients,
-                          fallbackClient: widget.selectedClient!,
-                          onTap: widget.onOpenInvoiceDetail,
-                          onDelete: null,
-                          filterController: _invoiceFilters,
+                        DocumentSplitView(
+                          storageKey: 'client-invoices',
+                          initialListFraction: 0.68,
+                          minListWidth: 360,
+                          minPreviewWidth: 320,
+                          selectionKey: _selectedInvoice?.id,
+                          list: _InvoiceList(
+                            emptyTitle: l.noInvoicesYet,
+                            emptySubtitle: l.noInvoicesYetSubtitle,
+                            icon: Icons.receipt_long_outlined,
+                            invoices: widget.issuedInvoices,
+                            clients: widget.clients,
+                            fallbackClient: widget.selectedClient!,
+                            selectedInvoiceId: _selectedInvoice?.id,
+                            onTap: (invoice) =>
+                                setState(() => _selectedInvoice = invoice),
+                            onDelete: null,
+                            onEdit: widget.onEditInvoice,
+                            filterController: _invoiceFilters,
+                          ),
+                          preview: _selectedInvoice == null
+                              ? const SizedBox.shrink()
+                              : widget.invoicePreviewBuilder(
+                                  context,
+                                  _selectedInvoice!,
+                                  () => setState(() => _selectedInvoice = null),
+                                  _adjacentInvoice(-1),
+                                  _adjacentInvoice(1),
+                                ),
                         ),
                         ClientReceiptsTab(
                           key:
                               ValueKey('receipts-${widget.selectedClient!.id}'),
                           groupId: widget.groupId,
                           client: widget.selectedClient!,
+                          previewBuilder: widget.receiptPreviewBuilder,
+                          onEditReceipt: widget.onEditReceipt,
                           onCountChanged: (count) =>
                               setState(() => _receiptsCount = count),
                         ),
@@ -353,6 +403,18 @@ class _ClientDetailPanelState extends State<ClientDetailPanel> {
               ),
             ),
     );
+  }
+
+  VoidCallback? _adjacentInvoice(int offset) {
+    final selected = _selectedInvoice;
+    if (selected == null) return null;
+    final index = widget.issuedInvoices.indexWhere((i) => i.id == selected.id);
+    final target = index + offset;
+    if (index < 0 || target < 0 || target >= widget.issuedInvoices.length) {
+      return null;
+    }
+    return () =>
+        setState(() => _selectedInvoice = widget.issuedInvoices[target]);
   }
 }
 
@@ -658,6 +720,8 @@ class _InvoiceList extends StatefulWidget {
   final GroupClient fallbackClient;
   final ValueChanged<Invoice> onTap;
   final ValueChanged<Invoice>? onDelete;
+  final ValueChanged<Invoice>? onEdit;
+  final String? selectedInvoiceId;
   final _ClientInvoiceFilterController filterController;
 
   const _InvoiceList({
@@ -669,6 +733,8 @@ class _InvoiceList extends StatefulWidget {
     required this.fallbackClient,
     required this.onTap,
     required this.onDelete,
+    this.onEdit,
+    this.selectedInvoiceId,
     required this.filterController,
   });
 
@@ -785,8 +851,11 @@ class _InvoiceListState extends State<_InvoiceList> {
               HexoraFinancialColumn.total,
             },
             onTap: () => widget.onTap(inv),
+            onPreview: () => widget.onTap(inv),
+            selected: widget.selectedInvoiceId == inv.id,
             onDelete:
                 widget.onDelete == null ? null : () => widget.onDelete!(inv),
+            onEdit: widget.onEdit == null ? null : () => widget.onEdit!(inv),
           ),
         );
       },

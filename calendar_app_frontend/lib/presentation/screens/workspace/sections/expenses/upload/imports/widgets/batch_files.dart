@@ -98,6 +98,37 @@ class _BatchFileListView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
+                if (hasAnyFiles && onPickDocuments != null) ...[
+                  OutlinedButton.icon(
+                    onPressed: onPickDocuments,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 32),
+                      padding: const EdgeInsets.symmetric(horizontal: 9),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.add_rounded, size: 15),
+                    label: Text(
+                      Localizations.localeOf(context).languageCode == 'es'
+                          ? 'A\u00f1adir'
+                          : 'Add',
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                if (hasAnyFiles && onPickZip != null) ...[
+                  IconButton.outlined(
+                    tooltip:
+                        Localizations.localeOf(context).languageCode == 'es'
+                            ? 'Seleccionar ZIP'
+                            : 'Select ZIP',
+                    onPressed: onPickZip,
+                    visualDensity: VisualDensity.compact,
+                    constraints:
+                        const BoxConstraints.tightFor(width: 32, height: 32),
+                    icon: const Icon(Icons.folder_zip_outlined, size: 16),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 Text(
                   l.expenseBatchListCount(totalCount),
                   style: ts.bodySmall?.copyWith(color: cs.onSurfaceVariant),

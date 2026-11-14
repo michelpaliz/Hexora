@@ -5,12 +5,21 @@ import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum HexoraFinancialColumn { date, concept, taxableBase, vat, total, payment }
+enum HexoraFinancialColumn {
+  date,
+  concept,
+  notes,
+  taxableBase,
+  vat,
+  total,
+  payment,
+}
 
 extension HexoraFinancialColumnX on HexoraFinancialColumn {
   String get storageName => switch (this) {
         HexoraFinancialColumn.date => 'date',
         HexoraFinancialColumn.concept => 'concept',
+        HexoraFinancialColumn.notes => 'notes',
         HexoraFinancialColumn.taxableBase => 'taxableBase',
         HexoraFinancialColumn.vat => 'vat',
         HexoraFinancialColumn.total => 'total',
@@ -136,6 +145,24 @@ class HexoraFilterableHeaderCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    // A preview panel can leave non-essential columns only a few pixels wide.
+    // Do not lay out text and controls that cannot fit in that space.
+    if (width < 30) {
+      return SizedBox(width: width);
+    }
+
+    final icon = Icon(
+      sortDirection == HexoraHeaderSortDirection.ascending
+          ? Icons.arrow_upward_rounded
+          : sortDirection == HexoraHeaderSortDirection.descending
+              ? Icons.arrow_downward_rounded
+              : Icons.filter_alt_outlined,
+      size: 13,
+      color: filterActive || sortDirection != null
+          ? cs.primary
+          : cs.onSurfaceVariant,
+    );
+    final iconOnly = width < 64;
     return SizedBox(
       width: width,
       child: Align(
@@ -154,59 +181,51 @@ class HexoraFilterableHeaderCell extends StatelessWidget {
               onTap: () => _showFilterDialog(context),
               child: Container(
                 constraints: const BoxConstraints(minHeight: 30),
-                padding: const EdgeInsets.symmetric(horizontal: 3),
+                padding: EdgeInsets.symmetric(horizontal: iconOnly ? 0 : 3),
                 decoration: filterActive
                     ? BoxDecoration(
                         color: cs.primaryContainer.withValues(alpha: .55),
                         borderRadius: BorderRadius.circular(6),
                       )
                     : null,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: width > 32 ? width - 32 : width,
-                      ),
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              fontFamily: HexoraTypography.fontFamily,
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w500,
-                              color: filterActive
-                                  ? cs.primary
-                                  : cs.onSurfaceVariant,
+                child: iconOnly
+                    ? Center(child: icon)
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    fontFamily: HexoraTypography.fontFamily,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: filterActive
+                                        ? cs.primary
+                                        : cs.onSurfaceVariant,
+                                  ),
                             ),
+                          ),
+                          const SizedBox(width: 3),
+                          icon,
+                          if (filterActive)
+                            Container(
+                              margin:
+                                  const EdgeInsetsDirectional.only(start: 3),
+                              width: 5,
+                              height: 5,
+                              decoration: BoxDecoration(
+                                color: cs.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 3),
-                    Icon(
-                      sortDirection == HexoraHeaderSortDirection.ascending
-                          ? Icons.arrow_upward_rounded
-                          : sortDirection ==
-                                  HexoraHeaderSortDirection.descending
-                              ? Icons.arrow_downward_rounded
-                              : Icons.filter_alt_outlined,
-                      size: 13,
-                      color: filterActive || sortDirection != null
-                          ? cs.primary
-                          : cs.onSurfaceVariant,
-                    ),
-                    if (filterActive)
-                      Container(
-                        margin: const EdgeInsetsDirectional.only(start: 3),
-                        width: 5,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: cs.primary,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                  ],
-                ),
               ),
             ),
           ),
@@ -540,6 +559,7 @@ class HexoraColumnVisibilityMenu extends StatelessWidget {
       switch (column) {
         HexoraFinancialColumn.date => 'Fecha',
         HexoraFinancialColumn.concept => 'Concepto',
+        HexoraFinancialColumn.notes => 'Notas',
         HexoraFinancialColumn.taxableBase => 'Base imponible',
         HexoraFinancialColumn.vat => 'IVA',
         HexoraFinancialColumn.total => 'Total',

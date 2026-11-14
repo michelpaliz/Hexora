@@ -89,7 +89,9 @@ ssh $REMOTE_USER_HOST "mkdir -p '$RemoteTmpPath'"
 if ($LASTEXITCODE -ne 0) { throw "Could not create remote deployment directory." }
 
 Write-Host "Uploading build to temp directory..."
-scp -r "$LOCAL_BUILD_PATH\*" "${REMOTE_USER_HOST}:${RemoteTmpPath}/"
+# Legacy SCP mode avoids a Windows OpenSSH recursive-copy bug that can omit
+# nested Flutter asset directories when the newer SFTP transport is used.
+scp -O -r "$LOCAL_BUILD_PATH\*" "${REMOTE_USER_HOST}:${RemoteTmpPath}/"
 if ($LASTEXITCODE -ne 0) { throw "Upload failed. Live files were not replaced." }
 
 Write-Host "Verifying critical Flutter web assets in temp upload..."

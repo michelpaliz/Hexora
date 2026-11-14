@@ -107,7 +107,7 @@ class HexoraGlobalNavBar extends StatelessWidget {
   double _destinationWidth(HexoraNavDestination destination) {
     final labelWidth =
         (destination.label.characters.length * 7.0).clamp(34.0, 126.0);
-    return NavigationTokens.globalItemHeight + labelWidth + 8;
+    return NavigationTokens.globalItemHeight + labelWidth + 32;
   }
 
   double _reservedActionWidth(double viewportWidth) {
@@ -144,10 +144,10 @@ class HexoraGlobalNavBar extends StatelessWidget {
         final showWordmark = width >= _brandTextBreakpoint;
         // Left cluster = Hexora brand (logo [+ wordmark]) then the company
         // selector. Both stay; the module strip takes the remaining width.
-        final brandWidth = showWordmark ? 120.0 : 40.0;
+        final brandWidth = showWordmark ? 116.0 : 38.0;
         final companyWidth = groupSwitcher == null
             ? 0.0
-            : (width >= _companyNameBreakpoint ? 196.0 : 52.0);
+            : (width >= _companyNameBreakpoint ? 176.0 : 52.0);
         final leftWidth =
             brandWidth + (groupSwitcher == null ? 0.0 : 8.0 + companyWidth);
         final availableModuleWidth =
@@ -172,19 +172,20 @@ class HexoraGlobalNavBar extends StatelessWidget {
         // Shell geometry is animated by HexoraAppShell. This surface always
         // keeps its natural height so its controls are clipped as a whole
         // instead of being squeezed into intermediate constraints.
+        final navBackground = HexoraGlobalNavColors.backgroundFor(context);
+        final navForeground = HexoraGlobalNavColors.foregroundFor(context);
         return Container(
           key: const ValueKey('global-nav-surface'),
           height: NavigationTokens.globalBarHeight,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           clipBehavior: Clip.hardEdge,
           decoration: BoxDecoration(
             // Navy stays the fallback/base; the branded texture sits subtly
             // on top so labels and icons remain readable.
-            color: HexoraGlobalNavColors.background,
-            image: _brandedBackground,
-            border: Border(
-              bottom: BorderSide(color: HexoraGlobalNavColors.divider),
-            ),
+            color: navBackground,
+            image: Theme.of(context).brightness == Brightness.dark
+                ? _brandedBackground
+                : null,
           ),
           child: Row(
             children: [
@@ -201,9 +202,9 @@ class HexoraGlobalNavBar extends StatelessWidget {
               ],
               Container(
                 width: 1,
-                height: 24,
-                margin: const EdgeInsets.symmetric(horizontal: 12),
-                color: HexoraGlobalNavColors.divider,
+                height: 20,
+                margin: const EdgeInsets.symmetric(horizontal: 8),
+                color: navForeground.withValues(alpha: 0.10),
               ),
               Expanded(
                 child: _ScrollableNavStrip(
@@ -228,7 +229,7 @@ class HexoraGlobalNavBar extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               if (downloads != null) ...[
                 downloads!,
                 const SizedBox(width: 4),
@@ -300,7 +301,7 @@ class _Brand extends StatelessWidget {
     final content = DecoratedBox(
       decoration: collapsed
           ? BoxDecoration(
-              color: HexoraGlobalNavColors.background,
+              color: HexoraGlobalNavColors.backgroundFor(context),
               borderRadius: BorderRadius.circular(NavigationTokens.radius),
             )
           : const BoxDecoration(),
@@ -313,18 +314,19 @@ class _Brand extends StatelessWidget {
               borderRadius: BorderRadius.circular(7),
               child: Image.asset(
                 'assets/images/branding/logo_icon.png',
-                width: 28,
-                height: 28,
+                width: 30,
+                height: 30,
               ),
             ),
             if (showText) ...[
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Text(
-                'HEXORA',
+                'Hexora',
                 style: NavigationTokens.title(context).copyWith(
-                  color: HexoraGlobalNavColors.foreground,
+                  color: HexoraGlobalNavColors.foregroundFor(context),
+                  fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8,
+                  letterSpacing: 0,
                 ),
               ),
             ],
@@ -335,7 +337,8 @@ class _Brand extends StatelessWidget {
                     ? Icons.keyboard_arrow_down_rounded
                     : Icons.keyboard_arrow_up_rounded,
                 size: 16,
-                color: HexoraGlobalNavColors.foreground.withValues(alpha: 0.72),
+                color: HexoraGlobalNavColors.foregroundFor(context)
+                    .withValues(alpha: 0.72),
               ),
             ],
           ],
@@ -356,8 +359,10 @@ class _Brand extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(NavigationTokens.radius),
-          hoverColor: HexoraGlobalNavColors.foreground.withValues(alpha: 0.06),
-          focusColor: HexoraGlobalNavColors.foreground.withValues(alpha: 0.14),
+          hoverColor: HexoraGlobalNavColors.foregroundFor(context)
+              .withValues(alpha: 0.06),
+          focusColor: HexoraGlobalNavColors.foregroundFor(context)
+              .withValues(alpha: 0.14),
           child: ExcludeSemantics(child: content),
         ),
       ),
@@ -383,6 +388,7 @@ class _DestinationItem extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 2),
       child: HexoraNavTile(
+        moduleTab: true,
         selected: selected,
         onTap: onTap,
         tooltip: showLabel ? null : destination.label,
@@ -394,13 +400,13 @@ class _DestinationItem extends StatelessWidget {
         builder: (context, fg) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(destination.icon, size: NavigationTokens.iconSize, color: fg),
+            Icon(destination.icon, size: 19, color: fg),
             if (showLabel) ...[
               const SizedBox(width: 6),
               Text(
                 destination.label,
                 style: NavigationTokens.label(context, selected: selected)
-                    .copyWith(color: fg),
+                    .copyWith(color: fg, fontWeight: FontWeight.w700),
               ),
             ],
           ],
@@ -452,6 +458,7 @@ class _MoreMenu extends StatelessWidget {
           ),
       ],
       builder: (context, controller, _) => HexoraNavTile(
+        moduleTab: true,
         selected: active != null,
         tooltip: hasLabel
             ? null
@@ -465,14 +472,13 @@ class _MoreMenu extends StatelessWidget {
         builder: (context, fg) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(active?.icon ?? Icons.more_horiz_rounded,
-                size: NavigationTokens.iconSize, color: fg),
+            Icon(active?.icon ?? Icons.apps_rounded, size: 19, color: fg),
             if (hasLabel) ...[
               const SizedBox(width: 6),
               Text(
                 labelText,
                 style: NavigationTokens.label(context, selected: active != null)
-                    .copyWith(color: fg),
+                    .copyWith(color: fg, fontWeight: FontWeight.w700),
               ),
               const SizedBox(width: 2),
               Icon(Icons.expand_more_rounded, size: 16, color: fg),
@@ -605,7 +611,7 @@ class _ScrollableNavStripState extends State<_ScrollableNavStrip> {
     required bool enabled,
     required VoidCallback onPressed,
   }) {
-    const fg = HexoraGlobalNavColors.foreground;
+    final fg = HexoraGlobalNavColors.foregroundFor(context);
     return IconButton(
       tooltip: tooltip,
       onPressed: enabled ? onPressed : null,

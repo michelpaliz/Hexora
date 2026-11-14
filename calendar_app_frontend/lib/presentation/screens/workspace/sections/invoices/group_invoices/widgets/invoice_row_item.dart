@@ -307,8 +307,12 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
         MobileDocumentCard(
           title: widget.client.name,
           amount: total,
-          metadata:
-              [inv.invoiceNumber, date].where((v) => v.isNotEmpty).join(' · '),
+          metadata: [
+            inv.invoiceNumber,
+            date,
+            if (inv.isDuplicate) isEs ? 'Duplicado' : 'Duplicate',
+            if ((inv.notes ?? '').trim().isNotEmpty) inv.notes!.trim(),
+          ].where((v) => v.isNotEmpty).join(' · '),
           isDraft: inv.isDraft,
           statusLabel: inv.isDraft ? l.statusDraft : l.statusIssued,
           onTap: widget.onTap,
@@ -537,6 +541,21 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                   ],
                 ),
               );
+    final notes = (widget.invoice.notes ?? '').trim();
+    final notesCell = notes.isEmpty
+        ? null
+        : Tooltip(
+            message: notes,
+            child: Text(
+              notes,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.bodySmall.copyWith(
+                fontSize: 11.5,
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+          );
     final warningTooltip = [
       if (warning) warningText(widget.warningLabel),
       if (monthWarning)
@@ -547,7 +566,13 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     return CompactDocumentRow(
       title: numberLabel,
       titleTrailing: warningTooltip.isEmpty
-          ? null
+          ? (widget.invoice.isDuplicate
+              ? Tooltip(
+                  message: isEs ? 'Factura duplicada' : 'Duplicate invoice',
+                  child:
+                      Icon(Icons.content_copy_rounded, size: 15, color: amber),
+                )
+              : null)
           : Tooltip(
               message: warningTooltip,
               child: Icon(Icons.warning_amber_rounded,
@@ -576,16 +601,8 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       selected: widget.selected,
       onTap: widget.onTap,
       previewLabel: isEs ? 'Vista previa' : 'Preview',
-      quickActionSlots: 1,
-      quickActions: [
-        if (widget.onPreview != null)
-          CompactDocumentQuickAction(
-            icon: Icons.visibility_outlined,
-            tooltip: isEs ? 'Vista previa' : 'Preview',
-            onPressed: widget.onPreview,
-            opensPreviewDrawer: true,
-          ),
-      ],
+      quickActionSlots: 0,
+      quickActions: const [],
       status: Row(mainAxisSize: MainAxisSize.min, children: [
         Flexible(
           child: Tooltip(
@@ -603,6 +620,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       ]),
       delivery: delivery,
       concept: concept,
+      notes: notesCell,
       showDeliveryColumn: true,
       compactSplitLayout: true,
       hideActionsInSplitView: true,
@@ -611,6 +629,13 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
           : null,
       separatorWidth: 0,
       actions: [
+        if (widget.onPreview != null)
+          CompactDocumentAction(
+            isEs ? 'Vista previa' : 'Preview',
+            widget.onPreview,
+            icon: Icons.visibility_outlined,
+            opensPreviewDrawer: true,
+          ),
         if (widget.onEdit != null)
           CompactDocumentAction(
             l.edit,

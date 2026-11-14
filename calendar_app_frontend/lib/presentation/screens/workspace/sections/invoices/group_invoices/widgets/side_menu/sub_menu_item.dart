@@ -11,6 +11,7 @@ class GroupInvoicesSubMenuItem extends StatelessWidget {
       required this.onPressed,
       this.count,
       this.primaryAction = false,
+      this.activeAncestor = false,
       this.indent = 0,
       this.hasChildren = false,
       this.compact = false});
@@ -20,6 +21,7 @@ class GroupInvoicesSubMenuItem extends StatelessWidget {
   final VoidCallback? onPressed;
   final int? count;
   final bool primaryAction;
+  final bool activeAncestor;
   final double indent;
   final bool hasChildren;
   final bool compact;
@@ -27,7 +29,7 @@ class GroupInvoicesSubMenuItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: EdgeInsetsDirectional.only(
-            start: indent, bottom: NavigationTokens.itemGap),
+            start: indent, bottom: NavigationTokens.childGap),
         child: SidebarItem(
             icon: icon,
             label: label,
@@ -40,6 +42,7 @@ class GroupInvoicesSubMenuItem extends StatelessWidget {
             trailing: hasChildren
                 ? const Icon(Icons.keyboard_arrow_down_rounded, size: 16)
                 : null,
-            primaryAction: primaryAction),
+            primaryAction: primaryAction,
+            activeAncestor: activeAncestor),
       );
 }

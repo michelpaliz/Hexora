@@ -8,11 +8,13 @@ class InvoiceToolbarOptionsMenu extends StatelessWidget {
     required this.availableColumns,
     required this.visibleColumns,
     required this.onColumnsChanged,
+    this.unpaidOnly = false,
     required this.unlinkedOnly,
     required this.paymentSuggestionsLoading,
     this.toolbarOptions,
     this.onPdf,
     this.onExcel,
+    this.onToggleUnpaid,
     this.onToggleUnlinked,
     this.onResolveLinks,
     this.compact = false,
@@ -26,11 +28,13 @@ class InvoiceToolbarOptionsMenu extends StatelessWidget {
   final Set<HexoraFinancialColumn> availableColumns;
   final Set<HexoraFinancialColumn> visibleColumns;
   final ValueChanged<Set<HexoraFinancialColumn>> onColumnsChanged;
+  final bool unpaidOnly;
   final bool unlinkedOnly;
   final bool paymentSuggestionsLoading;
   final InvoiceToolbarOptions? toolbarOptions;
   final VoidCallback? onPdf;
   final VoidCallback? onExcel;
+  final VoidCallback? onToggleUnpaid;
   final VoidCallback? onToggleUnlinked;
   final VoidCallback? onResolveLinks;
   final bool compact;
@@ -42,6 +46,7 @@ class InvoiceToolbarOptionsMenu extends StatelessWidget {
       switch (column) {
         HexoraFinancialColumn.date => isEs ? 'Fecha' : 'Date',
         HexoraFinancialColumn.concept => isEs ? 'Concepto' : 'Concept',
+        HexoraFinancialColumn.notes => isEs ? 'Notas' : 'Notes',
         HexoraFinancialColumn.taxableBase =>
           isEs ? 'Base imponible' : 'Taxable base',
         HexoraFinancialColumn.vat => isEs ? 'IVA' : 'VAT',
@@ -190,8 +195,22 @@ class InvoiceToolbarOptionsMenu extends StatelessWidget {
         ],
         child: Text(isEs ? 'Descargar' : 'Download'),
       ),
-      if (onToggleUnlinked != null || onResolveLinks != null) ...[
+      if (onToggleUnpaid != null ||
+          onToggleUnlinked != null ||
+          onResolveLinks != null) ...[
         const Divider(height: 1),
+        if (onToggleUnpaid != null)
+          MenuItemButton(
+            onPressed: onToggleUnpaid,
+            leadingIcon: Icon(
+              unpaidOnly
+                  ? Icons.check_box_outlined
+                  : Icons.check_box_outline_blank,
+              size: 18,
+              color: unpaidOnly ? cs.primary : cs.onSurfaceVariant,
+            ),
+            child: Text(isEs ? 'Facturas no pagadas' : 'Unpaid invoices'),
+          ),
         MenuItemButton(
           onPressed: onToggleUnlinked,
           leadingIcon: Icon(
@@ -201,7 +220,7 @@ class InvoiceToolbarOptionsMenu extends StatelessWidget {
             size: 18,
             color: unlinkedOnly ? cs.primary : cs.onSurfaceVariant,
           ),
-          child: Text(isEs ? 'Facturas no vinculadas' : 'Unlinked invoices'),
+          child: Text(isEs ? 'Facturas sin vincular' : 'Unlinked invoices'),
         ),
         MenuItemButton(
           onPressed: paymentSuggestionsLoading ? null : onResolveLinks,

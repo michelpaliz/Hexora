@@ -8,7 +8,6 @@ import 'package:hexora/navigation/shell/hexora_nav_components.dart';
 import 'package:hexora/navigation/shell/worker_status_indicator.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
-import 'package:hexora/models/user/user_preferences.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
@@ -28,8 +27,6 @@ import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_s
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
 import 'package:hexora/presentation/screens/calendar/screens/calendar/screen/main_calendar_view.dart';
 import 'package:hexora/presentation/shared/widgets/user_profile_popup.dart';
-import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
-import 'package:hexora/presentation/utils/roles/group_role_labels.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/state/user_preferences_provider.dart';
 import 'package:provider/provider.dart';
@@ -49,19 +46,9 @@ class WideLayout extends StatelessWidget {
       canSeeAdmin: state.canSeeAdmin,
       canSeeWorkers: state.canSeeAdmin,
     );
-    final workspace = SidebarFooterScope(
-      builder: (footerContext, collapsed) => UserProfilePopup(
-        user: state.user,
-        onSettings: () => state.openSection(Sections.settings),
-        placement: UserProfilePopupPlacement.sidebar,
-        expanded: !collapsed,
-        roleLabel:
-            state.role == null ? null : roleLabelOf(footerContext, state.role!),
-      ),
-      child: WorkspaceContent(
-        manager: state.workspaceTabs,
-        builder: (context, tab) => _buildContent(state, context, l, tab),
-      ),
+    final workspace = WorkspaceContent(
+      manager: state.workspaceTabs,
+      builder: (context, tab) => _buildContent(state, context, l, tab),
     );
 
     return HexoraAppShell(
@@ -210,6 +197,7 @@ class WideLayout extends StatelessWidget {
     if (section == Sections.settings ||
         section == Sections.workers ||
         section == Sections.notifications ||
+        section == Sections.chat ||
         section == Sections.businessChat) {
       return panel;
     }
@@ -238,7 +226,7 @@ List<HexoraNavDestination> _dashboardDestinations(
       ),
       HexoraNavDestination(
         id: Sections.expenses,
-        icon: Icons.trending_down_rounded,
+        icon: Icons.trending_down,
         label: es ? 'Gastos' : 'Expenses',
       ),
       HexoraNavDestination(
@@ -249,7 +237,7 @@ List<HexoraNavDestination> _dashboardDestinations(
     ],
     HexoraNavDestination(
       id: Sections.calendar,
-      icon: Icons.calendar_month_rounded,
+      icon: Icons.calendar_today_outlined,
       label: l.calendar,
     ),
     if (canSeeAdmin) ...[
@@ -376,14 +364,16 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
           notificationsSelected: activeSection == Sections.notifications,
           onOpenNotifications: () => state.openSection(Sections.notifications),
           downloads: IconTheme(
-            data: const IconThemeData(color: HexoraGlobalNavColors.foreground),
+            data: IconThemeData(
+                color: HexoraGlobalNavColors.foregroundFor(context)),
             child: DefaultTextStyle.merge(
-              style: const TextStyle(color: HexoraGlobalNavColors.foreground),
+              style: TextStyle(
+                  color: HexoraGlobalNavColors.foregroundFor(context)),
               child: DownloadJobsTopMenu(
                 groupId: state.group.id,
                 onViewAllDownloads: () =>
                     state.openSection(Sections.notifications),
-                compact: navigationMode == NavigationDisplayMode.iconsOnly,
+                compact: true,
               ),
             ),
           ),
@@ -393,9 +383,13 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
                   memberIds: memberIds.toList(),
                   groupRoles: state.group.userRoles,
                   onOpenWorkers: () => state.openSection(Sections.workers),
-                  compact: navigationMode == NavigationDisplayMode.iconsOnly,
+                  compact: true,
                 )
               : null,
+          profile: UserProfilePopup(
+            user: user,
+            onSettings: () => state.openSection(Sections.settings),
+          ),
           onBack: () => Navigator.of(context).maybePop(),
           backTooltip: l.groupSectionTitle,
         );
@@ -418,7 +412,7 @@ class _GroupSwitcherChip extends StatelessWidget {
   final VoidCallback onOpenGroupSettings;
 
   static const double _nameBreakpoint = 1100;
-  static const double _chipMaxNameWidth = 140.0;
+  static const double _chipMaxNameWidth = 120.0;
 
   String _initials(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));
@@ -616,7 +610,11 @@ class _GroupSwitcherChip extends StatelessWidget {
                   minWidth: 32,
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   onTap: switchWorkspace,
-                  builder: (context, fg) => _avatar(activeGroup, 24),
+                  builder: (context, fg) => _avatar(
+                    activeGroup,
+                    28,
+                    fg: HexoraGlobalNavColors.foregroundFor(context),
+                  ),
                 ),
                 if (showName) ...[
                   const SizedBox(width: 2),
@@ -627,17 +625,21 @@ class _GroupSwitcherChip extends StatelessWidget {
                     minWidth: 0,
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     onTap: onOpenGroupSettings,
-                    builder: (context, fg) => ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: _chipMaxNameWidth,
-                      ),
-                      child: Text(
-                        activeGroup.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: NavigationTokens.label(context).copyWith(
-                          color: fg,
-                          fontWeight: FontWeight.w600,
+                    builder: (context, fg) => Tooltip(
+                      message: activeGroup.name,
+                      waitDuration: const Duration(milliseconds: 500),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxWidth: _chipMaxNameWidth,
+                        ),
+                        child: Text(
+                          activeGroup.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: NavigationTokens.label(context).copyWith(
+                            color: fg,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),

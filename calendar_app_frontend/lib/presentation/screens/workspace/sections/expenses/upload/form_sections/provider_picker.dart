@@ -169,7 +169,6 @@ class _ExpenseProviderPickerState extends State<ExpenseProviderPicker> {
   InputDecoration _decoration(BuildContext context, {required String hint}) {
     final cs = Theme.of(context).colorScheme;
     return InputDecoration(
-      labelText: 'Proveedor',
       hintText: hint,
       isDense: true,
       filled: true,

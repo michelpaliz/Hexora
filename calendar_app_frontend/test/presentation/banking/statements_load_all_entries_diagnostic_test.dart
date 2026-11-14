@@ -1,4 +1,3 @@
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/statements/models/statement_entries_page.dart';
@@ -76,6 +75,7 @@ class _FakeAggregatedStatementsApi extends StatementsApi {
   int listImportsCalls = 0;
   String? lastDescriptionSearch;
   String? lastNotesSearch;
+  String? lastInvoiceNumberSearch;
   int? lastYear;
   String? lastAmountType;
 
@@ -100,11 +100,13 @@ class _FakeAggregatedStatementsApi extends StatementsApi {
     String? clientProviderQuery,
     String? descriptionSearch,
     String? notesSearch,
+    String? invoiceNumberSearch,
     String sort = 'date_desc',
   }) async {
     aggregatedCalls += 1;
     lastDescriptionSearch = descriptionSearch;
     lastNotesSearch = notesSearch;
+    lastInvoiceNumberSearch = invoiceNumberSearch;
     lastYear = year;
     lastAmountType = amountType;
     return StatementEntriesPage(
@@ -156,6 +158,7 @@ void main() {
     await c.loadAllEntries(
       descriptionSearch: '  openai chatgpt  ',
       notesSearch: '  pendiente revisar  ',
+      invoiceNumberSearch: '  389-26  ',
       year: 2026,
       amountType: 'expense',
       applyDateFilters: true,
@@ -164,26 +167,34 @@ void main() {
 
     expect(api.lastDescriptionSearch, 'openai chatgpt');
     expect(api.lastNotesSearch, 'pendiente revisar');
+    expect(api.lastInvoiceNumberSearch, '389-26');
     expect(api.lastYear, 2026);
     expect(api.lastAmountType, 'expense');
     expect(c.allEntriesDescriptionSearch, 'openai chatgpt');
     expect(c.allEntriesNotesSearch, 'pendiente revisar');
+    expect(c.allEntriesInvoiceNumberSearch, '389-26');
 
     await c.loadAllEntries(page: 2);
 
     expect(api.lastDescriptionSearch, 'openai chatgpt');
     expect(api.lastNotesSearch, 'pendiente revisar');
+    expect(api.lastInvoiceNumberSearch, '389-26');
     expect(api.lastYear, 2026);
     expect(api.lastAmountType, 'expense');
     expect(c.allEntriesDescriptionSearch, 'openai chatgpt');
     expect(c.allEntriesNotesSearch, 'pendiente revisar');
 
-    await c.loadAllEntries(descriptionSearch: '', notesSearch: '');
+    await c.loadAllEntries(
+      descriptionSearch: '',
+      notesSearch: '',
+      invoiceNumberSearch: '',
+    );
 
     expect(api.lastDescriptionSearch, isNull);
     expect(api.lastNotesSearch, isNull);
     expect(c.allEntriesDescriptionSearch, isNull);
     expect(c.allEntriesNotesSearch, isNull);
+    expect(c.allEntriesInvoiceNumberSearch, isNull);
   });
 
   test('diagnostic: loadAllEntries fetches batches concurrently (capped)',

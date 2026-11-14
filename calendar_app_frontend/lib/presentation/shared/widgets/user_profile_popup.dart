@@ -19,13 +19,14 @@ import 'package:hexora/presentation/screens/settings/dialogs/logout_dialog.dart'
 import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/theme_provider.dart';
+import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 /// Circular avatar button.  Tap → shows a profile card popup anchored
 /// to the top-right of the screen (near the nav bar).
-enum UserProfilePopupPlacement { topBar, sidebar }
+enum UserProfilePopupPlacement { topBar, sidebar, sidebarTop }
 
 class UserProfilePopup extends StatefulWidget {
   const UserProfilePopup({
@@ -159,10 +160,15 @@ class _UserProfilePopupState extends State<UserProfilePopup> {
           onTap: () => _togglePopup(u),
           borderRadius: BorderRadius.circular(10),
           child: SizedBox(
-            height: 44,
+            height: widget.placement == UserProfilePopupPlacement.topBar
+                ? NavigationTokens.globalItemHeight
+                : 44,
             child: Padding(
-              padding:
-                  EdgeInsets.symmetric(horizontal: widget.expanded ? 8 : 6),
+              padding: EdgeInsets.symmetric(
+                horizontal: widget.placement == UserProfilePopupPlacement.topBar
+                    ? 0
+                    : (widget.expanded ? 8 : 6),
+              ),
               child: Row(
                 mainAxisAlignment: widget.expanded
                     ? MainAxisAlignment.start
@@ -330,103 +336,65 @@ class _SidebarAccountMenuState extends State<_SidebarAccountMenu> {
     ColorScheme cs,
     bool isEs,
   ) {
-    final t = AppTypography.of(context);
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Identity header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
-            child: Row(
-              children: [
-                HexoraUserAvatar(
-                  userId: widget.user.id,
-                  displayName: widget.displayName,
-                  username: widget.user.userName,
-                  photoUrl: widget.user.photoUrl,
-                  size: HexoraUserAvatar.menuSize,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.displayName,
+    return ColoredBox(
+      // Close to the sidebar navy: distinct enough for account actions while
+      // keeping the navigation visually unified.
+      color: const Color(0xFF1C344E),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (widget.user.email.trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.email_outlined,
+                        size: 14, color: cs.onSurfaceVariant),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.user.email.trim(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style:
-                            t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                        style: AppTypography.of(context)
+                            .caption
+                            .copyWith(color: cs.onSurfaceVariant),
                       ),
-                      Text(
-                        '@${widget.user.userName}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: t.caption.copyWith(color: cs.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (widget.user.email.trim().isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              child: Row(
-                children: [
-                  Icon(Icons.email_outlined,
-                      size: 14, color: cs.onSurfaceVariant),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      widget.user.email.trim(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: t.caption.copyWith(color: cs.onSurfaceVariant),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+            Divider(
+              height: 1,
+              thickness: 0.6,
+              indent: 10,
+              endIndent: 10,
+              color: cs.outlineVariant.withValues(alpha: 0.4),
             ),
-          Divider(
-            height: 1,
-            thickness: 0.6,
-            indent: 10,
-            endIndent: 10,
-            color: cs.outlineVariant.withValues(alpha: 0.4),
-          ),
-          const SizedBox(height: 4),
-          _MenuItem(
-            icon: Icons.tune_rounded,
-            label: l.preferencesTitle,
-            onTap: () => _runAndClose(() {
-              Navigator.of(context, rootNavigator: true)
-                  .pushNamed(AppRoutes.preferences);
-            }),
-          ),
-          _MenuItem(
-            icon: Icons.settings_outlined,
-            label: l.settings,
-            onTap: () => _runAndClose(() {
-              final onSettings = widget.onSettings;
-              if (onSettings != null) {
-                onSettings();
-              } else {
-                Navigator.of(context).pushNamed(AppRoutes.settings);
-              }
-            }),
-          ),
-          _MenuItem(
-            icon: Icons.logout_rounded,
-            label: isEs ? 'Cerrar sesión' : 'Log out',
-            danger: true,
-            onTap: _logout,
-          ),
-          const SizedBox(height: 4),
-        ],
+            const SizedBox(height: 4),
+            _MenuItem(
+              icon: Icons.settings_outlined,
+              label: l.settings,
+              onTap: () => _runAndClose(() {
+                final onSettings = widget.onSettings;
+                if (onSettings != null) {
+                  onSettings();
+                } else {
+                  Navigator.of(context).pushNamed(AppRoutes.settings);
+                }
+              }),
+            ),
+            _MenuItem(
+              icon: Icons.logout_rounded,
+              label: isEs ? 'Cerrar sesión' : 'Log out',
+              danger: true,
+              onTap: _logout,
+            ),
+            const SizedBox(height: 4),
+          ],
+        ),
       ),
     );
   }
@@ -528,7 +496,7 @@ class _MenuItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppTypography.of(context);
-    final color = danger ? cs.error : cs.onSurface;
+    final color = danger ? const Color(0xFFF87171) : cs.onSurface;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1004,16 +972,6 @@ extension _CompactProfileCard on _UserProfileCardState {
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Divider(
                 height: 1, color: cs.outlineVariant.withValues(alpha: .45))),
-        _compactMenuRow(
-          context,
-          icon: Icons.tune_rounded,
-          label: l.preferencesTitle,
-          onTap: () {
-            final navigator = Navigator.of(context, rootNavigator: true);
-            widget.onClose();
-            navigator.pushNamed(AppRoutes.preferences);
-          },
-        ),
         _compactMenuRow(context,
             icon: Icons.settings_outlined, label: l.settings, onTap: () {
           widget.onClose();

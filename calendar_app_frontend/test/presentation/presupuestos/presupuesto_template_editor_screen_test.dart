@@ -1751,6 +1751,7 @@ class _FakePresupuestosApi extends PresupuestosApi {
     required String imageId,
     required String slot,
     String? label,
+    String? reason,
     bool enabled = true,
   }) async {
     attachedTargetId = targetId;

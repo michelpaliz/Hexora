@@ -13,9 +13,18 @@ class _InvoiceEditorHeaderSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The client step already shows the selected client in the details column.
+    // Do not spend a full header row repeating that identity above the wizard.
+    // Keep the context chip for later steps where it remains useful as a
+    // shortcut back to client selection.
+    if (state._tabController.index == 0) {
+      return const SizedBox.shrink();
+    }
     return _InvoiceFlowTopBar(
       selectedClientName: selectedClientName,
-      showBack: state.widget.embedded,
+      // The workspace tab already provides a close/back affordance. Keeping a
+      // second one above the wizard rail duplicates that action.
+      showBack: false,
       backLabel: l.budgetBackCta,
       onBack: () => state._requestClose(),
       onClientTapped: () => state._goToStep(0),

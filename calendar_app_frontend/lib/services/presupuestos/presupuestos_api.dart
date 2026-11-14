@@ -256,6 +256,7 @@ class PresupuestosApi {
 
   Future<Map<String, dynamic>> createDraft({
     required String groupId,
+    String conversionTarget = 'invoice',
     String? clientId,
     String? clientName,
     String? addressStreet,
@@ -267,6 +268,7 @@ class PresupuestosApi {
   }) async {
     final payload = <String, dynamic>{
       'groupId': groupId,
+      'conversionTarget': conversionTarget,
       if (clientId != null && clientId.trim().isNotEmpty)
         'clientId': clientId.trim(),
       if (clientName != null && clientName.trim().isNotEmpty)

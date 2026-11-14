@@ -8,6 +8,7 @@ extension _InvoiceColumnFilters on _InvoicesTabListState {
         CompactDocumentColumn.delivery => _InvoiceColumnSort.delivery,
         CompactDocumentColumn.payment => _InvoiceColumnSort.payment,
         CompactDocumentColumn.date => _InvoiceColumnSort.date,
+        CompactDocumentColumn.notes => _InvoiceColumnSort.notes,
         CompactDocumentColumn.taxableBase => _InvoiceColumnSort.taxableBase,
         CompactDocumentColumn.vat => _InvoiceColumnSort.vat,
         CompactDocumentColumn.total => _InvoiceColumnSort.total,
@@ -20,6 +21,7 @@ extension _InvoiceColumnFilters on _InvoicesTabListState {
         CompactDocumentColumn.delivery => _selectedDeliveryStatuses.isNotEmpty,
         CompactDocumentColumn.payment => _selectedPaymentStatuses.isNotEmpty,
         CompactDocumentColumn.date => _fromDate != null || _toDate != null,
+        CompactDocumentColumn.notes => false,
         CompactDocumentColumn.taxableBase => _baseRange.active,
         CompactDocumentColumn.vat => _vatRange.active,
         CompactDocumentColumn.total => _totalRange.active,
@@ -109,8 +111,11 @@ extension _InvoiceColumnFilters on _InvoicesTabListState {
               autofocus: true,
               decoration: const InputDecoration(
                 labelText: 'Número de factura',
-                hintText: 'Búsqueda exacta o parcial',
+                hintText: 'Ej. 035-26, 03526 o 26',
                 isDense: true,
+                helperText:
+                    'Ejemplos: 035-26, 03526 o 26. Coincidencia parcial.',
+                helperMaxLines: 1,
                 prefixIcon: Icon(Icons.search_rounded, size: 18),
               ),
               onChanged: _setInvoiceNumberQueryDebounced,
@@ -336,6 +341,8 @@ extension _InvoiceColumnFilters on _InvoicesTabListState {
           _fromDate = null;
           _toDate = null;
           _quickRange = DateQuickRange.none;
+        case CompactDocumentColumn.notes:
+          break;
         case CompactDocumentColumn.taxableBase:
           _baseRange = const _InvoiceAmountRange();
         case CompactDocumentColumn.vat:

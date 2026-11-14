@@ -74,7 +74,7 @@ class _MailComposeView extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
     );
 
-    final recipientInput = !state._useClientMode
+    final recipientInput = (!state._useClientMode || isWideEmbedded)
         ? _EmailChipsInput(
             controller: state._toCtrl,
             values: state._toList,
@@ -105,13 +105,16 @@ class _MailComposeView extends StatelessWidget {
         : _RecipientModeToggle(
             clientMode: state._useClientMode,
             enabled: !state._sending && !isReply,
-            emailLabel: 'Email',
-            clientLabel: 'Cliente',
+            emailLabel: state._isSpanishLocale ? 'Manual' : 'Manual',
+            clientLabel: state._isSpanishLocale ? 'Selectivo' : 'Selective',
             recentLabel: state._isSpanishLocale ? 'Recientes' : 'Recent',
             recentLoading: state._loadingRecentInvoices,
             onChanged: (v) {
-              state.update(() => state._useClientMode = v);
-              if (v) state._loadRecipientClientsIfNeeded();
+              state._setRecipientSelectionMode(
+                v,
+                loadClientWorkflow: !v,
+              );
+              if (v) unawaited(state._openDocumentSelectionWorkflow());
             },
             onRecentTap: state._openRecentIssuedInvoicesPicker,
           );
@@ -132,19 +135,25 @@ class _MailComposeView extends StatelessWidget {
               inputDecoration: inputDecoration,
               recipientInput: recipientInput,
               recipientMode: recipientMode),
-          const SizedBox(height: 4),
+          if (!isReply &&
+              !state._useClientMode &&
+              !state._manualRecipientHintDismissed) ...[
+            const SizedBox(height: 4),
+            _ManualRecipientHint(
+              isSpanish: state._isSpanishLocale,
+              onSelectClients: () => state._setRecipientSelectionMode(true),
+              onDismiss: () => state
+                  .update(() => state._manualRecipientHintDismissed = true),
+            ),
+          ],
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .45)),
           // ── Subject card ────────────────────────────────────────────────
           _composeSubjectCard(
-              state: state,
-              t: t,
-              cs: cs,
-              l: l,
-              compact: compact,
-              inputFill: inputFill),
-          const SizedBox(height: 4),
+              state: state, t: t, cs: cs, l: l, compact: compact),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .45)),
           _composeAttachmentsCard(
               state: state, t: t, cs: cs, l: l, compact: compact),
-          const SizedBox(height: 4),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: .45)),
         ];
 
         if (isWideEmbedded && viewport.hasBoundedHeight) {
@@ -265,6 +274,12 @@ class _MailComposeView extends StatelessWidget {
                   ),
                 ),
               ),
+              if (!isReply)
+                _ComposeRecipientModeSelector(
+                  selective: state._useClientMode,
+                  enabled: !state._sending,
+                  onChanged: state._setRecipientSelectionMode,
+                ),
             ],
           ),
         );
@@ -279,64 +294,75 @@ class _MailComposeView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
-                  child: Row(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final selectorWidth =
+                        (constraints.maxWidth * .42).clamp(360.0, 560.0);
+                    return Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                    Expanded(
-                      flex: 9,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: ColoredBox(
-                          key: const ValueKey('mail-compose-options-surface'),
-                          color: cs.surface,
-                          child: Builder(
-                            builder: (optionsContext) => Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
+                        Expanded(
+                          child: Container(
+                            key: const ValueKey('mail-compose-editor-surface'),
+                            clipBehavior: Clip.antiAlias,
+                            decoration: BoxDecoration(
+                              color: cs.surface,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: cs.outlineVariant.withValues(alpha: .4),
+                              ),
+                            ),
+                            child: Builder(
+                              builder: (editorContext) => Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10),
+                                    child: composeHeader(editorContext),
                                   ),
-                                  child: composeHeader(optionsContext),
-                                ),
-                                Divider(
-                                  height: 1,
-                                  color: Theme.of(optionsContext)
-                                      .colorScheme
-                                      .outlineVariant
-                                      .withValues(alpha: .35),
-                                ),
-                                Expanded(
-                                  child: _InlineInvoiceFlowPanel(state: state),
-                                ),
-                              ],
+                                  Divider(
+                                    height: 1,
+                                    color: Theme.of(editorContext)
+                                        .colorScheme
+                                        .outlineVariant
+                                        .withValues(alpha: .35),
+                                  ),
+                                  Expanded(child: content),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 11,
-                      child: Container(
-                        key: const ValueKey('mail-compose-editor-surface'),
-                        clipBehavior: Clip.antiAlias,
-                        decoration: BoxDecoration(
-                          color: cs.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: cs.outlineVariant.withValues(alpha: .4),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 190),
+                          curve: Curves.easeInOutCubic,
+                          width: state._useClientMode ? 12 : 0,
+                        ),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 190),
+                          curve: Curves.easeInOutCubic,
+                          width: state._useClientMode ? selectorWidth : 0,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: ColoredBox(
+                              key: const ValueKey(
+                                  'mail-compose-options-surface'),
+                              color: cs.surface,
+                              child: Offstage(
+                                offstage: !state._useClientMode,
+                                child: _InlineInvoiceFlowPanel(
+                                  state: state,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(child: content),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ])),
+                      ],
+                    );
+                  },
+                ),
+              ),
               const SizedBox(height: 10),
               _ComposeBottomBar(
                   sending: state._sending,

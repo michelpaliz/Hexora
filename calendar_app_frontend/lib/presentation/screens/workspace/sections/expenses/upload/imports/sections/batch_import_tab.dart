@@ -551,7 +551,7 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _BatchLeftControlPanel(
+          _BatchCompactWorkflowIndicator(
             selectedCount: headerLoadedCount,
             maxDocuments: maxBatchDocs,
             totalBytes: totalBytes,
@@ -572,12 +572,15 @@ extension _ExpenseBatchImportTab on _ExpenseUploadImportTabsSection {
             jobActive: jobActive,
             jobCompleted: jobCompleted,
             jobFailed: jobFailed,
-            statusMessage: hasTrackedJob ? verifyText : null,
-            warningCount: warningIndexes.length,
-            importedCount: jobImportedCount,
-            skippedCount: jobSkippedCount,
-            onPickDocuments: pickBatchDocuments,
+            inspecting: batchArchiveInspecting,
+            selectionReady:
+                batchDocumentNames.isNotEmpty || batchArchiveInspection != null,
+            readyCount: jobImportedCount,
+            reviewCount: _batchJobInt(_batchJobStatus?['warningCount']) +
+                _batchJobInt(_batchJobStatus?['failedCount']),
+            duplicateCount: _batchJobInt(_batchJobStatus?['duplicateCount']),
             onImport: submitBatchImport,
+            compact: true,
             onClearSelection:
                 batchDocumentNames.isEmpty && batchArchiveName == null
                     ? null

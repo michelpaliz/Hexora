@@ -64,6 +64,7 @@ class _InvoicesApi extends InvoicesApi {
     String groupId, {
     String? status,
     String? linkStatus,
+    String? paymentStatus,
     String? seriesId,
     String? sortBy,
     String? sortDir,
@@ -161,6 +162,7 @@ class _HistoryInvoicesApi extends InvoicesApi {
     String groupId, {
     String? status,
     String? linkStatus,
+    String? paymentStatus,
     String? seriesId,
     String? sortBy,
     String? sortDir,

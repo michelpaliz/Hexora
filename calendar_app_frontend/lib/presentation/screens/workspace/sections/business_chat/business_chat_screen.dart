@@ -14,7 +14,6 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/group_in
 import 'package:hexora/presentation/screens/workspace/sections/expenses/upload/expense_upload_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/workers_hub_screen.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
-import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/shared/bank_transaction_share_dialog.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
@@ -91,6 +90,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
   String? _activeBusinessAction;
   Widget? _reviewPanel;
   bool _reviewCollapsed = false;
+  Map<String, dynamic>? _pendingBankTransaction;
   bool _showChatOnNarrow = false;
   String? _error;
   String? _pendingConversationId;
@@ -576,37 +576,62 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
       return;
     }
     final selection = Completer<Map<String, dynamic>?>();
+    var dismissed = false;
     setState(() {
       _reviewCollapsed = false;
+      _showActions = true;
+      if (MediaQuery.sizeOf(context).width < 700) {
+        _showChatOnNarrow = true;
+      }
       _reviewPanel = BankTransactionPicker(
         key: const ValueKey('chat-bank-transaction-panel'),
         groupId: widget.groupId,
         presentation: BankTransactionPickerPresentation.sidePanel,
         onClose: () {
+          dismissed = true;
           if (!selection.isCompleted) selection.complete();
-          if (mounted) setState(() => _reviewPanel = null);
+          if (mounted) {
+            setState(() {
+              _reviewPanel = null;
+              _activeBusinessAction = null;
+              if (MediaQuery.sizeOf(context).width < 700) {
+                _showChatOnNarrow = false;
+              }
+            });
+          }
+        },
+        onBack: () {
+          dismissed = true;
+          if (!selection.isCompleted) selection.complete();
+          if (mounted) {
+            setState(() {
+              _reviewPanel = null;
+              _activeBusinessAction = null;
+              if (MediaQuery.sizeOf(context).width < 700) {
+                _showChatOnNarrow = false;
+              }
+            });
+          }
         },
         onSelected: (entry) {
           if (!selection.isCompleted) selection.complete(entry);
-          if (mounted) setState(() => _reviewPanel = null);
+          // Keep the selector visible after choosing a row. The selected
+          // movement is attached to the composer, while the user can still
+          // choose another row or use Back to return to the actions list.
+          if (mounted) setState(() => _pendingBankTransaction = entry);
         },
       );
     });
     final entry = await selection.future;
-    if (!mounted || entry == null) return;
-    final destinationId = await BankTransactionShareDialog.show(
-        context, widget.groupId, entry,
-        initialMessage: requestReview
-            ? (_es
-                ? '¿Podéis revisar este movimiento y confirmar si está vinculado correctamente?'
-                : 'Could you review this transaction and confirm its link is correct?')
-            : null,
-        initialConversationId:
-            _selected?.canShareBankTransaction == true ? _selected!.id : null);
-    if (!mounted || destinationId == null) return;
-    _pendingConversationId = destinationId;
-    _showChatOnNarrow = true;
-    await _refresh(silent: true);
+    if (!mounted || entry == null || dismissed) return;
+    setState(() {
+      _pendingBankTransaction = entry;
+      if (requestReview && _composer.text.trim().isEmpty) {
+        _composer.text = _es
+            ? '¿Podéis revisar este movimiento y confirmar si está vinculado correctamente?'
+            : 'Could you review this transaction and confirm its link is correct?';
+      }
+    });
   }
 
   Future<void> _requestDocumentReview(String kind) async {
@@ -762,17 +787,38 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
   Future<void> _send() async {
     final conversation = _selected;
     final body = _composer.text.trim();
-    if (_sending || body.isEmpty || conversation == null) return;
+    final transaction = _pendingBankTransaction;
+    if (_sending ||
+        (body.isEmpty && transaction == null) ||
+        conversation == null) {
+      return;
+    }
+    if (transaction != null && !conversation.canShareBankTransaction) {
+      _showError(_es
+          ? 'Selecciona un chat de administradores para compartir el movimiento.'
+          : 'Select an admin chat to share the transaction.');
+      return;
+    }
     final replyId = _replyingTo?.id;
     setState(() => _sending = true);
     try {
-      await _api.send(widget.groupId, conversation.id, body,
-          replyToMessageId: replyId);
+      if (transaction != null) {
+        final entryId =
+            (transaction['_id'] ?? transaction['id'] ?? '').toString();
+        await _api.shareBankTransaction(
+            widget.groupId, conversation.id, entryId, body);
+      } else {
+        await _api.send(widget.groupId, conversation.id, body,
+            replyToMessageId: replyId);
+      }
       if (!mounted) return;
       _composer.clear();
       _drafts.remove(conversation.id);
       _saveDraft(conversation.id);
-      setState(() => _replyingTo = null);
+      setState(() {
+        _replyingTo = null;
+        _pendingBankTransaction = null;
+      });
       await _loadMessages(conversation);
       _scrollToEnd();
       _refresh(silent: true);
@@ -2937,18 +2983,20 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                     width: 1,
                     color: Colors.white.withValues(alpha: .10),
                   ),
-                if (!narrow || _showChatOnNarrow)
+                if (!narrow || _showChatOnNarrow ||
+                    (narrow && _reviewPanel != null))
                   Expanded(
                       child: Column(children: [
                     if (!narrow && workspaceChrome?.active == true)
                       workspaceChrome!.tabBarBuilder(context),
                     Expanded(
                         child: Row(children: [
+                      if (narrow && _reviewPanel != null)
+                        Expanded(child: _reviewPanel!),
                       // Keep the review workspace below the shared Chrome
                       // strip, alongside the conversation rather than above it.
                       if (_reviewPanel != null &&
-                          !narrow &&
-                          constraints.maxWidth >= 1240) ...[
+                          !narrow) ...[
                         const VerticalDivider(width: 1),
                         Offstage(
                           offstage: !_reviewCollapsed,
@@ -2961,13 +3009,14 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                         Offstage(
                           offstage: _reviewCollapsed,
                           child: SizedBox(
-                            width: (constraints.maxWidth * .42)
-                                .clamp(600.0, 800.0)
+                            width: (constraints.maxWidth * .40)
+                                .clamp(360.0, 680.0)
                                 .toDouble(),
                             child: _reviewPanel!,
                           ),
                         ),
                       ],
+                      if (!narrow || _reviewPanel == null)
                       Expanded(
                         child: Column(children: [
                           if (_selected != null) _buildThreadHeader(narrow),
@@ -3047,6 +3096,21 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                                       ),
                                                     ),
                                                   ),
+                                                if (_pendingBankTransaction !=
+                                                    null)
+                                                  _PendingBankTransactionPreview(
+                                                    entry:
+                                                        _pendingBankTransaction!,
+                                                    es: _es,
+                                                    onRemove: () => setState(() =>
+                                                        _pendingBankTransaction =
+                                                            null),
+                                                    onReplace:
+                                                        _shareBankTransactionFromChat,
+                                                  ),
+                                                if (_pendingBankTransaction !=
+                                                    null)
+                                                  const SizedBox(height: 6),
                                                 ChatComposer(
                                                   controller: _composer,
                                                   focusNode: _composerFocus,
@@ -3294,6 +3358,69 @@ class _BusinessRailAction {
   final String id;
   final IconData icon;
   final String label;
+}
+
+class _PendingBankTransactionPreview extends StatelessWidget {
+  const _PendingBankTransactionPreview({
+    required this.entry,
+    required this.es,
+    required this.onRemove,
+    required this.onReplace,
+  });
+
+  final Map<String, dynamic> entry;
+  final bool es;
+  final VoidCallback onRemove;
+  final VoidCallback onReplace;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final amount = double.tryParse(entry['amount']?.toString() ?? '') ?? 0;
+    final date = DateTime.tryParse(
+        (entry['valueDate'] ?? entry['date'] ?? '').toString());
+    final description = (entry['description'] ?? '').toString().trim();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .7)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(children: [
+        Icon(Icons.account_balance_outlined, size: 18, color: cs.primary),
+        const SizedBox(width: 8),
+        Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(
+                description.isEmpty
+                    ? (es ? 'Movimiento bancario' : 'Bank transaction')
+                    : description,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+            Text(date == null ? '' : DateFormat('dd/MM/yyyy').format(date),
+                style: Theme.of(context).textTheme.labelSmall),
+          ]),
+        ),
+        Text(
+            NumberFormat.currency(locale: es ? 'es_ES' : 'en_US', symbol: '€')
+                .format(amount),
+            style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: amount < 0 ? cs.error : cs.primary)),
+        IconButton(
+            tooltip: es ? 'Cambiar movimiento' : 'Replace transaction',
+            onPressed: onReplace,
+            icon: const Icon(Icons.swap_horiz, size: 18)),
+        IconButton(
+            tooltip: es ? 'Quitar movimiento' : 'Remove transaction',
+            onPressed: onRemove,
+            icon: const Icon(Icons.close, size: 18)),
+      ]),
+    );
+  }
 }
 
 class _CompactConversationRailItem extends StatelessWidget {

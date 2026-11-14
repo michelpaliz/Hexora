@@ -22,7 +22,7 @@ class ManualExpenseTabbedForm extends StatefulWidget {
   final Widget vatBreakdown;
   final bool manualProvider;
   final bool submitting;
-  final int lineCount;
+  final String activeSection;
   final ValueChanged<TextEditingController> onPickDate;
 
   const ManualExpenseTabbedForm({
@@ -43,7 +43,7 @@ class ManualExpenseTabbedForm extends StatefulWidget {
     required this.vatBreakdown,
     required this.manualProvider,
     required this.submitting,
-    required this.lineCount,
+    required this.activeSection,
     required this.onPickDate,
   });
 
@@ -52,21 +52,20 @@ class ManualExpenseTabbedForm extends StatefulWidget {
       _ManualExpenseTabbedFormState();
 }
 
-enum _ManualExpenseFormTab { general, amounts, lines }
-
 class _ManualExpenseTabbedFormState extends State<ManualExpenseTabbedForm> {
-  _ManualExpenseFormTab _activeTab = _ManualExpenseFormTab.general;
-
   static const _fieldStyle = TextStyle(fontSize: 13);
 
   InputDecoration _decor(
-    String label,
     ColorScheme cs, {
     IconData? icon,
+    String? hint,
   }) =>
       InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(fontSize: 12),
+        hintText: hint,
+        hintStyle: TextStyle(
+          fontSize: 13,
+          color: cs.onSurfaceVariant.withValues(alpha: .72),
+        ),
         prefixIcon: icon == null ? null : Icon(icon, size: 16),
         prefixIconConstraints:
             const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -83,10 +82,10 @@ class _ManualExpenseTabbedFormState extends State<ManualExpenseTabbedForm> {
         filled: true,
         fillColor: cs.surfaceContainer,
         isDense: true,
-        constraints: const BoxConstraints(minHeight: 40),
+        constraints: const BoxConstraints(minHeight: 38),
         contentPadding: icon == null
-            ? const EdgeInsets.symmetric(horizontal: 12, vertical: 10)
-            : const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+            ? const EdgeInsets.symmetric(horizontal: 11, vertical: 9)
+            : const EdgeInsets.symmetric(horizontal: 4, vertical: 9),
       );
 
   String _dateLabel(BuildContext context, String raw) {
@@ -118,21 +117,43 @@ class _ManualExpenseTabbedFormState extends State<ManualExpenseTabbedForm> {
           ]),
         );
 
-    Widget dateField(TextEditingController controller, String fieldLabel) =>
-        ValueListenableBuilder<TextEditingValue>(
-          valueListenable: controller,
-          builder: (context, value, _) => InkWell(
-            onTap:
-                widget.submitting ? null : () => widget.onPickDate(controller),
-            borderRadius: BorderRadius.circular(8),
-            child: InputDecorator(
-              isEmpty: _dateLabel(context, value.text).isEmpty,
-              decoration: _decor(fieldLabel, cs, icon: Icons.event_outlined),
+    Widget fieldLabel(String text, Widget field) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 1, bottom: 4),
               child: Text(
-                _dateLabel(context, value.text),
-                style: _fieldStyle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                text,
+                style: ts.bodySmall?.copyWith(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ),
+            field,
+          ],
+        );
+
+    Widget dateField(TextEditingController controller, String labelText) =>
+        fieldLabel(
+          labelText,
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, value, _) => InkWell(
+              onTap: widget.submitting
+                  ? null
+                  : () => widget.onPickDate(controller),
+              borderRadius: BorderRadius.circular(8),
+              child: InputDecorator(
+                isEmpty: _dateLabel(context, value.text).isEmpty,
+                decoration: _decor(cs, icon: Icons.event_outlined),
+                child: Text(
+                  _dateLabel(context, value.text),
+                  style: _fieldStyle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
           ),
@@ -154,20 +175,31 @@ class _ManualExpenseTabbedFormState extends State<ManualExpenseTabbedForm> {
           : Column(children: [first, gap, second]);
       return content([
         label(l.expenseUploadVendorLabel, Icons.business_outlined),
-        widget.providerPicker,
+        fieldLabel(
+          l.localeName.startsWith('es')
+              ? 'Buscar proveedor'
+              : 'Search supplier',
+          widget.providerPicker,
+        ),
         if (widget.manualProvider) ...[
           gap,
           row(
-            TextField(
+            fieldLabel(
+              l.localeName.startsWith('es') ? 'Nombre' : 'Name',
+              TextField(
                 controller: widget.vendorController,
                 style: _fieldStyle,
-                decoration: _decor(l.expenseUploadVendorLabel, cs,
-                    icon: Icons.storefront_outlined)),
-            TextField(
+                decoration: _decor(cs, icon: Icons.storefront_outlined),
+              ),
+            ),
+            fieldLabel(
+              l.expenseUploadVendorTaxIdLabel,
+              TextField(
                 controller: widget.vendorTaxIdController,
                 style: _fieldStyle,
-                decoration: _decor(l.expenseUploadVendorTaxIdLabel, cs,
-                    icon: Icons.badge_outlined)),
+                decoration: _decor(cs, icon: Icons.badge_outlined),
+              ),
+            ),
           ),
         ],
         const SizedBox(height: 14),
@@ -177,16 +209,22 @@ class _ManualExpenseTabbedFormState extends State<ManualExpenseTabbedForm> {
                 : 'Expense details',
             Icons.receipt_outlined),
         row(
-          TextField(
+          fieldLabel(
+            l.expenseUploadInvoiceNumberLabel,
+            TextField(
               controller: widget.invoiceNumberController,
               style: _fieldStyle,
-              decoration: _decor(l.expenseUploadInvoiceNumberLabel, cs,
-                  icon: Icons.tag_outlined)),
-          TextField(
+              decoration: _decor(cs, icon: Icons.tag_outlined),
+            ),
+          ),
+          fieldLabel(
+            l.expenseUploadCurrencyLabel,
+            TextField(
               controller: widget.currencyController,
               style: _fieldStyle,
-              decoration: _decor(l.expenseUploadCurrencyLabel, cs,
-                  icon: Icons.euro_outlined)),
+              decoration: _decor(cs, icon: Icons.euro_outlined),
+            ),
+          ),
         ),
         gap,
         row(
@@ -197,14 +235,17 @@ class _ManualExpenseTabbedFormState extends State<ManualExpenseTabbedForm> {
         label('Tipo de gasto', Icons.tune_outlined),
         widget.settlementFields,
         const SizedBox(height: 14),
-        label(l.expenseUploadNotesLabel, Icons.notes_outlined),
-        TextField(
-          controller: widget.notesController,
-          style: _fieldStyle,
-          decoration:
-              _decor(l.expenseUploadNotesLabel, cs, icon: Icons.notes_outlined),
-          maxLines: 2,
-          minLines: 1,
+        fieldLabel(
+          l.localeName.startsWith('es')
+              ? '${l.expenseUploadNotesLabel} (opcional)'
+              : '${l.expenseUploadNotesLabel} (optional)',
+          TextField(
+            controller: widget.notesController,
+            style: _fieldStyle,
+            decoration: _decor(cs, icon: Icons.notes_outlined),
+            maxLines: 2,
+            minLines: 1,
+          ),
         ),
       ]);
     });
@@ -220,66 +261,11 @@ class _ManualExpenseTabbedFormState extends State<ManualExpenseTabbedForm> {
     ]);
     final lines = content([widget.linesEditor]);
 
-    Widget tab(_ManualExpenseFormTab tab, IconData icon, String text) {
-      final selected = _activeTab == tab;
-      return Expanded(
-        child: Semantics(
-          button: true,
-          selected: selected,
-          child: InkWell(
-            onTap: () => setState(() => _activeTab = tab),
-            borderRadius: BorderRadius.circular(7),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              height: 38,
-              decoration: BoxDecoration(
-                color: selected
-                    ? cs.primary.withValues(alpha: .12)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(7),
-                border: selected
-                    ? Border.all(color: cs.primary.withValues(alpha: .55))
-                    : null,
-              ),
-              child:
-                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(icon, size: 15),
-                const SizedBox(width: 6),
-                Flexible(
-                    child: Text(text,
-                        overflow: TextOverflow.ellipsis,
-                        style: ts.bodySmall
-                            ?.copyWith(fontWeight: FontWeight.w700))),
-              ]),
-            ),
-          ),
-        ),
-      );
-    }
-
-    final current = switch (_activeTab) {
-      _ManualExpenseFormTab.general => general,
-      _ManualExpenseFormTab.amounts => amounts,
-      _ManualExpenseFormTab.lines => lines,
+    final current = switch (widget.activeSection) {
+      'amounts' => amounts,
+      'lines' => lines,
+      _ => general,
     };
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Container(
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: .35),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(children: [
-          tab(_ManualExpenseFormTab.general, Icons.description_outlined,
-              'General'),
-          tab(_ManualExpenseFormTab.amounts, Icons.calculate_outlined,
-              'Importes'),
-          tab(_ManualExpenseFormTab.lines, Icons.view_list_outlined,
-              'Líneas (${widget.lineCount})'),
-        ]),
-      ),
-      const SizedBox(height: 8),
-      Expanded(child: current),
-    ]);
+    return current;
   }
 }

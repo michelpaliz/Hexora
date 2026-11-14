@@ -363,28 +363,8 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
       selected: widget.selected,
       onTap: widget.onTap,
       previewLabel: l.preview,
-      quickActionSlots: 3,
-      quickActions: [
-        if (widget.onPreview != null)
-          CompactDocumentQuickAction(
-            icon: Icons.visibility_outlined,
-            tooltip: l.preview,
-            onPressed: widget.onTap,
-            opensPreviewDrawer: true,
-          ),
-        if (widget.onEdit != null)
-          CompactDocumentQuickAction(
-            icon: Icons.edit_outlined,
-            tooltip: l.edit,
-            onPressed: widget.onEdit,
-          ),
-        if (widget.onDownload != null)
-          CompactDocumentQuickAction(
-            icon: Icons.download_rounded,
-            tooltip: l.download,
-            onPressed: widget.onDownload,
-          ),
-      ],
+      quickActionSlots: 0,
+      quickActions: const [],
       status: HexoraStatusBadge.document(
         context,
         status:
@@ -406,17 +386,32 @@ class _ReceiptListItemState extends State<ReceiptListItem> {
                   '$number · $dateLabel · ${l.invoiceLinesTitle}: ${widget.receipt.lines.length}',
                   style: t.bodySmall)),
       actions: [
+        if (widget.onPreview != null)
+          CompactDocumentAction(l.preview, _runPreview,
+              icon: Icons.visibility_outlined, opensPreviewDrawer: true),
+        if (widget.onEdit != null)
+          CompactDocumentAction(l.edit, widget.onEdit,
+              icon: Icons.edit_outlined),
+        if (widget.onDownload != null)
+          CompactDocumentAction(l.download, widget.onDownload,
+              icon: Icons.download_rounded),
         CompactDocumentAction(
             _detailsExpanded
                 ? l.clientDetailsCollapseTooltip
                 : l.clientDetailsExpandTooltip,
-            () => setState(() => _detailsExpanded = !_detailsExpanded)),
+            () => setState(() => _detailsExpanded = !_detailsExpanded),
+            icon: _detailsExpanded
+                ? Icons.unfold_less_rounded
+                : Icons.unfold_more_rounded),
         if (canMarkSent && widget.onMarkSent != null)
-          CompactDocumentAction('Marcar como enviado', widget.onMarkSent),
+          CompactDocumentAction('Marcar como enviado', widget.onMarkSent,
+              icon: Icons.mark_email_read_outlined),
         if (canMarkUnsent && widget.onMarkUnsent != null)
-          CompactDocumentAction('Marcar como no enviado', widget.onMarkUnsent),
+          CompactDocumentAction('Marcar como no enviado', widget.onMarkUnsent,
+              icon: Icons.mark_email_unread_outlined),
         if (widget.onIssue != null)
-          CompactDocumentAction(l.receiptIssueCta, widget.onIssue),
+          CompactDocumentAction(l.receiptIssueCta, widget.onIssue,
+              primary: true, icon: Icons.fact_check_outlined),
         if (widget.onDelete != null)
           CompactDocumentAction(l.delete, widget.onDelete, destructive: true),
       ],

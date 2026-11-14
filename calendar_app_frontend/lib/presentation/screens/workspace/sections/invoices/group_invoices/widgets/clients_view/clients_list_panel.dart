@@ -675,10 +675,6 @@ class _ClientRow extends StatelessWidget {
       onTap: onTap,
       minHeight: 44,
       verticalPadding: 3,
-      separatorWidth: 0,
-      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-      borderRadius: 8,
-      outlined: true,
       child: Row(children: [
         // Neutral avatars: identity comes from the name, not a loud color.
         CircleAvatar(

@@ -153,63 +153,82 @@ extension _GroupInvoicesBudgetsViewStepContentSection
                 (client) => client?.id == _selectedClientId,
                 orElse: () => null,
               );
-      return DocumentClientStep(
-        clients: widget.clients,
-        selectedClientId: _selectedClientId,
-        onClientChanged: (value) {
-          setState(() {
-            _selectedClientId = value;
-            _markDraftDirty();
-            _error = null;
-          });
-          _loadClientBudgetStats(value);
-        },
-        mode: _clientSource == _ClientSource.manual
-            ? DocumentClientMode.manual
-            : DocumentClientMode.existing,
-        onModeChanged: (mode) {
-          setState(() {
-            _clientSource = mode == DocumentClientMode.manual
-                ? _ClientSource.manual
-                : _ClientSource.existing;
-            _markDraftDirty();
-            _error = null;
-          });
-        },
-        selectedDetails: selectedClient == null
-            ? null
-            : _buildBudgetClientDetails(cs, selectedClient),
-        manual: DocumentManualClientConfig(
-          nameController: _clientNameCtrl,
-          addressController: _clientAddressCtrl,
-          cityController: _clientCityCtrl,
-          postalCodeController: _clientPostalCodeCtrl,
-          nameLabel: l.budgetClientNameLabel,
-          addressLabel: _isSpanishLocale ? 'Dirección' : 'Address',
-          cityLabel: _isSpanishLocale ? 'Ciudad' : 'City',
-          postalCodeLabel: _isSpanishLocale ? 'CP' : 'Postal code',
-          helperText: _isSpanishLocale
-              ? 'La dirección, ciudad y CP son opcionales y solo se usan en este presupuesto.'
-              : 'Address, city, and postal code are optional and only used for this proposal.',
-          onChanged: () => setState(() {
-            _markDraftDirty();
-            _error = null;
-          }),
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+        child: DocumentClientStep(
+          clients: widget.clients,
+          modeSelectorTrailing: _buildConversionTargetSelector(cs),
+          selectedClientId: _selectedClientId,
+          onClientChanged: (value) {
+            setState(() {
+              _selectedClientId = value;
+              _markDraftDirty();
+              _error = null;
+            });
+            _loadClientBudgetStats(value);
+          },
+          mode: _clientSource == _ClientSource.manual
+              ? DocumentClientMode.manual
+              : DocumentClientMode.existing,
+          onModeChanged: (mode) {
+            setState(() {
+              _clientSource = mode == DocumentClientMode.manual
+                  ? _ClientSource.manual
+                  : _ClientSource.existing;
+              _markDraftDirty();
+              _error = null;
+            });
+          },
+          selectedDetails: selectedClient == null
+              ? null
+              : Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 0, 0, 0),
+                  child: _BudgetClientStatsBox(
+                    issuedCount: _clientBudgetIssuedCount,
+                    draftCount: _clientBudgetDraftCount,
+                    loading: _loadingClientBudgetStats,
+                    pastBudgets: _clientPastBudgets,
+                    onPreview: _previewHistoricalBudget,
+                  ),
+                ),
+          searchDrivenDetails: selectedClient == null
+              ? null
+              : _buildBudgetClientDetails(cs, selectedClient),
+          manual: DocumentManualClientConfig(
+            nameController: _clientNameCtrl,
+            addressController: _clientAddressCtrl,
+            cityController: _clientCityCtrl,
+            postalCodeController: _clientPostalCodeCtrl,
+            nameLabel: l.budgetClientNameLabel,
+            addressLabel: _isSpanishLocale ? 'Dirección' : 'Address',
+            cityLabel: _isSpanishLocale ? 'Ciudad' : 'City',
+            postalCodeLabel: _isSpanishLocale ? 'CP' : 'Postal code',
+            helperText: _isSpanishLocale
+                ? 'La dirección, ciudad y CP son opcionales y solo se usan en este presupuesto.'
+                : 'Address, city, and postal code are optional and only used for this proposal.',
+            onChanged: () => setState(() {
+              _markDraftDirty();
+              _error = null;
+            }),
+          ),
+          enabled: _isDraftEditable,
+          existingLabel: _isSpanishLocale ? 'Existente' : 'Existing',
+          manualLabel: _isSpanishLocale ? 'Manual' : 'Manual',
+          selectClientLabel:
+              _isSpanishLocale ? 'Selecciona cliente' : 'Select client',
+          emptySelectionLabel: _isSpanishLocale
+              ? 'Selecciona un cliente para continuar'
+              : 'Select a client to continue',
+          twoColumnBreakpoint: 900,
+          desktopListWidth: null,
+          showSelectionHeading: false,
+          modeSelectorAlignment: AlignmentDirectional.centerStart,
+          adaptivePreview: false,
+          compactSelectionMaxWidth: 620,
+          showClientCount: false,
+          flat: true,
+          searchDriven: true,
         ),
-        enabled: _isDraftEditable,
-        existingLabel: _isSpanishLocale ? 'Existente' : 'Existing',
-        manualLabel: _isSpanishLocale ? 'Manual' : 'Manual',
-        selectClientLabel:
-            _isSpanishLocale ? 'Selecciona cliente' : 'Select client',
-        emptySelectionLabel: _isSpanishLocale
-            ? 'Selecciona un cliente para continuar'
-            : 'Select a client to continue',
-        desktopListWidth: 420,
-        showSelectionHeading: false,
-        modeSelectorAlignment: AlignmentDirectional.centerStart,
-        adaptivePreview: true,
-        compactSelectionMaxWidth: 620,
-        flat: true,
       );
     }
 
@@ -1038,8 +1057,8 @@ extension _GroupInvoicesBudgetsViewStepContentSection
           ),
         );
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1100,17 +1119,6 @@ extension _GroupInvoicesBudgetsViewStepContentSection
             metadataLine(Icons.category_outlined, classification),
           if (address.isNotEmpty)
             metadataLine(Icons.location_on_outlined, address),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 164,
-            child: _BudgetClientStatsBox(
-              issuedCount: _clientBudgetIssuedCount,
-              draftCount: _clientBudgetDraftCount,
-              loading: _loadingClientBudgetStats,
-              pastBudgets: _clientPastBudgets,
-              onPreview: _previewHistoricalBudget,
-            ),
-          ),
         ],
       ),
     );
@@ -1294,11 +1302,21 @@ class _BudgetClientStatsBoxState extends State<_BudgetClientStatsBox>
     with SingleTickerProviderStateMixin {
   late final TabController _tab;
   Map<String, dynamic>? _previewingBudget;
+  final Set<String> _collapsedBudgetMonths = <String>{};
+  bool _historyNewestFirst = true;
 
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void didUpdateWidget(covariant _BudgetClientStatsBox oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.pastBudgets, widget.pastBudgets)) {
+      _collapsedBudgetMonths.clear();
+    }
   }
 
   @override
@@ -1339,33 +1357,7 @@ class _BudgetClientStatsBoxState extends State<_BudgetClientStatsBox>
                 t.bodySmall.copyWith(fontWeight: FontWeight.w700, fontSize: 11),
             tabs: [
               Tab(text: isEs ? 'Este mes' : 'This month'),
-              Tab(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(isEs ? 'Historial' : 'History'),
-                    if (widget.pastBudgets.isNotEmpty) ...[
-                      const SizedBox(width: 5),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          '${widget.pastBudgets.length}',
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
+              Tab(text: isEs ? 'Historial' : 'History'),
             ],
           ),
         ),
@@ -1482,65 +1474,184 @@ class _BudgetClientStatsBoxState extends State<_BudgetClientStatsBox>
     }
 
     DateTime? budgetDate(Map<String, dynamic> b) {
-      final v = b['registeredAt'] ?? b['issueDate'] ?? b['createdAt'];
+      final v = b['issueDate'] ?? b['registeredAt'] ?? b['createdAt'];
       if (v == null) return null;
       if (v is DateTime) return v;
       return DateTime.tryParse(v.toString());
     }
 
-    final items = <Object>[];
-    String? lastKey;
-    for (final b in widget.pastBudgets) {
+    final sortedBudgets = List<Map<String, dynamic>>.of(widget.pastBudgets)
+      ..sort((a, b) {
+        final da = budgetDate(a);
+        final db = budgetDate(b);
+        if (da == null && db == null) return 0;
+        if (da == null) return 1;
+        if (db == null) return -1;
+        return _historyNewestFirst ? db.compareTo(da) : da.compareTo(db);
+      });
+    final groups = <_BudgetMonthGroup>[];
+    for (final b in sortedBudgets) {
       final date = budgetDate(b);
       final key = date == null
           ? '__none__'
           : '${date.year}-${date.month.toString().padLeft(2, '0')}';
-      if (key != lastKey) {
-        items.add(date == null ? '—' : _budgetMonthLabel(date, locale));
-        lastKey = key;
+      if (groups.isEmpty || groups.last.key != key) {
+        groups.add(_BudgetMonthGroup(
+          key: key,
+          label: date == null ? '—' : _budgetMonthLabel(date, locale),
+        ));
       }
-      items.add(b);
+      groups.last.budgets.add(b);
+    }
+    final items = <Object>[];
+    for (final group in groups) {
+      items.add(group);
+      if (!_collapsedBudgetMonths.contains(group.key)) {
+        items.addAll(group.budgets);
+      }
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-      itemCount: items.length,
-      itemBuilder: (_, i) {
-        final item = items[i];
-        if (item is String) {
-          return Padding(
-            padding: EdgeInsets.only(top: i == 0 ? 0 : 10, bottom: 4),
-            child: Text(item,
-                style: t.bodySmall.copyWith(
-                  fontSize: 10,
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w800,
-                )),
-          );
-        }
-        final b = item as Map<String, dynamic>;
-        final id = (b['_id'] ?? b['id'] ?? '').toString();
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: _BudgetHistoryItem(
-            budget: b,
-            isPreviewing:
-                (_previewingBudget?['_id'] ?? _previewingBudget?['id']) == id,
-            onPreview: widget.onPreview == null
-                ? null
-                : () async {
-                    setState(() => _previewingBudget = b);
-                    try {
-                      await widget.onPreview!(b);
-                    } finally {
-                      if (mounted) setState(() => _previewingBudget = null);
-                    }
-                  },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    text:
+                        isEs ? 'Historial de presupuestos ' : 'Budget history ',
+                    children: [
+                      TextSpan(
+                        text: '(${widget.pastBudgets.length})',
+                        style: TextStyle(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodyMedium.copyWith(fontWeight: FontWeight.w900),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => setState(
+                  () => _historyNewestFirst = !_historyNewestFirst,
+                ),
+                icon: const Icon(Icons.sort_rounded, size: 15),
+                label: Text(
+                  _historyNewestFirst
+                      ? (isEs ? 'Más recientes' : 'Most recent')
+                      : (isEs ? 'Más antiguos' : 'Oldest'),
+                ),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  minimumSize: const Size(0, 34),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  textStyle: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+            itemCount: items.length,
+            itemBuilder: (_, i) {
+              final item = items[i];
+              if (item is _BudgetMonthGroup) {
+                final count = item.budgets.length;
+                final collapsible = count > 1;
+                final collapsed = _collapsedBudgetMonths.contains(item.key);
+                return InkWell(
+                  onTap: collapsible
+                      ? () => setState(() {
+                            if (collapsed) {
+                              _collapsedBudgetMonths.remove(item.key);
+                            } else {
+                              _collapsedBudgetMonths.add(item.key);
+                            }
+                          })
+                      : null,
+                  child: Container(
+                    height: 30,
+                    margin: EdgeInsets.only(top: i == 0 ? 0 : 8),
+                    alignment: Alignment.centerLeft,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: cs.outlineVariant.withValues(alpha: .45),
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          item.label,
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '· $count ${isEs ? (count == 1 ? 'presupuesto' : 'presupuestos') : (count == 1 ? 'budget' : 'budgets')}',
+                          style: t.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontSize: 10,
+                          ),
+                        ),
+                        const Spacer(),
+                        if (collapsible)
+                          Icon(
+                            collapsed
+                                ? Icons.keyboard_arrow_right_rounded
+                                : Icons.keyboard_arrow_down_rounded,
+                            size: 17,
+                            color: cs.onSurfaceVariant,
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              final b = item as Map<String, dynamic>;
+              final id = (b['_id'] ?? b['id'] ?? '').toString();
+              return _BudgetHistoryItem(
+                budget: b,
+                isPreviewing:
+                    (_previewingBudget?['_id'] ?? _previewingBudget?['id']) ==
+                        id,
+                onPreview: widget.onPreview == null
+                    ? null
+                    : () async {
+                        setState(() => _previewingBudget = b);
+                        try {
+                          await widget.onPreview!(b);
+                        } finally {
+                          if (mounted) setState(() => _previewingBudget = null);
+                        }
+                      },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
+}
+
+class _BudgetMonthGroup {
+  _BudgetMonthGroup({required this.key, required this.label});
+
+  final String key;
+  final String label;
+  final List<Map<String, dynamic>> budgets = <Map<String, dynamic>>[];
 }
 
 class _BudgetStatCell extends StatelessWidget {
@@ -1588,6 +1699,64 @@ class _BudgetStatCell extends StatelessWidget {
   }
 }
 
+num? _budgetHistoryTotal(Map<String, dynamic> budget) {
+  final totals = budget['totals'];
+  final candidates = <dynamic>[
+    budget['total'],
+    budget['grandTotal'],
+    budget['amountTotal'],
+    if (totals is Map) totals['total'],
+    if (totals is Map) totals['grandTotal'],
+    if (totals is Map) totals['amount'],
+  ];
+  for (final value in candidates) {
+    if (value is num) return value;
+    final parsed = num.tryParse((value ?? '').toString().replaceAll(',', '.'));
+    if (parsed != null) return parsed;
+  }
+  return null;
+}
+
+List<String> _budgetHistoryConcepts(Map<String, dynamic> budget) {
+  final concepts = <String>[];
+  for (final key in const ['description', 'concept', 'subject', 'title']) {
+    final value =
+        (budget[key] ?? '').toString().trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (value.isNotEmpty && !concepts.contains(value)) concepts.add(value);
+  }
+  for (final rawGroup in <dynamic>[
+    budget['lines'],
+    budget['blocks'],
+    budget['items'],
+  ]) {
+    if (rawGroup is! List) continue;
+    for (final raw in rawGroup.whereType<Map>()) {
+      final value = (raw['conceptTitle'] ??
+              raw['description'] ??
+              raw['concept'] ??
+              raw['title'] ??
+              raw['name'] ??
+              raw['text'] ??
+              '')
+          .toString()
+          .trim()
+          .replaceAll(RegExp(r'\s+'), ' ');
+      if (value.isNotEmpty && !concepts.contains(value)) concepts.add(value);
+    }
+  }
+  return concepts;
+}
+
+String _budgetHistoryCurrencySymbol(Map<String, dynamic> budget) {
+  final raw = (budget['currency'] ?? 'EUR').toString().trim().toUpperCase();
+  return switch (raw) {
+    '' || 'EUR' || '€' => '€',
+    'USD' || r'$' => r'$',
+    'GBP' || '£' => '£',
+    _ => raw,
+  };
+}
+
 class _BudgetHistoryItem extends StatelessWidget {
   final Map<String, dynamic> budget;
   final VoidCallback? onPreview;
@@ -1606,11 +1775,8 @@ class _BudgetHistoryItem extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final isEs = l.localeName.toLowerCase().startsWith('es');
 
-    final status = (budget['status'] ?? '').toString();
-    final isIssued = status.contains('issue') || status == 'accepted';
-
     final rawDate =
-        budget['registeredAt'] ?? budget['issueDate'] ?? budget['createdAt'];
+        budget['issueDate'] ?? budget['registeredAt'] ?? budget['createdAt'];
     DateTime? date;
     if (rawDate is DateTime) {
       date = rawDate;
@@ -1626,60 +1792,136 @@ class _BudgetHistoryItem extends StatelessWidget {
         .trim();
     final displayNumber =
         number.isNotEmpty ? number : (isEs ? 'Borrador' : 'Draft');
+    final concepts = _budgetHistoryConcepts(budget);
+    final concept = concepts.isEmpty
+        ? (isEs ? 'Sin concepto' : 'No concept')
+        : concepts.first;
+    final extraConcepts = concepts.length - 1;
+    final total = _budgetHistoryTotal(budget);
+    final amount = total == null
+        ? '—'
+        : NumberFormat.currency(
+            locale: l.localeName,
+            symbol: _budgetHistoryCurrencySymbol(budget),
+            decimalDigits: 2,
+          ).format(total);
+    final amountWidth = MediaQuery.sizeOf(context).width < 360 ? 74.0 : 94.0;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-      child: Row(
-        children: [
-          Icon(
-            isIssued ? Icons.description_outlined : Icons.edit_note_rounded,
-            size: 14,
-            color: isIssued
-                ? cs.primary.withValues(alpha: 0.7)
-                : cs.onSurfaceVariant.withValues(alpha: 0.5),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  displayNumber,
-                  style: t.bodySmall.copyWith(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
-                    color: cs.onSurface,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  dateLabel,
-                  style: t.bodySmall
-                      .copyWith(fontSize: 10, color: cs.onSurfaceVariant),
-                ),
-              ],
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: cs.outlineVariant.withValues(alpha: .24),
             ),
           ),
-          if (onPreview != null)
-            isPreviewing
-                ? SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: cs.primary),
-                  )
-                : IconButton(
-                    onPressed: onPreview,
-                    icon: const Icon(Icons.visibility_outlined),
-                    iconSize: 16,
-                    visualDensity: VisualDensity.compact,
-                    tooltip: isEs ? 'Vista previa' : 'Preview',
-                    color: cs.primary,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+        ),
+        child: InkWell(
+          onTap: onPreview,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                displayNumber,
+                                style: t.bodySmall.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                  color: cs.onSurface,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                dateLabel,
+                                style: t.bodySmall.copyWith(
+                                  fontSize: 10,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Tooltip(
+                          message:
+                              concepts.isEmpty ? concept : concepts.join('\n'),
+                          child: Text(
+                            extraConcepts > 0
+                                ? '$concept +$extraConcepts ${isEs ? 'conceptos' : 'concepts'}'
+                                : concept,
+                            style: t.bodySmall.copyWith(
+                              fontSize: 10,
+                              color: cs.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-        ],
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: amountWidth,
+                    child: Text(
+                      amount,
+                      textAlign: TextAlign.end,
+                      maxLines: 1,
+                      overflow: TextOverflow.fade,
+                      softWrap: false,
+                      style: t.bodySmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                  ),
+                  if (onPreview != null)
+                    isPreviewing
+                        ? SizedBox.square(
+                            dimension: 40,
+                            child: Center(
+                              child: SizedBox.square(
+                                dimension: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: cs.primary,
+                                ),
+                              ),
+                            ),
+                          )
+                        : IconButton(
+                            onPressed: onPreview,
+                            icon: const Icon(Icons.visibility_outlined),
+                            iconSize: 16,
+                            tooltip: isEs ? 'Vista previa' : 'Preview',
+                            color: cs.primary,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints.tightFor(
+                              width: 40,
+                              height: 40,
+                            ),
+                          ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

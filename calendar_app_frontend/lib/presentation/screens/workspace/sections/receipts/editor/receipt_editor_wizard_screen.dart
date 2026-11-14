@@ -307,12 +307,13 @@ class _ReceiptEditorWizardScreenState extends State<ReceiptEditorWizardScreen> {
     final isEmbedded = widget.embedded == true;
     if (isEmbedded) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         child: FolderPanel(
-          onBack: _requestClose,
-          showTab: true,
+          // The embedded workspace already has its own vertical step rail
+          // and footer actions. Do not spend a second row on a title/back
+          // toolbar; closing remains available through the footer.
+          showTab: false,
           contentTopPadding: 0,
-          tabContent: _buildWizardToolbarContent(context),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
             child: _buildContent(context),

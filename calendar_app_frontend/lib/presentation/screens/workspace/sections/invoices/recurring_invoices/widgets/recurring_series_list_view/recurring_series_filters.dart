@@ -3,6 +3,7 @@ import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.d
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/utils/recurrence_frequency.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/buttons.dart';
+import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/search_filters_header.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 
 class RecurringSeriesFilters extends StatelessWidget {
@@ -34,6 +35,8 @@ class RecurringSeriesFilters extends StatelessWidget {
     this.refreshing = false,
     required this.onCreate,
     required this.canManage,
+    this.visibleCount,
+    this.totalCount,
     this.allStatusLabel,
   });
 
@@ -63,96 +66,30 @@ class RecurringSeriesFilters extends StatelessWidget {
   final bool refreshing;
   final VoidCallback onCreate;
   final bool canManage;
+  final int? visibleCount;
+  final int? totalCount;
   final String? allStatusLabel;
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
-    final cs = Theme.of(context).colorScheme;
     final isEs = l.localeName.startsWith('es');
-    final border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: .6)),
-    );
-    final search = SizedBox(
-      key: const ValueKey('recurring-series-search'),
-      height: 38,
-      child: TextField(
-        controller: searchController,
-        onChanged: (_) => onSearchChanged(),
-        style: t.bodySmall.copyWith(fontSize: 13),
-        decoration: InputDecoration(
-          hintText: l.clientSearchHint,
-          prefixIcon: const Icon(Icons.search_rounded, size: 18),
-          prefixIconConstraints: const BoxConstraints(minWidth: 38),
-          filled: true,
-          fillColor: cs.surfaceContainerHighest.withValues(alpha: .55),
-          border: border,
-          enabledBorder: border,
-          focusedBorder: border.copyWith(
-            borderSide: BorderSide(color: cs.primary, width: 1.3),
-          ),
-          isDense: true,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          suffixIconConstraints: const BoxConstraints(minWidth: 36),
-          suffixIcon: searchController.text.trim().isEmpty
-              ? null
-              : IconButton(
-                  tooltip:
-                      MaterialLocalizations.of(context).deleteButtonTooltip,
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  onPressed: () {
-                    searchController.clear();
-                    onSearchChanged();
-                  },
-                  icon: const Icon(Icons.close_rounded, size: 16),
-                ),
-        ),
-      ),
-    );
-
-    final filtersMenu = MenuAnchor(
-      style: MenuStyle(
-        elevation: const WidgetStatePropertyAll(6),
-        backgroundColor: WidgetStatePropertyAll(cs.surfaceContainerHigh),
-        shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-        padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-      ),
-      menuChildren: [
-        _RecurringFilterPanel(
-          statusOptions: statusOptions,
-          selectedStatus: selectedStatus,
-          onStatusSelected: onStatusSelected,
-          clientOptions: clientOptions,
-          selectedClient: selectedClient,
-          onClientSelected: onClientSelected,
-          onClientClear: onClientClear,
-          frequencyOptions: frequencyOptions,
-          selectedFrequency: selectedFrequency,
-          onFrequencySelected: onFrequencySelected,
-          onFrequencyClear: onFrequencyClear,
-          dueSoonOnly: dueSoonOnly,
-          onDueSoonChanged: onDueSoonChanged,
-          showInactiveClients: showInactiveClients,
-          onShowInactiveChanged: onShowInactiveChanged,
-        ),
-      ],
-      builder: (context, controller, _) => HexoraButton(
-        key: const ValueKey('recurring-series-filters-button'),
-        onPressed: () =>
-            controller.isOpen ? controller.close() : controller.open(),
-        icon: Icons.tune_rounded,
-        label: activeFilterCount == 0
-            ? (isEs ? 'Filtros' : 'Filters')
-            : '${isEs ? 'Filtros' : 'Filters'} ($activeFilterCount)',
-        variant: HexoraButtonVariant.secondary,
-        size: HexoraButtonSize.large,
-      ),
+    final filterPanel = _RecurringFilterPanel(
+      statusOptions: statusOptions,
+      selectedStatus: selectedStatus,
+      onStatusSelected: onStatusSelected,
+      clientOptions: clientOptions,
+      selectedClient: selectedClient,
+      onClientSelected: onClientSelected,
+      onClientClear: onClientClear,
+      frequencyOptions: frequencyOptions,
+      selectedFrequency: selectedFrequency,
+      onFrequencySelected: onFrequencySelected,
+      onFrequencyClear: onFrequencyClear,
+      dueSoonOnly: dueSoonOnly,
+      onDueSoonChanged: onDueSoonChanged,
+      showInactiveClients: showInactiveClients,
+      onShowInactiveChanged: onShowInactiveChanged,
     );
 
     final sortLabel = sortByClientName
@@ -179,36 +116,16 @@ class RecurringSeriesFilters extends StatelessWidget {
         label: sortLabel,
         trailingIcon: Icons.keyboard_arrow_down_rounded,
         variant: HexoraButtonVariant.secondary,
-        size: HexoraButtonSize.large,
+        size: HexoraButtonSize.compact,
       ),
     );
-    final clear = activeFilterCount == 0
-        ? null
-        : HexoraButton(
-            key: const ValueKey('recurring-series-clear-filters'),
-            onPressed: onClearFilters,
-            icon: Icons.close_rounded,
-            label: l.clientFiltersClear,
-            variant: HexoraButtonVariant.ghost,
-            size: HexoraButtonSize.large,
-          );
-    final compactClear = activeFilterCount == 0
-        ? null
-        : HexoraButton.iconOnly(
-            key: const ValueKey('recurring-series-clear-filters'),
-            onPressed: onClearFilters,
-            icon: Icons.close_rounded,
-            tooltip: l.clientFiltersClear,
-            variant: HexoraButtonVariant.ghost,
-            size: HexoraButtonSize.large,
-          );
     final refresh = HexoraButton.iconOnly(
       key: const ValueKey('recurring-series-refresh'),
       onPressed: refreshing ? null : onRefresh,
       icon: Icons.refresh_rounded,
       tooltip: isEs ? 'Actualizar recurrencias' : 'Refresh recurrences',
       variant: HexoraButtonVariant.secondary,
-      size: HexoraButtonSize.large,
+      size: HexoraButtonSize.compact,
       loading: refreshing,
     );
     final create = HexoraButton.iconOnly(
@@ -216,82 +133,99 @@ class RecurringSeriesFilters extends StatelessWidget {
       onPressed: canManage ? onCreate : null,
       icon: Icons.add_rounded,
       tooltip: l.recurringInvoicesCreateCta,
-      size: HexoraButtonSize.large,
+      size: HexoraButtonSize.compact,
     );
-    Widget divider() => SizedBox(
-          height: 24,
-          child: VerticalDivider(
-            width: 1,
-            thickness: 1,
-            color: cs.outlineVariant.withValues(alpha: .65),
+    final actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        sortMenu,
+        const SizedBox(width: 6),
+        refresh,
+        const SizedBox(width: 6),
+        create,
+      ],
+    );
+
+    return SearchFiltersHeader(
+      searchController: searchController,
+      onSearchChanged: onSearchChanged,
+      searchHint: l.clientSearchHint,
+      clearFiltersLabel: l.clientFiltersClear,
+      hasFilterOptions: true,
+      hasActiveFilters: activeFilterCount > 0,
+      activeFilterCount: activeFilterCount,
+      filtersContent: filterPanel,
+      onClearFilters: onClearFilters,
+      padding: EdgeInsets.zero,
+      topSpacing: 0,
+      searchDesktopHeight: 32,
+      compactDesktopControls: true,
+      searchMaxWidth: 360,
+      searchFlexibleBreakpoint: 560,
+      toolbarWrapBreakpoint: 620,
+      filtersInMenu: true,
+      filterMenuWidth: 340,
+      filterBeforeSearch: true,
+      searchFieldKey: const ValueKey('recurring-series-search'),
+      filterButtonKey: const ValueKey('recurring-series-filters-button'),
+      clearFiltersKey: const ValueKey('recurring-series-clear-filters'),
+      toolbarContent: actions,
+      trailingActions: [
+        if (visibleCount != null && totalCount != null)
+          _RecurringListInfo(
+            visibleCount: visibleCount!,
+            totalCount: totalCount!,
           ),
-        );
+      ],
+    );
+  }
+}
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 720;
-        final content = compact
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  search,
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      refresh,
-                      const SizedBox(width: 6),
-                      filtersMenu,
-                      const SizedBox(width: 6),
-                      Expanded(child: sortMenu),
-                      if (compactClear != null) ...[
-                        const SizedBox(width: 2),
-                        compactClear,
-                      ],
-                      const SizedBox(width: 6),
-                      create,
-                    ],
-                  ),
-                ],
-              )
-            : Row(
-                children: [
-                  refresh,
-                  const SizedBox(width: 10),
-                  divider(),
-                  const SizedBox(width: 10),
-                  SizedBox(
-                    width: (constraints.maxWidth * .42).clamp(260.0, 480.0),
-                    child: search,
-                  ),
-                  const SizedBox(width: 8),
-                  filtersMenu,
-                  const SizedBox(width: 10),
-                  divider(),
-                  const SizedBox(width: 10),
-                  sortMenu,
-                  if (clear != null) ...[
-                    const SizedBox(width: 2),
-                    constraints.maxWidth < 880 ? compactClear! : clear,
-                  ],
-                  const Spacer(),
-                  create,
-                ],
-              );
+class _RecurringListInfo extends StatelessWidget {
+  const _RecurringListInfo({
+    required this.visibleCount,
+    required this.totalCount,
+  });
 
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: .55),
+  final int visibleCount;
+  final int totalCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final count = visibleCount == totalCount
+        ? '$visibleCount'
+        : '$visibleCount/$totalCount';
+    final label = isEs
+        ? '$visibleCount de $totalCount recurrencias'
+        : '$visibleCount of $totalCount recurrences';
+    return Tooltip(
+      message: label,
+      child: Container(
+        key: const ValueKey('recurring-series-list-summary'),
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 7),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(alpha: .45),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.info_outline_rounded,
+                size: 15, color: cs.onSurfaceVariant),
+            const SizedBox(width: 4),
+            Text(
+              count,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
             ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(5),
-            child: content,
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 }

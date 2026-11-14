@@ -32,6 +32,7 @@ class RecurringSeriesListView extends StatefulWidget {
   final bool showHeader;
   final RecurringInvoicesApi? api;
   final bool receiptsMode;
+  final int? totalSeriesCount;
 
   const RecurringSeriesListView({
     super.key,
@@ -55,6 +56,7 @@ class RecurringSeriesListView extends StatefulWidget {
     this.showHeader = true,
     this.api,
     this.receiptsMode = false,
+    this.totalSeriesCount,
   });
 
   @override
@@ -362,6 +364,8 @@ class _RecurringSeriesListViewState extends State<RecurringSeriesListView> {
       refreshing: widget.refreshing,
       onCreate: widget.onCreate,
       canManage: widget.canManage,
+      visibleCount: visibleSeries.length,
+      totalCount: widget.totalSeriesCount ?? widget.series.length,
     );
 
     Widget buildListPane() => Column(

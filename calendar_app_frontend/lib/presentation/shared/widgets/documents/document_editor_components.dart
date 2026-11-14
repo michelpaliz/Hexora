@@ -26,6 +26,7 @@ class HexoraDocumentStepper extends StatelessWidget {
     required this.onStepTapped,
     this.itemKeyBuilder,
     this.compactConnectors = false,
+    this.vertical = false,
   });
 
   final List<HexoraDocumentStep> steps;
@@ -33,6 +34,7 @@ class HexoraDocumentStepper extends StatelessWidget {
   final ValueChanged<int> onStepTapped;
   final Key Function(int index, HexoraDocumentStep step)? itemKeyBuilder;
   final bool compactConnectors;
+  final bool vertical;
 
   @override
   Widget build(BuildContext context) {
@@ -76,48 +78,67 @@ class HexoraDocumentStepper extends StatelessWidget {
                       : Colors.transparent,
                 ),
               ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Container(
-                  width: 22,
-                  height: 22,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: active
-                        ? color
-                        : complete
-                            ? color.withValues(alpha: .14)
-                            : cs.surfaceContainerHighest,
-                    border: Border.all(color: color.withValues(alpha: .38)),
-                  ),
-                  child: complete
-                      ? Icon(Icons.check_rounded, size: 14, color: color)
-                      : step.hasError
-                          ? Icon(Icons.priority_high_rounded,
-                              size: 13, color: active ? cs.onError : color)
-                          : step.icon != null && active
-                              ? Icon(step.icon, size: 13, color: cs.onPrimary)
-                              : Text(
-                                  '${index + 1}',
-                                  style: textTheme.bodySmall?.copyWith(
-                                    color: active ? cs.onPrimary : color,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  step.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.bodySmall?.copyWith(
-                    color: color,
-                    fontSize: 11.5,
-                    fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-                  ),
-                ),
-              ]),
+              child: Row(
+                  mainAxisSize: vertical ? MainAxisSize.max : MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 22,
+                      height: 22,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: active
+                            ? color
+                            : complete
+                                ? color.withValues(alpha: .14)
+                                : cs.surfaceContainerHighest,
+                        border: Border.all(color: color.withValues(alpha: .38)),
+                      ),
+                      child: complete
+                          ? Icon(Icons.check_rounded, size: 14, color: color)
+                          : step.hasError
+                              ? Icon(Icons.priority_high_rounded,
+                                  size: 13, color: active ? cs.onError : color)
+                              : step.icon != null && active
+                                  ? Icon(step.icon,
+                                      size: 13, color: cs.onPrimary)
+                                  : Text(
+                                      '${index + 1}',
+                                      style: textTheme.bodySmall?.copyWith(
+                                        color: active ? cs.onPrimary : color,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                    ),
+                    const SizedBox(width: 6),
+                    if (vertical)
+                      Expanded(
+                        child: Text(
+                          step.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.bodySmall?.copyWith(
+                            color: color,
+                            fontSize: 11.5,
+                            fontWeight:
+                                active ? FontWeight.w800 : FontWeight.w600,
+                          ),
+                        ),
+                      )
+                    else
+                      Text(
+                        step.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: color,
+                          fontSize: 11.5,
+                          fontWeight:
+                              active ? FontWeight.w800 : FontWeight.w600,
+                        ),
+                      ),
+                  ]),
             ),
           ),
         ),
@@ -136,6 +157,29 @@ class HexoraDocumentStepper extends StatelessWidget {
                 : cs.outlineVariant.withValues(alpha: .62),
           ),
         );
+
+    if (vertical) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var index = 0; index < steps.length; index++) ...[
+            stepItem(index),
+            if (index < steps.length - 1)
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Container(
+                  width: 2,
+                  height: 16,
+                  margin: const EdgeInsetsDirectional.only(start: 18),
+                  color: index < currentStep
+                      ? cs.primary.withValues(alpha: .52)
+                      : cs.outlineVariant.withValues(alpha: .62),
+                ),
+              ),
+          ],
+        ],
+      );
+    }
 
     return LayoutBuilder(builder: (context, constraints) {
       final compact = constraints.maxWidth < 620;

@@ -65,6 +65,7 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
       workerCount: _workers.length - partnerCount,
       partnerCount: partnerCount,
       onChanged: (value) => setState(() => _showPartners = value),
+      compact: MediaQuery.sizeOf(context).width < 760,
     );
   }
 
@@ -298,19 +299,22 @@ class _GroupTimeTrackingScreenState extends State<GroupTimeTrackingScreen> {
       sheetAnimationStyle: HexoraMotion.sheetStyle(context),
       context: context,
       isScrollControlled: true,
+      enableDrag: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       useSafeArea: true,
-      builder: (sheetContext) => SingleChildScrollView(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
-        ),
-        child: EditWorkerSheet(
+      builder: (sheetContext) => DraggableScrollableSheet(
+        initialChildSize: 0.72,
+        minChildSize: 0.45,
+        maxChildSize: 0.94,
+        expand: false,
+        builder: (_, scrollController) => EditWorkerSheet(
           group: group,
           worker: worker,
           repo: _repo,
           getToken: _getToken,
+          scrollController: scrollController,
         ),
       ),
     );

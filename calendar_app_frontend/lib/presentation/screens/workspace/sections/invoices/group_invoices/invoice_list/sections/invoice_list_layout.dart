@@ -4,13 +4,15 @@ extension _InvoiceListLayout on _InvoicesTabListState {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final hasFilter = _fromDate != null || _toDate != null;
-    final sourceInvoices = _unlinkedOnly
-        ? (_unlinkedInvoices ?? const <Invoice>[])
-        : widget.invoices;
+    final sourceInvoices = _unpaidOnly
+        ? (_unpaidInvoices ?? const <Invoice>[])
+        : _unlinkedOnly
+            ? (_unlinkedInvoices ?? const <Invoice>[])
+            : widget.invoices;
     final searchQuery = _searchText.trim().toLowerCase();
-    final invoiceQuery = _invoiceNumberQuery.trim().toLowerCase();
-    // ignore: unused_local_variable
-    final hasColumnFilters = searchQuery.isNotEmpty ||
+    final invoiceQuery = _invoiceNumberQuery.trim();
+    final hasColumnFilters = _duplicateFilter != 'all' ||
+        searchQuery.isNotEmpty ||
         invoiceQuery.isNotEmpty ||
         _selectedClientNames.isNotEmpty ||
         _selectedLifecycleStatuses.isNotEmpty ||
@@ -22,8 +24,12 @@ extension _InvoiceListLayout on _InvoicesTabListState {
         _mismatchOnly ||
         hasFilter;
     final filteredByTable = sourceInvoices.where((inv) {
+      if (_duplicateFilter == 'duplicates' && !inv.isDuplicate) return false;
+      if (_duplicateFilter == 'without_duplicates' && inv.isDuplicate) {
+        return false;
+      }
       if (invoiceQuery.isNotEmpty &&
-          !inv.invoiceNumber.toLowerCase().contains(invoiceQuery)) {
+          !invoiceNumberMatchesSearch(inv.invoiceNumber, invoiceQuery)) {
         return false;
       }
       if (_selectedClientNames.isNotEmpty &&
@@ -59,7 +65,10 @@ extension _InvoiceListLayout on _InvoicesTabListState {
           amount,
           amount.replaceAll('.', ','),
         ].join(' ').toLowerCase();
-        if (!searchable.contains(searchQuery)) return false;
+        if (!searchable.contains(searchQuery) &&
+            !invoiceNumberMatchesSearch(inv.invoiceNumber, searchQuery)) {
+          return false;
+        }
       }
       final date = _invoiceDate(inv);
       if (!hasFilter) return true;
@@ -99,6 +108,9 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                 .compareTo(_normalizedPaymentStatus(b)),
             _InvoiceColumnSort.date => (_invoiceDate(a) ?? DateTime(9999))
                 .compareTo(_invoiceDate(b) ?? DateTime(9999)),
+            _InvoiceColumnSort.notes => (a.notes ?? '')
+                .toLowerCase()
+                .compareTo((b.notes ?? '').toLowerCase()),
             _InvoiceColumnSort.taxableBase =>
               compareNullableNum(a.subtotal, b.subtotal),
             _InvoiceColumnSort.vat =>
@@ -120,21 +132,13 @@ extension _InvoiceListLayout on _InvoicesTabListState {
         return _compareInvoiceFallback(a, b);
       });
     }
-    // [sourceInvoices] is the complete module dataset, so this uses the same
-    // normalized criteria as the rows and never falls back to page totals.
-    final usesLocalSummary = _unlinkedOnly ||
-        searchQuery.isNotEmpty ||
-        invoiceQuery.isNotEmpty ||
-        _selectedClientNames.isNotEmpty ||
-        _selectedLifecycleStatuses.isNotEmpty ||
-        _selectedDeliveryStatuses.isNotEmpty ||
-        _selectedPaymentStatuses.isNotEmpty ||
-        _baseRange.active ||
-        _vatRange.active ||
-        _totalRange.active ||
-        _mismatchOnly;
-    final summaryTotals =
-        usesLocalSummary ? _summaryFromInvoices(visible) : _summaryTotals;
+    // [sourceInvoices] is the complete module dataset, so whenever any filter
+    // is active (including the date range) the footer sums the same visible
+    // invoices as the rows instead of falling back to the server page totals.
+    final usesLocalSummary = _unpaidOnly || _unlinkedOnly || hasColumnFilters;
+    final summaryTotals = usesLocalSummary
+        ? _summaryFromInvoices(visible, outstandingOnly: _unpaidOnly)
+        : _summaryTotals;
 
     Future<void> downloadFiltered({required bool excel}) async {
       final action =
@@ -352,12 +356,15 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                   count: visible.length,
                   visibleColumns: _visibleFinancialColumns,
                   onColumnsChanged: _setVisibleFinancialColumns,
+                  unpaidOnly: _unpaidOnly,
                   unlinkedOnly: _unlinkedOnly,
                   paymentSuggestionsLoading: _paymentSuggestionsLoading,
                   searchQuery: _searchText,
                   onSearchChanged: _setGlobalSearchDebounced,
                   onHeaderAction: (action) {
                     switch (action) {
+                      case _InvoiceHeaderAction.toggleUnpaid:
+                        _toggleUnpaidOnly();
                       case _InvoiceHeaderAction.toggleUnlinked:
                         _toggleUnlinkedOnly();
                       case _InvoiceHeaderAction.resolveLinks:
@@ -395,6 +402,62 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                   ),
                 ),
               );
+              Widget duplicateFilterButton() {
+                final selection = switch (_duplicateFilter) {
+                  'duplicates' =>
+                    isSpanish ? 'Solo duplicados' : 'Duplicates only',
+                  'without_duplicates' =>
+                    isSpanish ? 'Sin duplicados' : 'Without duplicates',
+                  _ => isSpanish ? 'Todos' : 'All',
+                };
+                return PopupMenuButton<String>(
+                  tooltip:
+                      isSpanish ? 'Filtrar duplicados' : 'Filter duplicates',
+                  onSelected: (value) => _updateInvoiceListState(
+                    () => _duplicateFilter = value,
+                  ),
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                        value: 'all', child: Text(isSpanish ? 'Todos' : 'All')),
+                    PopupMenuItem(
+                        value: 'duplicates',
+                        child: Text(
+                            isSpanish ? 'Solo duplicados' : 'Duplicates only')),
+                    PopupMenuItem(
+                        value: 'without_duplicates',
+                        child: Text(isSpanish
+                            ? 'Sin duplicados'
+                            : 'Without duplicates')),
+                  ],
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: cs.surface.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                          color: cs.outlineVariant.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.filter_list_rounded,
+                            size: 14, color: cs.onSurfaceVariant),
+                        const SizedBox(width: 5),
+                        Text(
+                            '${isSpanish ? 'Duplicados' : 'Duplicates'}: $selection',
+                            style: t.bodySmall.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: cs.onSurfaceVariant)),
+                        const SizedBox(width: 3),
+                        Icon(Icons.arrow_drop_down_rounded,
+                            size: 17, color: cs.onSurfaceVariant),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
               final options = InvoiceToolbarOptionsMenu(
                 count: visible.length,
                 downloading: _downloadingFiltered,
@@ -414,6 +477,7 @@ extension _InvoiceListLayout on _InvoicesTabListState {
               );
               final orderedActions = <Widget>[
                 if (issueAllButton != null) issueAllButton,
+                duplicateFilterButton(),
                 options,
               ];
               final actions = Wrap(
@@ -490,14 +554,16 @@ extension _InvoiceListLayout on _InvoicesTabListState {
               );
             },
           ),
-          if (widget.showSummaryTotals && _unlinkedOnly) ...[
+          if (widget.showSummaryTotals && (_unpaidOnly || _unlinkedOnly)) ...[
             const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: _UnlinkedInvoicesNotice(
-                loading: _unlinkedLoading,
-                error: _unlinkedError,
-                onRetry: _loadUnlinkedInvoices,
+                loading: _unpaidOnly ? _unpaidLoading : _unlinkedLoading,
+                error: _unpaidOnly ? _unpaidError : _unlinkedError,
+                unpaidOnly: _unpaidOnly,
+                onRetry:
+                    _unpaidOnly ? _loadUnpaidInvoices : _loadUnlinkedInvoices,
               ),
             ),
           ],
@@ -650,16 +716,20 @@ extension _InvoiceListLayout on _InvoicesTabListState {
               filtered: usesLocalSummary || hasFilter,
               visibleColumns: _visibleFinancialColumns,
               summary: summaryTotals,
-              loading: _unlinkedOnly
-                  ? _unlinkedLoading
-                  : usesLocalSummary
-                      ? false
-                      : _summaryLoading,
-              error: _unlinkedOnly
-                  ? _unlinkedError
-                  : usesLocalSummary
-                      ? null
-                      : _summaryError,
+              loading: _unpaidOnly
+                  ? _unpaidLoading
+                  : _unlinkedOnly
+                      ? _unlinkedLoading
+                      : usesLocalSummary
+                          ? false
+                          : _summaryLoading,
+              error: _unpaidOnly
+                  ? _unpaidError
+                  : _unlinkedOnly
+                      ? _unlinkedError
+                      : usesLocalSummary
+                          ? null
+                          : _summaryError,
               mismatchCount: mismatchInvoices.length,
               mismatchFilterActive: _mismatchOnly,
               onMismatchTap: mismatchInvoices.isEmpty && !_mismatchOnly

@@ -53,7 +53,6 @@ class PresupuestoDocumentActionsView extends StatefulWidget {
   State<PresupuestoDocumentActionsView> createState() =>
       _PresupuestoDocumentActionsViewState();
 }
-
 class _PresupuestoDocumentActionsViewState
     extends State<PresupuestoDocumentActionsView> {
   late final PresupuestosApi _api;
@@ -599,36 +598,49 @@ class _PresupuestoDocumentActionsViewState
     final documents = _visibleDocuments;
 
     final cs = Theme.of(context).colorScheme;
-    final list = ListView(
-      padding: const EdgeInsets.all(8),
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: cs.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.38),
-            ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    final narrow = MediaQuery.sizeOf(context).width < 760;
+    final list = narrow
+        ? ListView(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                child: _filterToolbar(context),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                child: _documentTable(documents),
+              if (_selected.isEmpty)
+                _mobileFilterToolbar(context, documents)
+              else
+                _mobileSelectionToolbar(context),
+              const SizedBox(height: 8),
+              _documentTable(documents),
+            ],
+          )
+        : ListView(
+            padding: const EdgeInsets.all(8),
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: cs.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.38),
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                      child: _filterToolbar(context),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                      child: _documentTable(documents),
+                    ),
+                  ],
+                ),
               ),
             ],
-          ),
-        ),
-      ],
-    );
+          );
     return Padding(
-      padding: const EdgeInsets.all(6),
+      padding: narrow ? EdgeInsets.zero : const EdgeInsets.all(6),
       child: DocumentSplitView(
         storageKey: 'proposal-documents',
         selectionKey: _detailDocument == null
@@ -1042,6 +1054,202 @@ class _PresupuestoDocumentActionsViewState
         label: 'Nueva propuesta',
       );
 
+  Widget _mobileFilterToolbar(
+      BuildContext context, List<Map<String, dynamic>> documents) {
+    final cs = Theme.of(context).colorScheme;
+    final filterLabel = _statusFilter == 'all'
+        ? 'Todas'
+        : _statusFilter == 'draft'
+            ? 'Borradores'
+            : 'Emitidas';
+    final count = documents.length;
+    final countLabel = count == 1 ? '1 propuesta' : '$count propuestas';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(children: [
+          Expanded(child: _mobileSearchField(context)),
+          const SizedBox(width: 6),
+          _mobileFilterButton(context),
+          const SizedBox(width: 2),
+          _refreshButton(context),
+        ]),
+        const SizedBox(height: 6),
+        Text(
+          '$countLabel · $filterLabel',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: cs.onSurfaceVariant),
+        ),
+      ],
+    );
+  }
+
+  Widget _mobileSearchField(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 40,
+      child: TextField(
+        controller: _search,
+        onChanged: (_) => setState(() {}),
+        textInputAction: TextInputAction.search,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5),
+        decoration: InputDecoration(
+          hintText: 'Buscar propuestas...',
+          prefixIcon: const Icon(Icons.search_rounded, size: 18),
+          prefixIconConstraints: const BoxConstraints(minWidth: 36),
+          isDense: true,
+          filled: true,
+          fillColor: cs.surfaceContainerLow,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(9),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(9),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(9),
+            borderSide: BorderSide(color: cs.primary.withValues(alpha: .45)),
+          ),
+          suffixIcon: _search.text.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'Borrar búsqueda',
+                  icon: const Icon(Icons.close, size: 18),
+                  onPressed: () => setState(_search.clear),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _mobileFilterButton(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return IconButton(
+      tooltip: 'Filtros',
+      visualDensity: VisualDensity.compact,
+      onPressed: () => _showMobileFilters(context),
+      icon: const Icon(Icons.tune_rounded, size: 20),
+      style: IconButton.styleFrom(
+        backgroundColor: cs.surfaceContainerLow,
+        minimumSize: const Size(40, 40),
+      ),
+    );
+  }
+
+
+
+  void _showMobileFilters(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        Widget heading(String title) => Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 4),
+              child: Text(
+                title,
+                style: Theme.of(sheetContext)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            );
+        Widget option(String label, bool selected, VoidCallback onTap) =>
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+              onTap: onTap,
+              title: Text(label),
+              trailing: selected
+                  ? Icon(Icons.check_rounded, size: 20, color: cs.primary)
+                  : null,
+            );
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                heading('Estado'),
+                option('Todas', _statusFilter == 'all', () {
+                  setState(() => _statusFilter = 'all');
+                  Navigator.pop(sheetContext);
+                }),
+                option('Borradores', _statusFilter == 'draft', () {
+                  setState(() => _statusFilter = 'draft');
+                  Navigator.pop(sheetContext);
+                }),
+                option('Emitidas', _statusFilter == 'issued', () {
+                  setState(() => _statusFilter = 'issued');
+                  Navigator.pop(sheetContext);
+                }),
+                const SizedBox(height: 12),
+                heading('Orden'),
+                option('Fecha más reciente', _newestFirst, () {
+                  setState(() => _newestFirst = true);
+                  Navigator.pop(sheetContext);
+                }),
+                option('Fecha más antigua', !_newestFirst, () {
+                  setState(() => _newestFirst = false);
+                  Navigator.pop(sheetContext);
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _mobileSelectionToolbar(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final count = _selected.length;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: cs.primary.withValues(alpha: .06),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(children: [
+        Icon(Icons.checklist_rounded, size: 20, color: cs.primary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            count == 1 ? '1 seleccionada' : '$count seleccionadas',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
+        IconButton(
+          tooltip: 'Eliminar borradores',
+          visualDensity: VisualDensity.compact,
+          onPressed:
+              _mutationBusy || _selectedDrafts.isEmpty ? null : _removeSelected,
+          icon: const Icon(Icons.delete_outline, size: 20),
+        ),
+        IconButton(
+          tooltip: 'Cancelar selección',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => setState(_selected.clear),
+          icon: const Icon(Icons.close, size: 20),
+        ),
+      ]),
+    );
+  }
+
   Widget _sortButton(BuildContext context) {
     final theme = Theme.of(context);
     return PopupMenuButton<bool>(
@@ -1319,68 +1527,134 @@ class _DocumentRow extends StatelessWidget {
             )),
       );
     }
+    // Compact mobile/narrow row (~64–72px). Information hierarchy: the client
+    // name leads (titles repeat across proposals, so the client distinguishes
+    // them best); the proposal title/concept and number form the secondary
+    // line next to the status badge, with the amount right-aligned. The whole
+    // row is tappable, the checkbox stays independent, and the three-dot menu
+    // keeps every action. Flexible/scale-down children keep it overflow-free on
+    // narrow phones and at large text scales. Only selected/pressed rows are
+    // highlighted — no per-row background otherwise.
+    final primaryText = client.isNotEmpty
+        ? client
+        : (title.isEmpty ? 'Propuesta' : title);
+    final descriptor = client.isNotEmpty
+        ? (title.isNotEmpty
+            ? title
+            : (concepts.isNotEmpty ? concepts.first : ''))
+        : (concepts.isNotEmpty ? concepts.first : '');
+    final secondaryParts = <String>[
+      if (descriptor.isNotEmpty) descriptor,
+      if (_documentNumber(document).isNotEmpty) _documentNumber(document),
+      if (date != null) DateFormat('d MMM y', 'es').format(date),
+    ];
+    final amountLabel = amount == null
+        ? ''
+        : NumberFormat.currency(locale: 'es_ES', symbol: '€').format(amount);
     return Material(
-      color: cs.surface,
+      color: selected
+          ? cs.primary.withValues(alpha: 0.06)
+          : Colors.transparent,
       child: InkWell(
         onTap: onOpen,
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
           decoration: BoxDecoration(
               border: Border(
                   bottom: BorderSide(
                       color: cs.outlineVariant.withValues(
                           alpha: HexoraTableTokens.separatorOpacity)))),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Checkbox(value: selected, onChanged: onSelect),
-              Expanded(
-                  child: Text(title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                          fontSize: HexoraTypography.body,
-                          fontWeight: FontWeight.w600))),
-            ]),
-            Padding(
-              padding: const EdgeInsets.only(left: 48),
-              child: Text(
-                  [
-                    client.isEmpty ? 'Sin cliente' : client,
-                    if (date != null) DateFormat('d MMM y', 'es').format(date),
-                    if (_isDraft)
-                      '${presupuestoDocumentImageCount(document)} imágenes',
-                    if (_documentNumber(document).isNotEmpty)
-                      _documentNumber(document),
-                  ].join(' · '),
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: cs.onSurfaceVariant)),
-            ),
-            const SizedBox(height: 8),
-            Row(children: [
-              HexoraStatusBadge.document(
-                context,
-                status: _statusKind,
-                label: _statusLabel,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Checkbox(
+                value: selected,
+                onChanged: onSelect,
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              if (_isIssued) ...[
-                const SizedBox(width: HexoraTableTokens.gap),
-                _deliveryIndicator(context, compact: true),
-              ],
-              const SizedBox(width: HexoraTableTokens.gap),
+              const SizedBox(width: 6),
               Expanded(
-                  child: Text(
-                      amount == null
-                          ? ''
-                          : NumberFormat.currency(locale: 'es_ES', symbol: '€')
-                              .format(amount),
-                      textAlign: TextAlign.right,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontFeatures: HexoraTypography.numericFeatures))),
-            ]),
-            Align(alignment: Alignment.centerRight, child: _actions(context)),
-          ]),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Text(primaryText,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontSize: 14, fontWeight: FontWeight.w600)),
+                        ),
+                        if (amountLabel.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Flexible(
+                            flex: 2,
+                            child: Text(amountLabel,
+                                maxLines: 1,
+                                softWrap: false,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.right,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    fontFeatures:
+                                        HexoraTypography.numericFeatures)),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  HexoraStatusBadge.document(
+                                    context,
+                                    status: _statusKind,
+                                    label: _statusLabel,
+                                  ),
+                                  if (_isIssued) ...[
+                                    const SizedBox(width: 6),
+                                    _deliveryIndicator(context, compact: true),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (secondaryParts.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              secondaryParts.join(' · '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.right,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 12, color: cs.onSurfaceVariant),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              _actions(context),
+            ],
+          ),
         ),
       ),
     );
@@ -1496,26 +1770,7 @@ class _DocumentRow extends StatelessWidget {
       ),
     );
     if (!table) return menu;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          tooltip: 'Vista previa del PDF',
-          onPressed: fileActionsDisabled ? null : openPreviewPanel,
-          icon: fileBusy
-              ? const SizedBox.square(
-                  dimension: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.visibility_outlined),
-          iconSize: HexoraTableTokens.icon,
-          padding: EdgeInsets.zero,
-          visualDensity: VisualDensity.compact,
-        ),
-        menu,
-      ],
-    );
+    return menu;
   }
 
   Widget _actionMenuItem(

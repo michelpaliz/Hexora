@@ -109,7 +109,7 @@ class SidebarItem extends StatelessWidget {
                                   horizontal: collapsed
                                       ? 8
                                       : NavigationTokens.itemPadding,
-                                  vertical: 8),
+                                  vertical: 6),
                               child: Row(
                                   mainAxisAlignment: collapsed
                                       ? MainAxisAlignment.center

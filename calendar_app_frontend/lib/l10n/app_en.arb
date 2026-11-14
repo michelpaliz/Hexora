@@ -1006,6 +1006,22 @@
     "@roleCardTapHint": {
         "description": "Hint displayed on the profile role card encouraging users to tap for more details."
     },
+    "accessPermissionsTitle": "Access permissions",
+    "@accessPermissionsTitle": {
+        "description": "Title for the access permissions row in the business information section."
+    },
+    "accessFullBusiness": "Full access to the business",
+    "@accessFullBusiness": {
+        "description": "Subtitle shown when the current user has full access to the business."
+    },
+    "viewRolePermissions": "View role permissions",
+    "@viewRolePermissions": {
+        "description": "Action label that opens the role permissions details."
+    },
+    "businessHoursScheduleHint": "Set the allowed schedule for scheduling events.",
+    "@businessHoursScheduleHint": {
+        "description": "Short explanation shown inside the business hours editing screen."
+    },
     "createdByLabel": "Created by",
     "@createdByLabel": {
         "description": "Label shown before the event owner's information."

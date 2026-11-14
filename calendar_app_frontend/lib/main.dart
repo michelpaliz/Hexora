@@ -67,6 +67,15 @@ class _AppShell extends StatelessWidget {
           theme: AppTheme.light,
           darkTheme: AppTheme.dark,
           themeMode: themeModeProvider.mode,
+          builder: (context, child) {
+            if (child == null) return const SizedBox.shrink();
+            final phoneViewport = MediaQuery.sizeOf(context).width < 700;
+            if (!phoneViewport) return child;
+            return Theme(
+              data: AppTheme.forMobileViewport(Theme.of(context)),
+              child: child,
+            );
+          },
           localizationsDelegates: const [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,

@@ -41,6 +41,8 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
   final TextEditingController _notesSearchController = TextEditingController();
   final TextEditingController _clientProviderController =
       TextEditingController();
+  final TextEditingController _invoiceNumberController =
+      TextEditingController();
   final List<int> _sizeOptions = const [50, 100, 200];
   final Set<String> _selectedIds = <String>{};
   final Map<String, String> _noProcedeReasonsByEntryId = <String, String>{};
@@ -99,11 +101,23 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     _notesSearchController.dispose();
     _clientProviderController.removeListener(_onClientProviderTyped);
     _clientProviderController.dispose();
+    _invoiceNumberController.dispose();
     super.dispose();
   }
 
   void _onClientProviderTyped() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _disposeDialogController(
+    TextEditingController controller,
+  ) async {
+    // RawDialogRoute completes its Future when pop starts, while the reverse
+    // transition still has the TextField mounted for one more frame. Keep the
+    // temporary controller alive until that shared transition has finished.
+    final duration = HexoraMotion.duration(context, HexoraMotion.dialog);
+    if (duration > Duration.zero) await Future<void>.delayed(duration);
+    controller.dispose();
   }
 
   @override
@@ -257,6 +271,42 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     final description =
         StatementsShared.entryText(entry, ['description']).trim().toLowerCase();
     return description.contains(query);
+  }
+
+  bool _entryMatchesInvoiceNumberFilter(Map<String, dynamic> entry) {
+    final query = _invoiceNumberController.text.trim().toLowerCase();
+    if (query.isEmpty) return true;
+    final compactQuery = query.replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+    Iterable<String> values(dynamic raw) sync* {
+      if (raw is Iterable) {
+        for (final value in raw) {
+          final text = value?.toString().trim().toLowerCase() ?? '';
+          if (text.isNotEmpty) yield text;
+        }
+      } else {
+        final text = raw?.toString().trim().toLowerCase() ?? '';
+        if (text.isNotEmpty) yield text;
+      }
+    }
+
+    final searchable = <String>[
+      ...values(entry['invoiceNumbers']),
+      ...values(entry['invoice_numbers']),
+      ...values(entry['invoiceNumber']),
+      ...values(entry['invoice_number']),
+      ...values(entry['expenseDocumentNumbers']),
+      ...values(entry['expenseNumbers']),
+      ...values(entry['expenseDocumentNumber']),
+      ...values(entry['expense_document_number']),
+      ...values(entry['expenseNumber']),
+      ...values(entry['expense_number']),
+    ];
+    return searchable.any((number) {
+      if (number.contains(query)) return true;
+      final compactNumber = number.replaceAll(RegExp(r'[^a-z0-9]'), '');
+      return compactQuery.isNotEmpty && compactNumber.contains(compactQuery);
+    });
   }
 
   double? _parseAmountInput(String raw) {
@@ -886,9 +936,11 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
       );
     }
 
-    yearController.dispose();
-    fromController.dispose();
-    toController.dispose();
+    await Future.wait([
+      _disposeDialogController(yearController),
+      _disposeDialogController(fromController),
+      _disposeDialogController(toController),
+    ]);
     if (applied && mounted) {
       await _applyFilters(s);
     }
@@ -966,7 +1018,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         );
       },
     );
-    queryController.dispose();
+    await _disposeDialogController(queryController);
     if (applied && mounted) {
       await _applyFilters(s);
     }
@@ -1042,7 +1094,87 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         );
       },
     );
-    queryController.dispose();
+    await _disposeDialogController(queryController);
+    if (applied && mounted) {
+      await _applyFilters(s);
+    }
+  }
+
+  Future<void> _showInvoiceNumberFilterDialog(
+    StatementsController s,
+  ) async {
+    final queryController =
+        TextEditingController(text: _invoiceNumberController.text);
+    var applied = false;
+
+    await showHexoraDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final l = AppLocalizations.of(dialogContext)!;
+        final cs = Theme.of(dialogContext).colorScheme;
+        final isSpanish = l.localeName.toLowerCase().startsWith('es');
+
+        void applyAndClose() {
+          _invoiceNumberController.text = queryController.text.trim();
+          applied = true;
+          Navigator.of(dialogContext).pop();
+        }
+
+        return AlertDialog(
+          backgroundColor: cs.surface,
+          surfaceTintColor: Colors.transparent,
+          title: Text(
+              isSpanish ? 'Buscar factura vinculada' : 'Search linked invoice'),
+          content: SizedBox(
+            width: 400,
+            child: TextField(
+              controller: queryController,
+              enabled: !s.loadingAllEntries,
+              autofocus: true,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => applyAndClose(),
+              decoration: InputDecoration(
+                labelText: isSpanish ? 'Número de factura' : 'Invoice number',
+                hintText: isSpanish ? 'Ej. 389-26' : 'E.g. 389-26',
+                helperText: isSpanish
+                    ? 'Busca coincidencias parciales entre facturas vinculadas.'
+                    : 'Finds partial matches among linked invoices.',
+                border: const OutlineInputBorder(),
+                isDense: true,
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                suffixIcon: IconButton(
+                  tooltip: l.statementsClearFilters,
+                  onPressed: queryController.clear,
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: s.loadingAllEntries
+                  ? null
+                  : () {
+                      _invoiceNumberController.clear();
+                      applied = true;
+                      Navigator.of(dialogContext).pop();
+                    },
+              child: Text(isSpanish ? 'Limpiar' : 'Clear'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(l.close),
+            ),
+            FilledButton.icon(
+              onPressed: s.loadingAllEntries ? null : applyAndClose,
+              icon: const Icon(Icons.search_rounded, size: 18),
+              label: Text(isSpanish ? 'Buscar' : 'Search'),
+            ),
+          ],
+        );
+      },
+    );
+    await _disposeDialogController(queryController);
     if (applied && mounted) {
       await _applyFilters(s);
     }
@@ -1118,7 +1250,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
         );
       },
     );
-    queryController.dispose();
+    await _disposeDialogController(queryController);
     if (applied && mounted) {
       await _applyFilters(s);
     }
@@ -1138,6 +1270,7 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
       clientProviderQuery: _clientProviderController.text.trim(),
       descriptionSearch: _descriptionSearchController.text.trim(),
       notesSearch: _notesSearchController.text.trim(),
+      invoiceNumberSearch: _invoiceNumberController.text.trim(),
       sort: 'date_desc',
       applyDateFilters: true,
       applyAmountFilters: true,
@@ -1238,6 +1371,19 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
           label: Text('Notas: ${s.allEntriesNotesSearch}'),
           onDeleted: () async {
             _notesSearchController.clear();
+            await _applyFilters(s);
+          },
+        ),
+      );
+    }
+    if ((s.allEntriesInvoiceNumberSearch ?? '').isNotEmpty) {
+      chips.add(
+        InputChip(
+          label: Text(
+            '${l.documentTypeInvoice}: ${s.allEntriesInvoiceNumberSearch}',
+          ),
+          onDeleted: () async {
+            _invoiceNumberController.clear();
             await _applyFilters(s);
           },
         ),
@@ -1784,9 +1930,12 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
     final partyFilteredEntries = notesFilteredEntries
         .where((entry) => _entryMatchesClientProviderFilter(l, s, entry))
         .toList(growable: false);
+    final invoiceFilteredEntries = partyFilteredEntries
+        .where(_entryMatchesInvoiceNumberFilter)
+        .toList(growable: false);
     final amountFilteredEntries = s.isUsingAggregatedEntriesPath
-        ? partyFilteredEntries
-        : partyFilteredEntries.where((entry) {
+        ? invoiceFilteredEntries
+        : invoiceFilteredEntries.where((entry) {
             if (_amountMinFilter == null &&
                 _amountMaxFilter == null &&
                 _amountTypeFilter == 'all') {
@@ -2314,6 +2463,11 @@ class _StatementsAllDataTabState extends State<StatementsAllDataTab>
                               _showClientProviderFilterDialog(s),
                           clientProviderFilterActive:
                               _clientProviderController.text.trim().isNotEmpty,
+                          onInvoiceFilterTap: () =>
+                              _showInvoiceNumberFilterDialog(s),
+                          invoiceFilterActive:
+                              (s.allEntriesInvoiceNumberSearch?.isNotEmpty ??
+                                  false),
                           onInvoiceSortTap: () => setState(() {
                             _invoiceSortMode = (_invoiceSortMode + 1) % 3;
                           }),

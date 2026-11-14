@@ -215,11 +215,27 @@ class _EmptyWorkspace extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.tab_outlined, size: 30, color: cs.onSurfaceVariant),
-          const SizedBox(height: 10),
+          Image.asset(
+            'assets/images/branding/logo_icon.png',
+            width: 42,
+            height: 42,
+            errorBuilder: (_, __, ___) =>
+                Icon(Icons.hexagon_outlined, size: 38, color: cs.primary),
+          ),
+          const SizedBox(height: 12),
           Text(
-            es ? 'Abre una sección para empezar' : 'Open a section to begin',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            es ? 'Bienvenido a Hexora' : 'Welcome to Hexora',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            es
+                ? 'Selecciona una sección para comenzar'
+                : 'Choose a section to get started',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
                 ),
           ),

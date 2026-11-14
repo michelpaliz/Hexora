@@ -38,6 +38,8 @@ class SearchFiltersHeader extends StatefulWidget {
       this.searchDesktopHeight = 40,
       this.compactDesktopControls = false,
       this.searchMaxWidth = 450,
+      this.searchFlexibleBreakpoint = 760,
+      this.toolbarWrapBreakpoint = 980,
       this.topSpacing = 6,
       this.showClearAction = true,
       this.autoExpandWhenActive = false,
@@ -45,6 +47,9 @@ class SearchFiltersHeader extends StatefulWidget {
       this.filterMenuWidth = 360,
       this.filterBeforeSearch = false,
       this.toolbarContent,
+      this.searchFieldKey,
+      this.filterButtonKey,
+      this.clearFiltersKey,
       this.trailingActions = const []});
   final TextEditingController searchController;
   final VoidCallback onSearchChanged;
@@ -64,9 +69,14 @@ class SearchFiltersHeader extends StatefulWidget {
   final double filterMenuWidth;
   final bool filterBeforeSearch;
   final Widget? toolbarContent;
+  final Key? searchFieldKey;
+  final Key? filterButtonKey;
+  final Key? clearFiltersKey;
   final double searchDesktopHeight;
   final bool compactDesktopControls;
   final double searchMaxWidth;
+  final double searchFlexibleBreakpoint;
+  final double toolbarWrapBreakpoint;
   final double topSpacing;
   final List<Widget> trailingActions;
   @override
@@ -100,6 +110,7 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
             final search = ValueListenableBuilder<TextEditingValue>(
                 valueListenable: widget.searchController,
                 builder: (context, value, _) => TextField(
+                    key: widget.searchFieldKey,
                     controller: widget.searchController,
                     onChanged: (_) => widget.onSearchChanged(),
                     style: Theme.of(context).textTheme.bodyMedium,
@@ -144,17 +155,18 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide(color: cs.primary)),
                     )));
-            final searchSlot = constraints.maxWidth >= 760
-                ? Flexible(
-                    fit: FlexFit.loose,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: widget.searchMaxWidth,
-                      ),
-                      child: search,
-                    ),
-                  )
-                : Expanded(child: search);
+            final searchSlot =
+                constraints.maxWidth >= widget.searchFlexibleBreakpoint
+                    ? Flexible(
+                        fit: FlexFit.loose,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: widget.searchMaxWidth,
+                          ),
+                          child: search,
+                        ),
+                      )
+                    : Expanded(child: search);
             Widget filterButton(VoidCallback onPressed,
                 {bool expanded = false}) {
               // Compact icon-only Filtros control. Active-filter count rides
@@ -171,7 +183,8 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                   alignment: Alignment.center,
                   children: [
                     HexoraButton.iconOnly(
-                      key: const ValueKey('client-advanced-filters-toggle'),
+                      key: widget.filterButtonKey ??
+                          const ValueKey('client-advanced-filters-toggle'),
                       onPressed: onPressed,
                       tooltip: tooltip,
                       icon: Icons.tune_rounded,
@@ -247,6 +260,7 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: HexoraButton(
+                                    key: widget.clearFiltersKey,
                                     onPressed: widget.onClearFilters,
                                     label: widget.clearFiltersLabel ??
                                         l.clientFiltersClear,
@@ -285,7 +299,8 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                 ...widget.trailingActions,
               ],
             ];
-            if (widget.toolbarContent != null && constraints.maxWidth < 980) {
+            if (widget.toolbarContent != null &&
+                constraints.maxWidth < widget.toolbarWrapBreakpoint) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -318,6 +333,7 @@ class _SearchFiltersHeaderState extends State<SearchFiltersHeader> {
                           widget.showClearAction &&
                           widget.onClearFilters != null
                       ? HexoraButton(
+                          key: widget.clearFiltersKey,
                           onPressed: widget.onClearFilters,
                           label:
                               widget.clearFiltersLabel ?? l.clientFiltersClear,

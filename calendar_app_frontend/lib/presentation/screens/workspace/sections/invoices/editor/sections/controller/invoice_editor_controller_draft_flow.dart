@@ -31,7 +31,15 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
     if (_clientId == null) {
       throw Exception(l.selectClientFirst);
     }
-    final paymentPayload = buildDraftPaymentPayload(context);
+    // A newly created or unchanged draft already has the backend default
+    // payment state. Do not make a second payment-endpoint request unless the
+    // user actually changed payment details; that request used to turn an
+    // otherwise successful draft save into a failed Continue action.
+    if (_draftPaymentPayloadInvalid) {
+      buildDraftPaymentPayload(context);
+    }
+    final paymentPayload =
+        _draftPaymentPayload == null ? null : buildDraftPaymentPayload(context);
 
     _saving = true;
     notifyListeners();
@@ -81,8 +89,10 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
           lines: updatedLines,
           blocks: blocksPayload,
         );
-        _savedInvoice =
-            await _applyDraftPayment(_savedInvoice!, paymentPayload);
+        if (paymentPayload != null) {
+          _savedInvoice =
+              await _applyDraftPayment(_savedInvoice!, paymentPayload);
+        }
         _pendingDrafts = [
           _savedInvoice!,
           ..._pendingDrafts.where((inv) => inv.id != _savedInvoice!.id),
@@ -146,7 +156,10 @@ extension InvoiceEditorControllerDraftFlow on InvoiceEditorController {
         lines: createdLines,
         blocks: sanitizedBlocks,
       );
-      _savedInvoice = await _applyDraftPayment(_savedInvoice!, paymentPayload);
+      if (paymentPayload != null) {
+        _savedInvoice =
+            await _applyDraftPayment(_savedInvoice!, paymentPayload);
+      }
       if (_savedInvoice?.status == 'draft') {
         final savedDraft = _savedInvoice!;
         _editingDraftId = savedDraft.id.trim().isEmpty ? null : savedDraft.id;

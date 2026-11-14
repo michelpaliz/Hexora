@@ -96,6 +96,9 @@ class InvoiceEditorController extends ChangeNotifier {
   Invoice? _savedInvoice;
   List<Invoice> _pendingDrafts = const [];
   int _issuedThisMonthCount = 0;
+  int _clientIssuedCount = 0;
+  num _clientIssuedTotal = 0;
+  List<Invoice> _clientCurrentInvoices = [];
   int _pendingDraftsCount = 0;
   int _clientDraftCount = 0;
   List<Invoice> _clientPastInvoices = [];
@@ -139,9 +142,12 @@ class InvoiceEditorController extends ChangeNotifier {
   int get currentStepIndex => _currentStepIndex;
   Invoice? get savedInvoice => _savedInvoice;
   int get issuedThisMonthCount => _issuedThisMonthCount;
+  int get clientIssuedCount => _clientIssuedCount;
+  num get clientIssuedTotal => _clientIssuedTotal;
   int get pendingDraftsCount => _pendingDraftsCount;
   int get clientDraftCount => _clientDraftCount;
   List<Invoice> get clientPastInvoices => _clientPastInvoices;
+  List<Invoice> get clientCurrentInvoices => _clientCurrentInvoices;
   List<Invoice> get pendingDrafts => _pendingDrafts;
   bool get loadingClientStats => _loadingClientStats;
   bool get useBlocks => _useBlocks;
@@ -991,6 +997,9 @@ class InvoiceEditorController extends ChangeNotifier {
     final requestedClientId = _clientId;
     _loadingClientStats = true;
     _issuedThisMonthCount = 0;
+    _clientIssuedCount = 0;
+    _clientIssuedTotal = 0;
+    _clientCurrentInvoices = const [];
     _clientDraftCount = 0;
     _clientPastInvoices = const [];
     notifyListeners();
@@ -1008,18 +1017,67 @@ class InvoiceEditorController extends ChangeNotifier {
       final issued = results[0];
       final drafts = results[1];
 
+      // The group list endpoint intentionally returns compact invoice
+      // summaries and omits line/block descriptions. Hydrate the selected
+      // client's records from the detail endpoint so the history can show
+      // the actual saved concepts without changing the list API contract.
+      final issuedForClient = requestedClientId == null
+          ? const <Invoice>[]
+          : issued
+              .where((invoice) => invoice.clientId == requestedClientId)
+              .toList(growable: false);
+      final detailedIssued = await Future.wait(
+        issuedForClient.map(_loadInvoiceDetails),
+      );
+      if (_disposed ||
+          requestRevision != _clientStatsRequestRevision ||
+          requestedClientId != _clientId) {
+        return;
+      }
+      final detailedById = <String, Invoice>{
+        for (final invoice in detailedIssued)
+          if (invoice != null && invoice.id.trim().isNotEmpty)
+            invoice.id: invoice,
+      };
+      final hydratedIssued = issued
+          .map((invoice) => detailedById[invoice.id] ?? invoice)
+          .toList(growable: false);
+
       _pendingDraftsCount = drafts.length;
       _pendingDrafts = drafts;
       if (requestedClientId != null) {
         DateTime? invoiceDate(Invoice invoice) =>
             invoice.issueDate ?? invoice.issuedAt ?? invoice.registeredAt;
 
-        _issuedThisMonthCount = issued.where((inv) {
+        final clientIssued = hydratedIssued.where((inv) {
+          return inv.clientId == requestedClientId;
+        }).toList();
+        _clientIssuedCount = clientIssued.length;
+        _clientIssuedTotal = clientIssued.fold<num>(
+          0,
+          (sum, inv) => sum + (inv.total ?? 0),
+        );
+
+        _issuedThisMonthCount = clientIssued.where((inv) {
           if (inv.clientId != requestedClientId) return false;
           final d = invoiceDate(inv);
           if (d == null) return false;
           return d.year == now.year && d.month == now.month;
         }).length;
+
+        _clientCurrentInvoices = clientIssued.where((inv) {
+          final d = invoiceDate(inv);
+          if (d == null) return false;
+          return d.year == now.year && d.month == now.month;
+        }).toList()
+          ..sort((a, b) {
+            final da = invoiceDate(a);
+            final db = invoiceDate(b);
+            if (da == null && db == null) return 0;
+            if (da == null) return 1;
+            if (db == null) return -1;
+            return db.compareTo(da);
+          });
 
         _clientDraftCount = drafts.where((inv) {
           if (inv.clientId != requestedClientId) return false;
@@ -1028,7 +1086,7 @@ class InvoiceEditorController extends ChangeNotifier {
           return d.year == now.year && d.month == now.month;
         }).length;
 
-        _clientPastInvoices = issued.where((inv) {
+        _clientPastInvoices = clientIssued.where((inv) {
           if (inv.clientId != requestedClientId) return false;
           final d = invoiceDate(inv);
           if (d == null) return true;
@@ -1051,6 +1109,20 @@ class InvoiceEditorController extends ChangeNotifier {
         _loadingClientStats = false;
         notifyListeners();
       }
+    }
+  }
+
+  Future<Invoice?> _loadInvoiceDetails(Invoice invoice) async {
+    if (invoice.id.trim().isEmpty ||
+        invoice.lines.isNotEmpty ||
+        invoice.blocks.isNotEmpty ||
+        invoice.conceptSummaries.isNotEmpty) {
+      return invoice;
+    }
+    try {
+      return await _invoicesApi.getById(invoice.id);
+    } catch (_) {
+      return invoice;
     }
   }
 

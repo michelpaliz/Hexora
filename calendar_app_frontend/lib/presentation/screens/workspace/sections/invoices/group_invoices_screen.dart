@@ -25,6 +25,7 @@ import 'package:hexora/presentation/shared/downloads/download_jobs_store.dart';
 import 'package:hexora/services/clients/client_api.dart';
 import 'package:hexora/services/invoicing/billing_profile_api.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
+import 'package:hexora/services/invoicing/invoice_link_events.dart';
 import 'package:hexora/services/invoicing/filtered_invoices_excel.dart';
 import 'package:hexora/services/presupuestos/presupuestos_api.dart';
 import 'package:hexora/services/invoicing/invoice_lines_api.dart';
@@ -140,6 +141,7 @@ class GroupInvoicesScreen extends StatefulWidget {
 }
 
 class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
+  VoidCallbackHandle? _invoiceLinkSubscription;
   // Shared callbacks return here so the owning State controls its lifecycle.
   void _updateView(VoidCallback change) {
     if (!mounted) return;
@@ -264,6 +266,10 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
   @override
   void initState() {
     super.initState();
+    _invoiceLinkSubscription = InvoiceLinkEvents.instance.subscribe(
+      widget.group.id,
+      _handleInvoiceLinkChanged,
+    );
     _pendingInitialInvoiceId = _normalizedEntityId(widget.initialInvoiceId);
     _pendingInitialReceiptId = _normalizedEntityId(widget.initialReceiptId);
     if (widget.initialMenu != null && widget.initialMenu!.trim().isNotEmpty) {
@@ -275,6 +281,13 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     _syncInitialMenuExpansion();
     _loadAll();
     Future.microtask(_refreshInvoiceZipDownloads);
+  }
+
+  void _handleInvoiceLinkChanged() {
+    if (!mounted || _loading || _sortingInvoices == true) return;
+    // Keep the current invoice filters and selection while replacing the
+    // server-backed invoice collections with their latest linked totals.
+    unawaited(_refreshInvoiceListsOnly());
   }
 
   void _syncInitialMenuExpansion() {
@@ -2284,6 +2297,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
 
   @override
   void dispose() {
+    _invoiceLinkSubscription?.dispose();
     _receiptSplitModeNotifier.dispose();
     super.dispose();
   }

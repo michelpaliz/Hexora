@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/all_data/mobile/statements_mobile_card.dart';
+import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/all_data/mobile/dense_bank_transaction_row.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/all_data/mobile/statements_mobile_view.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/statements_controller.dart';
@@ -53,10 +53,15 @@ void main() {
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         if (scale == 1.0) {
-          final card = find.byType(StatementsMobileCard).first;
-          expect(tester.getSize(card).height, lessThan(90));
-          final note =
-              find.descendant(of: card, matching: find.byType(IconButton));
+          final card = find.byType(DenseBankTransactionRow).first;
+          // Dense two-line row (~44–48px) replaces the old oversized card.
+          expect(tester.getSize(card).height, lessThan(60));
+          // The whole row is tappable; per-row action icons were removed in
+          // favor of the detail sheet.
+          expect(find.descendant(of: card, matching: find.byType(InkWell)),
+              findsOneWidget);
+          expect(find.descendant(of: card, matching: find.byType(IconButton)),
+              findsNothing);
           final titleRect = tester
               .getRect(find.text('Mantenimiento de jardines y servicios'));
           final amount = find
@@ -66,7 +71,7 @@ void main() {
                   (element) => (element.widget as Text).data!.contains('443'))
               .single;
           final amountRect = tester.getRect(find.byWidget(amount.widget));
-          expect(tester.getSize(note).height, greaterThanOrEqualTo(48));
+          // Description and amount share the first line, vertically aligned.
           expect(
               (amountRect.center.dy - titleRect.center.dy).abs(), lessThan(2));
         }

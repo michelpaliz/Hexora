@@ -262,6 +262,7 @@ class _GroupedReceiptListState extends State<_GroupedReceiptList> {
             _totalRange = const _ReceiptRange();
           case CompactDocumentColumn.payment:
           case CompactDocumentColumn.vat:
+          case CompactDocumentColumn.notes:
             break;
         }
       });
@@ -657,6 +658,7 @@ class _IssuedReceiptsTab extends StatefulWidget {
   final String unknownClientLabel;
   final String? selectedId;
   final ValueChanged<Receipt> onSelect;
+  final ValueChanged<Receipt> onEdit;
   final Future<void> Function(Receipt) onPreview;
   final ValueChanged<Receipt> onDownload;
   final ValueChanged<Receipt> onMarkSent;
@@ -670,6 +672,7 @@ class _IssuedReceiptsTab extends StatefulWidget {
     required this.unknownClientLabel,
     required this.selectedId,
     required this.onSelect,
+    required this.onEdit,
     required this.onPreview,
     required this.onDownload,
     required this.onMarkSent,
@@ -698,6 +701,7 @@ class _IssuedReceiptsTabState extends State<_IssuedReceiptsTab> {
         selected: receipt.id == widget.selectedId,
         visibleFinancialColumns: visibleColumns,
         onTap: () => widget.onSelect(receipt),
+        onEdit: () => widget.onEdit(receipt),
         onPreview: () => widget.onPreview(receipt),
         onDownload: () => widget.onDownload(receipt),
         onMarkSent: () => widget.onMarkSent(receipt),
@@ -993,7 +997,12 @@ class GroupReceiptsView extends StatelessWidget {
                           selected: r.id == selectedReceipt?.id,
                           visibleFinancialColumns: visibleColumns,
                           onTap: () => onSelectReceipt(r),
-                          onPreview: () => onPreviewPdf(r),
+                          // List preview uses the shared right-side document
+                          // panel. The detail panel still owns opening the
+                          // PDF externally when that is explicitly requested.
+                          onPreview: () async {
+                            onSelectReceipt(r);
+                          },
                           onEdit: () => onEditReceipt(r),
                           onDownload: () => onDownloadPdf(r),
                           onIssue: () => onIssueReceipt(r),
@@ -1006,7 +1015,10 @@ class GroupReceiptsView extends StatelessWidget {
                         unknownClientLabel: l.unknownClient,
                         selectedId: selectedReceipt?.id,
                         onSelect: onSelectReceipt,
-                        onPreview: onPreviewPdf,
+                        onEdit: onEditReceipt,
+                        onPreview: (receipt) async {
+                          onSelectReceipt(receipt);
+                        },
                         onDownload: onDownloadPdf,
                         onMarkSent: onMarkReceiptSent,
                         onMarkUnsent: onMarkReceiptUnsent,

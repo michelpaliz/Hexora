@@ -237,7 +237,6 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
       final width = constraints.maxWidth;
       if (width < widget.drawerBreakpoint) return _buildOverlayLayout(width);
 
-      final hasSelection = widget.selectionKey != null;
       // Start with the dense full-width table. A user's explicit split-view
       // preference is restored from storage through [_userMode].
       const defaultMode = DocumentViewMode.list;
@@ -247,7 +246,10 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
       if (mode == DocumentViewMode.split &&
           width <
               widget.minListWidth + widget.minPreviewWidth + _dividerWidth) {
-        mode = hasSelection ? DocumentViewMode.split : DocumentViewMode.list;
+        // A split row cannot satisfy both pane minimums at this width. Keep
+        // the list (and use its preview drawer when a document is selected)
+        // instead of passing contradictory constraints to the Flex children.
+        mode = DocumentViewMode.list;
       }
       final workspace = switch (mode) {
         DocumentViewMode.list => _buildListWithPreviewDrawer(width),
@@ -330,7 +332,10 @@ class _DocumentSplitViewState extends State<DocumentSplitView> {
   }
 
   Widget _buildSplit(double width) {
-    final available = width - _dividerWidth;
+    // The split mode is normally guarded by the viewport check above, but a
+    // parent can briefly report a zero/very small width during shell
+    // transitions. Never construct negative constraints in that frame.
+    final available = (width - _dividerWidth).clamp(1.0, double.infinity);
     final minFraction = widget.minListWidth / available;
     final maxFraction = 1 - widget.minPreviewWidth / available;
     final fraction = _fraction.clamp(minFraction, maxFraction);

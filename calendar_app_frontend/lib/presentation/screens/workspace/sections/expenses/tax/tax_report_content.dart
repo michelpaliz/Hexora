@@ -1,5 +1,17 @@
 part of 'tax_reporting_view.dart';
 
+/// Shared compact density for the tax financial tables: short rows, tight cell
+/// padding and a subtle row stripe, so more records fit on screen while staying
+/// readable. Reused by the supplier VAT table and the plain DataTables.
+abstract final class _TaxTableDensity {
+  static const double rowHeight = 38;
+  static const double headerHeight = 36;
+  static const double rowMaxHeight = 44;
+  static const EdgeInsets cellPadding =
+      EdgeInsets.symmetric(horizontal: 11, vertical: 7);
+  static const double stripeAlpha = 0.12;
+}
+
 Map<String, dynamic> _map(dynamic value) =>
     value is Map ? Map<String, dynamic>.from(value) : {};
 List<Map<String, dynamic>> _rows(dynamic value) => value is List
@@ -252,7 +264,7 @@ class _SummaryCard extends StatelessWidget {
     return Container(
       key: ValueKey('tax-summary-card-$label'),
       constraints: const BoxConstraints(minHeight: _summaryBarItemHeight),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       alignment: Alignment.centerLeft,
       child: Row(
         children: [
@@ -927,8 +939,9 @@ class _ClientGroupTableState extends State<_ClientGroupTable> {
               color: cs.onSurfaceVariant,
               letterSpacing: 0.1,
             ),
-            dataRowMinHeight: 46,
-            dataRowMaxHeight: 56,
+            headingRowHeight: _TaxTableDensity.headerHeight,
+            dataRowMinHeight: _TaxTableDensity.rowHeight,
+            dataRowMaxHeight: _TaxTableDensity.rowMaxHeight,
             columns: [
               for (var i = 0; i < _columns.length; i++)
                 DataColumn(label: headerLabel(i), numeric: i >= _rightAlignFrom)
@@ -938,7 +951,8 @@ class _ClientGroupTableState extends State<_ClientGroupTable> {
                 DataRow(
                   color: WidgetStatePropertyAll(i.isEven
                       ? Colors.transparent
-                      : cs.surfaceContainerHighest.withValues(alpha: 0.18)),
+                      : cs.surfaceContainerHighest
+                          .withValues(alpha: _TaxTableDensity.stripeAlpha)),
                   cells: [
                     DataCell(Text(_party(visibleRows[i].row, 'client'))),
                     DataCell(Builder(
@@ -1135,8 +1149,9 @@ class _TaxReportContentState extends State<_TaxReportContent> {
                 color: cs.onSurfaceVariant,
                 letterSpacing: 0.1,
               ),
-              dataRowMinHeight: 46,
-              dataRowMaxHeight: 56,
+              headingRowHeight: _TaxTableDensity.headerHeight,
+              dataRowMinHeight: _TaxTableDensity.rowHeight,
+              dataRowMaxHeight: _TaxTableDensity.rowMaxHeight,
               columns: [
                 for (final column in columns)
                   DataColumn(
@@ -1149,7 +1164,8 @@ class _TaxReportContentState extends State<_TaxReportContent> {
                   DataRow(
                     color: WidgetStatePropertyAll(i.isEven
                         ? Colors.transparent
-                        : cs.surfaceContainerHighest.withValues(alpha: 0.18)),
+                        : cs.surfaceContainerHighest
+                            .withValues(alpha: _TaxTableDensity.stripeAlpha)),
                     cells: [for (final cell in rows[i]) DataCell(cell)],
                   )
               ],
@@ -1266,8 +1282,7 @@ class _TaxReportContentState extends State<_TaxReportContent> {
             Expanded(
               flex: widths[i],
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                padding: _TaxTableDensity.cellPadding,
                 child: Align(
                   alignment: i >= rightAlignFrom
                       ? Alignment.centerRight
@@ -1338,8 +1353,7 @@ class _TaxReportContentState extends State<_TaxReportContent> {
           barrierLabel:
               MaterialLocalizations.of(context).modalBarrierDismissLabel,
           barrierColor: Colors.transparent,
-          transitionDuration:
-              HexoraMotion.duration(context, HexoraMotion.fast),
+          transitionDuration: HexoraMotion.duration(context, HexoraMotion.fast),
           pageBuilder: (context, animation, secondaryAnimation) =>
               _ColumnFilterPopover(
             anchor: anchor,
@@ -1380,8 +1394,7 @@ class _TaxReportContentState extends State<_TaxReportContent> {
                             key: ValueKey('tax-column-filter-${columns[i]}'),
                             onTap: () => openColumnFilter(i, headerContext),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 16),
+                              padding: _TaxTableDensity.cellPadding,
                               child: Row(
                                 mainAxisAlignment: i >= rightAlignFrom
                                     ? MainAxisAlignment.end
@@ -1418,7 +1431,8 @@ class _TaxReportContentState extends State<_TaxReportContent> {
           ]);
 
       final cs = Theme.of(context).colorScheme;
-      final stripe = cs.surfaceContainerHighest.withValues(alpha: 0.18);
+      final stripe = cs.surfaceContainerHighest
+          .withValues(alpha: _TaxTableDensity.stripeAlpha);
       final expandedTint = cs.primary.withValues(alpha: 0.05);
       return LayoutBuilder(builder: (context, constraints) {
         final minWidth =
@@ -1456,6 +1470,10 @@ class _TaxReportContentState extends State<_TaxReportContent> {
                             ? null
                             : IconButton(
                                 tooltip: 'Restablecer tabla',
+                                visualDensity: VisualDensity.compact,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                    minWidth: 36, minHeight: 36),
                                 icon: const Icon(Icons.filter_alt_off_outlined,
                                     size: 18),
                                 onPressed: () => setState(() {
@@ -1483,7 +1501,9 @@ class _TaxReportContentState extends State<_TaxReportContent> {
                           HexoraMotion.expansionStyle(context),
                       key: PageStorageKey(
                           'vat-entry-${section.name}-${visibleEntries[i].index}'),
-                      tilePadding: const EdgeInsets.only(right: 12),
+                      dense: true,
+                      minTileHeight: _TaxTableDensity.rowHeight,
+                      tilePadding: const EdgeInsets.only(right: 8),
                       childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                       backgroundColor: expandedTint,
                       collapsedBackgroundColor:

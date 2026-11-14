@@ -19,10 +19,12 @@ class HexoraSectionTabs extends StatelessWidget {
     this.controller,
     required this.tabs,
     this.compact = false,
+    this.onTap,
   });
   final TabController? controller;
   final List<Tab> tabs;
   final bool compact;
+  final ValueChanged<int>? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +42,7 @@ class HexoraSectionTabs extends StatelessWidget {
         height: height,
         child: TabBar(
           controller: controller,
+          onTap: onTap,
           isScrollable: true,
           tabAlignment: TabAlignment.start,
           dividerColor: Colors.transparent,

@@ -124,11 +124,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel>
     final recipientId =
         widget.state._useClientMode ? widget.state._recipientClientId : null;
     _lastSyncedRecipientClientId = recipientId;
-    _clientId = recipientId ??
-        widget.state._inlineClientId ??
-        (widget.state._pickerClients.isNotEmpty
-            ? widget.state._pickerClients.first.id
-            : null);
+    _clientId = recipientId ?? widget.state._inlineClientId;
     if (_clientId != null && _clientId!.isNotEmpty) {
       if (recipientId != _clientId) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -171,20 +167,6 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel>
         _loadPresupuestos(currentRecipientId);
         return;
       }
-    }
-
-    // Fallback: once clients finish loading and nothing is selected yet, pick
-    // the first client.
-    final hadNoClients = oldWidget.state._pickerClients.isEmpty;
-    final hasClientsNow = widget.state._pickerClients.isNotEmpty;
-    final hasSelected = _clientId != null && _clientId!.trim().isNotEmpty;
-    if (hadNoClients && hasClientsNow && !hasSelected) {
-      final firstId = widget.state._pickerClients.first.id;
-      setState(() => _clientId = firstId);
-      widget.state._selectRecipientClient(firstId);
-      _loadInvoices(firstId);
-      _loadReceipts(firstId);
-      _loadPresupuestos(firstId);
     }
   }
 
@@ -403,7 +385,6 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel>
       _attachmentError = null;
     });
     try {
-      await WidgetsBinding.instance.endOfFrame;
       widget.state._applyInvoicePickerResult(
         _InvoicePickerResult(
           clientId: id,
@@ -412,6 +393,10 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel>
           receiptIds: _selectedReceiptIds.toList(),
         ),
       );
+      // The inline picker is kept mounted beside the composer. Rebuild it
+      // immediately so the generated attachment chips and the button state
+      // reflect the newly applied selection without requiring a second tap.
+      if (mounted) setState(() {});
       return true;
     } catch (_) {
       if (mounted) {
@@ -1148,26 +1133,28 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (complete) ...[
+                    Icon(Icons.check_rounded, size: 14, color: cs.primary),
+                    const SizedBox(width: 2),
+                  ] else ...[
+                    Text(
+                      '${index + 1}',
+                      style: t.bodySmall.copyWith(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: active ? cs.primary : cs.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                  ],
                   Text(
                     steps[index],
                     style: t.bodySmall.copyWith(
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                       color: active ? cs.primary : cs.onSurfaceVariant,
                     ),
                   ),
-                  if (complete) ...[
-                    const SizedBox(width: 2),
-                    Icon(Icons.check_rounded, size: 12, color: cs.primary),
-                  ] else if (active)
-                    Text(
-                      ' (${index + 1}/3)',
-                      style: t.bodySmall.copyWith(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: cs.primary,
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -1175,6 +1162,79 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel>
         }),
       );
     }
+
+    Widget workflowHeader() => LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 620;
+            final title = Text(
+              isSpanish ? 'Adjuntar facturas' : 'Attach invoices',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.bodyMedium.copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            );
+            final info = Tooltip(
+              message: isSpanish
+                  ? 'Selecciona el cliente y los documentos que quieres adjuntar al correo.'
+                  : 'Select the client and documents you want to attach to the email.',
+              child: Icon(
+                Icons.info_outline_rounded,
+                size: 16,
+                color: cs.onSurfaceVariant,
+              ),
+            );
+            final progress = SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: stepHeader(),
+            );
+
+            if (compact) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    height: 40,
+                    child: Row(
+                      children: [
+                        Icon(Icons.attach_file_rounded,
+                            size: 16, color: cs.primary),
+                        const SizedBox(width: 7),
+                        Expanded(child: title),
+                        const SizedBox(width: 6),
+                        info,
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: progress,
+                  ),
+                ],
+              );
+            }
+
+            return SizedBox(
+              height: 40,
+              child: Row(
+                children: [
+                  Icon(Icons.attach_file_rounded, size: 16, color: cs.primary),
+                  const SizedBox(width: 7),
+                  title,
+                  const SizedBox(width: 6),
+                  info,
+                  const Spacer(),
+                  Flexible(
+                    child: Align(
+                        alignment: Alignment.centerRight, child: progress),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
 
     Widget documentTabs() => HexoraSectionTabs(
           controller: _documentTabsController,
@@ -1246,6 +1306,8 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel>
           },
           useDefaultPropertyKind: false,
           compact: true,
+          flatRows: true,
+          compactToolbar: true,
           unsentDocumentCounts: widget.state._clientUnsentDocumentCounts,
           unsentDocumentCountsLoading:
               widget.state._clientUnsentDocumentCountsLoading,
@@ -1823,55 +1885,7 @@ class _InlineInvoiceWizardPanelState extends State<_InlineInvoiceWizardPanel>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: cs.primaryContainer.withValues(alpha: 0.65),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.attach_file_rounded,
-                  size: 16,
-                  color: cs.primary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Row(
-                  children: [
-                    Text(
-                      isSpanish ? 'Adjuntar facturas' : 'Attach invoices',
-                      style: t.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        _selectedClient != null
-                            ? _selectedClient!.name
-                            : (isSpanish
-                                ? 'Selecciona un cliente'
-                                : 'Select a client'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: t.bodySmall.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    stepHeader(),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          workflowHeader(),
           if (_step == 1) ...[
             const SizedBox(height: 4),
             documentTabs(),

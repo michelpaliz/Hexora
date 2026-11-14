@@ -267,7 +267,8 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
                     widget.onEdit();
                   },
                   icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: Text(isEs ? 'Editar recibo emitido' : 'Edit issued receipt'),
+                  label: Text(
+                      isEs ? 'Editar recibo emitido' : 'Edit issued receipt'),
                   style: OutlinedButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                   ),
@@ -589,8 +590,16 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
                     }
                   },
                   itemBuilder: (_) => [
-                    if (!issued)
-                      PopupMenuItem(value: 'edit', child: Text(l.edit)),
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Text(
+                        issued
+                            ? (isEs
+                                ? 'Editar recibo emitido'
+                                : 'Edit issued receipt')
+                            : l.edit,
+                      ),
+                    ),
                     if (!issued)
                       PopupMenuItem(
                         value: 'issue',

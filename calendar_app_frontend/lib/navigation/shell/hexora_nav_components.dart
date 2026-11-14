@@ -10,14 +10,29 @@ abstract final class HexoraGlobalNavColors {
   static const foreground = AppColors.navigationForeground;
   static const active = AppColors.primary;
 
-  static Color fill({required bool selected, required bool hovered}) {
-    if (selected) return active.withValues(alpha: hovered ? 0.24 : 0.18);
+  static Color backgroundFor(BuildContext context) => AppColors.dashboardTopBar;
+
+  static Color foregroundFor(BuildContext context) =>
+      AppColors.navigationForeground;
+
+  static Color fill({
+    required bool selected,
+    required bool hovered,
+    required Color foreground,
+    required Color background,
+  }) {
+    if (selected) return AppColors.selectedControl;
     if (hovered) return foreground.withValues(alpha: 0.08);
     return Colors.transparent;
   }
 
-  static Color content({required bool selected, required bool hovered}) {
-    if (selected) return Colors.white;
+  static Color content({
+    required bool selected,
+    required bool hovered,
+    required Color background,
+    required Color foreground,
+  }) {
+    if (selected) return AppColors.textPrimary;
     return foreground.withValues(alpha: hovered ? 1 : 0.74);
   }
 
@@ -45,6 +60,7 @@ class HexoraNavTile extends StatefulWidget {
     required this.builder,
     required this.onTap,
     this.selected = false,
+    this.moduleTab = false,
     this.tooltip,
     this.semanticLabel,
     this.padding = const EdgeInsets.symmetric(
@@ -56,6 +72,7 @@ class HexoraNavTile extends StatefulWidget {
   final Widget Function(BuildContext context, Color foreground) builder;
   final VoidCallback? onTap;
   final bool selected;
+  final bool moduleTab;
   final String? tooltip;
   final String? semanticLabel;
   final EdgeInsetsGeometry padding;
@@ -71,11 +88,23 @@ class _HexoraNavTileState extends State<HexoraNavTile> {
 
   @override
   Widget build(BuildContext context) {
+    final navBackground = HexoraGlobalNavColors.backgroundFor(context);
+    final navForeground = HexoraGlobalNavColors.foregroundFor(context);
+    final primary = Theme.of(context).colorScheme.primary;
     final fg = HexoraGlobalNavColors.content(
       selected: widget.selected,
       hovered: _hovered,
+      background: navBackground,
+      foreground: navForeground,
     );
-    final radius = BorderRadius.circular(NavigationTokens.radius);
+    final radius = BorderRadius.circular(
+      widget.selected ? 14 : NavigationTokens.radius,
+    );
+    final tabShape = _ModuleTabShape(
+      side: _focused
+          ? BorderSide(color: primary.withValues(alpha: 0.85), width: 1.5)
+          : BorderSide.none,
+    );
 
     Widget tile = Semantics(
       button: true,
@@ -84,31 +113,48 @@ class _HexoraNavTileState extends State<HexoraNavTile> {
       child: InkWell(
         onTap: widget.onTap,
         borderRadius: radius,
+        customBorder: widget.moduleTab ? tabShape : null,
         onHover: (v) => setState(() => _hovered = v),
         onFocusChange: (v) => setState(() => _focused = v),
         hoverColor: Colors.transparent,
         focusColor: Colors.transparent,
-        splashColor: HexoraGlobalNavColors.active.withValues(alpha: 0.16),
-        highlightColor: HexoraGlobalNavColors.active.withValues(alpha: 0.10),
+        splashColor: primary.withValues(alpha: 0.16),
+        highlightColor: primary.withValues(alpha: 0.10),
         child: AnimatedContainer(
           duration: NavigationTokens.motion,
           curve: Curves.easeOut,
-          height: NavigationTokens.globalItemHeight,
+          height: widget.moduleTab
+              ? NavigationTokens.globalBarHeight
+              : NavigationTokens.globalItemHeight,
           constraints: BoxConstraints(minWidth: widget.minWidth),
-          padding: widget.padding,
-          decoration: BoxDecoration(
-            color: HexoraGlobalNavColors.fill(
-              selected: widget.selected,
-              hovered: _hovered,
-            ),
-            borderRadius: radius,
-            border: Border.all(
-              color: _focused
-                  ? HexoraGlobalNavColors.focusRing
-                  : Colors.transparent,
-              width: 1.5,
-            ),
-          ),
+          padding: widget.moduleTab
+              ? widget.padding.add(const EdgeInsets.symmetric(horizontal: 12))
+              : widget.padding,
+          decoration: widget.moduleTab
+              ? ShapeDecoration(
+                  color: HexoraGlobalNavColors.fill(
+                    selected: widget.selected,
+                    hovered: _hovered,
+                    foreground: navForeground,
+                    background: navBackground,
+                  ),
+                  shape: tabShape,
+                )
+              : BoxDecoration(
+                  color: HexoraGlobalNavColors.fill(
+                    selected: widget.selected,
+                    hovered: _hovered,
+                    foreground: navForeground,
+                    background: navBackground,
+                  ),
+                  borderRadius: radius,
+                  border: Border.all(
+                    color: _focused
+                        ? primary.withValues(alpha: 0.85)
+                        : Colors.transparent,
+                    width: 1.5,
+                  ),
+                ),
           alignment: Alignment.center,
           child: widget.builder(context, fg),
         ),
@@ -124,6 +170,50 @@ class _HexoraNavTileState extends State<HexoraNavTile> {
     }
     return tile;
   }
+}
+
+/// The selected module meets the header baseline with outward lower shoulders.
+class _ModuleTabShape extends ShapeBorder {
+  const _ModuleTabShape({this.side = BorderSide.none});
+
+  final BorderSide side;
+
+  @override
+  EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
+    final x = rect.left;
+    final y = rect.top + 8;
+    final w = rect.width;
+    final b = rect.bottom;
+    return Path()
+      ..moveTo(x, b)
+      // Quarter-circle shoulders join the baseline with a horizontal tangent
+      // and the sides with a vertical tangent, avoiding a pinched lower edge.
+      ..cubicTo(x + 6.63, b, x + 12, b - 5.37, x + 12, b - 12)
+      ..lineTo(x + 12, y + 12)
+      ..cubicTo(x + 12, y + 5.37, x + 17.37, y, x + 24, y)
+      ..lineTo(x + w - 24, y)
+      ..cubicTo(x + w - 17.37, y, x + w - 12, y + 5.37, x + w - 12, y + 12)
+      ..lineTo(x + w - 12, b - 12)
+      ..cubicTo(x + w - 12, b - 5.37, x + w - 6.63, b, x + w, b)
+      ..close();
+  }
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
+      getOuterPath(rect, textDirection: textDirection);
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
+    if (side.style != BorderStyle.none) {
+      canvas.drawPath(getOuterPath(rect), side.toPaint());
+    }
+  }
+
+  @override
+  ShapeBorder scale(double t) => _ModuleTabShape(side: side.scale(t));
 }
 
 /// Square icon-only action for the global bar. Always carries a tooltip.
@@ -254,7 +344,10 @@ class _HexoraNotificationBadgeState extends State<HexoraNotificationBadge>
       decoration: BoxDecoration(
         color: cs.error,
         borderRadius: BorderRadius.circular(h),
-        border: Border.all(color: HexoraGlobalNavColors.background, width: 1),
+        border: Border.all(
+          color: HexoraGlobalNavColors.backgroundFor(context),
+          width: 1,
+        ),
       ),
       child: Text(
         text,

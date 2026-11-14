@@ -2,6 +2,11 @@ import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/models/user/user.dart';
+import 'package:hexora/presentation/utils/roles/group_role.dart';
+import 'package:hexora/presentation/utils/roles/group_role_labels.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/access/role_info_screen.dart';
 import 'package:hexora/navigation/main_scaffold.dart';
 import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -16,7 +21,18 @@ import 'package:hexora/presentation/routes/app_routes.dart';
 import 'widgets/profile_header_section.dart';
 
 class ProfileViewScreen extends StatelessWidget {
-  const ProfileViewScreen({super.key});
+  const ProfileViewScreen({
+    super.key,
+    this.group,
+    this.user,
+    this.role,
+    this.fetchReadSas,
+  });
+
+  final Group? group;
+  final User? user;
+  final GroupRole? role;
+  final Future<String?> Function(String blobName)? fetchReadSas;
 
   @override
   Widget build(BuildContext context) {
@@ -25,8 +41,8 @@ class ProfileViewScreen extends StatelessWidget {
     final textTheme = theme.textTheme;
     final cs = theme.colorScheme;
 
-    final user = context.watch<UserDomain>().user;
-    if (user == null) {
+    final currentUser = user ?? context.watch<UserDomain>().user;
+    if (currentUser == null) {
       return MainScaffold(
         showAppBar: false,
         body: Center(
@@ -39,8 +55,8 @@ class ProfileViewScreen extends StatelessWidget {
     final headerColor = isDark ? AppDarkColors.primary : AppColors.primary;
     final isEs = loc.localeName.startsWith('es');
 
-    final groupsCount = user.groupIds.length;
-    final calendarsCount = user.sharedCalendars.length;
+    final groupsCount = currentUser.groupIds.length;
+    final calendarsCount = currentUser.sharedCalendars.length;
     final notificationsCount =
         context.watch<NotificationDomain>().notifications.length;
 
@@ -58,7 +74,7 @@ class ProfileViewScreen extends StatelessWidget {
     void goToGroups() => Navigator.of(context).pushNamed(AppRoutes.showGroups);
     void goToCalendars() => Navigator.of(context).pushNamed(AppRoutes.agenda);
     void goToNotifications() => Navigator.of(context)
-        .pushNamed(AppRoutes.showNotifications, arguments: user);
+        .pushNamed(AppRoutes.showNotifications, arguments: currentUser);
 
     // ── Shared section builders ──────────────────────────────────
     Widget personalInfoSection() => SectionCard(
@@ -69,15 +85,16 @@ class ProfileViewScreen extends StatelessWidget {
                     size: 18, color: cs.primary),
                 iconBgColor: cs.primary.withValues(alpha: 0.12),
                 title: loc.email,
-                subtitle: user.email,
-                onTap: () => copyToClipboard(user.email, loc.copiedToClipboard),
+                subtitle: currentUser.email,
+                onTap: () =>
+                    copyToClipboard(currentUser.email, loc.copiedToClipboard),
               ),
               _divider(cs),
               NavTile(
                 leading: Icon(Icons.badge_rounded, size: 18, color: cs.primary),
                 iconBgColor: cs.primary.withValues(alpha: 0.12),
                 title: loc.username,
-                subtitle: '@${user.userName}',
+                subtitle: '@${currentUser.userName}',
                 onTap: goToSettings,
               ),
               _divider(cs),
@@ -86,8 +103,9 @@ class ProfileViewScreen extends StatelessWidget {
                     size: 18, color: cs.primary),
                 iconBgColor: cs.primary.withValues(alpha: 0.12),
                 title: loc.userId,
-                subtitle: user.id,
-                onTap: () => copyToClipboard(user.id, loc.copiedToClipboard),
+                subtitle: currentUser.id,
+                onTap: () =>
+                    copyToClipboard(currentUser.id, loc.copiedToClipboard),
               ),
             ],
           ),
@@ -129,6 +147,32 @@ class ProfileViewScreen extends StatelessWidget {
     final personalInfoTitle =
         isEs ? 'Información personal' : 'Personal information';
     final activityTitle = isEs ? 'Actividad y accesos' : 'Activity & access';
+    final membershipTitle = isEs ? 'Negocio actual' : 'Current business';
+
+    Widget membershipSection() {
+      if (group == null || role == null || fetchReadSas == null) {
+        return const SizedBox.shrink();
+      }
+      return SectionCard(
+        child: NavTile(
+          leading: Icon(Icons.business_rounded, size: 18, color: cs.primary),
+          iconBgColor: cs.primary.withValues(alpha: 0.12),
+          title: group!.name,
+          subtitle:
+              '${isEs ? 'Mi rol' : 'My role'}: ${roleLabelOf(context, role!)}',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => RoleInfoScreen(
+                group: group!,
+                user: currentUser,
+                role: role!,
+                fetchReadSas: fetchReadSas!,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return MainScaffold(
       showAppBar: false,
@@ -147,9 +191,9 @@ class ProfileViewScreen extends StatelessWidget {
                   child: ProfileHeaderSection(
                     headerColor: headerColor,
                     onEdit: goToSettings,
-                    user: user,
-                    onCopyEmail: () =>
-                        copyToClipboard(user.email, loc.copiedToClipboard),
+                    user: currentUser,
+                    onCopyEmail: () => copyToClipboard(
+                        currentUser.email, loc.copiedToClipboard),
                     groupsCount: groupsCount,
                     calendarsCount: calendarsCount,
                     notificationsCount: notificationsCount,
@@ -175,6 +219,25 @@ class ProfileViewScreen extends StatelessWidget {
                     child: personalInfoSection(),
                   ),
                 ),
+                if (group != null && role != null && fetchReadSas != null) ...[
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: SectionHeader(
+                        title: membershipTitle,
+                        markerHeight: 24,
+                        padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: membershipSection(),
+                    ),
+                  ),
+                ],
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
                 SliverToBoxAdapter(
                   child: Padding(
@@ -220,7 +283,7 @@ class ProfileViewScreen extends StatelessWidget {
                           child: Row(
                             children: [
                               UserAvatar(
-                                user: user,
+                                user: currentUser,
                                 fetchReadSas: (_) async => null,
                                 radius: 30,
                               ),
@@ -230,7 +293,7 @@ class ProfileViewScreen extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      user.name,
+                                      currentUser.name,
                                       style: t.titleLarge.copyWith(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 20,
@@ -240,7 +303,7 @@ class ProfileViewScreen extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      '@${user.userName}',
+                                      '@${currentUser.userName}',
                                       style: t.bodySmall.copyWith(
                                         color: cs.onSurfaceVariant,
                                       ),

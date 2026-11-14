@@ -1,9 +1,8 @@
-import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/models/groups/group.dart';
-import 'package:hexora/theme/colors/theme_colors.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/typography/hexora_design_tokens.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -333,15 +332,14 @@ class _EnableBankingViewState extends State<_EnableBankingView>
     // ── Mobile layout ─────────────────────────────────────────────────────────
     if (isMobile) {
       final cs = Theme.of(context).colorScheme;
-      final t = AppTypography.of(context);
       final tabBar = PreferredSize(
-        preferredSize: const Size.fromHeight(56),
+        preferredSize: const Size.fromHeight(48),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Container(
             height: 40,
             decoration: BoxDecoration(
-              color: ThemeColors.cardBg(context),
+              color: cs.surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: cs.onSurface.withValues(alpha: 0.06)),
             ),
@@ -355,20 +353,19 @@ class _EnableBankingViewState extends State<_EnableBankingView>
               ],
               indicatorSize: TabBarIndicatorSize.tab,
               dividerColor: Colors.transparent,
-              labelColor: ThemeColors.contrastOn(cs.primary),
-              unselectedLabelColor:
-                  ThemeColors.textPrimary(context).withValues(alpha: 0.7),
-              labelStyle: t.bodySmall.copyWith(
-                fontWeight: FontWeight.w700,
-                letterSpacing: .2,
-              ),
-              unselectedLabelStyle: t.bodySmall.copyWith(
-                fontWeight: FontWeight.w600,
-                letterSpacing: .2,
-              ),
-              indicator: BoxDecoration(
-                color: cs.primary,
-                borderRadius: BorderRadius.circular(10),
+              labelColor: cs.primary,
+              unselectedLabelColor: cs.onSurfaceVariant,
+              labelStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: .2,
+                  ),
+              unselectedLabelStyle:
+                  Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: .2,
+                      ),
+              indicator: UnderlineTabIndicator(
+                borderSide: BorderSide(color: cs.primary, width: 2),
               ),
               splashBorderRadius: BorderRadius.circular(10),
             ),

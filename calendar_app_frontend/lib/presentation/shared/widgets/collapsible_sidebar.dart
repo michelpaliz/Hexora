@@ -151,7 +151,7 @@ class CollapsibleSidebar extends StatelessWidget {
           children: [
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
                 children: [
                   if (primaryAction != null) ...[
                     _primaryEntry(
@@ -159,11 +159,11 @@ class CollapsibleSidebar extends StatelessWidget {
                       primaryAction!,
                       layoutCollapsed,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                   ],
                   for (final item in items) _entry(item, layoutCollapsed),
                   if (secondaryItems.isNotEmpty) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     for (final item in secondaryItems)
                       _entry(item, layoutCollapsed),
                   ],

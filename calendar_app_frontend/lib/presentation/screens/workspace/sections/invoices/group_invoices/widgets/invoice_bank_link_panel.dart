@@ -5,6 +5,7 @@ import 'package:hexora/presentation/screens/workspace/sections/enable_banking/st
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/statements_controller.dart';
 import 'package:hexora/presentation/screens/workspace/sections/enable_banking/statements/statements_formatters.dart';
 import 'package:hexora/presentation/shared/widgets/buttons/buttons.dart';
+import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 
 class InvoiceBankLinkPanel extends StatefulWidget {
@@ -196,6 +197,12 @@ class _InvoiceBankLinkPanelState extends State<InvoiceBankLinkPanel> {
             (isEs ? 'No se pudo vincular.' : 'Could not link.'));
         return;
       }
+      showSuccessSnack(
+        context,
+        isEs
+            ? 'Factura ${widget.invoice.invoiceNumber} vinculada al movimiento bancario.'
+            : 'Invoice ${widget.invoice.invoiceNumber} linked to the bank transaction.',
+      );
       _finishLinking();
     } finally {
       if (mounted) setState(() => _linking = false);

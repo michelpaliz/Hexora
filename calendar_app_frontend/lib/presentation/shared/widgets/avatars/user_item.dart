@@ -35,7 +35,7 @@ class UserItem extends StatelessWidget {
     final onlineColor = cs.primary; // your accent ring
     final offlineBorderColor = cs.outlineVariant;
     final avatarBg = cs.surfaceContainerHighest;
-    final selectionBorder = cs.secondary;
+    final selectionBorder = cs.primary;
 
     // Role badge color via your global role color helper
     final roleColor = groupRole.roleChipColor(cs);
@@ -53,12 +53,12 @@ class UserItem extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(2),
+                padding: const EdgeInsets.all(1),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: isSelected ? selectionBorder : Colors.transparent,
-                    width: 2,
+                    width: 1,
                   ),
                 ),
                 child: Stack(
@@ -66,7 +66,7 @@ class UserItem extends StatelessWidget {
                   children: [
                     PulsingRingAvatar(
                       image: avatarProvider,
-                      radius: 20,
+                      radius: 14,
                       isOnline: user.isOnline,
                       onlineColor: onlineColor,
                       offlineBorderColor: offlineBorderColor,
@@ -105,7 +105,7 @@ class UserItem extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Tooltip(
                 message: user.userName,
                 child: SizedBox(

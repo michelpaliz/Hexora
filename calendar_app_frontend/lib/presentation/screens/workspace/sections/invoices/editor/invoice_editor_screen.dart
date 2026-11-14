@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/invoice/invoice.dart';
+import 'package:hexora/models/invoice/invoice_concept_utils.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/sections/invoice_editor_controller.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_editor_app_bar.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_dates_step.dart';
@@ -10,9 +11,11 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/w
 import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_editor_components.dart';
 import 'package:hexora/presentation/shared/widgets/documents/document_client_step.dart';
+import 'package:hexora/presentation/shared/widgets/documents/document_wizard_navigation.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/presentation/shared/widgets/motion/hexora_step_transition.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_tab_scope.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/pdf_preview/pdf_preview_launcher.dart'
     as pdf_launcher;
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -36,6 +39,7 @@ class InvoiceEditorScreen extends StatefulWidget {
   final ValueChanged<bool>? onClose;
   final VoidCallback? onDataChanged;
   final ValueChanged<bool>? onUnsavedStateChanged;
+  final ValueChanged<Invoice>? onSavedInvoiceChanged;
 
   const InvoiceEditorScreen({
     super.key,
@@ -47,6 +51,7 @@ class InvoiceEditorScreen extends StatefulWidget {
     this.onClose,
     this.onDataChanged,
     this.onUnsavedStateChanged,
+    this.onSavedInvoiceChanged,
   });
 
   @override
@@ -59,6 +64,7 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
   bool _changed = false;
   String? _lastSavedInvoiceId;
   String? _lastSavedInvoiceStatus;
+  String? _lastReportedSavedInvoiceId;
   bool _lastReportedUnsaved = false;
   int _lastDataRevision = 0;
   late final TabController _tabController;
@@ -83,6 +89,12 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
       initialIndex: _c.currentStepIndex.clamp(0, 3),
     );
     _tabController.addListener(_handleTabChange);
+    final initialInvoice = widget.initialInvoice;
+    if (initialInvoice != null && widget.onSavedInvoiceChanged != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onSavedInvoiceChanged?.call(initialInvoice);
+      });
+    }
   }
 
   @override
@@ -99,6 +111,10 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
     if (!_changed && saved != null) {
       _changed = true;
     }
+    if (saved != null && saved.id != _lastReportedSavedInvoiceId) {
+      _lastReportedSavedInvoiceId = saved.id;
+      widget.onSavedInvoiceChanged?.call(saved);
+    }
     if (saved != null && widget.onDataChanged != null) {
       if (saved.id != _lastSavedInvoiceId ||
           saved.status != _lastSavedInvoiceStatus ||
@@ -111,8 +127,18 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen>
     }
     if (_lastReportedUnsaved != _c.draftDirty) {
       _lastReportedUnsaved = _c.draftDirty;
+      WorkspaceTabScope.maybeOf(context)?.setDirty(
+        dirty: _c.draftDirty,
+        onSave: _c.draftDirty ? _saveWorkspaceDraft : null,
+      );
       widget.onUnsavedStateChanged?.call(_c.draftDirty);
     }
+  }
+
+  Future<bool> _saveWorkspaceDraft() async {
+    if (!mounted || _c.saving) return false;
+    await _c.handleSaveDraft(context, confirmIfEditing: false);
+    return mounted && !_c.draftDirty;
   }
 
   void _closeNow() {

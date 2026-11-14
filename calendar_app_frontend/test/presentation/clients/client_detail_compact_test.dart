@@ -56,6 +56,10 @@ void main() {
           onCreateInvoice: () {},
           onCreateReceipt: () {},
           onOpenInvoiceDetail: (_) {},
+          invoicePreviewBuilder: (_, __, ___, ____, _____) =>
+              const SizedBox.shrink(),
+          receiptPreviewBuilder: (_, __, ___, ____, _____) =>
+              const SizedBox.shrink(),
           onDeleteInvoice: (_) {},
           onDownloadVisibleInvoices: (invoices) async {
             downloadedInvoices = invoices.length;

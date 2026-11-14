@@ -502,10 +502,10 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                 : const <DateTime, DaySummary>{};
                             final isTimeGridView = _isTimeGridView();
                             final calendarHeaderHeight =
-                                isTimeGridView ? 42.0 : 36.0;
+                                isTimeGridView ? 42.0 : 40.0;
                             final calendarViewHeaderHeight = isTimeGridView
                                 ? HexoraDimensions.calendarDayHeader
-                                : 40.0;
+                                : 32.0;
 
                             return Container(
                               decoration:
@@ -531,6 +531,7 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                         dataSource: ds,
                                         view: _selectedView,
                                         headerHeight: calendarHeaderHeight,
+                                        showDatePickerButton: true,
                                         viewHeaderHeight:
                                             calendarViewHeaderHeight,
                                         onViewChanged: (_) =>
@@ -614,7 +615,6 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                             const BoxDecoration(
                                                 color: Colors.transparent),
                                         showNavigationArrow: true,
-                                        showDatePickerButton: true,
                                         showTodayButton: true,
                                         firstDayOfWeek: DateTime.monday,
                                         initialSelectedDate: DateTime.now(),
@@ -647,10 +647,10 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                           agendaItemHeight:
                                               MediaQuery.sizeOf(context).width <
                                                       700
-                                                  ? 56 +
+                                                  ? 48 +
                                                       MediaQuery.textScalerOf(
                                                               context)
-                                                          .scale(20)
+                                                          .scale(12)
                                                   : 48,
                                           showAgenda: widget.showMonthAgenda,
                                         ),

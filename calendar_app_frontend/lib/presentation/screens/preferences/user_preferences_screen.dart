@@ -46,6 +46,8 @@ class UserPreferencesView extends StatelessWidget {
     this.maxWidth = 760,
     this.padding = const EdgeInsets.fromLTRB(24, 16, 24, 40),
     this.alignment = Alignment.topCenter,
+    this.scrollable = true,
+    this.showLanguage = true,
   });
 
   /// Maximum content width; callers align it with the surrounding layout.
@@ -56,42 +58,57 @@ class UserPreferencesView extends StatelessWidget {
   /// centers it; the Settings shell pins it to the left to follow the sidebar.
   final AlignmentGeometry alignment;
 
+  /// Settings hosts this view inside its own scroll area. Avoid nesting a
+  /// second scroll view there while preserving the standalone route behavior.
+  final bool scrollable;
+
+  /// System settings owns the language control when embedded, so it can keep
+  /// the related account preferences together in one compact card.
+  final bool showLanguage;
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionTitle(
+          icon: Icons.navigation_outlined,
+          label: l.preferencesNavigation,
+        ),
+        const SizedBox(height: 8),
+        const _NavigationPreference(),
+        const _SectionDivider(),
+        _SectionTitle(
+          icon: Icons.palette_outlined,
+          label: l.preferencesAppearance,
+        ),
+        const SizedBox(height: 12),
+        const _AppearancePreference(),
+        if (showLanguage) ...[
+          const _SectionDivider(),
+          _SectionTitle(
+            icon: Icons.language_rounded,
+            label: l.preferencesLanguage,
+          ),
+          const SizedBox(height: 12),
+          const _LanguagePreference(),
+        ],
+      ],
+    );
+
+    final constrained = ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: content,
+    );
+    if (!scrollable) return constrained;
 
     return Align(
       alignment: alignment,
       child: SingleChildScrollView(
         padding: padding,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: maxWidth),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _SectionTitle(
-                icon: Icons.navigation_outlined,
-                label: l.preferencesNavigation,
-              ),
-              const SizedBox(height: 8),
-              const _NavigationPreference(),
-              const _SectionDivider(),
-              _SectionTitle(
-                icon: Icons.palette_outlined,
-                label: l.preferencesAppearance,
-              ),
-              const SizedBox(height: 12),
-              const _AppearancePreference(),
-              const _SectionDivider(),
-              _SectionTitle(
-                icon: Icons.language_rounded,
-                label: l.preferencesLanguage,
-              ),
-              const SizedBox(height: 12),
-              const _LanguagePreference(),
-            ],
-          ),
-        ),
+        child: constrained,
       ),
     );
   }

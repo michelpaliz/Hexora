@@ -1,5 +1,166 @@
 part of '../../mail_compose_screen.dart';
 
+class _ComposeRecipientModeSelector extends StatelessWidget {
+  const _ComposeRecipientModeSelector({
+    required this.selective,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final bool selective;
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isSpanish = Localizations.localeOf(context).languageCode == 'es';
+
+    Widget option({
+      required bool value,
+      required IconData icon,
+      required String label,
+    }) {
+      final selected = selective == value;
+      return Semantics(
+        key: ValueKey(
+          'mail-compose-mode-${value ? 'selective' : 'manual'}',
+        ),
+        selected: selected,
+        button: true,
+        label: label,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(7),
+          onTap: enabled && !selected ? () => onChanged(value) : null,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOutCubic,
+            height: 30,
+            padding: const EdgeInsets.symmetric(horizontal: 9),
+            decoration: BoxDecoration(
+              color: selected ? cs.primaryContainer : Colors.transparent,
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon,
+                    size: 14,
+                    color: selected ? cs.primary : cs.onSurfaceVariant),
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: selected ? cs.primary : cs.onSurfaceVariant,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: .45),
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          option(
+            value: false,
+            icon: Icons.alternate_email_rounded,
+            label: isSpanish ? 'Manual' : 'Manual',
+          ),
+          option(
+            value: true,
+            icon: Icons.people_outline_rounded,
+            label: isSpanish ? 'Selectivo' : 'Selective',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ManualRecipientHint extends StatelessWidget {
+  const _ManualRecipientHint({
+    required this.isSpanish,
+    required this.onSelectClients,
+    required this.onDismiss,
+  });
+
+  final bool isSpanish;
+  final VoidCallback onSelectClients;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppTypography.of(context);
+    return Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(10, 7, 4, 7),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow.withValues(alpha: .62),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded,
+              size: 15, color: cs.onSurfaceVariant),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isSpanish ? 'Destinatarios manuales' : 'Manual recipients',
+                  style: t.bodySmall.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  isSpanish
+                      ? 'Escribe las direcciones de correo directamente o utiliza el modo selectivo para elegir clientes y adjuntar sus facturas pendientes.'
+                      : 'Enter email addresses directly, or use selective mode to choose clients and attach their pending invoices.',
+                  style: t.bodySmall.copyWith(
+                    fontSize: 11,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                TextButton(
+                  onPressed: onSelectClients,
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(0, 28),
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  child: Text(
+                    isSpanish ? 'Seleccionar clientes →' : 'Select clients →',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+            onPressed: onDismiss,
+            icon: const Icon(Icons.close_rounded, size: 16),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RecipientModeToggle extends StatelessWidget {
   const _RecipientModeToggle({
     required this.clientMode,

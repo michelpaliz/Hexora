@@ -5,6 +5,7 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
     required this.count,
     required this.visibleColumns,
     required this.onColumnsChanged,
+    required this.unpaidOnly,
     required this.unlinkedOnly,
     required this.paymentSuggestionsLoading,
     required this.searchQuery,
@@ -20,6 +21,7 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
   final int count;
   final Set<HexoraFinancialColumn> visibleColumns;
   final ValueChanged<Set<HexoraFinancialColumn>> onColumnsChanged;
+  final bool unpaidOnly;
   final bool unlinkedOnly;
   final bool paymentSuggestionsLoading;
   final String searchQuery;
@@ -60,11 +62,14 @@ class _InvoiceSummaryTotalsBar extends StatelessWidget {
                   _InvoicesTabListState._availableFinancialColumns,
               visibleColumns: visibleColumns,
               onColumnsChanged: onColumnsChanged,
+              unpaidOnly: unpaidOnly,
               unlinkedOnly: unlinkedOnly,
               paymentSuggestionsLoading: paymentSuggestionsLoading,
               toolbarOptions: toolbarOptions,
               onPdf: onDownloadFiltered,
               onExcel: onDownloadExcelFiltered,
+              onToggleUnpaid: () =>
+                  onHeaderAction(_InvoiceHeaderAction.toggleUnpaid),
               onToggleUnlinked: () =>
                   onHeaderAction(_InvoiceHeaderAction.toggleUnlinked),
               onResolveLinks: () =>

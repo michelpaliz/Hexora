@@ -477,7 +477,7 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (widget.showVisibleCount)
+            if (widget.showVisibleCount && !widget.compactToolbar)
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text(
@@ -512,6 +512,24 @@ class _ClientSearchSelectState extends State<ClientSearchSelect> {
                     ? (isSpanish ? 'Limpiar filtros' : 'Clear filters')
                     : null,
                 padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+                trailingActions: widget.showVisibleCount &&
+                        widget.compactToolbar
+                    ? [
+                        Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: Text(
+                            '${filtered.length} ${isSpanish ? (filtered.length == 1 ? 'cliente' : 'clientes') : (filtered.length == 1 ? 'client' : 'clients')}',
+                            key: const ValueKey('client-search-visible-count'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.bodySmall.copyWith(
+                              fontSize: 11,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ]
+                    : const [],
                 clientsForCounts:
                     widget.showAdvancedFilters ? widget.clients : null,
                 activeCountLabel:

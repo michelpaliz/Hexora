@@ -1,5 +1,6 @@
-import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/shared/widgets/mobile_navigation_components.dart';
+import 'package:hexora/presentation/shared/widgets/section_app_bar.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/services/auth/auth_provider.dart';
 import 'package:hexora/services/groups/domain/group_domain.dart';
@@ -7,8 +8,6 @@ import 'package:hexora/services/groups/invite/repository/invite_repository.dart'
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/domain/models/members_vm.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/add_users_flow/screen/add_user_fab.dart';
 import 'package:hexora/presentation/screens/workspace/sections/members/presentation/widgets/member_list/members_section.dart';
-import 'package:hexora/theme/colors/theme_colors.dart';
-import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -22,7 +21,6 @@ class GroupMembersScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final t = AppTypography.of(context);
 
     return ChangeNotifierProvider(
       create: (ctx) => MembersVM(
@@ -42,54 +40,17 @@ class GroupMembersScreen extends StatelessWidget {
           final labelNotAccept =
               '${l.statusNotAccepted} · ${vm.totalNotAccepted}';
 
-          final Color primary = cs.primary;
-          final Color selectedText = ThemeColors.contrastOn(primary);
-          final Color unselectedText =
-              ThemeColors.textPrimary(context).withValues(alpha: 0.7);
-          final Color trackBg = ThemeColors.cardBg(context);
-
           return Scaffold(
             appBar: SectionAppBar(
               title: l.membersTitle,
               bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(64),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: Container(
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: trackBg,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: cs.onSurface.withValues(alpha: 0.06)),
-                    ),
-                    child: TabBar(
-                      isScrollable: true,
-                      tabAlignment: TabAlignment.start,
-                      tabs: [
-                        Tab(text: labelAccepted),
-                        Tab(text: labelPending),
-                        Tab(text: labelNotAccept),
-                      ],
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      dividerColor: Colors.transparent,
-                      labelColor: selectedText,
-                      unselectedLabelColor: unselectedText,
-                      labelStyle: t.bodySmall.copyWith(
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: .2,
-                      ),
-                      unselectedLabelStyle: t.bodySmall.copyWith(
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: .2,
-                      ),
-                      indicator: BoxDecoration(
-                        color: primary,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      splashBorderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
+                preferredSize: const Size.fromHeight(48),
+                child: HexoraMobileTabs(
+                  tabs: [
+                    Tab(text: labelAccepted),
+                    Tab(text: labelPending),
+                    Tab(text: labelNotAccept),
+                  ],
                 ),
               ),
             ),

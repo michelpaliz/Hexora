@@ -20,6 +20,7 @@ class GroupHeaderCard extends StatelessWidget {
     required this.total,
     required this.localeName,
     required this.onTap,
+    this.onEdit,
     this.isLoading = false,
     this.presenceStrip,
     this.clientCount,
@@ -43,6 +44,7 @@ class GroupHeaderCard extends StatelessWidget {
   final String localeName;
   final bool isLoading;
   final VoidCallback? onTap;
+  final VoidCallback? onEdit;
   final int? clientCount;
   final int? workerCount;
   final String? editTooltip;
@@ -57,10 +59,6 @@ class GroupHeaderCard extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final t = AppTypography.of(context);
-    final metadataButtonStyle = ThemedButtons.button(
-      context,
-      variant: ButtonVariant.ghost,
-    );
     final editButtonStyle = ThemedButtons.iconAction(
       context,
       color: cs.primary,
@@ -77,72 +75,171 @@ class GroupHeaderCard extends StatelessWidget {
     );
 
     if (MediaQuery.sizeOf(context).width < 700) {
-      return Card(
-        margin: EdgeInsets.zero,
-        elevation: 0,
-        color: cs.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                AvatarUtils.groupAvatar(context, photoUrl, radius: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: t.bodyLarge.copyWith(fontWeight: FontWeight.w700)),
+      final primary = cs.primary;
+      final secondary = Color.lerp(primary, const Color(0xFF5146E5), .62)!;
+      final pendingCount = pendingEventsCount ?? pending;
+
+      return Semantics(
+        container: true,
+        button: isInteractive,
+        label: '$title, $createdLabel',
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 15),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [primary, secondary],
                 ),
-                if (onTap != null)
-                  IconButton(
-                    style: editButtonStyle,
-                    tooltip: editTooltip ?? l.edit,
-                    icon: const Icon(Icons.edit_outlined, size: 20),
-                    onPressed: onTap,
+                boxShadow: [
+                  BoxShadow(
+                    color: primary.withValues(alpha: .22),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
                   ),
-              ]),
-              if (hasDescription) ...[
-                const SizedBox(height: 6),
-                Text(description,
-                    style: t.bodySmall
-                        .copyWith(color: cs.onSurfaceVariant, height: 1.5)),
-              ],
-              if (presenceStrip != null) presenceStrip!,
-              const SizedBox(height: 6),
-              if (isLoading)
-                const LinearProgressIndicator()
-              else
-                Wrap(spacing: 4, runSpacing: 0, children: [
-                  TextButton.icon(
-                      style: metadataButtonStyle,
-                      onPressed: onMembersTap,
-                      icon: const Icon(Icons.group_outlined, size: 18),
-                      label: Text('$members ${l.membersTitle.toLowerCase()}')),
-                  if (pendingEventsCount != null)
-                    TextButton.icon(
-                        style: metadataButtonStyle,
-                        onPressed: onPendingEventsTap,
-                        icon: const Icon(Icons.pending_actions_outlined,
-                            size: 18),
-                        label: Text(
-                            '$pendingEventsCount ${l.statusPending.toLowerCase()}')),
-                  if (clientCount != null)
-                    TextButton(
-                        style: metadataButtonStyle,
-                        onPressed: onClientsTap,
-                        child:
-                            Text('$clientCount ${l.tabClients.toLowerCase()}')),
-                  if (workerCount != null)
-                    TextButton(
-                        style: metadataButtonStyle,
-                        onPressed: onWorkersTap,
-                        child: Text(
-                            '$workerCount ${l.localeName.startsWith('es') ? 'trabajadores' : 'workers'}')),
-                ]),
-            ],
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: SizedBox(
+                              width: 58,
+                              height: 58,
+                              child: AvatarUtils.groupAvatar(
+                                context,
+                                photoUrl,
+                                radius: 29,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            right: -2,
+                            bottom: -2,
+                            child: Container(
+                              width: 13,
+                              height: 13,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF20C875),
+                                shape: BoxShape.circle,
+                                border:
+                                    Border.all(color: Colors.white, width: 2),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.bodyLarge.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                height: 1.1,
+                              ),
+                            ),
+                            if (hasDescription) ...[
+                              const SizedBox(height: 3),
+                              Text(
+                                description,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: t.bodySmall.copyWith(
+                                  color: Colors.white.withValues(alpha: .82),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      if (onEdit != null)
+                        IconButton.filledTonal(
+                          tooltip: editTooltip ?? l.edit,
+                          style: IconButton.styleFrom(
+                            backgroundColor:
+                                Colors.white.withValues(alpha: .18),
+                            foregroundColor: Colors.white,
+                          ),
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          onPressed: onEdit,
+                        ),
+                    ],
+                  ),
+                  if (presenceStrip != null) ...[
+                    const SizedBox(height: 10),
+                    presenceStrip!,
+                  ],
+                  const SizedBox(height: 12),
+                  Divider(
+                      height: 1, color: Colors.white.withValues(alpha: .18)),
+                  const SizedBox(height: 10),
+                  if (isLoading)
+                    LinearProgressIndicator(
+                      minHeight: 2,
+                      color: Colors.white,
+                      backgroundColor: Colors.white.withValues(alpha: .18),
+                    )
+                  else
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _MobileStat(
+                            value: members,
+                            label: l.membersTitle,
+                            onTap: onMembersTap,
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        Expanded(
+                          child: _MobileStat(
+                            value: pendingCount,
+                            label: l.statusPending,
+                            onTap: onPendingEventsTap,
+                            emphasized: pendingCount > 0,
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        Expanded(
+                          child: _MobileStat(
+                            value: clientCount ?? 0,
+                            label: l.tabClients,
+                            onTap: onClientsTap,
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        Expanded(
+                          child: _MobileStat(
+                            value: workerCount ?? 0,
+                            label: l.localeName.startsWith('es')
+                                ? 'Equipo'
+                                : 'Team',
+                            onTap: onWorkersTap,
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       );
@@ -154,164 +251,241 @@ class GroupHeaderCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(14),
-        child: Stack(
-          children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                color: cardColor,
-                border: Border.all(
-                  color: cs.primaryContainer.withValues(alpha: 0.4),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: ThemeColors.cardShadow(context),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Stack(
+            children: [
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: cardColor,
+                  border: Border.all(
+                    color: cs.primaryContainer.withValues(alpha: 0.4),
                   ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  const SizedBox(height: 4),
-                  // 1) bigger centered avatar
-                  Center(
-                    child: ClipOval(
-                      child: SizedBox(
-                        width: 96,
-                        height: 96,
-                        child: AvatarUtils.groupAvatar(context, photoUrl,
-                            radius: 48),
+                  boxShadow: [
+                    BoxShadow(
+                      color: ThemeColors.cardShadow(context),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 4),
+                    // 1) bigger centered avatar
+                    Center(
+                      child: ClipOval(
+                        child: SizedBox(
+                          width: 96,
+                          height: 96,
+                          child: AvatarUtils.groupAvatar(context, photoUrl,
+                              radius: 48),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
-                  // 2) icon meta row (calendar text + members icon [+ pending icon if any])
-                  _IconMetaRow(
-                    children: [
-                      Icon(Icons.calendar_month_outlined,
-                          size: 16, color: cs.onSurfaceVariant),
-                      const SizedBox(width: 6),
-                      MetaText(text: createdLabel),
-                      const MetaSeparatorDot(),
-                      Icon(Icons.group_outlined,
-                          size: 16, color: cs.onSurfaceVariant),
-                      if (pendingEventsCount != null &&
-                          pendingEventsCount! > 0) ...[
-                        const MetaSeparatorDot(),
-                        Icon(Icons.pending_actions_outlined,
+                    // 2) icon meta row (calendar text + members icon [+ pending icon if any])
+                    _IconMetaRow(
+                      children: [
+                        Icon(Icons.calendar_month_outlined,
                             size: 16, color: cs.onSurfaceVariant),
-                        const SizedBox(width: 4),
-                        MetaText(
-                          text:
-                              '${pendingEventsCount!.toString()} ${l.statusPending.toLowerCase()}',
-                        ),
+                        const SizedBox(width: 6),
+                        MetaText(text: createdLabel),
+                        const MetaSeparatorDot(),
+                        Icon(Icons.group_outlined,
+                            size: 16, color: cs.onSurfaceVariant),
+                        if (pendingEventsCount != null &&
+                            pendingEventsCount! > 0) ...[
+                          const MetaSeparatorDot(),
+                          Icon(Icons.pending_actions_outlined,
+                              size: 16, color: cs.onSurfaceVariant),
+                          const SizedBox(width: 4),
+                          MetaText(
+                            text:
+                                '${pendingEventsCount!.toString()} ${l.statusPending.toLowerCase()}',
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
+                    ),
 
-                  const SizedBox(height: 14),
+                    const SizedBox(height: 14),
 
-                  // 3) title + description responsive
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isWide = constraints.maxWidth >= 560;
-                      if (!isWide) {
-                        return Column(
+                    // 3) title + description responsive
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth >= 560;
+                        if (!isWide) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: t.titleLarge.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.1,
+                                ),
+                              ),
+                              if (hasDescription) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  description,
+                                  style: t.bodyLarge.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          );
+                        }
+
+                        return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: t.titleLarge.copyWith(
-                                fontWeight: FontWeight.w800,
-                                height: 1.1,
-                              ),
-                            ),
-                            if (hasDescription) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                description,
-                                style: t.bodyLarge.copyWith(
-                                  color: cs.onSurfaceVariant,
-                                  height: 1.5,
+                            Expanded(
+                              flex: 5,
+                              child: Text(
+                                title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: t.displayMedium.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.1,
                                 ),
                               ),
-                            ],
+                            ),
+                            const SizedBox(width: 20),
+                            if (hasDescription)
+                              Expanded(
+                                flex: 7,
+                                child: Text(
+                                  description,
+                                  style: t.bodyLarge.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                    height: 1.55,
+                                  ),
+                                ),
+                              ),
                           ],
                         );
-                      }
+                      },
+                    ),
 
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: 5,
-                            child: Text(
-                              title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: t.displayMedium.copyWith(
-                                fontWeight: FontWeight.w700,
-                                height: 1.1,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 20),
-                          if (hasDescription)
-                            Expanded(
-                              flex: 7,
-                              child: Text(
-                                description,
-                                style: t.bodyLarge.copyWith(
-                                  color: cs.onSurfaceVariant,
-                                  height: 1.55,
-                                ),
-                              ),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
+                    if (presenceStrip != null) presenceStrip!,
+                    const SizedBox(height: 16),
+                    Divider(
+                        height: 1,
+                        thickness: 0.8,
+                        color: cs.outlineVariant.withValues(alpha: 0.4)),
+                    const SizedBox(height: 10),
 
-                  if (presenceStrip != null) presenceStrip!,
-                  const SizedBox(height: 16),
-                  Divider(
-                      height: 1,
-                      thickness: 0.8,
-                      color: cs.outlineVariant.withValues(alpha: 0.4)),
-                  const SizedBox(height: 10),
-
-                  GroupStatsPillsCompact(
-                    loading: isLoading,
-                    members: members,
-                    localeName: localeName,
-                    clientCount: clientCount,
-                    workerCount: workerCount,
-                    pendingEventsCount: pendingEventsCount,
-                    onMembersTap: onMembersTap,
-                    onPendingEventsTap: onPendingEventsTap,
-                    onClientsTap: onClientsTap,
-                    onWorkersTap: onWorkersTap,
-                  ),
-                ],
-              ),
-            ),
-            if (isInteractive)
-              Positioned(
-                top: 4,
-                right: 4,
-                child: IconButton(
-                  style: editButtonStyle,
-                  icon: const Icon(Icons.edit_outlined),
-                  tooltip: editTooltip ?? 'Edit',
-                  onPressed: onTap,
+                    GroupStatsPillsCompact(
+                      loading: isLoading,
+                      members: members,
+                      localeName: localeName,
+                      clientCount: clientCount,
+                      workerCount: workerCount,
+                      pendingEventsCount: pendingEventsCount,
+                      onMembersTap: onMembersTap,
+                      onPendingEventsTap: onPendingEventsTap,
+                      onClientsTap: onClientsTap,
+                      onWorkersTap: onWorkersTap,
+                    ),
+                  ],
                 ),
               ),
-          ],
+              if (onEdit != null)
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: IconButton(
+                    style: editButtonStyle,
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: editTooltip ?? 'Edit',
+                    onPressed: onEdit,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileStat extends StatelessWidget {
+  const _MobileStat({
+    required this.value,
+    required this.label,
+    this.onTap,
+    this.emphasized = false,
+  });
+
+  final int value;
+  final String label;
+  final VoidCallback? onTap;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: .12),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          height: 56,
+          alignment: Alignment.center,
+          decoration: emphasized
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: const Color(0xFFFFD166).withValues(alpha: .85),
+                  ),
+                )
+              : null,
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '$value',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label.toUpperCase(),
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: .82),
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: .15,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

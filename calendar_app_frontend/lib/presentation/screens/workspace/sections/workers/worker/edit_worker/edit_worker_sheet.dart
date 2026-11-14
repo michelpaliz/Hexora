@@ -1,24 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/workers/worker.dart';
-import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/shared/currency_options.dart';
+import 'package:hexora/services/time_tracking/repository/time_tracking_repository.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
-import 'package:hexora/l10n/app_localizations.dart';
 
 class EditWorkerSheet extends StatefulWidget {
-  final Group group;
-  final Worker worker;
-  final ITimeTrackingRepository repo;
-  final Future<String> Function() getToken;
-
   const EditWorkerSheet({
     super.key,
     required this.group,
     required this.worker,
     required this.repo,
     required this.getToken,
+    this.scrollController,
   });
+
+  final Group group;
+  final Worker worker;
+  final ITimeTrackingRepository repo;
+  final Future<String> Function() getToken;
+  final ScrollController? scrollController;
 
   @override
   State<EditWorkerSheet> createState() => _EditWorkerSheetState();
@@ -26,28 +28,40 @@ class EditWorkerSheet extends StatefulWidget {
 
 class _EditWorkerSheetState extends State<EditWorkerSheet> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nameCtrl;
-  late TextEditingController _rateCtrl;
-  late TextEditingController _roleTagCtrl;
-  late TextEditingController _notesCtrl;
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _rateCtrl;
+  late final TextEditingController _roleTagCtrl;
+  late final TextEditingController _notesCtrl;
   String _currency = defaultWorkerCurrency;
   late WorkerStatus _status;
   late String _operationalRole;
   bool _saving = false;
+  bool _discarding = false;
 
   @override
   void initState() {
     super.initState();
-    final w = widget.worker;
-    _nameCtrl = TextEditingController(text: w.displayName ?? '');
+    final worker = widget.worker;
+    _nameCtrl = TextEditingController(text: worker.displayName ?? '');
     _rateCtrl = TextEditingController(
-      text: (w.defaultHourlyRate ?? '').toString(),
+      text: (worker.defaultHourlyRate ?? '').toString(),
     );
-    _roleTagCtrl = TextEditingController(text: w.roleTag ?? '');
-    _notesCtrl = TextEditingController(text: w.notes ?? '');
-    _currency = (w.currency ?? defaultWorkerCurrency);
-    _status = w.status;
-    _operationalRole = w.operationalRole;
+    _roleTagCtrl = TextEditingController(text: worker.roleTag ?? '');
+    _notesCtrl = TextEditingController(text: worker.notes ?? '');
+    _currency = worker.currency ?? defaultWorkerCurrency;
+    _status = worker.status;
+    _operationalRole = worker.operationalRole;
+  }
+
+  bool get _hasChanges {
+    final worker = widget.worker;
+    return _nameCtrl.text.trim() != (worker.displayName ?? '').trim() ||
+        _rateCtrl.text.trim() != (worker.defaultHourlyRate ?? '').toString() ||
+        _roleTagCtrl.text.trim() != (worker.roleTag ?? '').trim() ||
+        _notesCtrl.text.trim() != (worker.notes ?? '').trim() ||
+        _currency != (worker.currency ?? defaultWorkerCurrency) ||
+        _status != worker.status ||
+        _operationalRole != worker.operationalRole;
   }
 
   @override
@@ -59,6 +73,31 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
     super.dispose();
   }
 
+  Future<void> _confirmDiscard() async {
+    if (!_hasChanges || _saving || _discarding) return;
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Descartar cambios'),
+        content: const Text('Tienes cambios sin guardar. ¿Quieres descartarlos?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Continuar editando'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Descartar'),
+          ),
+        ],
+      ),
+    );
+    if (discard == true && mounted) {
+      setState(() => _discarding = true);
+      Navigator.of(context).pop();
+    }
+  }
+
   Future<void> _save() async {
     final l = AppLocalizations.of(context)!;
     if (!_formKey.currentState!.validate()) return;
@@ -66,7 +105,6 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
     setState(() => _saving = true);
     try {
       final token = await widget.getToken();
-
       final updatedWorker = widget.worker.copyWith(
         displayName:
             _nameCtrl.text.trim().isEmpty ? null : _nameCtrl.text.trim(),
@@ -78,139 +116,167 @@ class _EditWorkerSheetState extends State<EditWorkerSheet> {
         notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
         status: _status,
       );
-
       final savedWorker = await widget.repo.updateWorker(
         widget.group.id,
         widget.worker.id,
         updatedWorker,
         token,
       );
-
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l.workerUpdated)),
       );
       Navigator.of(context).pop(savedWorker);
-    } catch (e) {
+    } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
+  InputDecoration _decoration(String label) => InputDecoration(
+        labelText: label,
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        isDense: true,
+        contentPadding: const EdgeInsets.fromLTRB(12, 14, 12, 8),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      );
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
+    final typography = AppTypography.of(context);
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).dividerColor,
-                borderRadius: BorderRadius.circular(2),
-              ),
+    return PopScope(
+      canPop: !_hasChanges || _saving || _discarding,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmDiscard();
+      },
+      child: SafeArea(
+        top: false,
+        child: Column(children: [
+          Container(
+            width: 36,
+            height: 4,
+            margin: const EdgeInsets.only(top: 10, bottom: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).dividerColor,
+              borderRadius: BorderRadius.circular(2),
             ),
-            Align(
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
                 l.editWorker,
-                style: t.titleLarge.copyWith(fontWeight: FontWeight.w800),
+                style: typography.titleLarge.copyWith(fontWeight: FontWeight.w800),
               ),
             ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _nameCtrl,
-              decoration: InputDecoration(labelText: l.workerNameLabel),
-            ),
-            TextFormField(
-              controller: _rateCtrl,
-              decoration: InputDecoration(labelText: l.hourlyRateLabel),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return null;
-                final n = double.tryParse(v.replaceAll(',', '.'));
-                if (n == null || n < 0) return l.invalidRate;
-                return null;
-              },
-            ),
-            const SizedBox(height: 8),
-            if (widget.worker.userId != null && widget.worker.account == null)
-              DropdownButtonFormField<String>(
-                initialValue: _operationalRole,
-                decoration: const InputDecoration(labelText: 'Rol de trabajador'),
-                items: const [
-                  DropdownMenuItem(value: 'worker', child: Text('Trabajador')),
-                  DropdownMenuItem(value: 'supervisor', child: Text('Supervisor')),
-                ],
-                onChanged: (value) => setState(() => _operationalRole = value ?? 'worker'),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                controller: widget.scrollController,
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  TextFormField(
+                    controller: _nameCtrl,
+                    decoration: _decoration(l.workerNameLabel),
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _rateCtrl,
+                    decoration: _decoration(l.hourlyRateLabel),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) return null;
+                      final amount = double.tryParse(value.replaceAll(',', '.'));
+                      return amount == null || amount < 0 ? l.invalidRate : null;
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  Row(children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        initialValue: _currency,
+                        decoration: _decoration(l.currencyLabel),
+                        items: workerCurrencyOptions
+                            .map((currency) => DropdownMenuItem(
+                                value: currency, child: Text(currency)))
+                            .toList(),
+                        onChanged: (value) =>
+                            setState(() => _currency = value ?? defaultWorkerCurrency),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: DropdownButtonFormField<WorkerStatus>(
+                        isExpanded: true,
+                        initialValue: _status,
+                        decoration: _decoration(l.statusLabel),
+                        items: [
+                          DropdownMenuItem(
+                              value: WorkerStatus.active,
+                              child: Text(l.statusActive)),
+                          DropdownMenuItem(
+                              value: WorkerStatus.archived,
+                              child: Text(l.statusInactive)),
+                        ],
+                        onChanged: (value) => setState(
+                            () => _status = value ?? WorkerStatus.active),
+                      ),
+                    ),
+                  ]),
+                  if (widget.worker.userId != null && widget.worker.account == null) ...[
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      initialValue: _operationalRole,
+                      decoration: _decoration('Rol de trabajador'),
+                      items: const [
+                        DropdownMenuItem(value: 'worker', child: Text('Trabajador')),
+                        DropdownMenuItem(value: 'supervisor', child: Text('Supervisor')),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _operationalRole = value ?? 'worker'),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _roleTagCtrl,
+                    decoration: _decoration(l.roleLabel),
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _notesCtrl,
+                    decoration: _decoration(l.notesLabel),
+                    minLines: 2,
+                    maxLines: 3,
+                  ),
+                ]),
               ),
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    initialValue: _currency,
-                    items: workerCurrencyOptions
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                        .toList(),
-                    onChanged: (v) =>
-                        setState(() => _currency = v ?? defaultWorkerCurrency),
-                    decoration: InputDecoration(labelText: l.currencyLabel),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButtonFormField<WorkerStatus>(
-                    isExpanded: true,
-                    initialValue: _status,
-                    items: [
-                      DropdownMenuItem(
-                          value: WorkerStatus.active,
-                          child: Text(l.statusActive)),
-                      DropdownMenuItem(
-                          value: WorkerStatus.archived,
-                          child: Text(l.statusInactive)),
-                    ],
-                    onChanged: (v) =>
-                        setState(() => _status = v ?? WorkerStatus.active),
-                    decoration: InputDecoration(labelText: l.statusLabel),
-                  ),
-                ),
-              ],
             ),
-            TextFormField(
-              controller: _roleTagCtrl,
-              decoration: InputDecoration(labelText: l.roleLabel),
-            ),
-            TextFormField(
-              controller: _notesCtrl,
-              decoration: InputDecoration(labelText: l.notesLabel),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 12 + bottomInset),
+            child: SizedBox(
               width: double.infinity,
+              height: 46,
               child: FilledButton.icon(
                 onPressed: _saving ? null : _save,
-                icon: const Icon(Icons.save_outlined),
+                icon: const Icon(Icons.save_outlined, size: 18),
                 label: Text(l.saveChanges),
               ),
             ),
-          ],
-        ),
+          ),
+        ]),
       ),
     );
   }

@@ -314,6 +314,7 @@ class InvoicesApi {
     String groupId, {
     String? status,
     String? linkStatus,
+    String? paymentStatus,
     String? seriesId,
     String? sortBy,
     String? sortDir,
@@ -321,6 +322,8 @@ class InvoicesApi {
     final query = <String, String>{
       if (status != null && status.isNotEmpty) 'status': status,
       if (linkStatus != null && linkStatus.isNotEmpty) 'linkStatus': linkStatus,
+      if (paymentStatus != null && paymentStatus.isNotEmpty)
+        'paymentStatus': paymentStatus,
       if (seriesId != null && seriesId.isNotEmpty) 'seriesId': seriesId,
       if (sortBy != null && sortBy.isNotEmpty) 'sortBy': sortBy,
       if (sortDir != null && sortDir.isNotEmpty) 'sortDir': sortDir,
@@ -428,6 +431,7 @@ class InvoicesApi {
     String groupId, {
     String? status,
     String? linkStatus,
+    String? paymentStatus,
     String? seriesId,
     String? sortBy,
     String? sortDir,
@@ -436,6 +440,7 @@ class InvoicesApi {
       groupId,
       status: status,
       linkStatus: linkStatus,
+      paymentStatus: paymentStatus,
       seriesId: seriesId,
       sortBy: sortBy,
       sortDir: sortDir,

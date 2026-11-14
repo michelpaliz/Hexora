@@ -66,6 +66,11 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   DateQuickRange _quickRange = DateQuickRange.none;
   DateTime? _fromDate;
   DateTime? _toDate;
+  String _duplicateFilter = 'all';
+  bool _unpaidOnly = false;
+  bool _unpaidLoading = false;
+  String? _unpaidError;
+  List<Invoice>? _unpaidInvoices;
   bool _unlinkedOnly = false;
   bool _unlinkedLoading = false;
   String? _unlinkedError;
@@ -98,6 +103,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   static const _availableFinancialColumns = {
     HexoraFinancialColumn.date,
     HexoraFinancialColumn.concept,
+    HexoraFinancialColumn.notes,
     HexoraFinancialColumn.taxableBase,
     HexoraFinancialColumn.vat,
     HexoraFinancialColumn.total,
@@ -106,6 +112,7 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   static const _defaultFinancialColumns = {
     HexoraFinancialColumn.date,
     HexoraFinancialColumn.concept,
+    HexoraFinancialColumn.notes,
     HexoraFinancialColumn.taxableBase,
     HexoraFinancialColumn.vat,
     HexoraFinancialColumn.total,
@@ -113,6 +120,8 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
   };
   static const _conceptDefaultMigrationKey =
       'hexora.invoiceColumns.conceptDefault.v1';
+  static const _notesDefaultMigrationKey =
+      'hexora.invoiceColumns.notesDefault.v1';
   Set<HexoraFinancialColumn> _visibleFinancialColumns =
       Set.of(_defaultFinancialColumns);
 
@@ -131,9 +140,13 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
     final preferences = await SharedPreferences.getInstance();
     if (preferences.getBool(_conceptDefaultMigrationKey) != true) {
       value.add(HexoraFinancialColumn.concept);
-      await HexoraColumnVisibilityStore.save('facturas', value);
       await preferences.setBool(_conceptDefaultMigrationKey, true);
     }
+    if (preferences.getBool(_notesDefaultMigrationKey) != true) {
+      value.add(HexoraFinancialColumn.notes);
+      await preferences.setBool(_notesDefaultMigrationKey, true);
+    }
+    await HexoraColumnVisibilityStore.save('facturas', value);
     if (mounted) setState(() => _visibleFinancialColumns = value);
   }
 
@@ -154,6 +167,11 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
     if (oldWidget.showSummaryTotals != widget.showSummaryTotals ||
         oldWidget.invoices != widget.invoices) {
       _scheduleSummaryLoad();
+    }
+    if (_unpaidOnly &&
+        (oldWidget.sortState != widget.sortState ||
+            oldWidget.groupId != widget.groupId)) {
+      _loadUnpaidInvoices();
     }
     if (_unlinkedOnly &&
         (oldWidget.sortState != widget.sortState ||
@@ -268,10 +286,48 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
     }
   }
 
+  Future<void> _loadUnpaidInvoices() async {
+    final groupId = widget.groupId.trim();
+    if (!widget.showSummaryTotals || groupId.isEmpty) return;
+    setState(() {
+      _unpaidLoading = true;
+      _unpaidError = null;
+    });
+    try {
+      final (sortBy, sortDir) = _invoiceSortParams();
+      final invoices = await _invoicesApi.listByGroup(
+        groupId,
+        status: 'issued',
+        paymentStatus: 'unpaid',
+        sortBy: sortBy,
+        sortDir: sortDir,
+      );
+      if (mounted) setState(() => _unpaidInvoices = invoices);
+    } catch (e) {
+      if (mounted) setState(() => _unpaidError = e.toString());
+    } finally {
+      if (mounted) setState(() => _unpaidLoading = false);
+    }
+  }
+
+  void _toggleUnpaidOnly() {
+    final next = !_unpaidOnly;
+    setState(() {
+      _unpaidOnly = next;
+      if (next) _unlinkedOnly = false;
+      if (!next) {
+        _unpaidError = null;
+        _paymentSuggestionsError = null;
+      }
+    });
+    if (next && _unpaidInvoices == null) _loadUnpaidInvoices();
+  }
+
   void _toggleUnlinkedOnly() {
     final next = !_unlinkedOnly;
     setState(() {
       _unlinkedOnly = next;
+      if (next) _unpaidOnly = false;
       if (!next) {
         _unlinkedError = null;
         _paymentSuggestionsError = null;
@@ -507,18 +563,29 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
     _refreshFilteredData();
   }
 
-  Map<String, dynamic> _summaryFromInvoices(List<Invoice> invoices) {
+  Map<String, dynamic> _summaryFromInvoices(
+    List<Invoice> invoices, {
+    bool outstandingOnly = false,
+  }) {
     num subtotal = 0;
     num taxTotal = 0;
     num total = 0;
     var mismatchCount = 0;
     for (final invoice in invoices) {
-      final invoiceSubtotal = invoice.subtotal ?? 0;
-      final invoiceTax = invoice.taxTotal ?? 0;
-      final invoiceTotal = invoice.total ?? 0;
-      subtotal += invoiceSubtotal;
-      taxTotal += invoiceTax;
-      total += invoiceTotal;
+      final invoiceSubtotal = (invoice.subtotal ?? 0).toDouble();
+      final invoiceTax = (invoice.taxTotal ?? 0).toDouble();
+      final invoiceTotal = (invoice.total ?? 0).toDouble();
+      final status = (invoice.paymentStatus ?? 'unpaid').toLowerCase();
+      final paidAmount = !outstandingOnly
+          ? 0.0
+          : status == 'paid'
+              ? invoiceTotal
+              : ((invoice.paidAmount ?? 0).toDouble()).clamp(0, invoiceTotal);
+      final outstanding = (invoiceTotal - paidAmount).clamp(0, invoiceTotal);
+      final ratio = invoiceTotal > 0 ? outstanding / invoiceTotal : 0.0;
+      subtotal += invoiceSubtotal * ratio;
+      taxTotal += invoiceTax * ratio;
+      total += outstanding;
       if (_hasFinancialMismatch(invoice)) {
         mismatchCount++;
       }
@@ -593,9 +660,10 @@ class _InvoicesTabListState extends State<_InvoicesTabList> {
 
   void _setInvoiceNumberQueryDebounced(String value) {
     _invoiceSearchDebounce?.cancel();
-    _invoiceSearchDebounce = Timer(const Duration(milliseconds: 280), () {
-      if (mounted) setState(() => _invoiceNumberQuery = value.trim());
-    });
+    // This filter runs against the already-loaded invoice list. Applying it
+    // immediately avoids losing the last characters when the filter dialog is
+    // dismissed before a debounce timer fires.
+    if (mounted) setState(() => _invoiceNumberQuery = value.trim());
   }
 
   void _setGlobalSearchDebounced(String value) {

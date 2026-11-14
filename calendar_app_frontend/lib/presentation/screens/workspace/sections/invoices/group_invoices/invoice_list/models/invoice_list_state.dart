@@ -11,6 +11,7 @@ enum _InvoiceColumnSort {
   delivery,
   payment,
   date,
+  notes,
   taxableBase,
   vat,
   total,
@@ -31,7 +32,7 @@ class _InvoiceAmountRange {
   }
 }
 
-enum _InvoiceHeaderAction { toggleUnlinked, resolveLinks }
+enum _InvoiceHeaderAction { toggleUnpaid, toggleUnlinked, resolveLinks }
 
 class InvoiceDateFilterState {
   const InvoiceDateFilterState({

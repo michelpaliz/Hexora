@@ -8,7 +8,7 @@ import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram
 import 'package:hexora/services/telegram/domain/telegram_domain.dart';
 import 'package:provider/provider.dart';
 import 'package:hexora/presentation/screens/workspace/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
-import 'package:hexora/presentation/screens/workspace/dashboard/access/role_info_screen.dart';
+import 'package:hexora/presentation/screens/profile/view/profile_view_screen.dart';
 
 import '../navigation/dashboard_sections.dart';
 import 'group_dashboard_state.dart';
@@ -69,11 +69,11 @@ class DashboardActions {
         break;
       case Sections.businessChat:
         Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => Scaffold(
-            appBar: AppBar(title: const Text('Chat de la empresa')),
+          builder: (routeContext) => Scaffold(
             body: BusinessChatScreen(
               groupId: state.group.id,
               currentUserId: state.user?.id,
+              onExit: () => Navigator.of(routeContext).pop(),
             ),
           ),
         ));
@@ -167,13 +167,13 @@ class DashboardActions {
         );
         break;
       case Sections.profile:
-        if (state.user != null && state.role != null) {
+        if (state.user != null) {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => RoleInfoScreen(
+              builder: (_) => ProfileViewScreen(
                 group: state.group,
                 user: state.user!,
-                role: state.role!,
+                role: state.role,
                 fetchReadSas: state.fetchReadSas,
               ),
             ),

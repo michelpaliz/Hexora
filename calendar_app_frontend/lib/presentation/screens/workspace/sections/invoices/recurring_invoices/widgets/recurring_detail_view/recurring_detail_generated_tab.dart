@@ -678,7 +678,8 @@ class _RecurringDetailGeneratedTabState
                                 resolved.displayNumber(
                                   draftLabel: l.statusDraft,
                                 ),
-                                style: t.bodySmall.copyWith(
+                                style: t.bodyMedium.copyWith(
+                                  color: cs.onSurface,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 13,
                                   fontFamily: HexoraTypography.fontFamily,
@@ -711,6 +712,7 @@ class _RecurringDetailGeneratedTabState
                             softWrap: false,
                             textAlign: TextAlign.right,
                             style: t.bodySmall.copyWith(
+                              color: cs.onSurface,
                               fontFamily: HexoraTypography.fontFamily,
                               fontSize: 12.5,
                               fontWeight: FontWeight.w700,

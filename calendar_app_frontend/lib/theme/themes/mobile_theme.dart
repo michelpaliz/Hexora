@@ -119,7 +119,9 @@ class MobileTheme {
         ),
       ],
       appBarTheme: AppBarTheme(
-        backgroundColor: background,
+        toolbarHeight: 56,
+        titleSpacing: 16,
+        backgroundColor: card,
         foregroundColor: text,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
@@ -127,7 +129,8 @@ class MobileTheme {
         centerTitle: false,
         titleTextStyle: textTheme.titleLarge
             ?.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
-        iconTheme: IconThemeData(color: text, size: 24),
+        iconTheme: IconThemeData(color: text, size: 22),
+        actionsIconTheme: IconThemeData(color: secondaryText, size: 22),
         systemOverlayStyle:
             (dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
                 .copyWith(
@@ -217,8 +220,52 @@ class MobileTheme {
       tabBarTheme: TabBarThemeData(
         labelColor: primary,
         unselectedLabelColor: secondaryText,
-        indicatorColor: primary,
+        indicator: UnderlineTabIndicator(
+          borderSide: BorderSide(color: primary, width: 2),
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: border,
+        labelStyle: textTheme.labelLarge?.copyWith(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
+        unselectedLabelStyle: textTheme.labelLarge?.copyWith(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 16),
+        overlayColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.pressed) ||
+                  states.contains(WidgetState.hovered)
+              ? primary.withValues(alpha: .06)
+              : null,
+        ),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          minimumSize: const WidgetStatePropertyAll(Size(48, 40)),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          elevation: const WidgetStatePropertyAll(0),
+          side: WidgetStatePropertyAll(BorderSide(color: border)),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? selected
+                : Colors.transparent,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? onSelected
+                : secondaryText,
+          ),
+          textStyle: WidgetStatePropertyAll(
+            textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: card,
@@ -250,9 +297,18 @@ class MobileTheme {
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       ),
       dialogTheme: DialogThemeData(
-          backgroundColor: raised,
-          surfaceTintColor: Colors.transparent,
-          shape: shape),
+        backgroundColor: raised,
+        surfaceTintColor: Colors.transparent,
+        shape: shape,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        titleTextStyle: textTheme.titleLarge?.copyWith(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: text,
+        ),
+        contentTextStyle: textTheme.bodyMedium?.copyWith(color: secondaryText),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      ),
       popupMenuTheme: PopupMenuThemeData(
           color: raised,
           surfaceTintColor: Colors.transparent,

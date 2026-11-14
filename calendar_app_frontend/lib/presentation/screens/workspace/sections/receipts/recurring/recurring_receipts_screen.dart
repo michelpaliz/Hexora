@@ -63,6 +63,7 @@ class _RecurringReceiptsScreenState extends State<RecurringReceiptsScreen> {
   String? _clientFilter;
   bool _dueSoonOnly = false;
   String? _lastActionsKey;
+  bool _openingCreate = false;
 
   @override
   void dispose() {
@@ -96,6 +97,16 @@ class _RecurringReceiptsScreenState extends State<RecurringReceiptsScreen> {
   void initState() {
     super.initState();
     _loadAll();
+  }
+
+  @override
+  void didUpdateWidget(covariant RecurringReceiptsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final seriesId = widget.initialSeriesId?.trim() ?? '';
+    if (seriesId.isEmpty || seriesId == oldWidget.initialSeriesId?.trim()) {
+      return;
+    }
+    if (!_loading) _openSeriesById(seriesId);
   }
 
   Future<void> _loadAll() async {
@@ -148,7 +159,19 @@ class _RecurringReceiptsScreenState extends State<RecurringReceiptsScreen> {
     });
   }
 
-  void _openCreate() => setState(() => _view = _RecurringReceiptsView.create);
+  /// Avoid replacing a tooltip-bearing desktop list while MouseTracker is
+  /// processing the click that opened the wizard.
+  void _openCreate() {
+    if (_openingCreate || _view != _RecurringReceiptsView.list) return;
+    _openingCreate = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _openingCreate = false;
+        _view = _RecurringReceiptsView.create;
+      });
+    });
+  }
 
   void _backToList() => setState(() {
         _view = _RecurringReceiptsView.list;
@@ -255,6 +278,7 @@ class _RecurringReceiptsScreenState extends State<RecurringReceiptsScreen> {
     } else {
       body = RecurringSeriesListView(
         series: _filteredSeries(),
+        totalSeriesCount: _series.length,
         clients: _clients,
         canManage: canManage,
         showHeader: !widget.embedded,

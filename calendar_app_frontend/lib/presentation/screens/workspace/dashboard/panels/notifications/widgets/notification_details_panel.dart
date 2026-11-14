@@ -12,6 +12,7 @@ import 'package:hexora/presentation/screens/notifications/show-notifications/uti
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_category_meta.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_destination.dart';
 import 'package:hexora/presentation/screens/notifications/show-notifications/utils/notification_formatting.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/panels/notifications/widgets/notification_density.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -292,7 +293,7 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
       children: [
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            padding: NotifDensity.detailsPadding,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -300,12 +301,12 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: meta.color.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(9),
                       ),
-                      child: Icon(meta.icon, size: 20, color: meta.color),
+                      child: Icon(meta.icon, size: 18, color: meta.color),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -363,12 +364,12 @@ class _NotificationDetailsPanelState extends State<NotificationDetailsPanel> {
                       ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 Text(
                   n.getLocalizedMessage(l),
                   style: t.bodyMedium.copyWith(
                     color: ThemeColors.textSecondary(context),
-                    height: 1.4,
+                    height: 1.35,
                   ),
                 ),
                 if (isDocument)
@@ -724,7 +725,7 @@ class _NotificationDetailsFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      padding: NotifDensity.footerPadding,
       decoration: BoxDecoration(
         color: cs.surface,
         border: Border(
@@ -918,73 +919,66 @@ class _BankExpenseRowsSection extends StatelessWidget {
             provider: _provider(rows.first),
           )
         else
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border:
-                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.55)),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                headingRowHeight: 36,
-                dataRowMinHeight: 44,
-                dataRowMaxHeight: 58,
-                horizontalMargin: 12,
-                columnSpacing: 18,
-                headingTextStyle: t.caption.copyWith(
-                  color: cs.onSurface,
-                  fontWeight: FontWeight.w900,
-                ),
-                dataTextStyle: t.caption.copyWith(color: cs.onSurface),
-                columns: const [
-                  DataColumn(label: Text('Fecha')),
-                  DataColumn(label: Text('Descripción')),
-                  DataColumn(label: Text('Importe')),
-                  DataColumn(label: Text('Proveedor')),
-                ],
-                rows: List<DataRow>.generate(rows.length, (index) {
-                  final row = rows[index];
-                  final key = _text(row, const ['entryId', 'id']);
-                  return DataRow(
-                    key: ValueKey(key.isEmpty ? index : key),
-                    cells: [
-                      DataCell(Text(_date(context, row))),
-                      DataCell(
-                        SizedBox(
-                          width: 220,
-                          child: Text(
-                            _description(row),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          _amount(context, row),
-                          style: TextStyle(
-                            color: cs.error,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      DataCell(
-                        SizedBox(
-                          width: 150,
-                          child: Text(
-                            _provider(row),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                }),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              // Subtle row separators instead of a prominent bordered card.
+              dividerThickness: NotifDensity.tableDividerThickness,
+              headingRowHeight: NotifDensity.tableHeadingHeight,
+              dataRowMinHeight: NotifDensity.tableRowMinHeight,
+              dataRowMaxHeight: NotifDensity.tableRowMaxHeight,
+              horizontalMargin: NotifDensity.tableHorizontalMargin,
+              columnSpacing: NotifDensity.tableColumnSpacing,
+              headingTextStyle: t.caption.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w800,
               ),
+              dataTextStyle: t.caption.copyWith(color: cs.onSurface),
+              columns: const [
+                DataColumn(label: Text('Fecha')),
+                DataColumn(label: Text('Descripción')),
+                DataColumn(label: Text('Importe')),
+                DataColumn(label: Text('Proveedor')),
+              ],
+              rows: List<DataRow>.generate(rows.length, (index) {
+                final row = rows[index];
+                final key = _text(row, const ['entryId', 'id']);
+                return DataRow(
+                  key: ValueKey(key.isEmpty ? index : key),
+                  cells: [
+                    DataCell(Text(_date(context, row))),
+                    DataCell(
+                      SizedBox(
+                        width: 220,
+                        child: Text(
+                          _description(row),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      Text(
+                        _amount(context, row),
+                        style: TextStyle(
+                          color: cs.error,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      SizedBox(
+                        width: 150,
+                        child: Text(
+                          _provider(row),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }),
             ),
           ),
       ],
@@ -1011,11 +1005,11 @@ class _BankExpenseSingleRowCard extends StatelessWidget {
     final t = AppTypography.of(context);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        color: cs.surfaceContainerHighest.withValues(alpha: .18),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: .4)),
+        color: cs.surfaceContainerHighest.withValues(alpha: .16),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .3)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -1149,7 +1143,7 @@ class _IconDetailRow extends StatelessWidget {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
+      padding: NotifDensity.detailRowPadding,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1214,27 +1208,17 @@ class _SectionDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Label only — no decorative rule — matching the compact list headings.
     return Padding(
-      padding: const EdgeInsets.only(top: 14, bottom: 8),
-      child: Row(
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: t.caption.copyWith(
-              fontWeight: FontWeight.w700,
-              color: cs.onSurface.withValues(alpha: 0.4),
-              letterSpacing: 0.8,
-              fontSize: 10,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Divider(
-              color: cs.outlineVariant.withValues(alpha: 0.4),
-              height: 1,
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.only(top: 12, bottom: 5),
+      child: Text(
+        label.toUpperCase(),
+        style: t.caption.copyWith(
+          fontWeight: FontWeight.w700,
+          color: NotifDensity.sectionLabelColor(cs),
+          letterSpacing: NotifDensity.sectionLabelSpacing,
+          fontSize: NotifDensity.sectionLabelSize,
+        ),
       ),
     );
   }
@@ -1299,7 +1283,7 @@ class _DocumentDetails extends StatelessWidget {
     final locale = Localizations.localeOf(context).toString();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const Padding(
-          padding: EdgeInsets.symmetric(vertical: 12),
+          padding: EdgeInsets.symmetric(vertical: 8),
           child: Divider(height: 1)),
       row(Icons.info_outline, es ? 'Evento' : 'Event',
           n.getLocalizedTitle(AppLocalizations.of(context)!)),
@@ -1320,7 +1304,7 @@ class _DocumentDetails extends StatelessWidget {
       row(Icons.check_circle_outline, es ? 'Estado' : 'Status',
           value(['paymentStatus', 'status'])),
       const Padding(
-          padding: EdgeInsets.symmetric(vertical: 12),
+          padding: EdgeInsets.symmetric(vertical: 8),
           child: Divider(height: 1)),
       row(Icons.notes_outlined, es ? 'Notas' : 'Notes', value(['notes'])),
       row(Icons.receipt_long_outlined, es ? 'Referencia' : 'Reference',

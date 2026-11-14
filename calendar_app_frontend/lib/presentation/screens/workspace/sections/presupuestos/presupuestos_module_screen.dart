@@ -15,6 +15,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/group_in
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/side_menu/sub_menu_item.dart';
 import 'package:hexora/presentation/shared/widgets/folder_panel.dart';
 import 'package:hexora/presentation/shared/widgets/hexora_menu_content_transition.dart';
+import 'package:hexora/presentation/shared/widgets/buttons/hexora_button.dart';
 
 class PresupuestosModuleScreen extends StatefulWidget {
   const PresupuestosModuleScreen({
@@ -90,68 +91,88 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
       preserveState: true,
       child: _content(),
     );
-    final content = _loading
+    final bodyContent = _loading
         ? const Center(child: CircularProgressIndicator())
         : _error != null
             ? _ErrorState(message: _error!, onRetry: _loadClients)
-            : isNarrow
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _PresupuestosMobileMenu(
-                        selected: _menu,
-                        onSelected: _selectMenu,
-                      ),
-                      Expanded(child: menuContent),
-                    ],
-                  )
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(
-                        width: _sideMenuCollapsed
-                            ? NavigationTokens.railWidth
-                            : NavigationTokens.sidebarWidth,
-                        child: PresupuestosSideMenu(
-                          selected: _menu,
-                          onSelected: _selectMenu,
-                          collapsed: _sideMenuCollapsed,
-                          onToggleCollapse: _toggleSideMenuCollapsed,
-                        ),
-                      ),
-                      Expanded(
-                        child: WorkspaceMainContent(
-                          child: FolderPanel(
-                            title: title,
-                            showTab: true,
-                            contentTopPadding: 8,
-                            child: menuContent,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-    final body = isNarrow
-        ? FolderPanel(
-            title: title,
-            showTab: false,
-            contentTopPadding: 10,
-            child: content,
+            : menuContent;
+    final content = isNarrow
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (widget.embedded)
+                _PresupuestosMobileHeader(
+                  title: title,
+                  action: _isProposalsTab ? _createHeaderButton() : null,
+                ),
+              _PresupuestosMobileMenu(
+                selected: _menu,
+                onSelected: _selectMenu,
+              ),
+              Expanded(child: bodyContent),
+            ],
           )
-        : content;
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: _sideMenuCollapsed
+                    ? NavigationTokens.railWidth
+                    : NavigationTokens.sidebarWidth,
+                child: PresupuestosSideMenu(
+                  selected: _menu,
+                  onSelected: _selectMenu,
+                  collapsed: _sideMenuCollapsed,
+                  onToggleCollapse: _toggleSideMenuCollapsed,
+                ),
+              ),
+              Expanded(
+                child: WorkspaceMainContent(
+                  child: FolderPanel(
+                    title: title,
+                    showTab: true,
+                    contentTopPadding: 8,
+                    child: menuContent,
+                  ),
+                ),
+              ),
+            ],
+          );
+
     if (!widget.embedded && isNarrow) {
       return Scaffold(
         appBar: SectionAppBar(
           title: title,
+          actions: [
+            if (_isProposalsTab)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _createHeaderButton(),
+              ),
+          ],
         ),
-        body: body,
+        body: content,
       );
     }
 
-    return body;
+    return content;
   }
 
+  bool get _isProposalsTab => _menu == 'budgets_document_all';
+
+  void _openNewProposal() {
+    setState(() => _menu = 'budgets_document_new');
+  }
+
+  Widget _createHeaderButton() => HexoraButton(
+        icon: Icons.add_rounded,
+        label: _isEs ? 'Nueva propuesta' : 'New proposal',
+        onPressed: _openNewProposal,
+        size: HexoraButtonSize.compact,
+      );
+
   Widget _content() {
+    final narrow = MediaQuery.sizeOf(context).width < 760;
     switch (_menu) {
       case 'budgets_document_all':
         return PresupuestoDocumentActionsView(
@@ -161,7 +182,7 @@ class _PresupuestosModuleScreenState extends State<PresupuestosModuleScreen> {
           groupId: widget.group.id,
           clients: _clients,
           mode: PresupuestoDocumentActionMode.all,
-          onCreate: () => setState(() => _menu = 'budgets_document_new'),
+          onCreate: narrow ? null : _openNewProposal,
         );
       case 'budgets_document_new':
         return PresupuestoTemplateEditorScreen(
@@ -301,6 +322,37 @@ class _PresupuestosCollapsedMenu extends StatelessWidget {
   }
 }
 
+class _PresupuestosMobileHeader extends StatelessWidget {
+  const _PresupuestosMobileHeader({required this.title, this.action});
+
+  final String title;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 12, 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          if (action != null) action!,
+        ],
+      ),
+    );
+  }
+}
+
 class _PresupuestosMobileMenu extends StatelessWidget {
   const _PresupuestosMobileMenu({
     required this.selected,
@@ -317,25 +369,20 @@ class _PresupuestosMobileMenu extends StatelessWidget {
         ? selected
         : _documentMenuItems.first.key;
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: cs.outlineVariant.withValues(alpha: 0.28),
-          ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(10),
         ),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
         child: Row(
           children: [
             for (final item in _documentMenuItems)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: _PresupuestoMobileMenuChip(
-                  icon: item.icon,
+              Expanded(
+                child: _PresupuestoSegmentedTab(
                   label: item.mobileLabel(context),
                   selected: selectedKey == item.key,
                   onTap: () => onSelected(item.key),
@@ -348,27 +395,45 @@ class _PresupuestosMobileMenu extends StatelessWidget {
   }
 }
 
-class _PresupuestoMobileMenuChip extends StatelessWidget {
-  const _PresupuestoMobileMenuChip({
-    required this.icon,
+class _PresupuestoSegmentedTab extends StatelessWidget {
+  const _PresupuestoSegmentedTab({
     required this.label,
     required this.selected,
     required this.onTap,
   });
 
-  final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => IntrinsicWidth(
-      child: SidebarItem(
-          icon: icon,
-          label: label,
-          isSelected: selected,
-          collapsed: false,
-          onTap: onTap));
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: label,
+      child: Material(
+        color: selected ? cs.surface : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Center(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: selected ? cs.onSurface : cs.onSurfaceVariant,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 String _resourcesSectionLabel(BuildContext context) {

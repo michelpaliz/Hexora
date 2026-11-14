@@ -20,9 +20,14 @@ class UserStatusRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = List<UserPresence>.from(userList);
 
+    final labelScale = MediaQuery.textScalerOf(context).scale(12);
+    // The presence avatar includes a 36px ring, a label, and a small
+    // selection/role halo. 62px was just short enough to overflow by 1px on
+    // mobile web when the text metrics were rounded up.
+    final rowHeight = 66.0 + (labelScale - 12).clamp(0.0, 10.0).toDouble();
+
     return SizedBox(
-      // Extra height so 2-line labels don't overflow vertically on small screens.
-      height: 76 + MediaQuery.textScalerOf(context).scale(18),
+      height: rowHeight,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -38,22 +43,23 @@ class UserStatusRow extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(4),
+                    width: 32,
+                    height: 32,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: cs.secondaryContainer,
                       border: Border.all(
-                        color: isSelected ? cs.secondary : Colors.transparent,
-                        width: 2,
+                        color: isSelected ? cs.primary : Colors.transparent,
+                        width: 1.5,
                       ),
                     ),
                     child: Icon(
                       Icons.all_inclusive,
                       color: cs.onSecondaryContainer,
-                      size: 22,
+                      size: 18,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   SizedBox(
                     width: 80,
                     child: Text(

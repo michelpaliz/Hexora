@@ -68,8 +68,13 @@ class WorkerDirectoryTabs extends StatelessWidget {
         onSelectionChanged: (selection) => onChanged(selection.single),
         style: SegmentedButton.styleFrom(
           visualDensity: VisualDensity.compact,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          padding: compact
+              ? const EdgeInsets.symmetric(horizontal: 8, vertical: 5)
+              : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          textStyle: TextStyle(
+            fontSize: compact ? 12 : 13,
+            fontWeight: FontWeight.w600,
+          ),
           side: BorderSide(color: cs.outlineVariant),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

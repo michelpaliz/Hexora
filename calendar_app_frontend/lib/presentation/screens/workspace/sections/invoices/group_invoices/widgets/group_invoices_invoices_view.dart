@@ -17,6 +17,7 @@ import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/invoicing/recurring_invoices_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_details_sheet/invoice_detail_sheet.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/utils/invoice_delivery_utils.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/invoice_list/utils/invoice_number_search.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/invoice_issue_error_message.dart';
 import 'invoice_row_item.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices/widgets/date_range_filter_card.dart';

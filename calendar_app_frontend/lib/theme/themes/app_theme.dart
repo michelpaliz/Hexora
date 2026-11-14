@@ -33,6 +33,16 @@ class AppTheme {
     return mobile ? _mobileLight : _desktopLight;
   }
 
+  /// Applies the native mobile component system to responsive web/desktop
+  /// layouts that are currently rendering at a phone-sized viewport.
+  static ThemeData forMobileViewport(ThemeData base) {
+    if (base.extension<MobileStatusColors>() != null) return base;
+    return applyNavigationComponentTheme(
+      MobileTheme.build(base),
+      touch: true,
+    );
+  }
+
   // Optional: choose from Brightness
   static ThemeData fromBrightness(Brightness b) =>
       b == Brightness.dark ? dark : light;

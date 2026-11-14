@@ -7,13 +7,10 @@ import 'package:hexora/services/notification/domain/notification_domain.dart';
 import 'package:hexora/services/weather/weather_service.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hexora/models/user/user.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/home/widgets/home_section_nav.dart';
-import 'package:hexora/presentation/screens/home/widgets/see_all_groups_button.dart';
-import 'package:hexora/presentation/screens/calendar/screens/group/create_edit/models/create_group_data.dart';
-import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/group_screen/group_list_section.dart';
+import 'package:hexora/presentation/screens/home/home_page/widgets/business_selector_section.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/motivational_phrase/quotes/quotes_en.dart';
 import 'package:hexora/presentation/screens/calendar/screens/group/show-groups/motivational_phrase/quotes/quotes_es.dart';
 import 'package:hexora/presentation/screens/settings/dialogs/change_password_dialog.dart';
@@ -121,26 +118,6 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
     if (oldWidget.user.userName != widget.user.userName) {
       _userName = widget.user.userName;
     }
-  }
-
-  Future<void> _openCreateGroup(BuildContext context) async {
-    if (kIsWeb) {
-      await showHexoraDialog<void>(
-        context: context,
-        builder: (_) => Dialog(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          insetPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760, maxHeight: 900),
-            child: const CreateGroupData(),
-          ),
-        ),
-      );
-      return;
-    }
-    await Navigator.pushNamed(context, AppRoutes.createGroupData);
   }
 
   // ── Settings actions ──────────────────────────────────────────────────
@@ -377,49 +354,9 @@ class _HomeSliverContentState extends State<HomeSliverContent> {
               if (_activeView == _HomeView.groups) ...[
                 SliverToBoxAdapter(
                   key: widget.groupsKey,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: SectionHeader(
-                      title: loc.groupSectionTitle,
-                      markerHeight: widget.isWide ? 30 : 24,
-                      padding: const EdgeInsets.fromLTRB(0, 6, 0, 8),
-                      trailing: widget.isWide
-                          ? Wrap(
-                              spacing: 8,
-                              children: [
-                                OutlinedButton.icon(
-                                  onPressed: () => _openCreateGroup(context),
-                                  icon: const Icon(Icons.add_rounded, size: 18),
-                                  label: Text(loc.createGroup),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: cs.primary,
-                                    side: BorderSide(
-                                      color: cs.outlineVariant
-                                          .withValues(alpha: 0.8),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 10,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                ),
-                                const SeeAllGroupsButton(
-                                    compact: true, outlined: true),
-                              ],
-                            )
-                          : const SeeAllGroupsButton(
-                              compact: true, outlined: true),
-                    ),
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 6)),
-                const SliverToBoxAdapter(
-                  child: Padding(
+                  child: const Padding(
                     padding: EdgeInsets.only(top: 6, bottom: 12),
-                    child: GroupListSection(maxItems: 5, fullPage: false),
+                    child: BusinessSelectorSection(),
                   ),
                 ),
               ],
@@ -659,7 +596,8 @@ class _WelcomeHeroState extends State<_WelcomeHero> {
   }
 
   void _loadWeather() {
-    _weather = _weatherService.fetchWeatherBundle(location: _location, days: 1);
+    // Two days so the hero can show a "Hoy / Mañana" outlook.
+    _weather = _weatherService.fetchWeatherBundle(location: _location, days: 2);
   }
 
   @override
@@ -785,6 +723,7 @@ class _WelcomeHeroState extends State<_WelcomeHero> {
                 future: _weather,
                 location: _location,
                 onRefresh: () => setState(_loadWeather),
+                showForecast: false,
               ),
             ],
           )
@@ -799,6 +738,7 @@ class _WelcomeHeroState extends State<_WelcomeHero> {
                 future: _weather,
                 location: _location,
                 onRefresh: () => setState(_loadWeather),
+                showForecast: true,
               ),
               const SizedBox(width: 4),
               _HeroActions(
@@ -936,17 +876,23 @@ class _HeroActions extends StatelessWidget {
   }
 }
 
-/// Compact inline weather summary used inside the welcome hero.
+/// Compact inline weather summary used inside the welcome hero. Shows the
+/// current conditions and, on wide layouts, a two-day "Hoy / Mañana" outlook.
 class _HeroWeather extends StatelessWidget {
   const _HeroWeather({
     required this.future,
     required this.location,
     required this.onRefresh,
+    this.showForecast = true,
   });
 
   final Future<WeatherBundle> future;
   final String location;
   final VoidCallback onRefresh;
+
+  /// Whether to render the trailing "Hoy / Mañana" day columns. Disabled on
+  /// compact (phone) layouts where there is not enough horizontal room.
+  final bool showForecast;
 
   @override
   Widget build(BuildContext context) {
@@ -958,7 +904,10 @@ class _HeroWeather extends StatelessWidget {
     return FutureBuilder<WeatherBundle>(
       future: future,
       builder: (context, snapshot) {
-        final weather = snapshot.data?.today;
+        final bundle = snapshot.data;
+        final weather = bundle?.today;
+        final forecast =
+            bundle?.forecast ?? const <WeatherForecastDayView>[];
         final loading = snapshot.connectionState == ConnectionState.waiting;
 
         final IconData icon = weather == null
@@ -1020,6 +969,26 @@ class _HeroWeather extends StatelessWidget {
                 ),
               ],
             ),
+            if (showForecast && !loading && forecast.isNotEmpty) ...[
+              const SizedBox(width: 14),
+              Container(
+                width: 1,
+                height: 34,
+                color: cs.outlineVariant.withValues(alpha: 0.5),
+              ),
+              const SizedBox(width: 12),
+              _HeroForecastDay(
+                label: es ? 'Hoy' : 'Today',
+                day: forecast.first,
+              ),
+              if (forecast.length > 1) ...[
+                const SizedBox(width: 14),
+                _HeroForecastDay(
+                  label: es ? 'Mañana' : 'Tomorrow',
+                  day: forecast[1],
+                ),
+              ],
+            ],
             const SizedBox(width: 2),
             if (loading)
               const Padding(
@@ -1039,6 +1008,52 @@ class _HeroWeather extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// A single compact day column (label + emoji + high/low) in the hero weather.
+class _HeroForecastDay extends StatelessWidget {
+  const _HeroForecastDay({required this.label, required this.day});
+
+  final String label;
+  final WeatherForecastDayView day;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final range =
+        '${day.maxTemp.toStringAsFixed(0)}°/${day.minTemp.toStringAsFixed(0)}°';
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: t.caption.copyWith(
+            color: cs.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+            fontSize: 11,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(day.emoji, style: const TextStyle(fontSize: 13)),
+            const SizedBox(width: 4),
+            Text(
+              range,
+              style: t.bodySmall.copyWith(
+                color: cs.onSurface,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

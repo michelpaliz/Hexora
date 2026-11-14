@@ -38,7 +38,7 @@ class CollapsedNavigationGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = NavigationColors(Theme.of(context).colorScheme);
     return MenuAnchor(
-      alignmentOffset: const Offset(44, -40),
+      alignmentOffset: const Offset(NavigationTokens.railWidth - 8, -40),
       style: MenuStyle(
         visualDensity: VisualDensity.compact,
         padding: const WidgetStatePropertyAll(
@@ -170,33 +170,61 @@ class _NavigationGroupState extends State<NavigationGroup> {
                 borderRadius: BorderRadius.circular(NavigationTokens.radius),
                 overlayColor: WidgetStateProperty.resolveWith(colors.overlay),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 34),
-                  child: Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(10, 6, 8, 6),
-                    child: Row(
-                      children: [
-                        Icon(widget.icon,
-                            size: 17, color: colors.groupForeground),
-                        const SizedBox(width: 9),
-                        Expanded(
-                          child: Text(
-                            widget.title.toUpperCase(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: NavigationTokens.section(context).copyWith(
+                  constraints: const BoxConstraints(minHeight: 32),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // During the sidebar-width animation the group can be
+                      // temporarily narrower than its icon, label and chevron.
+                      // Render only the icon until the full header fits.
+                      if (constraints.maxWidth < 76) {
+                        return ClipRect(
+                          child: Center(
+                            child: Icon(
+                              widget.icon,
+                              size: 17,
                               color: colors.groupForeground,
-                              fontWeight: FontWeight.w600,
                             ),
                           ),
+                        );
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsetsDirectional.fromSTEB(
+                          10,
+                          4,
+                          8,
+                          6,
                         ),
-                        AnimatedRotation(
-                          turns: _isExpanded ? .5 : 0,
-                          duration: duration,
-                          child: Icon(Icons.keyboard_arrow_down_rounded,
-                              size: 17, color: colors.foreground),
+                        child: Row(
+                          children: [
+                            Icon(widget.icon,
+                                size: 17, color: colors.groupForeground),
+                            const SizedBox(width: 9),
+                            Expanded(
+                              child: Tooltip(
+                                message: widget.title,
+                                child: Text(
+                                  widget.title.toUpperCase(),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: NavigationTokens.section(context)
+                                      .copyWith(
+                                    color: colors.groupForeground,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            AnimatedRotation(
+                              turns: _isExpanded ? .5 : 0,
+                              duration: duration,
+                              child: Icon(Icons.keyboard_arrow_down_rounded,
+                                  size: 17, color: colors.foreground),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -208,9 +236,9 @@ class _NavigationGroupState extends State<NavigationGroup> {
             alignment: Alignment.topCenter,
             child: _isExpanded
                 ? Container(
-                    margin: const EdgeInsetsDirectional.only(start: 8),
+                    margin: const EdgeInsetsDirectional.only(start: 6),
                     padding: const EdgeInsetsDirectional.only(
-                      start: 6,
+                      start: 4,
                       top: NavigationTokens.childGap,
                     ),
                     decoration: BoxDecoration(
@@ -219,7 +247,7 @@ class _NavigationGroupState extends State<NavigationGroup> {
                           color: Theme.of(context)
                               .colorScheme
                               .outlineVariant
-                              .withValues(alpha: .42),
+                              .withValues(alpha: .28),
                           width: 1,
                         ),
                       ),

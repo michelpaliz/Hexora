@@ -36,6 +36,29 @@ typedef SidebarFooterBuilder = Widget Function(
   bool collapsed,
 );
 
+typedef SidebarHeaderBuilder = Widget Function(
+  BuildContext context,
+  bool collapsed,
+);
+
+/// Publishes one workspace-level header to every shared module sidebar.
+class SidebarHeaderScope extends InheritedWidget {
+  const SidebarHeaderScope({
+    super.key,
+    required this.builder,
+    required super.child,
+  });
+
+  final SidebarHeaderBuilder builder;
+
+  static SidebarHeaderScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<SidebarHeaderScope>();
+
+  @override
+  bool updateShouldNotify(SidebarHeaderScope oldWidget) =>
+      oldWidget.builder != builder;
+}
+
 /// Publishes one workspace-level footer to every shared module sidebar.
 class SidebarFooterScope extends InheritedWidget {
   const SidebarFooterScope({
@@ -120,6 +143,8 @@ class SidebarEdgeShell extends StatelessWidget {
           SidebarEdgeGeometry.handleCenterInset(collapsed);
       final footerScope = SidebarFooterScope.maybeOf(context);
       final footer = footerScope?.builder(context, collapsed);
+      final sidebarHeaderScope = SidebarHeaderScope.maybeOf(context);
+      final sidebarHeader = sidebarHeaderScope?.builder(context, collapsed);
       final globalHeaderExtent =
           SidebarEdgeGeometry.globalRestoreHeaderHeight * (1 - globalExpansion);
       final showGlobalRestoreHeader =
@@ -131,7 +156,10 @@ class SidebarEdgeShell extends StatelessWidget {
           showHandle &&
           (headerTitle ?? '').trim().isNotEmpty;
       final secondaryHeaderExtent = showHeader ? 36.0 : 0.0;
-      final headerExtent = globalHeaderExtent + secondaryHeaderExtent;
+      final accountHeaderExtent =
+          sidebarHeader == null ? 0.0 : (collapsed ? 48.0 : 52.0);
+      final headerExtent =
+          globalHeaderExtent + accountHeaderExtent + secondaryHeaderExtent;
 
       return SizedBox.expand(
         child: Stack(
@@ -168,7 +196,7 @@ class SidebarEdgeShell extends StatelessWidget {
               PositionedDirectional(
                 start: 0,
                 end: SidebarEdgeGeometry.contentSafeInset(false),
-                top: globalHeaderExtent,
+                top: globalHeaderExtent + accountHeaderExtent,
                 height: secondaryHeaderExtent,
                 child: SecondarySidebarHeader(
                   title: headerTitle!,
@@ -176,6 +204,14 @@ class SidebarEdgeShell extends StatelessWidget {
                   toggleKey: collapseInHeader ? toggleKey : null,
                   showCollapseAction: collapseInHeader,
                 ),
+              ),
+            if (sidebarHeader != null)
+              PositionedDirectional(
+                start: 0,
+                end: SidebarEdgeGeometry.contentSafeInset(collapsed),
+                top: globalHeaderExtent,
+                height: accountHeaderExtent,
+                child: sidebarHeader,
               ),
             if (showGlobalRestoreHeader)
               PositionedDirectional(

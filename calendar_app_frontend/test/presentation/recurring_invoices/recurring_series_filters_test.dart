@@ -10,7 +10,7 @@ void main() {
         'recurring toolbar is compact and filters remain reactive in $brightness',
         (tester) async {
       tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(1200, 700);
+      tester.view.physicalSize = const Size(850, 700);
       addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(tester.view.resetPhysicalSize);
       final search = TextEditingController();
@@ -54,6 +54,8 @@ void main() {
                 onRefresh: () => refreshes++,
                 onCreate: () => creates++,
                 canManage: true,
+                visibleCount: 8,
+                totalCount: 12,
               ),
             ),
           ),
@@ -65,13 +67,17 @@ void main() {
           find.byKey(const ValueKey('recurring-series-search'));
       final filterFinder =
           find.byKey(const ValueKey('recurring-series-filters-button'));
-      expect(tester.getSize(searchFinder).width, 480);
-      expect(tester.getSize(searchFinder).height, 38);
+      expect(tester.getSize(searchFinder).width, 360);
+      expect(tester.getSize(searchFinder).height, 32);
       expect(tester.getCenter(filterFinder).dy,
           closeTo(tester.getCenter(searchFinder).dy, 1));
       expect(find.byType(InputChip), findsNothing);
       expect(
         find.byKey(const ValueKey('recurring-series-clear-filters')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('recurring-series-list-summary')),
         findsOneWidget,
       );
       final refreshFinder =
@@ -81,8 +87,8 @@ void main() {
       expect(refreshFinder, findsOneWidget);
       expect(createFinder, findsOneWidget);
       expect(find.byTooltip('Actualizar recurrencias'), findsOneWidget);
-      expect(tester.getSize(refreshFinder), const Size.square(38));
-      expect(tester.getSize(createFinder), const Size.square(38));
+      expect(tester.getSize(refreshFinder), const Size.square(30));
+      expect(tester.getSize(createFinder), const Size.square(30));
       expect(
         tester.getCenter(createFinder).dy,
         closeTo(tester.getCenter(refreshFinder).dy, 1),
@@ -90,7 +96,7 @@ void main() {
       expect(tester.getCenter(createFinder).dx,
           greaterThan(tester.getCenter(refreshFinder).dx));
       expect(tester.getCenter(refreshFinder).dx,
-          lessThan(tester.getCenter(searchFinder).dx));
+          greaterThan(tester.getCenter(searchFinder).dx));
       expect(
         tester.getCenter(createFinder).dy,
         closeTo(tester.getCenter(searchFinder).dy, 1),
@@ -108,8 +114,6 @@ void main() {
       await tester.pumpAndSettle();
       expect(status, 'Inactivas');
 
-      await tester.tap(filterFinder);
-      await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(const ValueKey('recurring-series-clear-filters')),
       );

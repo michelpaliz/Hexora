@@ -16,6 +16,8 @@ mixin _ExpenseUploadImportTabsSection on _ExpenseUploadScreenStateBase {
   TextEditingController get jsonPayloadController;
   bool get jsonAdvancedExpanded;
   set jsonAdvancedExpanded(bool value);
+  bool get jsonEditorFocused;
+  set jsonEditorFocused(bool value);
   TextEditingController get jsonProviderIdOverrideController;
   TextEditingController get jsonGroupIdOverrideController;
   TextEditingController get jsonStatementEntryController;

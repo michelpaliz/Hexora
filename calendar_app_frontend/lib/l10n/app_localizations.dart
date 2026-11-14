@@ -3027,6 +3027,30 @@ abstract class AppLocalizations {
   /// **'Tap to view all role capabilities.'**
   String get roleCardTapHint;
 
+  /// Title for the access permissions row in the business information section.
+  ///
+  /// In en, this message translates to:
+  /// **'Access permissions'**
+  String get accessPermissionsTitle;
+
+  /// Subtitle shown when the current user has full access to the business.
+  ///
+  /// In en, this message translates to:
+  /// **'Full access to the business'**
+  String get accessFullBusiness;
+
+  /// Action label that opens the role permissions details.
+  ///
+  /// In en, this message translates to:
+  /// **'View role permissions'**
+  String get viewRolePermissions;
+
+  /// Short explanation shown inside the business hours editing screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Set the allowed schedule for scheduling events.'**
+  String get businessHoursScheduleHint;
+
   /// Label shown before the event owner's information.
   ///
   /// In en, this message translates to:

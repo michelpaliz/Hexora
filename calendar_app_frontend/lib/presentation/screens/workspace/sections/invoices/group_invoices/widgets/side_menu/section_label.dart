@@ -10,28 +10,17 @@ class GroupInvoicesSectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 12, 6, 5),
-      child: Row(
-        children: [
-          Container(
-            width: 14,
-            height: 1,
-            color: cs.outlineVariant.withValues(alpha: 0.28),
+      padding: const EdgeInsets.fromLTRB(8, 8, 6, 3),
+      child: Tooltip(
+        message: label,
+        child: Text(
+          label.toUpperCase(),
+          style: NavigationTokens.section(context).copyWith(
+            color: NavigationColors(cs).sectionForeground,
           ),
-          const SizedBox(width: 7),
-          Expanded(
-            child: Text(
-              label.toUpperCase(),
-              style: NavigationTokens.section(context).copyWith(
-                color: cs.onSurfaceVariant.withValues(alpha: 0.62),
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.38,
-                fontSize: NavigationTokens.sectionSize,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }

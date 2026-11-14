@@ -85,6 +85,12 @@ void main() {
       expect(find.byTooltip('Vinculada a 2 movimientos bancarios'),
           findsOneWidget);
       expect(find.textContaining('1.548,03'), findsOneWidget);
+      final onSurface = Theme.of(tester.element(row)).colorScheme.onSurface;
+      expect(tester.widget<Text>(find.text('382-26')).style?.color, onSurface);
+      expect(
+        tester.widget<Text>(find.textContaining('1.548,03')).style?.color,
+        onSurface,
+      );
       expect(find.textContaining('Subtotal:'), findsNothing);
       expect(find.text('Mostrar PDF'), findsNothing);
 

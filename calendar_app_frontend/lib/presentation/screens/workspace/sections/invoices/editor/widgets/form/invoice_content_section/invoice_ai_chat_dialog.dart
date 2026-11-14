@@ -1491,7 +1491,15 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
       ),
     );
 
-    return Align(alignment: Alignment.topCenter, child: panel);
+    // The editor can contain several extracted lines. Keep its actions inside
+    // the available right-hand workspace instead of overflowing beneath the
+    // invoice flow footer.
+    return Scrollbar(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Align(alignment: Alignment.topCenter, child: panel),
+      ),
+    );
   }
 
   @override

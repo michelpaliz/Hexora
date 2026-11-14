@@ -7,7 +7,8 @@ import 'package:hexora/theme/themes/app_theme.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
 void main() {
-  testWidgets('desktop composer restores attachment panel and compact send bar',
+  testWidgets(
+      'desktop composer defaults to manual recipients and compact send bar',
       (tester) async {
     tester.view.physicalSize = const Size(1600, 900);
     tester.view.devicePixelRatio = 1;
@@ -26,7 +27,10 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(find.text('Adjuntar facturas'), findsOneWidget);
+    expect(find.text('Manual'), findsOneWidget);
+    expect(find.text('Selectivo'), findsOneWidget);
+    expect(find.text('Destinatarios manuales'), findsOneWidget);
+    expect(find.text('Adjuntar facturas'), findsNothing);
     final send = find
         .ancestor(
             of: find.text('Enviar correo'), matching: find.byType(HexoraButton))
@@ -74,11 +78,35 @@ void main() {
       tester
           .getSize(find.byKey(const ValueKey('mail-compose-editor-surface')))
           .width,
-      lessThan(1000),
+      greaterThan(1000),
     );
     expect(
       find.byKey(const ValueKey('mail-compose-options-surface')),
       findsOneWidget,
+    );
+    expect(
+      tester
+          .getSize(find.byKey(
+            const ValueKey('mail-compose-options-surface'),
+          ))
+          .width,
+      0,
+    );
+    final selectiveControl = find.descendant(
+      of: find.byKey(const ValueKey('mail-compose-mode-selective')),
+      matching: find.byType(InkWell),
+    );
+    expect(tester.widget<InkWell>(selectiveControl).onTap, isNotNull);
+    await tester.tap(selectiveControl);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(
+      tester
+          .getSize(find.byKey(
+            const ValueKey('mail-compose-options-surface'),
+          ))
+          .width,
+      greaterThan(300),
     );
     await tester.tap(
       find.byKey(const ValueKey('mail-compose-add-attachment')),

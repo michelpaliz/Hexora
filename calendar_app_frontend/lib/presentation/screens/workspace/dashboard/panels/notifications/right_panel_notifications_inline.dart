@@ -171,37 +171,71 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
   }
 
   Widget _compactActionsMenu(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final es = Localizations.localeOf(context).languageCode == 'es';
     final unreadCount = _notifications.where((n) => !n.isRead).length;
-    Widget menuLabel(IconData icon, String label, {String? subtitle}) =>
-        Row(children: [
-          Icon(icon, size: 18, color: cs.primary),
-          const SizedBox(width: 12),
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                Text(label,
-                    style: NavigationTokens.label(context).copyWith(
-                      fontWeight: FontWeight.w600,
-                    )),
-                if (subtitle != null)
-                  Text(subtitle,
-                      style: Theme.of(context)
-                          .textTheme
-                          .labelSmall
-                          ?.copyWith(color: cs.onSurfaceVariant)),
-              ])),
-        ]);
+    final hasJobs = _jobNotifications.isNotEmpty;
+
+    Widget menuLabel(
+      IconData icon,
+      String label, {
+      String? subtitle,
+      bool enabled = true,
+    }) {
+      final labelColor =
+          enabled ? cs.onSurface : cs.onSurface.withValues(alpha: 0.4);
+      return Row(children: [
+        Icon(
+          icon,
+          size: 16,
+          color:
+              enabled ? cs.primary : cs.onSurfaceVariant.withValues(alpha: 0.5),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: NavigationTokens.label(context).copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: labelColor,
+                  )),
+              if (subtitle != null)
+                Text(subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(color: cs.onSurfaceVariant)),
+            ],
+          ),
+        ),
+      ]);
+    }
+
+    // Refresh lives in the toolbar as its own icon, so it is intentionally not
+    // repeated here. Theme-aware neutral surface, never a bright blue-gray.
     return PopupMenuButton<String>(
       tooltip: es ? 'Más acciones' : 'More actions',
       enabled: !_markingAllRead,
       padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(minWidth: 280, maxWidth: 320),
+      constraints: const BoxConstraints(minWidth: 252, maxWidth: 288),
       position: PopupMenuPosition.under,
       offset: const Offset(0, 6),
+      color: isDark ? cs.surfaceContainerHigh : cs.surface,
+      surfaceTintColor: Colors.transparent,
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: cs.outlineVariant.withValues(alpha: isDark ? 0.4 : 0.6),
+        ),
+      ),
       style: ThemedButtons.iconAction(context, color: cs.primary),
       icon: _markingAllRead
           ? const SizedBox(
@@ -210,7 +244,6 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
               child: CircularProgressIndicator(strokeWidth: 2))
           : const Icon(Icons.more_horiz_rounded, size: 18),
       onSelected: (value) async {
-        if (value == 'refresh') await _load();
         if (value == 'mark_notifications_read') {
           await _markAllNotificationsRead();
         }
@@ -220,29 +253,35 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
         NavigationPopupMenuItem(
           value: 'mark_notifications_read',
           enabled: unreadCount > 0,
-          child: menuLabel(Icons.done_all_rounded,
-              es ? 'Marcar todas como leídas' : 'Mark all as read',
-              subtitle: unreadCount == 0
-                  ? (es
-                      ? 'No hay notificaciones sin leer'
-                      : 'No unread notifications')
-                  : (es
-                      ? '$unreadCount sin leer en este grupo'
-                      : '$unreadCount unread in this group')),
+          child: menuLabel(
+            Icons.done_all_rounded,
+            es ? 'Marcar todas como leídas' : 'Mark all as read',
+            enabled: unreadCount > 0,
+            subtitle: unreadCount == 0
+                ? (es
+                    ? 'No hay notificaciones sin leer'
+                    : 'No unread notifications')
+                : (es
+                    ? '$unreadCount sin leer en este grupo'
+                    : '$unreadCount unread in this group'),
+          ),
         ),
-        const PopupMenuDivider(),
         NavigationPopupMenuItem(
-            value: 'refresh',
-            child: menuLabel(
-                Icons.refresh_rounded, es ? 'Actualizar' : 'Refresh')),
-        if (_jobNotifications.isNotEmpty)
-          NavigationPopupMenuItem(
-              value: 'mark_jobs_read',
-              child: menuLabel(
-                  Icons.auto_awesome_outlined,
-                  es
-                      ? 'Marcar automatizaciones como leídas'
-                      : 'Mark automations as read')),
+          value: 'mark_jobs_read',
+          enabled: hasJobs,
+          child: menuLabel(
+            Icons.auto_awesome_outlined,
+            es
+                ? 'Marcar automatizaciones como leídas'
+                : 'Mark automations as read',
+            enabled: hasJobs,
+            subtitle: hasJobs
+                ? null
+                : (es
+                    ? 'Sin automatizaciones sin leer'
+                    : 'No unread automations'),
+          ),
+        ),
       ],
     );
   }
@@ -844,6 +883,22 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
               final visibleNotifications = _filteredNotifications;
               final downloads = _downloads;
               final ocrJobs = _ocrJobs;
+              // The refresh / more-actions controls move onto the first
+              // section header row ("Reciente") to reclaim the vertical space
+              // of a dedicated toolbar. The toolbar is kept for the downloads /
+              // OCR modes and the empty state, where there is no header to host
+              // them.
+              final inlineHeaderActions = !_downloadsMode &&
+                  !_ocrJobsMode &&
+                  visibleNotifications.isNotEmpty;
+              final headerActionsRow = Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _compactRefreshAction(context, l.refreshAction),
+                  const SizedBox(width: 2),
+                  _compactActionsMenu(context),
+                ],
+              );
               final selectedVisible = _selected != null &&
                   visibleNotifications.any((n) => n.id == _selected!.id);
               final effectiveSelected = _detailsClosed
@@ -897,6 +952,8 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                         onSelect: _handleNotificationSelected,
                         onDelete: _handleDelete,
                         onMarkRead: _handleMarkRead,
+                        headerTrailing:
+                            inlineHeaderActions ? headerActionsRow : null,
                       ),
               );
 
@@ -1018,12 +1075,17 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                               flex: 3,
                               child: FolderPanel(
                                 title: l.notifications,
-                                contentTopPadding: 8,
-                                actions: [
-                                  _compactRefreshAction(
-                                      context, l.refreshAction),
-                                  _compactActionsMenu(context),
-                                ],
+                                showTab: !inlineHeaderActions,
+                                showBorder: false,
+                                showToolbarDivider: false,
+                                contentTopPadding: inlineHeaderActions ? 6 : 8,
+                                actions: inlineHeaderActions
+                                    ? const []
+                                    : [
+                                        _compactRefreshAction(
+                                            context, l.refreshAction),
+                                        _compactActionsMenu(context),
+                                      ],
                                 child: listWithFilter,
                               ),
                             ),
@@ -1033,6 +1095,7 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
                               child: FolderPanel(
                                 title: null,
                                 showTab: false,
+                                showBorder: false,
                                 contentTopPadding: 0,
                                 actions: [
                                   if (!_downloadsMode &&
@@ -1116,11 +1179,16 @@ class _NotificationsInlinePanelState extends State<NotificationsInlinePanel> {
               return WorkspaceMainContent(
                 child: FolderPanel(
                   title: l.notifications,
-                  contentTopPadding: 44,
-                  actions: [
-                    _compactRefreshAction(context, l.refreshAction),
-                    _compactActionsMenu(context),
-                  ],
+                  showTab: !inlineHeaderActions,
+                  showBorder: false,
+                  showToolbarDivider: false,
+                  contentTopPadding: inlineHeaderActions ? 6 : 44,
+                  actions: inlineHeaderActions
+                      ? const []
+                      : [
+                          _compactRefreshAction(context, l.refreshAction),
+                          _compactActionsMenu(context),
+                        ],
                   child: listWithFilter,
                 ),
               );

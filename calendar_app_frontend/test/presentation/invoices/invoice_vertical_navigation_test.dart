@@ -59,6 +59,24 @@ void main() {
     await pumpEditor(tester, size: const Size(1400, 900));
 
     expect(find.byKey(const ValueKey('invoice-wizard-rail')), findsOneWidget);
+    expect(find.text('Nueva factura'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('invoice-wizard-rail-toggle')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('invoice-wizard-rail-toggle')),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.text('Nueva factura'), findsNothing);
+
+    await tester.tap(
+      find.byKey(const ValueKey('invoice-wizard-rail-toggle')),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.text('Nueva factura'), findsOneWidget);
+
     for (var index = 0; index < 4; index++) {
       expect(
         find.byKey(ValueKey('invoice-flow-step-$index')),

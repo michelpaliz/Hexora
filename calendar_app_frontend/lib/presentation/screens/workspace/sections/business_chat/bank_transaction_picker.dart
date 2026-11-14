@@ -13,12 +13,15 @@ class BankTransactionPicker extends StatefulWidget {
     this.presentation = BankTransactionPickerPresentation.dialog,
     this.onSelected,
     this.onClose,
+    this.onBack,
   });
 
   final String groupId;
   final BankTransactionPickerPresentation presentation;
   final ValueChanged<Map<String, dynamic>>? onSelected;
   final VoidCallback? onClose;
+  /// Optional navigation callback used when this picker is embedded in chat.
+  final VoidCallback? onBack;
 
   @override
   State<BankTransactionPicker> createState() => _BankTransactionPickerState();
@@ -34,6 +37,7 @@ class _BankTransactionPickerState extends State<BankTransactionPicker> {
   int _page = 1;
   int _totalPages = 1;
   int _revision = 0;
+  String? _selectedEntryId;
   bool _loading = false;
   String? _error;
 
@@ -67,7 +71,7 @@ class _BankTransactionPickerState extends State<BankTransactionPicker> {
         size: 25,
         dateFrom: DateTime(_year, (_quarter - 1) * 3 + 1, 1),
         dateTo: DateTime(_year, _quarter * 3 + 1, 0),
-        clientProviderQuery: _partySearch.text.trim(),
+        clientProviderQuery: _search.text.trim(),
         descriptionSearch: _search.text.trim(),
       );
       if (!mounted || revision != _revision) return;
@@ -87,6 +91,9 @@ class _BankTransactionPickerState extends State<BankTransactionPicker> {
   }
 
   void _select(Map<String, dynamic> entry) {
+    _selectedEntryId =
+        (entry['_id'] ?? entry['id'] ?? '').toString();
+    if (mounted) setState(() {});
     if (widget.onSelected != null) {
       widget.onSelected!(entry);
       return;
@@ -142,7 +149,9 @@ class _BankTransactionPickerState extends State<BankTransactionPicker> {
         onSubmitted: (_) => _load(1),
         decoration: InputDecoration(
           isDense: true,
-          labelText: es ? 'Buscar por concepto' : 'Search description',
+          labelText: es
+              ? 'Concepto, cliente, proveedor o importe'
+              : 'Concept, client, supplier, or amount',
           prefixIcon: const Icon(Icons.search),
           suffixIcon: IconButton(
             tooltip: es ? 'Buscar' : 'Search',
@@ -159,39 +168,15 @@ class _BankTransactionPickerState extends State<BankTransactionPicker> {
             Expanded(child: quarter),
           ]),
           const SizedBox(height: 8),
-          TextField(
-            controller: _partySearch,
-            onSubmitted: (_) => _load(1),
-            decoration: InputDecoration(
-              isDense: true,
-              labelText: es ? 'Cliente o proveedor' : 'Client or provider',
-              prefixIcon: const Icon(Icons.search),
-            ),
-          ),
-          const SizedBox(height: 8),
           search,
         ]);
       }
-      return Column(children: [
-        Row(children: [
-          SizedBox(width: 100, child: year),
-          const SizedBox(width: 8),
-          SizedBox(width: 108, child: quarter),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              controller: _partySearch,
-              onSubmitted: (_) => _load(1),
-              decoration: InputDecoration(
-                isDense: true,
-                labelText: es ? 'Cliente o proveedor' : 'Client or provider',
-                prefixIcon: const Icon(Icons.search),
-              ),
-            ),
-          ),
-        ]),
-        const SizedBox(height: 8),
-        search,
+      return Row(children: [
+        SizedBox(width: 100, child: year),
+        const SizedBox(width: 8),
+        SizedBox(width: 108, child: quarter),
+        const SizedBox(width: 8),
+        Expanded(child: search),
       ]);
     });
     return Material(
@@ -213,9 +198,13 @@ class _BankTransactionPickerState extends State<BankTransactionPicker> {
                           ?.copyWith(fontWeight: FontWeight.w700)),
                 ),
                 IconButton(
-                  tooltip: es ? 'Cerrar' : 'Close',
-                  onPressed: _close,
-                  icon: const Icon(Icons.close),
+                  tooltip: widget.onBack != null
+                      ? (es ? 'Volver a acciones' : 'Back to actions')
+                      : (es ? 'Cerrar' : 'Close'),
+                  onPressed: widget.onBack ?? _close,
+                  icon: Icon(widget.onBack != null
+                      ? Icons.arrow_back
+                      : Icons.close),
                 ),
               ]),
             ),
@@ -245,7 +234,13 @@ class _BankTransactionPickerState extends State<BankTransactionPicker> {
                                   .toString());
                           final description =
                               (raw['description'] ?? '').toString();
+                          final entryId = entry.id.isNotEmpty
+                              ? entry.id
+                              : (raw['_id'] ?? raw['id'] ?? '').toString();
                           return ListTile(
+                            selected: entryId == _selectedEntryId,
+                            selectedTileColor:
+                                cs.primary.withValues(alpha: .08),
                             contentPadding:
                                 const EdgeInsets.symmetric(vertical: 4),
                             title: Text(

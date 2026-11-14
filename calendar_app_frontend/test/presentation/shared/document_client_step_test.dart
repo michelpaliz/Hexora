@@ -233,6 +233,51 @@ void main() {
     expect(find.text('Alqueria'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('search-driven mode selects clients in a dialog', (tester) async {
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    String? selectedId;
+    await tester.pumpWidget(app(StatefulBuilder(
+      builder: (context, setState) => DocumentClientStep(
+        clients: clients,
+        selectedClientId: selectedId,
+        onClientChanged: (value) => setState(() => selectedId = value),
+        mode: DocumentClientMode.existing,
+        onModeChanged: (_) {},
+        selectedDetails:
+            selectedId == null ? null : Text('HISTORY-$selectedId'),
+        searchDrivenDetails:
+            selectedId == null ? null : Text('CLIENT-$selectedId'),
+        allowManual: false,
+        showSelectionHeading: false,
+        showClientCount: false,
+        searchDriven: true,
+        flat: true,
+      ),
+    )));
+
+    expect(find.byType(RawAutocomplete<GroupClient>), findsNothing);
+    await tester.tap(find.text('Buscar cliente...'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Seleccionar cliente'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'Belman');
+    await tester.pump();
+    expect(find.text('Alqueria'), findsNothing);
+    expect(find.text('Belman'), findsNWidgets(2));
+
+    await tester.tap(find.text('Belman').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Seleccionar cliente'), findsNothing);
+    expect(find.text('CLIENT-client-2'), findsOneWidget);
+    expect(find.text('HISTORY-client-2'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _ClientStepHarness extends StatefulWidget {

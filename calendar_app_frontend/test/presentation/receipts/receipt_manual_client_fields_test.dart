@@ -52,6 +52,8 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
+    expect(find.text('Recibo para'), findsOneWidget);
+    expect(find.text('Facturar a'), findsNothing);
     await tester.tap(find.byKey(const ValueKey('receipt-editor-step-0')));
     await tester.pumpAndSettle();
 

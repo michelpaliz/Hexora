@@ -28,7 +28,6 @@ import 'package:hexora/presentation/screens/workspace/sections/mail/mail_compose
 import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
-import 'package:hexora/theme/themes/navigation_theme.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
@@ -249,7 +248,12 @@ class _MailConsoleScreenState extends State<MailConsoleScreen> {
   }
 
   void _selectFolder(MailFolder folder) {
-    if (_folder == folder) return;
+    if (_folder == folder &&
+        !_showCompose &&
+        !_showFooterManager &&
+        !_showTemplateManager) {
+      return;
+    }
     setState(() {
       _folder = folder;
       _selectedThreadKey = null;

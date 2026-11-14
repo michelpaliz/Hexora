@@ -4,38 +4,38 @@ import 'package:flutter/material.dart';
 
 /// Navigation-only sizing. Do not apply these values to forms or body text.
 abstract final class NavigationTokens {
-  static const double textSize = 12.5;
+  static const double textSize = 13;
   static const double titleSize = 15;
   static const double groupSize = 13;
   static const double createActionSize = 12;
-  static const double sectionSize = 10.5;
-  static const double sectionLetterSpacing = 0.5;
+  static const double sectionSize = 10;
+  static const double sectionLetterSpacing = 0.35;
   static const double countSize = 11;
   static const double iconSize = 18;
   static const double desktopRowHeight = 40;
   static const double touchRowHeight = 48;
-  static const double sidebarWidth = 248;
-  static const double railWidth = 56;
+  static const double sidebarWidth = 236;
+  static const double railWidth = 52;
   static const double itemGap = 4;
-  static const double groupGap = 8;
+  static const double groupGap = 6;
   static const double childGap = 2;
   static const double itemPadding = 12;
   static const double outerPadding = 16;
-  static const double nestedIndent = 16;
-  static const double radius = 8;
+  static const double nestedIndent = 12;
+  static const double radius = 10;
   static const double indicatorWidth = 3;
   static const double mobileBreakpoint = 760;
   static const Duration motion = HexoraMotion.standard;
 
   // App shell (global bar + contextual toolbar).
-  static const double globalBarHeight = 56;
-  static const double globalItemHeight = 36;
-  static const double globalItemPadding = 10;
+  static const double globalBarHeight = 52;
+  static const double globalItemHeight = 38;
+  static const double globalItemPadding = 8;
   static const double contextBarHeight = 36;
   static const double searchHeight = 34;
   static const double sidebarToggleSize = 30;
-  static const double badgeHeight = 14;
-  static const double badgeTextSize = 9;
+  static const double badgeHeight = 12;
+  static const double badgeTextSize = 8;
 
   static double rowHeight(BuildContext context) {
     final platform = Theme.of(context).platform;

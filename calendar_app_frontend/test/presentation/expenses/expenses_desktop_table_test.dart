@@ -66,6 +66,31 @@ void main() {
     expect(find.byTooltip('Editar gasto'), findsNWidgets(2));
     expect(find.byTooltip('OCR / Revisar documento'), findsNothing);
     expect(find.byTooltip('Eliminar gasto'), findsNothing);
+    expect(find.text('Todos'), findsOneWidget);
+    for (final quarter in ['T1', 'T2', 'T3', 'T4']) {
+      expect(find.text(quarter), findsOneWidget);
+    }
+    expect(
+      find.byKey(const ValueKey('expense-advanced-filters-toggle')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('expense-advanced-filters-toggle')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('expense-advanced-filters-panel')),
+      findsOneWidget,
+    );
+    expect(find.text('Filtros avanzados'), findsOneWidget);
+    expect(find.text('IDs duplicados'), findsOneWidget);
+    expect(find.text('Columnas financieras visibles'), findsOneWidget);
+    await tester.tap(find.byTooltip('Cerrar filtros'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('expense-advanced-filters-panel')),
+      findsNothing,
+    );
     expect(find.text('Resumen de gastos'), findsNothing);
     expect(find.text('Según filtros activos'), findsNothing);
     expect(
