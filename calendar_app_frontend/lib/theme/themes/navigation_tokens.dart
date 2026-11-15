@@ -14,7 +14,9 @@ abstract final class NavigationTokens {
   static const double iconSize = 18;
   static const double desktopRowHeight = 40;
   static const double touchRowHeight = 48;
-  static const double sidebarWidth = 236;
+  // Shared desktop navigation width. Keeping this centralized ensures every
+  // module gives the workspace the same compact left rail.
+  static const double sidebarWidth = 220;
   static const double railWidth = 52;
   static const double itemGap = 4;
   static const double groupGap = 6;

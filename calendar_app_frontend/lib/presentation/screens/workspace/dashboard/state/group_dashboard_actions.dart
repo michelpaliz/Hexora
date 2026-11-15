@@ -9,6 +9,7 @@ import 'package:hexora/services/telegram/domain/telegram_domain.dart';
 import 'package:provider/provider.dart';
 import 'package:hexora/presentation/screens/workspace/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
 import 'package:hexora/presentation/screens/profile/view/profile_view_screen.dart';
+import 'package:hexora/presentation/screens/home/dashboard_preview/dashboard_preview_screen.dart';
 
 import '../navigation/dashboard_sections.dart';
 import 'group_dashboard_state.dart';
@@ -26,6 +27,13 @@ class DashboardActions {
     }
 
     switch (section) {
+      case Sections.home:
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const DashboardPreviewScreen(),
+          ),
+        );
+        break;
       case Sections.agenda:
         Navigator.pushNamed(context, AppRoutes.agenda, arguments: state.group);
         break;

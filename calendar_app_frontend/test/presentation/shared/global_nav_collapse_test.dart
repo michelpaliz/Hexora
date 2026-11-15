@@ -10,7 +10,7 @@ import 'package:hexora/presentation/shared/widgets/sidebar_edge_shell.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 
 void main() {
-  testWidgets('HEXORA toggles the global navigation without resetting state',
+  testWidgets('brand toggles the global navigation without resetting state',
       (tester) async {
     tester.view.physicalSize = const Size(1440, 900);
     tester.view.devicePixelRatio = 1;
@@ -75,7 +75,9 @@ void main() {
       'unsaved workspace state',
     );
 
-    await tester.tap(find.text('HEXORA').hitTestable());
+    final navigationToggle =
+        find.byKey(const ValueKey('global-navigation-toggle'));
+    await tester.tap(navigationToggle);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -97,7 +99,7 @@ void main() {
     );
     expect(find.text('Income').hitTestable(), findsNothing);
     expect(find.text('Workspace').hitTestable(), findsNothing);
-    expect(find.text('HEXORA').hitTestable(), findsNothing);
+    expect(navigationToggle.hitTestable(), findsNothing);
 
     rebuild(() => collapsed = false);
     await tester.pump();
@@ -226,7 +228,7 @@ void main() {
 
     // A rapid reverse continues from the current geometry without mounting a
     // second header or briefly squeezing the full navigation row.
-    await tester.tap(find.text('HEXORA').hitTestable());
+    await tester.tap(find.byKey(const ValueKey('global-navigation-toggle')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 70));
     expect(tester.getSize(viewport).height, inExclusiveRange(0, 56));
@@ -289,7 +291,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('HEXORA').hitTestable());
+    await tester.tap(find.byKey(const ValueKey('global-navigation-toggle')));
     await tester.pump();
     await tester.pump();
 
@@ -351,7 +353,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('HEXORA').hitTestable());
+    await tester.tap(find.byKey(const ValueKey('global-navigation-toggle')));
     await tester.pump();
     final collapseLayouts = workspaceLayouts;
     await tester.pump(const Duration(milliseconds: 50));

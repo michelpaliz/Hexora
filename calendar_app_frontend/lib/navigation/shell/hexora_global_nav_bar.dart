@@ -57,6 +57,7 @@ class HexoraGlobalNavBar extends StatelessWidget {
     this.onBack,
     this.backTooltip,
     this.groupSwitcher,
+    this.workspaceStatus,
     this.collapsed = false,
     this.onToggleCollapsed,
   });
@@ -80,6 +81,9 @@ class HexoraGlobalNavBar extends StatelessWidget {
   /// When set, replaces the "HEXORA" wordmark with this widget (typically a
   /// group/workspace switcher).
   final Widget? groupSwitcher;
+
+  /// Compact contextual information shown beside the workspace selector.
+  final Widget? workspaceStatus;
 
   /// Distraction-free state: this bar collapses to zero height. The shared
   /// sidebar shell supplies the HEXORA restore header beside workspace tabs.
@@ -147,9 +151,12 @@ class HexoraGlobalNavBar extends StatelessWidget {
         final brandWidth = showWordmark ? 116.0 : 38.0;
         final companyWidth = groupSwitcher == null
             ? 0.0
-            : (width >= _companyNameBreakpoint ? 176.0 : 52.0);
-        final leftWidth =
-            brandWidth + (groupSwitcher == null ? 0.0 : 8.0 + companyWidth);
+            : (width >= _companyNameBreakpoint ? 350.0 : 52.0);
+        final statusWidth =
+            workspaceStatus == null || width < 1050 ? 0.0 : 220.0;
+        final leftWidth = brandWidth +
+            (groupSwitcher == null ? 0.0 : 8.0 + companyWidth) +
+            statusWidth;
         final availableModuleWidth =
             width - 24 - leftWidth - 25 - _reservedActionWidth(width);
         final labeledModuleWidth = primary.fold<double>(
@@ -199,6 +206,10 @@ class HexoraGlobalNavBar extends StatelessWidget {
               if (groupSwitcher != null) ...[
                 const SizedBox(width: 8),
                 groupSwitcher!,
+              ],
+              if (workspaceStatus != null) ...[
+                const SizedBox(width: 8),
+                workspaceStatus!,
               ],
               Container(
                 width: 1,
@@ -357,6 +368,7 @@ class _Brand extends StatelessWidget {
         message: accessibleLabel,
         waitDuration: const Duration(milliseconds: 350),
         child: InkWell(
+          key: const ValueKey('global-navigation-toggle'),
           onTap: onTap,
           borderRadius: BorderRadius.circular(NavigationTokens.radius),
           hoverColor: HexoraGlobalNavColors.foregroundFor(context)

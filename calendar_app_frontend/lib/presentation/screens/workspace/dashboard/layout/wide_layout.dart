@@ -1,4 +1,5 @@
 import 'package:hexora/presentation/screens/agenda/agenda_screen.dart';
+import 'package:hexora/presentation/screens/home/dashboard_preview/dashboard_preview_screen.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -27,8 +28,11 @@ import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_s
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
 import 'package:hexora/presentation/screens/calendar/screens/calendar/screen/main_calendar_view.dart';
 import 'package:hexora/presentation/shared/widgets/user_profile_popup.dart';
+import 'package:hexora/presentation/shared/widgets/collapsible_sidebar.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:hexora/state/user_preferences_provider.dart';
+import 'package:hexora/services/weather/weather_service.dart';
+import 'package:hexora/presentation/shared/utils/weather/weather_summary_localizer.dart';
 import 'package:provider/provider.dart';
 
 import '../state/group_dashboard_state.dart';
@@ -56,6 +60,7 @@ class WideLayout extends StatelessWidget {
       globalNavigationCollapsed: preferences.topNavCollapsed,
       onRestoreGlobalNavigation: () =>
           context.read<UserPreferencesProvider>().setTopNavCollapsed(false),
+      globalNavigationRestoreLabel: state.group.name,
       body: ListenableBuilder(
         listenable: state.workspaceTabs,
         child: workspace,
@@ -69,12 +74,23 @@ class WideLayout extends StatelessWidget {
               break;
             }
           }
-          return moduleLabel == null
+          final content = moduleLabel == null
               ? child!
               : HexoraNavContext(
                   moduleLabel: moduleLabel,
                   child: child!,
                 );
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _DashboardModuleSidebar(
+                destinations: destinations,
+                activeId: activeSection,
+                onSelected: state.openSection,
+              ),
+              Expanded(child: content),
+            ],
+          );
         },
       ),
     );
@@ -96,6 +112,10 @@ class WideLayout extends StatelessWidget {
     final showEmailsInline = section == Sections.emails;
     final showEnableBankingInline = kIsWeb && section == Sections.enableBanking;
     final showTelegramInline = section == Sections.telegram;
+
+    if (section == Sections.home) {
+      return const DashboardPreviewScreen(embedded: true);
+    }
 
     if (section == Sections.agenda) {
       return WorkspaceMainContent(
@@ -218,6 +238,11 @@ List<HexoraNavDestination> _dashboardDestinations(
 }) {
   final es = l.localeName.startsWith('es');
   return [
+    HexoraNavDestination(
+      id: Sections.home,
+      icon: Icons.home_outlined,
+      label: es ? 'Inicio' : 'Home',
+    ),
     if (canSeeAdmin) ...[
       HexoraNavDestination(
         id: Sections.invoices,
@@ -268,7 +293,7 @@ List<HexoraNavDestination> _dashboardDestinations(
     if (canSeeWorkers)
       HexoraNavDestination(
         id: Sections.workers,
-        icon: Icons.access_time_rounded,
+        icon: Icons.people_outline_rounded,
         label: es ? 'Trabajadores' : 'Workers',
         placement: HexoraNavPlacement.more,
       ),
@@ -285,13 +310,19 @@ List<HexoraNavDestination> _dashboardDestinations(
         label: 'Telegram',
         placement: HexoraNavPlacement.more,
       ),
+    ],
+    if (canSeeAdmin)
+      HexoraNavDestination(
+        id: Sections.services,
+        icon: Icons.people_outline,
+        label: es ? 'Clientes' : 'Clients',
+      ),
+    if (canSeeAdmin)
       HexoraNavDestination(
         id: Sections.settings,
         icon: Icons.settings_outlined,
         label: es ? 'Ajustes' : 'Settings',
-        placement: HexoraNavPlacement.more,
       ),
-    ],
     HexoraNavDestination(
       id: Sections.notifications,
       icon: Icons.notifications_none_rounded,
@@ -299,6 +330,87 @@ List<HexoraNavDestination> _dashboardDestinations(
       placement: HexoraNavPlacement.searchOnly,
     ),
   ];
+}
+
+class _DashboardModuleSidebar extends StatefulWidget {
+  const _DashboardModuleSidebar({
+    required this.destinations,
+    required this.activeId,
+    required this.onSelected,
+  });
+
+  final List<HexoraNavDestination> destinations;
+  final String activeId;
+  final ValueChanged<String> onSelected;
+
+  @override
+  State<_DashboardModuleSidebar> createState() =>
+      _DashboardModuleSidebarState();
+}
+
+class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
+  bool _collapsed = false;
+
+  CollapsibleSidebarItem _item(HexoraNavDestination destination) =>
+      CollapsibleSidebarItem(
+        icon: destination.icon,
+        label: destination.label,
+        selected: destination.id == widget.activeId,
+        onTap: () => widget.onSelected(destination.id),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final es = Localizations.localeOf(context).languageCode == 'es';
+    List<CollapsibleSidebarItem> entries(List<String> ids) => [
+          for (final id in ids)
+            for (final destination in widget.destinations)
+              if (destination.id == id) _item(destination),
+        ];
+
+    return CollapsibleSidebar(
+      title: es ? 'Módulos' : 'Modules',
+      headerIcon: Icons.apps_rounded,
+      menuExpandedWidth: 176,
+      collapsedToggleInRail: true,
+      collapsed: _collapsed,
+      onToggleCollapsed: () => setState(() => _collapsed = !_collapsed),
+      items: entries([Sections.home]),
+      groups: [
+        CollapsibleSidebarGroup(
+          label: es ? 'OPERACIONES' : 'OPERATIONS',
+          items: entries([
+            Sections.invoices,
+            Sections.expenses,
+            Sections.enableBanking,
+            Sections.budgets
+          ]),
+        ),
+        CollapsibleSidebarGroup(
+          label: es ? 'GESTIÓN' : 'MANAGEMENT',
+          items: entries([
+            Sections.services,
+            Sections.workers,
+            Sections.calendar,
+            Sections.maps
+          ]),
+        ),
+        CollapsibleSidebarGroup(
+          label: es ? 'COMUNICACIÓN' : 'COMMUNICATION',
+          items: entries(
+              [Sections.businessChat, Sections.emails, Sections.telegram]),
+        ),
+        CollapsibleSidebarGroup(
+          label: es ? 'HERRAMIENTAS' : 'TOOLS',
+          items: entries([Sections.chat]),
+        ),
+        CollapsibleSidebarGroup(label: '', items: entries([Sections.settings])),
+      ],
+      secondaryHeader: true,
+      expandTooltip: es ? 'Expandir módulos' : 'Expand modules',
+      collapseTooltip: es ? 'Contraer módulos' : 'Collapse modules',
+    );
+  }
 }
 
 class _DashboardTopNav extends StatefulWidget {
@@ -338,11 +450,7 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
         final activeSection =
             state.workspaceTabs.activeTab?.section ?? state.activeSection;
         return HexoraGlobalNavBar(
-          destinations: _dashboardDestinations(
-            l,
-            canSeeAdmin: state.canSeeAdmin,
-            canSeeWorkers: state.canSeeAdmin,
-          ),
+          destinations: const <HexoraNavDestination>[],
           activeId: activeSection,
           onSelected: state.openSection,
           onBrandTap: state.canSeeAdmin
@@ -354,6 +462,7 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
             userId: user?.id ?? '',
             onOpenGroupSettings: () => state.openSection(Sections.settings),
           ),
+          workspaceStatus: _TopWeatherChip(location: user?.location),
           navigationDisplayMode: navigationMode,
           collapsed: preferences.topNavCollapsed,
           onToggleCollapsed: () {
@@ -400,6 +509,159 @@ class _DashboardTopNavState extends State<_DashboardTopNav> {
 
 // ── Group / workspace switcher ────────────────────────────────────────────────
 
+class _TopWeatherChip extends StatefulWidget {
+  const _TopWeatherChip({this.location});
+
+  final String? location;
+
+  @override
+  State<_TopWeatherChip> createState() => _TopWeatherChipState();
+}
+
+class _TopWeatherChipState extends State<_TopWeatherChip> {
+  final WeatherService _weatherService = WeatherService();
+  late Future<WeatherBundle> _weather;
+
+  String get _location {
+    final value = widget.location?.trim();
+    return value == null || value.isEmpty ? 'Denia' : value;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWeather();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TopWeatherChip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.location?.trim() != widget.location?.trim()) {
+      _loadWeather();
+    }
+  }
+
+  void _loadWeather() {
+    _weather = _weatherService.fetchWeatherBundle(
+      location: _location,
+      days: 1,
+    );
+  }
+
+  @override
+  void dispose() {
+    _weatherService.dispose();
+    super.dispose();
+  }
+
+  IconData _weatherIcon(WeatherSnapshot weather) {
+    final summary = weather.summary.summary.toLowerCase();
+    if (summary.contains('storm')) return Icons.thunderstorm_outlined;
+    if (summary.contains('rain')) return Icons.grain_rounded;
+    if (summary.contains('cloud')) return Icons.wb_cloudy_outlined;
+    return weather.isDay ? Icons.wb_sunny_rounded : Icons.nightlight_round;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width < 1050) {
+      return const SizedBox.shrink();
+    }
+
+    final foreground = HexoraGlobalNavColors.foregroundFor(context);
+    final l = AppLocalizations.of(context)!;
+
+    return FutureBuilder<WeatherBundle>(
+      future: _weather,
+      builder: (context, snapshot) {
+        final weather = snapshot.data?.today;
+        if (snapshot.connectionState != ConnectionState.done) {
+          return SizedBox(
+            width: 36,
+            height: 36,
+            child: Center(
+              child: SizedBox.square(
+                dimension: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: foreground.withValues(alpha: 0.7),
+                ),
+              ),
+            ),
+          );
+        }
+        if (weather == null) return const SizedBox.shrink();
+
+        final condition = localizeWeatherSummary(l, weather.summary.summary);
+        final place = weather.cityName?.trim().isNotEmpty == true
+            ? weather.cityName!.trim()
+            : _location;
+        final temperature = '${weather.tempMax.round()}\u00b0C';
+
+        return Tooltip(
+          message:
+              '$condition \u00b7 ${weather.tempMin.round()}\u00b0C\u2013${weather.tempMax.round()}\u00b0C',
+          waitDuration: const Duration(milliseconds: 500),
+          child: Container(
+            height: 42,
+            constraints: const BoxConstraints(minWidth: 170, maxWidth: 220),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: foreground.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: foreground.withValues(alpha: 0.05),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _weatherIcon(weather),
+                  size: 24,
+                  color: const Color(0xFFFFC83D),
+                ),
+                const SizedBox(width: 9),
+                Flexible(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$temperature  $condition',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: NavigationTokens.label(context).copyWith(
+                          color: foreground,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        place,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: NavigationTokens.label(context).copyWith(
+                          color: foreground.withValues(alpha: 0.78),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          height: 1.1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _GroupSwitcherChip extends StatelessWidget {
   const _GroupSwitcherChip({
     required this.activeGroup,
@@ -411,8 +673,8 @@ class _GroupSwitcherChip extends StatelessWidget {
   final String userId;
   final VoidCallback onOpenGroupSettings;
 
-  static const double _nameBreakpoint = 1100;
-  static const double _chipMaxNameWidth = 120.0;
+  static const double _nameBreakpoint = 850;
+  static const double _chipMaxNameWidth = 320.0;
 
   String _initials(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));

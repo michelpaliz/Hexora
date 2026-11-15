@@ -16,6 +16,7 @@ class HexoraAppShell extends StatefulWidget {
     this.moduleIcon,
     this.globalNavigationCollapsed = false,
     this.onRestoreGlobalNavigation,
+    this.globalNavigationRestoreLabel,
   });
 
   final Widget globalNav;
@@ -24,6 +25,7 @@ class HexoraAppShell extends StatefulWidget {
   final IconData? moduleIcon;
   final bool globalNavigationCollapsed;
   final VoidCallback? onRestoreGlobalNavigation;
+  final String? globalNavigationRestoreLabel;
 
   @override
   State<HexoraAppShell> createState() => _HexoraAppShellState();
@@ -91,6 +93,7 @@ class _HexoraAppShellState extends State<HexoraAppShell>
                 collapsed: widget.globalNavigationCollapsed,
                 expansion: _navigationController,
                 onRestore: widget.onRestoreGlobalNavigation!,
+                restoreLabel: widget.globalNavigationRestoreLabel,
                 child: workspace!,
               );
         final navHeight = NavigationTokens.globalBarHeight * expansion;

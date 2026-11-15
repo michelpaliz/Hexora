@@ -147,6 +147,13 @@ class _WorkspaceTabBarState extends State<WorkspaceTabBar> {
               height: MediaQuery.textScalerOf(context).scale(1) > 1.2 ? 42 : 36,
               decoration: BoxDecoration(
                 color: tabSurface,
+                border: Border(
+                  bottom: BorderSide(
+                    color: lightTheme
+                        ? AppColors.inputBorder
+                        : Colors.white.withValues(alpha: 0.12),
+                  ),
+                ),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(12),
                   topRight: Radius.circular(12),
@@ -356,7 +363,7 @@ class _WorkspaceTabButtonState extends State<_WorkspaceTabButton> {
     // The shared clipper creates the flared lower shoulders from the reference.
     final Color background;
     if (widget.active) {
-      background = lightTheme ? AppColors.primary : const Color(0xFFEAF2FF);
+      background = AppColors.selectedControl;
     } else if (_hovered || _focused) {
       background = Colors.white.withValues(alpha: 0.13);
     } else {
@@ -398,9 +405,7 @@ class _WorkspaceTabButtonState extends State<_WorkspaceTabButton> {
                                   widget.tab.icon,
                                   size: 16,
                                   color: widget.active
-                                      ? (lightTheme
-                                          ? Colors.white
-                                          : const Color(0xFF2563EB))
+                                      ? AppColors.primary
                                       : tabForeground,
                                 ),
                                 const SizedBox(width: 6),
@@ -416,10 +421,7 @@ class _WorkspaceTabButtonState extends State<_WorkspaceTabButton> {
                                       selected: widget.active,
                                     ).copyWith(
                                       color: widget.active
-                                          ? (lightTheme
-                                              ? Colors.white
-                                              : HexoraGlobalNavColors
-                                                  .background)
+                                          ? AppColors.textPrimary
                                           : tabForeground,
                                     ),
                                   ),
@@ -437,10 +439,7 @@ class _WorkspaceTabButtonState extends State<_WorkspaceTabButton> {
                                             splashRadius: 11,
                                             iconSize: 14,
                                             color: widget.active
-                                                ? (lightTheme
-                                                    ? Colors.white
-                                                    : HexoraGlobalNavColors
-                                                        .background)
+                                                ? AppColors.textSecondary
                                                 : tabForeground,
                                             visualDensity:
                                                 VisualDensity.compact,
@@ -457,6 +456,16 @@ class _WorkspaceTabButtonState extends State<_WorkspaceTabButton> {
                               ],
                             ),
                           ),
+                          if (widget.active)
+                            const Positioned(
+                              left: 12,
+                              right: 12,
+                              bottom: 0,
+                              height: 2,
+                              child: IgnorePointer(
+                                child: ColoredBox(color: AppColors.primary),
+                              ),
+                            ),
                           if (_focused)
                             Positioned.fill(
                               child: IgnorePointer(

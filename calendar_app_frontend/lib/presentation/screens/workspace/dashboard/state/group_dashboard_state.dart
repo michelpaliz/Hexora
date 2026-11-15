@@ -121,6 +121,7 @@ class GroupDashboardState extends ChangeNotifier {
   };
 
   static const _workspaceSections = {
+    Sections.home,
     Sections.agenda,
     Sections.calendar,
     Sections.notifications,
@@ -390,6 +391,7 @@ class GroupDashboardState extends ChangeNotifier {
     final l = AppLocalizations.of(context)!;
     final es = l.localeName.startsWith('es');
     final defaults = switch (section) {
+      Sections.home => (Icons.home_outlined, 'Home'),
       Sections.invoices => (
           Icons.receipt_long_outlined,
           es ? 'Ingresos' : 'Income'

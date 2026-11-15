@@ -11,6 +11,7 @@ class GlobalNavigationCollapseScope extends InheritedWidget {
     required this.collapsed,
     required this.expansion,
     required this.onRestore,
+    this.restoreLabel,
     required super.child,
   });
 
@@ -19,6 +20,7 @@ class GlobalNavigationCollapseScope extends InheritedWidget {
   /// Shared shell animation progress: 0 is collapsed, 1 is expanded.
   final Animation<double> expansion;
   final VoidCallback onRestore;
+  final String? restoreLabel;
 
   static GlobalNavigationCollapseScope? maybeOf(BuildContext context) => context
       .dependOnInheritedWidgetOfExactType<GlobalNavigationCollapseScope>();
@@ -27,5 +29,6 @@ class GlobalNavigationCollapseScope extends InheritedWidget {
   bool updateShouldNotify(GlobalNavigationCollapseScope oldWidget) =>
       oldWidget.collapsed != collapsed ||
       oldWidget.expansion != expansion ||
-      oldWidget.onRestore != onRestore;
+      oldWidget.onRestore != onRestore ||
+      oldWidget.restoreLabel != restoreLabel;
 }

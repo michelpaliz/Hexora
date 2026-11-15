@@ -1,4 +1,5 @@
 import 'package:hexora/presentation/screens/agenda/agenda_screen.dart';
+import 'package:hexora/presentation/screens/home/dashboard_preview/dashboard_preview_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/layout/group_dashboard_content.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/panels/group_dashboard_right_panel.dart';
@@ -22,6 +23,9 @@ class NarrowLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget child;
     switch (state.activeSection) {
+      case Sections.home:
+        child = const DashboardPreviewScreen(embedded: true);
+        break;
       case Sections.agenda:
         child = AgendaScreen(groupId: state.group.id, embedded: true);
         break;

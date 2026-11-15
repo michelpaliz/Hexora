@@ -136,7 +136,7 @@ class SidebarEdgeShell extends StatelessWidget {
           ? constraints.maxHeight
           : MediaQuery.sizeOf(context).height;
       final centerY = SidebarEdgeGeometry.centerY(height);
-      final usesEdgeHandle = collapsed || !collapseInHeader;
+      final usesEdgeHandle = showHandle && (collapsed || !collapseInHeader);
       final notchDepth =
           usesEdgeHandle ? SidebarEdgeGeometry.notchDepth(collapsed) : 0.0;
       final handleCenterInset =
@@ -181,7 +181,9 @@ class SidebarEdgeShell extends StatelessWidget {
               top: headerExtent,
               child: Padding(
                 padding: EdgeInsets.only(
-                  right: SidebarEdgeGeometry.contentSafeInset(collapsed),
+                  right: usesEdgeHandle
+                      ? SidebarEdgeGeometry.contentSafeInset(collapsed)
+                      : 0,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -195,7 +197,9 @@ class SidebarEdgeShell extends StatelessWidget {
             if (showHeader)
               PositionedDirectional(
                 start: 0,
-                end: SidebarEdgeGeometry.contentSafeInset(false),
+                end: usesEdgeHandle
+                    ? SidebarEdgeGeometry.contentSafeInset(false)
+                    : 0,
                 top: globalHeaderExtent + accountHeaderExtent,
                 height: secondaryHeaderExtent,
                 child: SecondarySidebarHeader(
@@ -208,7 +212,9 @@ class SidebarEdgeShell extends StatelessWidget {
             if (sidebarHeader != null)
               PositionedDirectional(
                 start: 0,
-                end: SidebarEdgeGeometry.contentSafeInset(collapsed),
+                end: usesEdgeHandle
+                    ? SidebarEdgeGeometry.contentSafeInset(collapsed)
+                    : 0,
                 top: globalHeaderExtent,
                 height: accountHeaderExtent,
                 child: sidebarHeader,
@@ -233,6 +239,7 @@ class SidebarEdgeShell extends StatelessWidget {
                           child: _HexoraGlobalNavigationRestoreHeader(
                             collapsed: collapsed,
                             onRestore: globalNavigation.onRestore,
+                            label: globalNavigation.restoreLabel,
                           ),
                         ),
                       ),
@@ -265,10 +272,12 @@ class _HexoraGlobalNavigationRestoreHeader extends StatelessWidget {
   const _HexoraGlobalNavigationRestoreHeader({
     required this.collapsed,
     required this.onRestore,
+    this.label,
   });
 
   final bool collapsed;
   final VoidCallback onRestore;
+  final String? label;
 
   static const DecorationImage _brandedBackground = DecorationImage(
     image: AssetImage('assets/images/home_page/dark_bg_color.png'),
@@ -283,6 +292,8 @@ class _HexoraGlobalNavigationRestoreHeader extends StatelessWidget {
     const spanishTooltip = 'Mostrar menú principal';
     const englishTooltip = 'Show main navigation';
     final tooltip = es ? spanishTooltip : englishTooltip;
+    final displayLabel =
+        label?.trim().isNotEmpty == true ? label!.trim() : 'Hexora';
     const foreground = HexoraGlobalNavColors.foreground;
     return DecoratedBox(
       decoration: const BoxDecoration(
@@ -309,22 +320,31 @@ class _HexoraGlobalNavigationRestoreHeader extends StatelessWidget {
                       ? MainAxisAlignment.center
                       : MainAxisAlignment.start,
                   children: [
-                    const HexoraBrandIcon(
-                      size: 24,
-                      excludeFromSemantics: true,
-                    ),
-                    if (!collapsed) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        'HEXORA',
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: foreground,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.7,
-                            ),
+                    if (collapsed)
+                      const HexoraBrandIcon(
+                        size: 24,
+                        excludeFromSemantics: true,
+                      )
+                    else ...[
+                      Expanded(
+                        child: Tooltip(
+                          message: displayLabel,
+                          child: Text(
+                            displayLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelLarge
+                                ?.copyWith(
+                                  color: foreground,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 6),
                       Icon(
                         Icons.keyboard_arrow_down_rounded,
                         size: 17,

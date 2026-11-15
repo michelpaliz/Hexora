@@ -52,6 +52,7 @@ class AppRoutes {
 
   static const settings = '/settings';
   static const preferences = '/preferences';
+  static const dashboardPreview = '/dashboard-preview';
 
   static const groupInsights = '/group-insights';
 
