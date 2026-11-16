@@ -1,6 +1,8 @@
 // presentation/c-group-calendar-section/screens/calendar/screen/main_calendar_view.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'widgets/calendar_details_empty.dart';
+import 'package:intl/intl.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/tabs/workspace_content.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:hexora/models/calendar/events/event.dart';
@@ -33,6 +35,7 @@ import 'package:hexora/presentation/shared/widgets/avatars/pulsing_ring_avatar.d
 import 'package:hexora/presentation/utils/roles/group_role.dart';
 import 'package:hexora/presentation/shared/utils/weather/weather_summary_localizer.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
+import 'package:hexora/theme/colors/app_colors.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
@@ -433,7 +436,112 @@ class _MainCalendarViewState extends State<MainCalendarView> {
 
         List<Widget> calendarHeaderActions() {
           final connectedUsers = _c.buildPresenceFor(currentGroup);
+          final viewMode = _c.calendarUI?.currentViewMode ??
+              calendarViewModeForSideMenu(_selectedSideMenu);
+          final locale = Localizations.localeOf(context).toLanguageTag();
+          final selectedDate =
+              _c.calendarUI?.selectedDateNotifier.value ?? DateTime.now();
+          final dateLabel =
+              DateFormat('MMMM yyyy', locale).format(selectedDate);
+          final yearStart = DateTime(selectedDate.year, 1, 1);
+          final weekNumber = ((selectedDate.difference(yearStart).inDays +
+                      yearStart.weekday -
+                      1) ~/
+                  7) +
+              1;
+          void movePeriod(int direction) {
+            final amount = viewMode == 'week' ? 7 : 1;
+            final next = viewMode == 'month'
+                ? DateTime(selectedDate.year, selectedDate.month + direction,
+                    selectedDate.day)
+                : selectedDate.add(Duration(days: direction * amount));
+            _c.calendarUI?.jumpTo(next);
+          }
+
+          final periodToolbar = Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: 'Previous period',
+                visualDensity: VisualDensity.compact,
+                onPressed: () => movePeriod(-1),
+                icon: const Icon(Icons.chevron_left_rounded, size: 20),
+              ),
+              IconButton(
+                tooltip: 'Next period',
+                visualDensity: VisualDensity.compact,
+                onPressed: () => movePeriod(1),
+                icon: const Icon(Icons.chevron_right_rounded, size: 20),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                dateLabel,
+                style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(width: 8),
+              Chip(
+                label: Text('Semana $weekNumber'),
+                visualDensity: VisualDensity.compact,
+                labelStyle: typo.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+                side: BorderSide.none,
+                backgroundColor: cs.surfaceContainerHighest,
+                padding: EdgeInsets.zero,
+              ),
+              const SizedBox(width: 6),
+              OutlinedButton(
+                onPressed: _c.jumpToToday,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 32),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: Text(loc.today),
+              ),
+            ],
+          );
+          final viewSelector = SegmentedButton<String>(
+            showSelectedIcon: false,
+            segments: [
+              ButtonSegment(
+                value: 'day',
+                label: Text(loc.tabDay),
+                icon: const Icon(Icons.calendar_view_day_outlined, size: 15),
+              ),
+              ButtonSegment(
+                value: 'week',
+                label: Text(loc.tabWeek),
+                icon: const Icon(Icons.calendar_view_week_outlined, size: 15),
+              ),
+              ButtonSegment(
+                value: 'month',
+                label: Text(loc.tabMonth),
+                icon: const Icon(Icons.calendar_today_outlined, size: 15),
+              ),
+              ButtonSegment(
+                value: 'agenda',
+                label: Text(loc.tabAgenda),
+                icon: const Icon(Icons.view_agenda_outlined, size: 15),
+              ),
+            ],
+            selected: {viewMode},
+            onSelectionChanged: (selection) =>
+                _onSideMenuChanged(selection.first),
+            style: const ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              minimumSize: WidgetStatePropertyAll(Size(0, 34)),
+              padding: WidgetStatePropertyAll(
+                EdgeInsets.symmetric(horizontal: 8),
+              ),
+            ),
+          );
           final actions = <Widget>[
+            viewSelector,
+            const SizedBox(width: 10),
+            periodToolbar,
+            const SizedBox(width: 10),
             IconButton(
               key: const ValueKey('calendar-details-toggle'),
               tooltip: Localizations.localeOf(context).languageCode == 'es'
@@ -600,6 +708,8 @@ class _MainCalendarViewState extends State<MainCalendarView> {
         }
 
         Widget calendarSidebar() {
+          final members = _c.buildPresenceFor(currentGroup);
+          final es = Localizations.localeOf(context).languageCode == 'es';
           return CalendarSideMenu(
             group: currentGroup,
             collapsed: _leftCollapsed,
@@ -615,6 +725,97 @@ class _MainCalendarViewState extends State<MainCalendarView> {
             onToggleInsightsExpanded: () =>
                 setState(() => _insightsExpanded = !_insightsExpanded),
             selectedMenu: _selectedSideMenu,
+            calendarFilters: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                  child: Row(children: [
+                    Icon(Icons.event_available_rounded,
+                        size: 18, color: AppDarkColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                        child: Text(currentGroup.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: typo.bodySmall.copyWith(
+                                color: AppColors.navigationForeground,
+                                fontWeight: FontWeight.w600))),
+                    const SizedBox(width: 6),
+                    Icon(Icons.circle, size: 6, color: AppDarkColors.primary),
+                  ]),
+                ),
+                PopupMenuButton<String>(
+                  tooltip: es ? 'Filtrar por miembro' : 'Filter by member',
+                  onSelected: (id) =>
+                      _onUserFilterChanged(id.isEmpty ? null : id),
+                  itemBuilder: (_) => [
+                    CheckedPopupMenuItem(
+                        value: '',
+                        checked: _selectedUserFilter == null,
+                        child: Text(es ? 'Todos los miembros' : 'All members')),
+                    for (final member in members)
+                      CheckedPopupMenuItem(
+                          value: member.userId,
+                          checked: _selectedUserFilter == member.userId,
+                          child: Text(member.userName)),
+                  ],
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    child: Row(children: [
+                      Icon(Icons.people_outline,
+                          size: 18, color: AppDarkColors.textSecondary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                          child: Text(
+                              members
+                                      .where((m) =>
+                                          m.userId == _selectedUserFilter)
+                                      .isEmpty
+                                  ? (es ? 'Todos los miembros' : 'All members')
+                                  : members
+                                      .firstWhere((m) =>
+                                          m.userId == _selectedUserFilter)
+                                      .userName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: typo.bodySmall.copyWith(
+                                  color: AppColors.navigationForeground))),
+                      Icon(Icons.expand_more,
+                          size: 16, color: AppDarkColors.textSecondary),
+                    ]),
+                  ),
+                ),
+              ],
+            ),
+            dateNavigator: _c.calendarUI == null
+                ? null
+                : ValueListenableBuilder<DateTime>(
+                    valueListenable: _c.calendarUI!.selectedDateNotifier,
+                    builder: (context, date, _) => FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.topCenter,
+                      child: SizedBox(
+                        width: 300,
+                        height: 310,
+                        child: CalendarDatePicker(
+                          key: ValueKey('calendar-navigator-$date'),
+                          initialDate: date,
+                          firstDate: DateTime(date.year - 100),
+                          lastDate: DateTime(date.year + 100, 12, 31),
+                          onDateChanged: (selected) {
+                            _c.calendarUI?.jumpTo(selected);
+                            if (!const ['day', 'week', 'month', 'agenda']
+                                .contains(_selectedSideMenu)) {
+                              _onSideMenuChanged('week');
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
             onMenuChanged: _onSideMenuChanged,
             onAddEvent: canAddEvents ? () => _openAddEvent(currentGroup) : null,
             canAddEvents: canAddEvents,
@@ -1305,7 +1506,9 @@ class _MainCalendarViewState extends State<MainCalendarView> {
             case _SidePanelView.editEvent:
               return loc.edit;
             default:
-              return loc.calendarTitle;
+              return Localizations.localeOf(context).languageCode == 'es'
+                  ? 'Detalles del evento'
+                  : 'Event details';
           }
         }
 
@@ -1371,13 +1574,65 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                 ),
               );
             default:
-              return Center(
-                child: Text(
-                  loc.noEventsFoundForDate,
-                  style: typo.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
+              final es = Localizations.localeOf(context).languageCode == 'es';
+              Widget quickAction(
+                  IconData icon, String label, VoidCallback action) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: OutlinedButton.icon(
+                    onPressed: action,
+                    icon: Icon(icon, size: 18),
+                    label: Text(label),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(42),
+                      foregroundColor: cs.primary,
+                      backgroundColor:
+                          cs.surfaceContainerLow.withValues(alpha: .55),
+                      side: BorderSide(
+                          color: cs.outlineVariant.withValues(alpha: .35)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      textStyle:
+                          typo.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                    ),
                   ),
-                ),
+                );
+              }
+              return ListView(
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+                children: [
+                  const SizedBox(height: 38),
+                  const CalendarDetailsIllustration(),
+                  const SizedBox(height: 16),
+                  Text(es ? 'Sin evento seleccionado' : 'No event selected',
+                      textAlign: TextAlign.center,
+                      style: typo.bodyMedium
+                          .copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 10),
+                  Text(
+                    es
+                        ? 'Selecciona un evento en el calendario para ver sus detalles.'
+                        : 'Select an event in the calendar to see its details.',
+                    textAlign: TextAlign.center,
+                    style: typo.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 24),
+                  Divider(
+                      height: 1,
+                      color: cs.outlineVariant.withValues(alpha: .3)),
+                  const SizedBox(height: 18),
+                  Text(es ? 'Acciones rápidas' : 'Quick actions',
+                      style: typo.bodyMedium
+                          .copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 12),
+                  if (canAddEvents)
+                    quickAction(Icons.add_rounded, loc.addEvent,
+                        () => _openAddEvent(currentGroup)),
+                  quickAction(Icons.alarm_rounded, loc.sectionUpcoming,
+                      () => _onSideMenuChanged('upcoming')),
+                  quickAction(Icons.edit_calendar_outlined, loc.tasks,
+                      () => _onSideMenuChanged('tasks')),
+                ],
               );
           }
         }
@@ -1577,6 +1832,41 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                                               child: FolderPanel(
                                                 title:
                                                     calendarRightPanelTitle(),
+                                                tabContent: Row(children: [
+                                                  Icon(
+                                                      Icons
+                                                          .event_available_rounded,
+                                                      size: 18,
+                                                      color: cs.primary),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                      child: Text(
+                                                          calendarRightPanelTitle(),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          style: typo.bodySmall
+                                                              .copyWith(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w700))),
+                                                  IconButton(
+                                                    tooltip:
+                                                        MaterialLocalizations
+                                                                .of(context)
+                                                            .closeButtonTooltip,
+                                                    onPressed: () => setState(
+                                                        () =>
+                                                            _rightPanelCollapsed =
+                                                                true),
+                                                    icon: const Icon(
+                                                        Icons.close_rounded,
+                                                        size: 18),
+                                                    visualDensity:
+                                                        VisualDensity.compact,
+                                                  ),
+                                                ]),
+                                                showToolbarDivider: false,
                                                 showTab: true,
                                                 child:
                                                     HexoraMenuContentTransition

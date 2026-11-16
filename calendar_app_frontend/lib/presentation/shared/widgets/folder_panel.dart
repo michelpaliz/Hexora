@@ -153,19 +153,29 @@ class _ContextToolbar extends StatelessWidget {
             const SizedBox(width: 4),
           ] else
             const SizedBox(width: 4),
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: tabContent ?? const SizedBox.shrink(),
+          if (tabContent != null)
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: tabContent,
+              ),
             ),
-          ),
           if (actions.isNotEmpty) ...[
-            const SizedBox(width: 8),
-            Wrap(
-              spacing: actionsSpacing,
-              runSpacing: 4,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: actions,
+            if (tabContent != null) const SizedBox(width: 8),
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const ClampingScrollPhysics(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var index = 0; index < actions.length; index++) ...[
+                      if (index > 0) SizedBox(width: actionsSpacing),
+                      actions[index],
+                    ],
+                  ],
+                ),
+              ),
             ),
           ],
         ],

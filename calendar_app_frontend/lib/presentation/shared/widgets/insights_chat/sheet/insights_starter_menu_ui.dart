@@ -29,10 +29,10 @@ mixin InsightsStarterMenuUi on InsightsChatSheetStateBase {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(13),
           decoration: BoxDecoration(
             color: cs.surfaceContainerHighest.withValues(alpha: 0.26),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: cs.outlineVariant.withValues(alpha: 0.35),
             ),
@@ -76,7 +76,7 @@ mixin InsightsStarterMenuUi on InsightsChatSheetStateBase {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 isEs
                     ? openQuestions
@@ -92,7 +92,7 @@ mixin InsightsStarterMenuUi on InsightsChatSheetStateBase {
                 ),
               ),
               if (!openQuestions) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 9),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -127,14 +127,14 @@ mixin InsightsStarterMenuUi on InsightsChatSheetStateBase {
                           ),
                         ),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
+                          horizontal: 9,
+                          vertical: 5,
                         ),
                       ),
                   ],
                 ),
               ],
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Icon(

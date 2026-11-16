@@ -71,7 +71,7 @@ mixin InsightsComposer on InsightsChatSheetStateBase {
   }) {
     final sending = runtime.sending;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
       child: Row(
         children: [
           Expanded(
@@ -96,24 +96,24 @@ mixin InsightsComposer on InsightsChatSheetStateBase {
                 filled: true,
                 fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.28),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
                     color: cs.outlineVariant.withValues(alpha: 0.45),
                   ),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
                     color: cs.outlineVariant.withValues(alpha: 0.45),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: cs.primary, width: 1.4),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 14,
-                  vertical: 12,
+                  vertical: 9,
                 ),
               ),
               style: t.bodySmall.copyWith(
@@ -122,14 +122,14 @@ mixin InsightsComposer on InsightsChatSheetStateBase {
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           FilledButton(
             onPressed: sending ? null : submitTypedMessage,
             style: FilledButton.styleFrom(
-              minimumSize: const Size(48, 48),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              minimumSize: const Size(40, 40),
+              padding: const EdgeInsets.symmetric(horizontal: 11),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(11),
               ),
             ),
             child: sending

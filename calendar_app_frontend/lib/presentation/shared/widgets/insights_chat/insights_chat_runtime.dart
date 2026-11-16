@@ -29,7 +29,12 @@ class InsightsChatRuntime extends ChangeNotifier {
 
   final String scopeKey;
   final _api = InsightsApi();
-  final _messages = <ChatMessage>[];
+  List<ChatMessage> _messages = <ChatMessage>[];
+  final _messagesByInteractionMode =
+      <InsightsInteractionMode, List<ChatMessage>>{};
+  final _conversationIdsByInteractionMode =
+      <InsightsInteractionMode, String>{};
+  final _resetByInteractionMode = <InsightsInteractionMode, bool>{};
   int _generation = 0;
   String _conversationId = _newConversationId();
   bool _resetConversationOnNextSend = false;
@@ -90,10 +95,34 @@ class InsightsChatRuntime extends ChangeNotifier {
 
   void setInteractionMode(InsightsInteractionMode mode) {
     if (_interactionMode == mode) return;
+    _messagesByInteractionMode[_interactionMode] = _messages;
+    _conversationIdsByInteractionMode[_interactionMode] = _conversationId;
+    _resetByInteractionMode[_interactionMode] = _resetConversationOnNextSend;
     _interactionMode = mode;
-    _conversationId = _newConversationId();
-    _resetConversationOnNextSend = true;
+    _messages = _messagesByInteractionMode.putIfAbsent(mode, () => []);
+    _conversationId = _conversationIdsByInteractionMode.putIfAbsent(
+      mode,
+      _newConversationId,
+    );
+    _resetConversationOnNextSend = _resetByInteractionMode[mode] ?? true;
+    unawaited(_persistHistory());
     notifyListeners();
+  }
+
+  String _modeStorageKey(InsightsInteractionMode mode) => mode.name;
+
+  Map<String, dynamic> _modePayload(InsightsInteractionMode mode) {
+    final messages = _messagesByInteractionMode[mode] ??
+        (mode == _interactionMode ? _messages : const <ChatMessage>[]);
+    final id = _conversationIdsByInteractionMode[mode] ??
+        (mode == _interactionMode ? _conversationId : _newConversationId());
+    return <String, dynamic>{
+      'conversationId': id,
+      'resetConversationOnNextSend':
+          _resetByInteractionMode[mode] ??
+              (mode == _interactionMode && _resetConversationOnNextSend),
+      'messages': messages.map((message) => message.toJson()).toList(),
+    };
   }
 
   void setDays(int nextDays) {
@@ -172,6 +201,8 @@ class InsightsChatRuntime extends ChangeNotifier {
     return separator < 0 ? null : scopeKey.substring(separator + 2);
   }
 
+  String get _remoteScopeKey => '$scopeKey::${_interactionMode.name}';
+
   Future<void> ensureLoaded(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
     final nextHistoryKey = _resolveHistoryKey(context);
@@ -221,19 +252,48 @@ class InsightsChatRuntime extends ChangeNotifier {
               }
             }
           }
+          final modes = map['modes'];
+          if (modes is Map) {
+            for (final mode in InsightsInteractionMode.values) {
+              final modeData = modes[_modeStorageKey(mode)];
+              if (modeData is! Map) continue;
+              final parsedMessages = <ChatMessage>[];
+              final modeItems = modeData['messages'];
+              if (modeItems is List) {
+                for (final item in modeItems) {
+                  final message = ChatMessage.fromJson(item);
+                  if (message != null && message.text != l.insightsChatWelcome) {
+                    parsedMessages.add(message);
+                  }
+                }
+              }
+              _messagesByInteractionMode[mode] = parsedMessages;
+              final modeId = modeData['conversationId']?.toString().trim();
+              if (modeId != null && modeId.isNotEmpty) {
+                _conversationIdsByInteractionMode[mode] = modeId;
+              }
+              _resetByInteractionMode[mode] =
+                  modeData['resetConversationOnNextSend'] == true;
+            }
+          }
         }
       } catch (_) {}
     }
-    _messages
-      ..clear()
-      ..addAll(next);
+    if (!_messagesByInteractionMode.containsKey(InsightsInteractionMode.guided)) {
+      _messagesByInteractionMode[InsightsInteractionMode.guided] = next;
+    }
+    _messages = _messagesByInteractionMode[_interactionMode] ?? next;
+    _conversationIdsByInteractionMode.putIfAbsent(
+      _interactionMode,
+      () => _conversationId,
+    );
     final groupId = _historyGroupId;
     final loadedRevision = _historyRevision;
     if (groupId != null && groupId.isNotEmpty) {
       try {
         final remote = await _api.loadConversation(
           groupId: groupId,
-          scopeKey: scopeKey,
+          scopeKey: _remoteScopeKey,
         );
         if (_loadedSessionVersion == InsightsHistoryStore.sessionVersion &&
             _historyRevision == loadedRevision &&
@@ -246,12 +306,14 @@ class InsightsChatRuntime extends ChangeNotifier {
                   remoteUpdatedAt == null ||
                   !localUpdatedAt.isAfter(remoteUpdatedAt))) {
             _conversationId = remoteId;
-            _messages
-              ..clear()
-              ..addAll((remote['messages'] as List? ?? const [])
-                  .map(ChatMessage.fromJson)
-                  .whereType<ChatMessage>());
+            _messages = (remote['messages'] as List? ?? const [])
+                .map(ChatMessage.fromJson)
+                .whereType<ChatMessage>()
+                .toList();
+            _messagesByInteractionMode[_interactionMode] = _messages;
+            _conversationIdsByInteractionMode[_interactionMode] = _conversationId;
             _resetConversationOnNextSend = false;
+            _resetByInteractionMode[_interactionMode] = false;
             notifyListeners();
           } else if (_messages.isNotEmpty) {
             unawaited(_persistHistory());
@@ -270,6 +332,9 @@ class InsightsChatRuntime extends ChangeNotifier {
   }
 
   Future<void> _persistHistory() async {
+    _messagesByInteractionMode[_interactionMode] = _messages;
+    _conversationIdsByInteractionMode[_interactionMode] = _conversationId;
+    _resetByInteractionMode[_interactionMode] = _resetConversationOnNextSend;
     _historyRevision += 1;
     final sessionVersion = _loadedSessionVersion;
     if (sessionVersion != InsightsHistoryStore.sessionVersion) return;
@@ -283,6 +348,10 @@ class InsightsChatRuntime extends ChangeNotifier {
       'resetConversationOnNextSend': _resetConversationOnNextSend,
       'updatedAt': DateTime.now().toUtc().toIso8601String(),
       'messages': trimmed.map((m) => m.toJson()).toList(),
+      'modes': {
+        for (final mode in InsightsInteractionMode.values)
+          _modeStorageKey(mode): _modePayload(mode),
+      },
     };
     _historyWrite = _historyWrite.then((_) async {
       if (sessionVersion != InsightsHistoryStore.sessionVersion) return;
@@ -293,9 +362,9 @@ class InsightsChatRuntime extends ChangeNotifier {
         _remoteSave = _remoteSave.then((_) async {
           if (sessionVersion != InsightsHistoryStore.sessionVersion) return;
           try {
-            await _api.saveConversation(
+              await _api.saveConversation(
               groupId: groupId,
-              scopeKey: scopeKey,
+              scopeKey: _remoteScopeKey,
               conversationId: payload['conversationId'] as String,
               messages:
                   List<Map<String, dynamic>>.from(payload['messages'] as List),

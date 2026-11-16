@@ -85,9 +85,9 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
   bool _canAssignIssues = false;
   bool _canShareBankTransactions = false;
   bool _canRequestDocumentReview = false;
-  bool _showActions = false;
+  final _composerPlusKey = GlobalKey();
+  bool _composerActionsOpen = false;
   bool _chatPaneCollapsed = false;
-  String? _activeBusinessAction;
   Widget? _reviewPanel;
   bool _reviewCollapsed = false;
   Map<String, dynamic>? _pendingBankTransaction;
@@ -211,8 +211,6 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
       _canCreateIssues = false;
       _canShareBankTransactions = false;
       _canRequestDocumentReview = false;
-      _activeBusinessAction = null;
-      _showActions = false;
       _reviewPanel = null;
       _canManageIssues = false;
       _canAssignIssues = false;
@@ -599,7 +597,6 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
     var dismissed = false;
     setState(() {
       _reviewCollapsed = false;
-      _showActions = true;
       if (MediaQuery.sizeOf(context).width < 700) {
         _showChatOnNarrow = true;
       }
@@ -613,7 +610,6 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
           if (mounted) {
             setState(() {
               _reviewPanel = null;
-              _activeBusinessAction = null;
               if (MediaQuery.sizeOf(context).width < 700) {
                 _showChatOnNarrow = false;
               }
@@ -626,7 +622,6 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
           if (mounted) {
             setState(() {
               _reviewPanel = null;
-              _activeBusinessAction = null;
               if (MediaQuery.sizeOf(context).width < 700) {
                 _showChatOnNarrow = false;
               }
@@ -894,7 +889,140 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
 
   Future<void> _showBusinessActionsSheet() async {
     if (_selected == null || _sending) return;
-    final showBusinessActions = MediaQuery.sizeOf(context).width < 700;
+    setState(() => _composerActionsOpen = true);
+    final showBusinessActions =
+        _canShareBankTransactions || _canRequestDocumentReview;
+    if (MediaQuery.sizeOf(context).width >= 700) {
+      final button = _composerPlusKey.currentContext?.findRenderObject();
+      final overlay = Overlay.of(context).context.findRenderObject();
+      if (button is RenderBox && overlay is RenderBox) {
+        final origin = button.localToGlobal(Offset.zero, ancestor: overlay);
+        final rect = origin & button.size;
+        final menuTop = (rect.top - 252).clamp(8.0, overlay.size.height);
+        final action = await showMenu<String>(
+          context: context,
+          position: RelativeRect.fromLTRB(
+            rect.left,
+            menuTop,
+            overlay.size.width - rect.right,
+            overlay.size.height - rect.top + 6,
+          ),
+          constraints: const BoxConstraints(minWidth: 248, maxWidth: 260),
+          elevation: 8,
+          menuPadding: const EdgeInsets.symmetric(vertical: 6),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(11),
+          ),
+          items: [
+            PopupMenuItem<String>(
+              enabled: false,
+              height: 26,
+              child: Text(
+                _es ? 'Adjuntar' : 'Attach',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'attach',
+              height: 38,
+              child: Row(
+                children: [
+                  const Icon(Icons.attach_file_rounded, size: 17),
+                  const SizedBox(width: 11),
+                  Text(_es ? 'Adjuntar archivo' : 'Attach file',
+                      style: const TextStyle(fontSize: 13.5)),
+                ],
+              ),
+            ),
+            if (showBusinessActions) const PopupMenuDivider(),
+            if (showBusinessActions)
+              PopupMenuItem<String>(
+                enabled: false,
+                height: 26,
+                child: Text(
+                  _es ? 'Acciones del grupo' : 'Group actions',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ),
+            if (_canShareBankTransactions)
+              const PopupMenuItem<String>(
+                value: 'bank',
+                height: 38,
+                child: Row(
+                  children: [
+                    Icon(Icons.account_balance_outlined, size: 17),
+                    SizedBox(width: 11),
+                    Text('Compartir movimiento',
+                        style: TextStyle(fontSize: 13.5)),
+                  ],
+                ),
+              ),
+            if (_canRequestDocumentReview) ...[
+              const PopupMenuItem<String>(
+                value: 'invoice',
+                height: 38,
+                child: Row(
+                  children: [
+                    Icon(Icons.receipt_long_outlined, size: 17),
+                    SizedBox(width: 11),
+                    Text('Revisar factura', style: TextStyle(fontSize: 13.5)),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'expense',
+                height: 38,
+                child: Row(
+                  children: [
+                    Icon(Icons.payments_outlined, size: 17),
+                    SizedBox(width: 11),
+                    Text('Revisar gasto', style: TextStyle(fontSize: 13.5)),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'hours',
+                height: 38,
+                child: Row(
+                  children: [
+                    Icon(Icons.access_time_outlined, size: 17),
+                    SizedBox(width: 11),
+                    Text('Revisar horas', style: TextStyle(fontSize: 13.5)),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        );
+        if (!mounted || action == null) {
+          if (mounted) setState(() => _composerActionsOpen = false);
+          return;
+        }
+        setState(() => _composerActionsOpen = false);
+        switch (action) {
+          case 'attach':
+            _attach();
+          case 'bank':
+            _shareBankTransactionFromChat();
+          case 'invoice':
+            _requestDocumentReview('invoice');
+          case 'expense':
+            _requestDocumentReview('expense');
+          case 'hours':
+            _requestDocumentReview('worker_hours');
+        }
+      }
+      if (mounted) setState(() => _composerActionsOpen = false);
+      return;
+    }
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -969,6 +1097,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
         ),
       ),
     );
+    if (mounted) setState(() => _composerActionsOpen = false);
   }
 
   Future<void> _showMobileMessageActions(
@@ -2635,101 +2764,6 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
   bool get _hasBusinessActions =>
       _canShareBankTransactions || _canRequestDocumentReview;
 
-  void _runBusinessAction(String action) {
-    setState(() => _activeBusinessAction = action);
-    switch (action) {
-      case 'bank':
-        _shareBankTransactionFromChat();
-        break;
-      case 'invoice':
-        _requestDocumentReview('invoice');
-        break;
-      case 'expense':
-        _requestDocumentReview('expense');
-        break;
-      case 'hours':
-        _requestDocumentReview('worker_hours');
-        break;
-    }
-  }
-
-  Widget _buildBusinessActionsList() {
-    final actions = <_BusinessRailAction>[
-      if (_canShareBankTransactions)
-        _BusinessRailAction(
-          id: 'bank',
-          icon: Icons.account_balance_outlined,
-          label: _es ? 'Compartir movimiento' : 'Share transaction',
-        ),
-      if (_canRequestDocumentReview)
-        _BusinessRailAction(
-          id: 'invoice',
-          icon: Icons.receipt_long_outlined,
-          label: _es ? 'Revisar factura' : 'Review invoice',
-        ),
-      if (_canRequestDocumentReview)
-        _BusinessRailAction(
-          id: 'expense',
-          icon: Icons.payments_outlined,
-          label: _es ? 'Revisar gasto' : 'Review expense',
-        ),
-      if (_canRequestDocumentReview)
-        _BusinessRailAction(
-          id: 'hours',
-          icon: Icons.access_time_outlined,
-          label: _es ? 'Revisar horas' : 'Review hours',
-        ),
-    ];
-
-    return ColoredBox(
-      color: Colors.transparent,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 8),
-          for (final action in actions)
-            _BusinessRailButton(
-              action: action,
-              expanded: true,
-              navySurface: true,
-              selected: _activeBusinessAction == action.id,
-              onTap: () => _runBusinessAction(action.id),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLeftNavigationTabs(ColorScheme colors) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
-      child: Container(
-        height: 34,
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: .10),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            _ChatNavigationTab(
-              icon: Icons.forum_outlined,
-              label: _es ? 'Chats' : 'Chats',
-              selected: !_showActions,
-              onTap: () => setState(() => _showActions = false),
-            ),
-            _ChatNavigationTab(
-              icon: Icons.bolt_outlined,
-              label: _es ? 'Acciones' : 'Actions',
-              selected: _showActions,
-              onTap: () => setState(() => _showActions = true),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -2795,10 +2829,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                   _es ? 'Borrar búsqueda' : 'Clear search',
                             )
                           else ...[
-                            if (!_chatPaneCollapsed) ...[
-                              _buildLeftNavigationTabs(colors),
-                            ],
-                            if (!_showActions && !_chatPaneCollapsed)
+                            if (!_chatPaneCollapsed)
                               Padding(
                                 padding:
                                     const EdgeInsets.fromLTRB(12, 4, 12, 8),
@@ -2846,156 +2877,139 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                               ),
                           ],
                           Expanded(
-                              child: _showActions &&
-                                      !narrow &&
-                                      !_chatPaneCollapsed
-                                  ? _buildBusinessActionsList()
-                                  : visibleConversations.isEmpty
-                                      ? Center(
-                                          child: _loading
-                                              ? const CircularProgressIndicator()
-                                              : Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(20),
-                                                  child: Text(
-                                                      _error ??
-                                                          (query.isNotEmpty
-                                                              ? (_es
-                                                                  ? 'Sin resultados'
-                                                                  : 'No results')
-                                                              : (_es
-                                                                  ? 'No hay conversaciones'
-                                                                  : 'No conversations')),
-                                                      textAlign:
-                                                          TextAlign.center,
-                                                      style: TextStyle(
-                                                        color: narrow
-                                                            ? null
-                                                            : Colors.white
-                                                                .withValues(
-                                                                    alpha: .78),
-                                                      ))))
-                                      : ListView.separated(
-                                          key: const PageStorageKey(
-                                              'business-chat-conversations'),
-                                          itemCount:
-                                              visibleConversations.length,
-                                          separatorBuilder: (_, __) => Divider(
-                                                height: 1,
-                                                indent: 64,
-                                                color: narrow
-                                                    ? colors.outlineVariant
-                                                        .withValues(alpha: .45)
-                                                    : Colors.white
-                                                        .withValues(alpha: .10),
-                                              ),
-                                          itemBuilder: (context, index) {
-                                            final conversation =
-                                                visibleConversations[index];
-                                            final selected = _selected?.id ==
-                                                conversation.id;
-                                            final status =
-                                                conversation.issue?['status'];
-                                            final lastMessage =
-                                                conversation.lastMessage;
-                                            final preview = lastMessage == null
-                                                ? (status == null
-                                                    ? _typeLabel(
-                                                        conversation.type)
-                                                    : _statusLabel(
-                                                        status.toString()))
-                                                : lastMessage.isDeleted
+                              child: visibleConversations.isEmpty
+                                  ? Center(
+                                      child: _loading
+                                          ? const CircularProgressIndicator()
+                                          : Padding(
+                                              padding: const EdgeInsets.all(20),
+                                              child: Text(
+                                                  _error ??
+                                                      (query.isNotEmpty
+                                                          ? (_es
+                                                              ? 'Sin resultados'
+                                                              : 'No results')
+                                                          : (_es
+                                                              ? 'No hay conversaciones'
+                                                              : 'No conversations')),
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    color: narrow
+                                                        ? null
+                                                        : Colors.white
+                                                            .withValues(
+                                                                alpha: .78),
+                                                  ))))
+                                  : ListView.separated(
+                                      key: const PageStorageKey(
+                                          'business-chat-conversations'),
+                                      itemCount: visibleConversations.length,
+                                      separatorBuilder: (_, __) => Divider(
+                                            height: 1,
+                                            indent: 64,
+                                            color: narrow
+                                                ? colors.outlineVariant
+                                                    .withValues(alpha: .45)
+                                                : Colors.white
+                                                    .withValues(alpha: .10),
+                                          ),
+                                      itemBuilder: (context, index) {
+                                        final conversation =
+                                            visibleConversations[index];
+                                        final selected =
+                                            _selected?.id == conversation.id;
+                                        final status =
+                                            conversation.issue?['status'];
+                                        final lastMessage =
+                                            conversation.lastMessage;
+                                        final preview = lastMessage == null
+                                            ? (status == null
+                                                ? _typeLabel(conversation.type)
+                                                : _statusLabel(
+                                                    status.toString()))
+                                            : lastMessage.isDeleted
+                                                ? (_es
+                                                    ? 'Mensaje eliminado'
+                                                    : 'Message deleted')
+                                                : lastMessage.bankTransaction !=
+                                                        null
                                                     ? (_es
-                                                        ? 'Mensaje eliminado'
-                                                        : 'Message deleted')
-                                                    : lastMessage
-                                                                .bankTransaction !=
-                                                            null
+                                                        ? 'Movimiento bancario compartido'
+                                                        : 'Shared bank transaction')
+                                                    : lastMessage.review != null
                                                         ? (_es
-                                                            ? 'Movimiento bancario compartido'
-                                                            : 'Shared bank transaction')
-                                                        : lastMessage.review !=
-                                                                null
-                                                            ? (_es
-                                                                ? 'Revisión solicitada'
-                                                                : 'Review requested')
-                                                            : lastMessage.body
-                                                                    .trim()
-                                                                    .isNotEmpty
-                                                                ? lastMessage
-                                                                    .body
-                                                                : (lastMessage.attachment?[
-                                                                            'fileName'] ??
-                                                                        (_es
-                                                                            ? 'Archivo adjunto'
-                                                                            : 'Attachment'))
-                                                                    .toString();
-                                            if (_chatPaneCollapsed && !narrow) {
-                                              return _CompactConversationRailItem(
-                                                icon: conversation.type ==
-                                                        'issue'
-                                                    ? Icons.report_outlined
-                                                    : conversation.type ==
-                                                            'team'
-                                                        ? Icons.groups_outlined
-                                                        : Icons
-                                                            .campaign_outlined,
-                                                title: conversation
-                                                        .issue?['title']
-                                                        ?.toString() ??
-                                                    conversation.title,
-                                                selected: selected,
-                                                unreadCount:
-                                                    conversation.unreadCount,
-                                                onTap: () {
-                                                  final oldId = _selected?.id;
-                                                  setState(() {
-                                                    _selected = conversation;
-                                                    _messages = const [];
-                                                    _activeBusinessAction =
-                                                        null;
-                                                  });
-                                                  _switchDraft(
-                                                      oldId, conversation.id);
-                                                  _loadMessages(conversation,
-                                                      forceScroll: true);
-                                                },
-                                              );
-                                            }
-                                            return CompactConversationTile(
-                                              icon: conversation.type == 'issue'
-                                                  ? Icons.report_outlined
-                                                  : conversation.type == 'team'
-                                                      ? Icons.groups_outlined
-                                                      : Icons.campaign_outlined,
-                                              title: conversation
-                                                      .issue?['title']
-                                                      ?.toString() ??
-                                                  conversation.title,
-                                              preview: preview,
-                                              timestamp: _conversationTimestamp(
-                                                  lastMessage?.createdAt),
-                                              unreadCount:
-                                                  conversation.unreadCount,
-                                              selected: selected,
-                                              muted: conversation.muted,
-                                              circularAvatar: narrow,
-                                              navySurface: !narrow,
-                                              onTap: () {
-                                                final oldId = _selected?.id;
-                                                setState(() {
-                                                  _selected = conversation;
-                                                  _messages = const [];
-                                                  _showChatOnNarrow = true;
-                                                  _activeBusinessAction = null;
-                                                });
-                                                _switchDraft(
-                                                    oldId, conversation.id);
-                                                _loadMessages(conversation,
-                                                    forceScroll: true);
-                                              },
-                                            );
-                                          })),
+                                                            ? 'Revisión solicitada'
+                                                            : 'Review requested')
+                                                        : lastMessage.body
+                                                                .trim()
+                                                                .isNotEmpty
+                                                            ? lastMessage.body
+                                                            : (lastMessage.attachment?[
+                                                                        'fileName'] ??
+                                                                    (_es
+                                                                        ? 'Archivo adjunto'
+                                                                        : 'Attachment'))
+                                                                .toString();
+                                        if (_chatPaneCollapsed && !narrow) {
+                                          return _CompactConversationRailItem(
+                                            icon: conversation.type == 'issue'
+                                                ? Icons.report_outlined
+                                                : conversation.type == 'team'
+                                                    ? Icons.groups_outlined
+                                                    : Icons.campaign_outlined,
+                                            title: conversation.issue?['title']
+                                                    ?.toString() ??
+                                                conversation.title,
+                                            selected: selected,
+                                            unreadCount:
+                                                conversation.unreadCount,
+                                            onTap: () {
+                                              final oldId = _selected?.id;
+                                              setState(() {
+                                                _selected = conversation;
+                                                _messages = const [];
+                                              });
+                                              _switchDraft(
+                                                  oldId, conversation.id);
+                                              _loadMessages(conversation,
+                                                  forceScroll: true);
+                                            },
+                                          );
+                                        }
+                                        return CompactConversationTile(
+                                          icon: conversation.type == 'issue'
+                                              ? Icons.report_outlined
+                                              : conversation.type == 'team'
+                                                  ? Icons.groups_outlined
+                                                  : Icons.campaign_outlined,
+                                          title: conversation.issue?['title']
+                                                  ?.toString() ??
+                                              conversation.title,
+                                          preview: preview,
+                                          timestamp: _conversationTimestamp(
+                                              lastMessage?.createdAt),
+                                          unreadCount: conversation.unreadCount,
+                                          selected: selected,
+                                          muted: conversation.muted,
+                                          circularAvatar: narrow,
+                                          navySurface: !narrow,
+                                          actions: !narrow
+                                              ? _threadOverflowMenu(conversation)
+                                              : null,
+                                          onTap: () {
+                                            final oldId = _selected?.id;
+                                            setState(() {
+                                              _selected = conversation;
+                                              _messages = const [];
+                                              _showChatOnNarrow = true;
+                                            });
+                                            _switchDraft(
+                                                oldId, conversation.id);
+                                            _loadMessages(conversation,
+                                                forceScroll: true);
+                                          },
+                                        );
+                                      })),
                         ]),
                       )),
                 if (!narrow)
@@ -3137,6 +3151,9 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                                                     const SizedBox(height: 6),
                                                   ChatComposer(
                                                     controller: _composer,
+                                                    plusKey: _composerPlusKey,
+                                                    actionsOpen:
+                                                        _composerActionsOpen,
                                                     focusNode: _composerFocus,
                                                     enabled: _selected != null,
                                                     sending: _sending,

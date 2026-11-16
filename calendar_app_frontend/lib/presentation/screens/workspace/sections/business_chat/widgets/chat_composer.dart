@@ -20,6 +20,8 @@ class ChatComposer extends StatelessWidget {
     this.plusTooltip,
     this.sendTooltip,
     this.focusNode,
+    this.plusKey,
+    this.actionsOpen = false,
   });
 
   final TextEditingController controller;
@@ -32,6 +34,8 @@ class ChatComposer extends StatelessWidget {
   final String? plusTooltip;
   final String? sendTooltip;
   final FocusNode? focusNode;
+  final Key? plusKey;
+  final bool actionsOpen;
 
   void _handleSend() {
     if (!enabled || sending) return;
@@ -64,11 +68,13 @@ class ChatComposer extends StatelessWidget {
             const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: .5)),
+          borderSide:
+              BorderSide(color: cs.outlineVariant.withValues(alpha: .5)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: cs.outlineVariant.withValues(alpha: .5)),
+          borderSide:
+              BorderSide(color: cs.outlineVariant.withValues(alpha: .5)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
@@ -90,17 +96,17 @@ class ChatComposer extends StatelessWidget {
 
     return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
       IconButton(
+        key: plusKey,
         onPressed: enabled && !sending ? onPlus : null,
         tooltip: plusTooltip,
-        icon: const Icon(Icons.add_rounded),
+        icon: Icon(actionsOpen ? Icons.close_rounded : Icons.add_rounded),
       ),
       Expanded(child: field),
       const SizedBox(width: 8),
       ValueListenableBuilder<TextEditingValue>(
         valueListenable: controller,
         builder: (context, value, _) {
-          final canSend =
-              enabled && !sending && value.text.trim().isNotEmpty;
+          final canSend = enabled && !sending && value.text.trim().isNotEmpty;
           return IconButton.filled(
             onPressed: canSend ? _handleSend : null,
             tooltip: sendTooltip,

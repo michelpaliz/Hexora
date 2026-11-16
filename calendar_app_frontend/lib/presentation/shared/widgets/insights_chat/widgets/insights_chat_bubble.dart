@@ -108,7 +108,7 @@ class _ChatBubbleState extends State<ChatBubble> {
         onEnter: (_) => setState(() => _hovering = true),
         onExit: (_) => setState(() => _hovering = false),
         child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
+          margin: const EdgeInsets.only(bottom: 6),
           constraints: BoxConstraints(
             maxWidth: widget.isStructuredTableResponse ? 620 : 520,
           ),
@@ -119,15 +119,15 @@ class _ChatBubbleState extends State<ChatBubble> {
               Container(
                 padding: EdgeInsets.symmetric(
                   horizontal: isUser ? 11 : 13,
-                  vertical: isUser ? 9 : 11,
+                  vertical: isUser ? 8 : 9,
                 ),
                 decoration: BoxDecoration(
                   color: bg,
                   borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(14),
-                    topRight: const Radius.circular(14),
-                    bottomLeft: Radius.circular(isUser ? 14 : 4),
-                    bottomRight: Radius.circular(isUser ? 4 : 14),
+                    topLeft: const Radius.circular(12),
+                    topRight: const Radius.circular(12),
+                    bottomLeft: Radius.circular(isUser ? 12 : 4),
+                    bottomRight: Radius.circular(isUser ? 4 : 12),
                   ),
                   boxShadow: [
                     BoxShadow(

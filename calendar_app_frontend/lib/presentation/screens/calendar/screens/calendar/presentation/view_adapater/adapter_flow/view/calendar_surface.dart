@@ -501,8 +501,10 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                 ? _resolveForecast(forecast)
                                 : const <DateTime, DaySummary>{};
                             final isTimeGridView = _isTimeGridView();
-                            final calendarHeaderHeight =
-                                isTimeGridView ? 42.0 : 40.0;
+                            // The workspace supplies one shared period toolbar;
+                            // keep the Syncfusion header hidden to avoid a
+                            // second month/date navigation row.
+                            const calendarHeaderHeight = 0.0;
                             final calendarViewHeaderHeight = isTimeGridView
                                 ? HexoraDimensions.calendarDayHeader
                                 : 32.0;
@@ -531,7 +533,7 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                         dataSource: ds,
                                         view: _selectedView,
                                         headerHeight: calendarHeaderHeight,
-                                        showDatePickerButton: true,
+                                        showDatePickerButton: false,
                                         viewHeaderHeight:
                                             calendarViewHeaderHeight,
                                         onViewChanged: (_) =>

@@ -462,7 +462,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
         );
 
     Widget buildInteractionModeTabs() => Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 2),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final compact = constraints.maxWidth < 420;
@@ -497,6 +497,11 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                         runtime.setInteractionMode(selection.first),
                 showSelectedIcon: false,
                 style: ButtonStyle(
+                  minimumSize: const WidgetStatePropertyAll(Size(0, 34)),
+                  padding: const WidgetStatePropertyAll(
+                    EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  visualDensity: VisualDensity.compact,
                   backgroundColor:
                       WidgetStateProperty.resolveWith<Color?>((states) {
                     if (states.contains(WidgetState.selected)) {
@@ -521,7 +526,7 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
                   }),
                   shape: WidgetStatePropertyAll(
                     RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(9),
                     ),
                   ),
                 ),
