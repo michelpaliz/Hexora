@@ -22,13 +22,30 @@ class InsightsChatFab extends StatefulWidget {
 }
 
 class _InsightsChatFabState extends State<InsightsChatFab> {
-  late final InsightsChatRuntime _runtime;
+  late InsightsChatRuntime _runtime;
+  bool _hasRuntime = false;
   int _lastBackgroundEvents = 0;
 
   @override
   void initState() {
     super.initState();
-    _runtime = InsightsChatRuntime.instanceFor('fab::${widget.groupId}');
+    _bindRuntime(widget.groupId);
+  }
+
+  @override
+  void didUpdateWidget(covariant InsightsChatFab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.groupId != widget.groupId) {
+      _bindRuntime(widget.groupId);
+      unawaited(_runtime.ensureLoaded(context));
+    }
+  }
+
+  void _bindRuntime(String groupId) {
+    if (_hasRuntime) _runtime.removeListener(_onRuntimeChanged);
+    _runtime = InsightsChatRuntime.instanceFor('fab::$groupId');
+    _hasRuntime = true;
+    _lastBackgroundEvents = _runtime.backgroundReplyEvents;
     _runtime.addListener(_onRuntimeChanged);
   }
 

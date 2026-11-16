@@ -91,6 +91,8 @@ class InsightsChatRuntime extends ChangeNotifier {
   void setInteractionMode(InsightsInteractionMode mode) {
     if (_interactionMode == mode) return;
     _interactionMode = mode;
+    _conversationId = _newConversationId();
+    _resetConversationOnNextSend = true;
     notifyListeners();
   }
 
@@ -830,7 +832,8 @@ class InsightsChatRuntime extends ChangeNotifier {
         extra: extra,
       );
     } on InsightsApiException catch (error) {
-      final canFallback = endpoint == InsightsChatEndpoint.chatAuto &&
+      final canFallback = _interactionMode == InsightsInteractionMode.guided &&
+          endpoint == InsightsChatEndpoint.chatAuto &&
           _isTemporaryInsightsFailure(error);
       if (!canFallback) rethrow;
       debugPrint(
@@ -889,6 +892,24 @@ class InsightsChatRuntime extends ChangeNotifier {
     final extra = <String, dynamic>{
       'conversationId': activeConversationId,
       'resetConversation': shouldResetConversation,
+      'interactionMode': _interactionMode.name,
+      if (_interactionMode == InsightsInteractionMode.openQuestions &&
+          !shouldResetConversation)
+        'history': _messages
+            .where((item) =>
+                item.conversationId == activeConversationId &&
+                !item.isTimeoutFallback &&
+                item.text.trim().isNotEmpty)
+            .toList()
+            .reversed
+            .take(6)
+            .toList()
+            .reversed
+            .map((item) => {
+                  'role': item.isUser ? 'user' : 'assistant',
+                  'content': item.text,
+                })
+            .toList(),
       ..._scopePayload(),
     };
     if (shouldResetConversation) {
