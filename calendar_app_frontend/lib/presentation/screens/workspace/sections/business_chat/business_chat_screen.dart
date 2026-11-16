@@ -101,11 +101,31 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
   Future<void> _loadMemberPhotos() async {
     final requestedGroupId = widget.groupId;
     try {
+      final groupRepository = context.read<GroupDomain>().groupRepository;
       final members = await _api.memberPresence(requestedGroupId);
+      final photos = <String, String?>{
+        for (final member in members) member.id: member.photoUrl,
+      };
+
+      // The chat presence endpoint can intentionally omit profile fields.
+      // Hydrate missing avatars from the canonical group member profiles so
+      // incoming messages use the same photo shown everywhere else in Hexora.
+      try {
+        final profiles =
+            await groupRepository.getGroupMemberProfiles(requestedGroupId);
+        for (final profile in profiles) {
+          final current = photos[profile.id]?.trim() ?? '';
+          final photo = profile.photoUrl?.trim() ?? '';
+          if (current.isEmpty && photo.isNotEmpty) {
+            photos[profile.id] = photo;
+          }
+        }
+      } catch (_) {
+        // Presence photos remain a valid fallback when profile hydration fails.
+      }
+
       if (!mounted || requestedGroupId != widget.groupId) return;
-      setState(() => _memberPhotos = {
-            for (final member in members) member.id: member.photoUrl,
-          });
+      setState(() => _memberPhotos = photos);
     } catch (_) {
       // Avatars fall back to initials when presence is unavailable.
     }
@@ -2983,7 +3003,8 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                     width: 1,
                     color: Colors.white.withValues(alpha: .10),
                   ),
-                if (!narrow || _showChatOnNarrow ||
+                if (!narrow ||
+                    _showChatOnNarrow ||
                     (narrow && _reviewPanel != null))
                   Expanded(
                       child: Column(children: [
@@ -2995,8 +3016,7 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                         Expanded(child: _reviewPanel!),
                       // Keep the review workspace below the shared Chrome
                       // strip, alongside the conversation rather than above it.
-                      if (_reviewPanel != null &&
-                          !narrow) ...[
+                      if (_reviewPanel != null && !narrow) ...[
                         const VerticalDivider(width: 1),
                         Offstage(
                           offstage: !_reviewCollapsed,
@@ -3017,202 +3037,206 @@ class _BusinessChatScreenState extends State<BusinessChatScreen> {
                         ),
                       ],
                       if (!narrow || _reviewPanel == null)
-                      Expanded(
-                        child: Column(children: [
-                          if (_selected != null) _buildThreadHeader(narrow),
-                          Expanded(
-                              child: _error != null && _messages.isEmpty
-                                  ? Center(
-                                      child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                          Padding(
-                                              padding: const EdgeInsets.all(16),
-                                              child: Text(_error!,
-                                                  textAlign: TextAlign.center)),
-                                          TextButton(
-                                              onPressed: _refresh,
-                                              child: Text(
-                                                  _es ? 'Reintentar' : 'Retry'))
-                                        ]))
-                                  : _selected == null
-                                      ? Center(
-                                          child: _loading
-                                              ? const CircularProgressIndicator()
-                                              : Text(_es
-                                                  ? 'Selecciona una conversación.'
-                                                  : 'Select a conversation.'))
-                                      : _messages.isEmpty
-                                          ? Center(
-                                              child: Text(_es
-                                                  ? 'Todavía no hay mensajes.'
-                                                  : 'No messages yet.'))
-                                          : _buildMessageList(
-                                              narrow, constraints.maxWidth)),
-                          const Divider(height: 1),
-                          Padding(
-                              padding: EdgeInsets.all(narrow ? 8 : 10),
-                              child: SafeArea(
-                                  top: false,
-                                  child: Center(
-                                      child: ConstrainedBox(
-                                          constraints: BoxConstraints(
-                                              maxWidth: narrow
-                                                  ? double.infinity
-                                                  : 1000),
-                                          child: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                if (_replyingTo != null)
-                                                  Card(
-                                                    child: ListTile(
-                                                      dense: true,
-                                                      leading: const Icon(
-                                                          Icons.reply),
-                                                      title: Text(_es
-                                                          ? 'Respondiendo a ${_replyingTo!.senderName}'
-                                                          : 'Replying to ${_replyingTo!.senderName}'),
-                                                      subtitle: Text(
-                                                        _replyingTo!
-                                                                .body.isNotEmpty
-                                                            ? _replyingTo!.body
-                                                            : (_es
-                                                                ? 'Adjunto o referencia'
-                                                                : 'Attachment or reference'),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
-                                                      trailing: IconButton(
-                                                        tooltip: _es
-                                                            ? 'Cancelar respuesta'
-                                                            : 'Cancel reply',
-                                                        onPressed: () =>
-                                                            setState(() =>
-                                                                _replyingTo =
-                                                                    null),
-                                                        icon: const Icon(
-                                                            Icons.close),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                if (_pendingBankTransaction !=
-                                                    null)
-                                                  _PendingBankTransactionPreview(
-                                                    entry:
-                                                        _pendingBankTransaction!,
-                                                    es: _es,
-                                                    onRemove: () => setState(() =>
-                                                        _pendingBankTransaction =
-                                                            null),
-                                                    onReplace:
-                                                        _shareBankTransactionFromChat,
-                                                  ),
-                                                if (_pendingBankTransaction !=
-                                                    null)
-                                                  const SizedBox(height: 6),
-                                                ChatComposer(
-                                                  controller: _composer,
-                                                  focusNode: _composerFocus,
-                                                  enabled: _selected != null,
-                                                  sending: _sending,
-                                                  narrow: narrow,
-                                                  onSend: _send,
-                                                  onPlus:
-                                                      _showBusinessActionsSheet,
-                                                  hintText: _es
-                                                      ? 'Escribe un mensaje…'
-                                                      : 'Write a message…',
-                                                  plusTooltip: _es
-                                                      ? 'Acciones y adjuntos'
-                                                      : 'Actions and attachments',
-                                                  sendTooltip:
-                                                      _es ? 'Enviar' : 'Send',
-                                                ),
-                                                if (_selected != null &&
-                                                    !narrow &&
-                                                    !_hasBusinessActions &&
-                                                    _sending)
-                                                  Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            left: 48, top: 4),
-                                                    child: Align(
-                                                      alignment:
-                                                          Alignment.centerLeft,
-                                                      child: Wrap(
-                                                        crossAxisAlignment:
-                                                            WrapCrossAlignment
-                                                                .center,
-                                                        spacing: 8,
-                                                        children: [
-                                                          if (_canShareBankTransactions)
-                                                            TextButton.icon(
-                                                              onPressed:
-                                                                  _shareBankTransactionFromChat,
-                                                              icon: const Icon(
-                                                                  Icons
-                                                                      .account_balance_outlined,
-                                                                  size: 17),
-                                                              label: Text(_es
-                                                                  ? 'Compartir movimiento bancario'
-                                                                  : 'Share bank transaction'),
-                                                            ),
-                                                          if (_canRequestDocumentReview)
-                                                            TextButton.icon(
-                                                              onPressed: () =>
-                                                                  _requestDocumentReview(
-                                                                      'invoice'),
-                                                              icon: const Icon(
-                                                                  Icons
-                                                                      .receipt_long_outlined,
-                                                                  size: 17),
-                                                              label: Text(_es
-                                                                  ? 'Revisar factura'
-                                                                  : 'Review invoice'),
-                                                            ),
-                                                          if (_canRequestDocumentReview)
-                                                            TextButton.icon(
-                                                              onPressed: () =>
-                                                                  _requestDocumentReview(
-                                                                      'expense'),
-                                                              icon: const Icon(
-                                                                  Icons
-                                                                      .payments_outlined,
-                                                                  size: 17),
-                                                              label: Text(_es
-                                                                  ? 'Revisar gasto'
-                                                                  : 'Review expense'),
-                                                            ),
-                                                          if (_canRequestDocumentReview)
-                                                            TextButton.icon(
-                                                              onPressed: () =>
-                                                                  _requestDocumentReview(
-                                                                      'worker_hours'),
-                                                              icon: const Icon(
-                                                                  Icons
-                                                                      .access_time_outlined,
-                                                                  size: 17),
-                                                              label: Text(_es
-                                                                  ? 'Revisar horas'
-                                                                  : 'Review hours'),
-                                                            ),
-                                                          Text(
-                                                            _es
-                                                                ? 'Adjuntos: JPG, PNG, WebP o PDF · máximo 10 MB'
-                                                                : 'Attachments: JPG, PNG, WebP, or PDF · max 10 MB',
-                                                            style: Theme.of(
-                                                                    context)
-                                                                .textTheme
-                                                                .labelSmall,
-                                                          ),
-                                                        ],
+                        Expanded(
+                          child: Column(children: [
+                            if (_selected != null) _buildThreadHeader(narrow),
+                            Expanded(
+                                child: _error != null && _messages.isEmpty
+                                    ? Center(
+                                        child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                            Padding(
+                                                padding:
+                                                    const EdgeInsets.all(16),
+                                                child: Text(_error!,
+                                                    textAlign:
+                                                        TextAlign.center)),
+                                            TextButton(
+                                                onPressed: _refresh,
+                                                child: Text(_es
+                                                    ? 'Reintentar'
+                                                    : 'Retry'))
+                                          ]))
+                                    : _selected == null
+                                        ? Center(
+                                            child: _loading
+                                                ? const CircularProgressIndicator()
+                                                : Text(_es
+                                                    ? 'Selecciona una conversación.'
+                                                    : 'Select a conversation.'))
+                                        : _messages.isEmpty
+                                            ? Center(
+                                                child: Text(_es
+                                                    ? 'Todavía no hay mensajes.'
+                                                    : 'No messages yet.'))
+                                            : _buildMessageList(
+                                                narrow, constraints.maxWidth)),
+                            const Divider(height: 1),
+                            Padding(
+                                padding: EdgeInsets.all(narrow ? 8 : 10),
+                                child: SafeArea(
+                                    top: false,
+                                    child: Center(
+                                        child: ConstrainedBox(
+                                            constraints: BoxConstraints(
+                                                maxWidth: narrow
+                                                    ? double.infinity
+                                                    : 1000),
+                                            child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  if (_replyingTo != null)
+                                                    Card(
+                                                      child: ListTile(
+                                                        dense: true,
+                                                        leading: const Icon(
+                                                            Icons.reply),
+                                                        title: Text(_es
+                                                            ? 'Respondiendo a ${_replyingTo!.senderName}'
+                                                            : 'Replying to ${_replyingTo!.senderName}'),
+                                                        subtitle: Text(
+                                                          _replyingTo!.body
+                                                                  .isNotEmpty
+                                                              ? _replyingTo!
+                                                                  .body
+                                                              : (_es
+                                                                  ? 'Adjunto o referencia'
+                                                                  : 'Attachment or reference'),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                        ),
+                                                        trailing: IconButton(
+                                                          tooltip: _es
+                                                              ? 'Cancelar respuesta'
+                                                              : 'Cancel reply',
+                                                          onPressed: () =>
+                                                              setState(() =>
+                                                                  _replyingTo =
+                                                                      null),
+                                                          icon: const Icon(
+                                                              Icons.close),
+                                                        ),
                                                       ),
                                                     ),
+                                                  if (_pendingBankTransaction !=
+                                                      null)
+                                                    _PendingBankTransactionPreview(
+                                                      entry:
+                                                          _pendingBankTransaction!,
+                                                      es: _es,
+                                                      onRemove: () => setState(() =>
+                                                          _pendingBankTransaction =
+                                                              null),
+                                                      onReplace:
+                                                          _shareBankTransactionFromChat,
+                                                    ),
+                                                  if (_pendingBankTransaction !=
+                                                      null)
+                                                    const SizedBox(height: 6),
+                                                  ChatComposer(
+                                                    controller: _composer,
+                                                    focusNode: _composerFocus,
+                                                    enabled: _selected != null,
+                                                    sending: _sending,
+                                                    narrow: narrow,
+                                                    onSend: _send,
+                                                    onPlus:
+                                                        _showBusinessActionsSheet,
+                                                    hintText: _es
+                                                        ? 'Escribe un mensaje…'
+                                                        : 'Write a message…',
+                                                    plusTooltip: _es
+                                                        ? 'Acciones y adjuntos'
+                                                        : 'Actions and attachments',
+                                                    sendTooltip:
+                                                        _es ? 'Enviar' : 'Send',
                                                   ),
-                                              ]))))),
-                        ]),
-                      ),
+                                                  if (_selected != null &&
+                                                      !narrow &&
+                                                      !_hasBusinessActions &&
+                                                      _sending)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                              left: 48, top: 4),
+                                                      child: Align(
+                                                        alignment: Alignment
+                                                            .centerLeft,
+                                                        child: Wrap(
+                                                          crossAxisAlignment:
+                                                              WrapCrossAlignment
+                                                                  .center,
+                                                          spacing: 8,
+                                                          children: [
+                                                            if (_canShareBankTransactions)
+                                                              TextButton.icon(
+                                                                onPressed:
+                                                                    _shareBankTransactionFromChat,
+                                                                icon: const Icon(
+                                                                    Icons
+                                                                        .account_balance_outlined,
+                                                                    size: 17),
+                                                                label: Text(_es
+                                                                    ? 'Compartir movimiento bancario'
+                                                                    : 'Share bank transaction'),
+                                                              ),
+                                                            if (_canRequestDocumentReview)
+                                                              TextButton.icon(
+                                                                onPressed: () =>
+                                                                    _requestDocumentReview(
+                                                                        'invoice'),
+                                                                icon: const Icon(
+                                                                    Icons
+                                                                        .receipt_long_outlined,
+                                                                    size: 17),
+                                                                label: Text(_es
+                                                                    ? 'Revisar factura'
+                                                                    : 'Review invoice'),
+                                                              ),
+                                                            if (_canRequestDocumentReview)
+                                                              TextButton.icon(
+                                                                onPressed: () =>
+                                                                    _requestDocumentReview(
+                                                                        'expense'),
+                                                                icon: const Icon(
+                                                                    Icons
+                                                                        .payments_outlined,
+                                                                    size: 17),
+                                                                label: Text(_es
+                                                                    ? 'Revisar gasto'
+                                                                    : 'Review expense'),
+                                                              ),
+                                                            if (_canRequestDocumentReview)
+                                                              TextButton.icon(
+                                                                onPressed: () =>
+                                                                    _requestDocumentReview(
+                                                                        'worker_hours'),
+                                                                icon: const Icon(
+                                                                    Icons
+                                                                        .access_time_outlined,
+                                                                    size: 17),
+                                                                label: Text(_es
+                                                                    ? 'Revisar horas'
+                                                                    : 'Review hours'),
+                                                              ),
+                                                            Text(
+                                                              _es
+                                                                  ? 'Adjuntos: JPG, PNG, WebP o PDF · máximo 10 MB'
+                                                                  : 'Attachments: JPG, PNG, WebP, or PDF · max 10 MB',
+                                                              style: Theme.of(
+                                                                      context)
+                                                                  .textTheme
+                                                                  .labelSmall,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ]))))),
+                          ]),
+                        ),
                     ])),
                   ])),
               ]);

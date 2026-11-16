@@ -7,6 +7,8 @@ import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:hexora/services/groups/event/domain/event_domain.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/services/weather/weather_service.dart';
+import 'package:hexora/presentation/screens/workspace/dashboard/navigation/dashboard_sections.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:provider/provider.dart';
 
 /// A standalone, pixel-faithful preview of a proposed "home dashboard" design
@@ -19,12 +21,17 @@ import 'package:provider/provider.dart';
 /// tiles are visual only — this screen is a design preview, not wired
 /// navigation.
 class DashboardPreviewScreen extends StatefulWidget {
-  const DashboardPreviewScreen({super.key, this.embedded = false});
+  const DashboardPreviewScreen({
+    super.key,
+    this.embedded = false,
+    this.onOpenSection,
+  });
 
   /// When true the screen renders only the dashboard content (no Scaffold,
   /// sidebar, top bar or back ribbon) so it can sit inside the workspace shell,
   /// which already provides its own module rail and top bar.
   final bool embedded;
+  final ValueChanged<String>? onOpenSection;
 
   @override
   State<DashboardPreviewScreen> createState() => _DashboardPreviewScreenState();
@@ -68,8 +75,8 @@ class _DashData {
 }
 
 class _ActivityItem {
-  const _ActivityItem(this.title, this.subtitle, this.when, this.icon,
-      this.color);
+  const _ActivityItem(
+      this.title, this.subtitle, this.when, this.icon, this.color);
   final String title;
   final String subtitle;
   final DateTime? when;
@@ -96,13 +103,39 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
   late Future<_DashData> _future;
   Future<WeatherBundle>? _weather;
 
-  bool get _isEs =>
-      Localizations.localeOf(context).languageCode == 'es';
+  bool get _isEs => Localizations.localeOf(context).languageCode == 'es';
+
+  void _openSection(String section) {
+    final callback = widget.onOpenSection;
+    if (callback != null) {
+      callback(section);
+      return;
+    }
+    final group = context.read<GroupDomain>().currentGroup;
+    if (group == null) return;
+    final route = switch (section) {
+      Sections.invoices => AppRoutes.groupIncome,
+      Sections.budgets => AppRoutes.groupIncome,
+      Sections.expenses => AppRoutes.groupExpenses,
+      Sections.services => AppRoutes.groupServicesClients,
+      Sections.calendar => AppRoutes.groupCalendar,
+      _ => null,
+    };
+    if (route != null) {
+      Navigator.of(context).pushNamed(route, arguments: group);
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _future = _load();
+  }
+
+  @override
+  void dispose() {
+    _weatherService.dispose();
+    super.dispose();
   }
 
   @override
@@ -138,9 +171,8 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
         pendientes = facturas - pagadas;
         statsLoaded = facturas > 0;
 
-        final recent = [...invoices]
-          ..sort((a, b) => (b.issueDate ?? DateTime(0))
-              .compareTo(a.issueDate ?? DateTime(0)));
+        final recent = [...invoices]..sort((a, b) =>
+            (b.issueDate ?? DateTime(0)).compareTo(a.issueDate ?? DateTime(0)));
         for (final inv in recent.take(4)) {
           final number = inv.invoiceNumber.trim();
           final client = (inv.clientName ?? '').trim();
@@ -165,9 +197,8 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
       // Documents
       try {
         final list = await PrivateDocumentsApi().list(groupId: groupId);
-        final sorted = [...list]
-          ..sort((a, b) => (b.createdAt ?? DateTime(0))
-              .compareTo(a.createdAt ?? DateTime(0)));
+        final sorted = [...list]..sort((a, b) =>
+            (b.createdAt ?? DateTime(0)).compareTo(a.createdAt ?? DateTime(0)));
         for (final d in sorted.take(3)) {
           docs.add(_DocItem(d.displayTitle, d.category, d.createdAt));
         }
@@ -210,34 +241,57 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
     final es = _isEs;
     final now = DateTime.now();
     return [
-      _ActivityItem(es ? 'Factura creada' : 'Invoice created',
-          '#410-26 · Residencial Zurich', now, Icons.description_rounded,
+      _ActivityItem(
+          es ? 'Factura creada' : 'Invoice created',
+          '#410-26 · Residencial Zurich',
+          now,
+          Icons.description_rounded,
           _Palette.blue),
-      _ActivityItem(es ? 'Pago registrado' : 'Payment recorded',
-          '#408-26 · Playasol II', now, Icons.check_circle_rounded,
+      _ActivityItem(
+          es ? 'Pago registrado' : 'Payment recorded',
+          '#408-26 · Playasol II',
+          now,
+          Icons.check_circle_rounded,
           _Palette.green),
-      _ActivityItem(es ? 'Presupuesto enviado' : 'Quote sent',
-          '#P-120 · Brisas', now.subtract(const Duration(days: 1)),
-          Icons.receipt_long_rounded, _Palette.purple),
-      _ActivityItem(es ? 'Nuevo cliente' : 'New client',
-          'Camos Molla Promociones', now.subtract(const Duration(days: 1)),
-          Icons.person_add_alt_1_rounded, _Palette.amber),
+      _ActivityItem(
+          es ? 'Presupuesto enviado' : 'Quote sent',
+          '#P-120 · Brisas',
+          now.subtract(const Duration(days: 1)),
+          Icons.receipt_long_rounded,
+          _Palette.purple),
+      _ActivityItem(
+          es ? 'Nuevo cliente' : 'New client',
+          'Camos Molla Promociones',
+          now.subtract(const Duration(days: 1)),
+          Icons.person_add_alt_1_rounded,
+          _Palette.amber),
     ];
   }
 
   List<_TaskItem> _mockTasks() {
     final es = _isEs;
     final d = DateTime.now();
-    DateTime at(int add) => DateTime(d.year, d.month, d.day).add(Duration(days: add));
+    DateTime at(int add) =>
+        DateTime(d.year, d.month, d.day).add(Duration(days: add));
     return [
-      _TaskItem(es ? 'Mantenimiento piscina – Brisas' : 'Pool maintenance – Brisas',
-          at(1), _Palette.blue),
-      _TaskItem(es ? 'Revisión de riego – La Sella' : 'Irrigation check – La Sella',
-          at(1), _Palette.green),
-      _TaskItem(es ? 'Enviar presupuesto – Cabo del Sol' : 'Send quote – Cabo del Sol',
-          at(2), _Palette.amber),
-      _TaskItem(es ? 'Seguimiento de factura #407-26' : 'Follow up invoice #407-26',
-          at(3), _Palette.purple),
+      _TaskItem(
+          es ? 'Mantenimiento piscina – Brisas' : 'Pool maintenance – Brisas',
+          at(1),
+          _Palette.blue),
+      _TaskItem(
+          es ? 'Revisión de riego – La Sella' : 'Irrigation check – La Sella',
+          at(1),
+          _Palette.green),
+      _TaskItem(
+          es
+              ? 'Enviar presupuesto – Cabo del Sol'
+              : 'Send quote – Cabo del Sol',
+          at(2),
+          _Palette.amber),
+      _TaskItem(
+          es ? 'Seguimiento de factura #407-26' : 'Follow up invoice #407-26',
+          at(3),
+          _Palette.purple),
     ];
   }
 
@@ -266,7 +320,12 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
           builder: (context, snap) {
             final data = snap.data;
             final loading = snap.connectionState != ConnectionState.done;
-            return _Content(isEs: es, data: data, loading: loading);
+            return _Content(
+              isEs: es,
+              data: data,
+              loading: loading,
+              onOpenSection: _openSection,
+            );
           },
         ),
       );
@@ -277,7 +336,8 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _PreviewRibbon(isEs: es, onBack: () => Navigator.of(context).maybePop()),
+            _PreviewRibbon(
+                isEs: es, onBack: () => Navigator.of(context).maybePop()),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, c) {
@@ -286,13 +346,13 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
                     future: _future,
                     builder: (context, snap) {
                       final data = snap.data;
-                      final loading = snap.connectionState !=
-                          ConnectionState.done;
+                      final loading =
+                          snap.connectionState != ConnectionState.done;
                       if (wide) {
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _Sidebar(isEs: es),
+                            _Sidebar(isEs: es, onOpenSection: _openSection),
                             Expanded(
                               child: Column(
                                 children: [
@@ -302,7 +362,8 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
                                     child: _Content(
                                         isEs: es,
                                         data: data,
-                                        loading: loading),
+                                        loading: loading,
+                                        onOpenSection: _openSection),
                                   ),
                                 ],
                               ),
@@ -315,7 +376,10 @@ class _DashboardPreviewScreenState extends State<DashboardPreviewScreen> {
                           _TopBar(isEs: es, weather: _weather!, wide: false),
                           Expanded(
                             child: _Content(
-                                isEs: es, data: data, loading: loading),
+                                isEs: es,
+                                data: data,
+                                loading: loading,
+                                onOpenSection: _openSection),
                           ),
                         ],
                       );
@@ -375,24 +439,29 @@ class _PreviewRibbon extends StatelessWidget {
 
 // ===================== Sidebar =====================
 class _Sidebar extends StatelessWidget {
-  const _Sidebar({required this.isEs});
+  const _Sidebar({required this.isEs, required this.onOpenSection});
   final bool isEs;
+  final ValueChanged<String> onOpenSection;
 
   @override
   Widget build(BuildContext context) {
     final items = <_NavDef>[
-      _NavDef(Icons.home_rounded, isEs ? 'Inicio' : 'Home', active: true),
-      _NavDef(Icons.groups_rounded, isEs ? 'Clientes' : 'Clients'),
+      _NavDef(Icons.home_rounded, isEs ? 'Inicio' : 'Home',
+          active: true, section: Sections.home),
+      _NavDef(Icons.groups_rounded, isEs ? 'Clientes' : 'Clients',
+          section: Sections.services),
       _NavDef(Icons.description_rounded, isEs ? 'Facturas' : 'Invoices',
-          expandable: true),
+          expandable: true, section: Sections.invoices),
       _NavDef(Icons.receipt_rounded, isEs ? 'Recibos' : 'Receipts',
-          expandable: true),
-      _NavDef(Icons.request_quote_rounded,
-          isEs ? 'Presupuestos' : 'Quotes', expandable: true),
+          expandable: true, section: Sections.invoices),
+      _NavDef(Icons.request_quote_rounded, isEs ? 'Presupuestos' : 'Quotes',
+          expandable: true, section: Sections.budgets),
       _NavDef(Icons.payments_rounded, isEs ? 'Gastos' : 'Expenses',
-          expandable: true),
-      _NavDef(Icons.account_balance_rounded, isEs ? 'Banco' : 'Bank'),
-      _NavDef(Icons.calendar_today_rounded, isEs ? 'Calendario' : 'Calendar'),
+          expandable: true, section: Sections.expenses),
+      _NavDef(Icons.account_balance_rounded, isEs ? 'Banco' : 'Bank',
+          section: Sections.enableBanking),
+      _NavDef(Icons.calendar_today_rounded, isEs ? 'Calendario' : 'Calendar',
+          section: Sections.calendar),
       _NavDef(Icons.bar_chart_rounded, isEs ? 'Informes' : 'Reports'),
       _NavDef(Icons.folder_rounded, isEs ? 'Documentos' : 'Documents'),
     ];
@@ -436,14 +505,19 @@ class _Sidebar extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               children: [
-                for (final it in items) _NavRow(def: it),
+                for (final it in items)
+                  _NavRow(
+                      def: it,
+                      onTap: it.section == null
+                          ? null
+                          : () => onOpenSection(it.section!)),
               ],
             ),
           ),
           const Divider(height: 1, color: _Palette.border),
           _NavRow(
-              def: _NavDef(Icons.settings_rounded,
-                  isEs ? 'Configuración' : 'Settings')),
+              def: _NavDef(
+                  Icons.settings_rounded, isEs ? 'Configuración' : 'Settings')),
           const SizedBox(height: 12),
         ],
       ),
@@ -452,44 +526,50 @@ class _Sidebar extends StatelessWidget {
 }
 
 class _NavDef {
-  _NavDef(this.icon, this.label, {this.active = false, this.expandable = false});
+  _NavDef(this.icon, this.label,
+      {this.active = false, this.expandable = false, this.section});
   final IconData icon;
   final String label;
   final bool active;
   final bool expandable;
+  final String? section;
 }
 
 class _NavRow extends StatelessWidget {
-  const _NavRow({required this.def});
+  const _NavRow({required this.def, this.onTap});
   final _NavDef def;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final color = def.active ? _Palette.blue : _Palette.ink;
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 2),
-      decoration: BoxDecoration(
-        color: def.active ? _Palette.sidebarActive : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        child: Row(
-          children: [
-            Icon(def.icon, size: 20, color: color),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(def.label,
-                  style: TextStyle(
-                      color: color,
-                      fontWeight:
-                          def.active ? FontWeight.w700 : FontWeight.w600,
-                      fontSize: 14)),
-            ),
-            if (def.expandable)
-              const Icon(Icons.keyboard_arrow_down_rounded,
-                  size: 18, color: _Palette.muted),
-          ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        decoration: BoxDecoration(
+          color: def.active ? _Palette.sidebarActive : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          child: Row(
+            children: [
+              Icon(def.icon, size: 20, color: color),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(def.label,
+                    style: TextStyle(
+                        color: color,
+                        fontWeight:
+                            def.active ? FontWeight.w700 : FontWeight.w600,
+                        fontSize: 14)),
+              ),
+              if (def.expandable)
+                const Icon(Icons.keyboard_arrow_down_rounded,
+                    size: 18, color: _Palette.muted),
+            ],
+          ),
         ),
       ),
     );
@@ -526,8 +606,7 @@ class _TopBar extends StatelessWidget {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                  color: _Palette.navy,
-                  borderRadius: BorderRadius.circular(7)),
+                  color: _Palette.navy, borderRadius: BorderRadius.circular(7)),
               child: const Icon(Icons.hexagon_rounded,
                   color: Colors.white, size: 16),
             ),
@@ -645,8 +724,7 @@ class _WeatherChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.cloud_rounded,
-                  size: 20, color: _Palette.amber),
+              const Icon(Icons.cloud_rounded, size: 20, color: _Palette.amber),
               const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -677,10 +755,14 @@ class _WeatherChip extends StatelessWidget {
 // ===================== Content =====================
 class _Content extends StatelessWidget {
   const _Content(
-      {required this.isEs, required this.data, required this.loading});
+      {required this.isEs,
+      required this.data,
+      required this.loading,
+      this.onOpenSection});
   final bool isEs;
   final _DashData? data;
   final bool loading;
+  final ValueChanged<String>? onOpenSection;
 
   @override
   Widget build(BuildContext context) {
@@ -701,9 +783,13 @@ class _Content extends StatelessWidget {
         children: [
           _GreetingHero(isEs: isEs, name: name),
           const SizedBox(height: 18),
-          _StatRow(isEs: isEs, data: data, loading: loading),
+          _StatRow(
+              isEs: isEs,
+              data: data,
+              loading: loading,
+              onOpenSection: onOpenSection),
           const SizedBox(height: 22),
-          _QuickActions(isEs: isEs),
+          _QuickActions(isEs: isEs, onOpenSection: onOpenSection),
           const SizedBox(height: 22),
           if (twoCol)
             IntrinsicHeight(
@@ -711,16 +797,25 @@ class _Content extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                      child: _RecentActivity(isEs: isEs, data: data)),
+                      child: _RecentActivity(
+                          isEs: isEs,
+                          data: data,
+                          onOpenSection: onOpenSection)),
                   const SizedBox(width: 18),
-                  Expanded(child: _UpcomingTasks(isEs: isEs, data: data)),
+                  Expanded(
+                      child: _UpcomingTasks(
+                          isEs: isEs,
+                          data: data,
+                          onOpenSection: onOpenSection)),
                 ],
               ),
             )
           else ...[
-            _RecentActivity(isEs: isEs, data: data),
+            _RecentActivity(
+                isEs: isEs, data: data, onOpenSection: onOpenSection),
             const SizedBox(height: 18),
-            _UpcomingTasks(isEs: isEs, data: data),
+            _UpcomingTasks(
+                isEs: isEs, data: data, onOpenSection: onOpenSection),
           ],
           const SizedBox(height: 18),
           if (twoCol)
@@ -813,8 +908,7 @@ class _GreetingHero extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: BoxDecoration(
                 color: _Palette.surface,
                 borderRadius: BorderRadius.circular(10),
@@ -841,10 +935,14 @@ class _GreetingHero extends StatelessWidget {
 
 class _StatRow extends StatelessWidget {
   const _StatRow(
-      {required this.isEs, required this.data, required this.loading});
+      {required this.isEs,
+      required this.data,
+      required this.loading,
+      this.onOpenSection});
   final bool isEs;
   final _DashData? data;
   final bool loading;
+  final ValueChanged<String>? onOpenSection;
 
   @override
   Widget build(BuildContext context) {
@@ -854,24 +952,28 @@ class _StatRow extends StatelessWidget {
           value: data?.facturas,
           icon: Icons.description_rounded,
           color: _Palette.blue,
+          onTap: () => onOpenSection?.call(Sections.invoices),
           loading: loading),
       _StatCard(
           label: isEs ? 'Pagadas' : 'Paid',
           value: data?.pagadas,
           icon: Icons.check_circle_rounded,
           color: _Palette.green,
+          onTap: () => onOpenSection?.call(Sections.invoices),
           loading: loading),
       _StatCard(
           label: isEs ? 'Pendientes' : 'Pending',
           value: data?.pendientes,
           icon: Icons.access_time_rounded,
           color: _Palette.amber,
+          onTap: () => onOpenSection?.call(Sections.invoices),
           loading: loading),
       _StatCard(
           label: isEs ? 'Clientes' : 'Clients',
           value: data?.clientes,
           icon: Icons.groups_rounded,
           color: _Palette.purple,
+          onTap: () => onOpenSection?.call(Sections.services),
           loading: loading),
     ];
 
@@ -894,88 +996,99 @@ class _StatCard extends StatelessWidget {
       required this.value,
       required this.icon,
       required this.color,
-      required this.loading});
+      required this.loading,
+      this.onTap});
   final String label;
   final int? value;
   final IconData icon;
   final Color color;
   final bool loading;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _Palette.surface,
+    return Material(
+      color: _Palette.surface,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _Palette.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, color: color, size: 22),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _Palette.border),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        color: _Palette.muted,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12.5)),
-                const SizedBox(height: 2),
-                loading
-                    ? const Padding(
-                        padding: EdgeInsets.only(top: 4),
-                        child: SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2)),
-                      )
-                    : Text('${value ?? 0}',
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12)),
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            color: _Palette.navy,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 24)),
-              ],
-            ),
+                            color: _Palette.muted,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.5)),
+                    const SizedBox(height: 2),
+                    loading
+                        ? const Padding(
+                            padding: EdgeInsets.only(top: 4),
+                            child: SizedBox(
+                                width: 18,
+                                height: 18,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2)),
+                          )
+                        : Text('${value ?? 0}',
+                            style: const TextStyle(
+                                color: _Palette.navy,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 24)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  size: 18, color: _Palette.muted),
+            ],
           ),
-          const Icon(Icons.chevron_right_rounded,
-              size: 18, color: _Palette.muted),
-        ],
+        ),
       ),
     );
   }
 }
 
 class _QuickActions extends StatelessWidget {
-  const _QuickActions({required this.isEs});
+  const _QuickActions({required this.isEs, this.onOpenSection});
   final bool isEs;
+  final ValueChanged<String>? onOpenSection;
 
   @override
   Widget build(BuildContext context) {
     final actions = <_QA>[
       _QA(Icons.note_add_rounded, isEs ? 'Nueva factura' : 'New invoice',
-          _Palette.blue),
+          _Palette.blue, Sections.invoices),
       _QA(Icons.receipt_rounded, isEs ? 'Nuevo recibo' : 'New receipt',
-          _Palette.purple),
+          _Palette.purple, Sections.invoices),
       _QA(Icons.post_add_rounded, isEs ? 'Nuevo presupuesto' : 'New quote',
-          _Palette.green),
+          _Palette.green, Sections.budgets),
       _QA(Icons.savings_rounded, isEs ? 'Registrar gasto' : 'Log expense',
-          _Palette.amber),
+          _Palette.amber, Sections.expenses),
       _QA(Icons.person_add_alt_1_rounded, isEs ? 'Crear cliente' : 'New client',
-          _Palette.blue),
+          _Palette.blue, Sections.services),
       _QA(Icons.event_rounded, isEs ? 'Nueva tarea' : 'New task',
-          _Palette.purple),
+          _Palette.purple, Sections.calendar),
     ];
 
     return Column(
@@ -996,7 +1109,14 @@ class _QuickActions extends StatelessWidget {
             runSpacing: gap,
             children: [
               for (final a in actions)
-                SizedBox(width: w, child: _QuickActionTile(qa: a, isEs: isEs)),
+                SizedBox(
+                    width: w,
+                    child: _QuickActionTile(
+                        qa: a,
+                        isEs: isEs,
+                        onTap: onOpenSection == null
+                            ? null
+                            : () => onOpenSection!(a.section))),
             ],
           );
         }),
@@ -1006,16 +1126,19 @@ class _QuickActions extends StatelessWidget {
 }
 
 class _QA {
-  _QA(this.icon, this.label, this.color);
+  _QA(this.icon, this.label, this.color, this.section);
   final IconData icon;
   final String label;
   final Color color;
+  final String section;
 }
 
 class _QuickActionTile extends StatelessWidget {
-  const _QuickActionTile({required this.qa, required this.isEs});
+  const _QuickActionTile(
+      {required this.qa, required this.isEs, required this.onTap});
   final _QA qa;
   final bool isEs;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1024,14 +1147,13 @@ class _QuickActionTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        onTap: onTap,
+        /* ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             duration: const Duration(seconds: 1),
             content: Text(isEs
                 ? 'Vista previa — acción no disponible'
                 : 'Preview — action unavailable'),
-          ));
-        },
+          )); */
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
           decoration: BoxDecoration(
@@ -1067,10 +1189,15 @@ class _QuickActionTile extends StatelessWidget {
 
 // ===================== Panels =====================
 class _Panel extends StatelessWidget {
-  const _Panel({required this.title, required this.action, required this.child});
+  const _Panel(
+      {required this.title,
+      required this.action,
+      required this.child,
+      this.onAction});
   final String title;
   final String action;
   final Widget child;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -1087,13 +1214,26 @@ class _Panel extends StatelessWidget {
           Row(
             children: [
               Expanded(child: _SectionTitle(title)),
-              Text(action,
-                  style: const TextStyle(
-                      color: _Palette.blue,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12.5)),
-              const Icon(Icons.chevron_right_rounded,
-                  size: 16, color: _Palette.blue),
+              InkWell(
+                onTap: onAction,
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(action,
+                          style: const TextStyle(
+                              color: _Palette.blue,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12.5)),
+                      const Icon(Icons.chevron_right_rounded,
+                          size: 16, color: _Palette.blue),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -1105,9 +1245,11 @@ class _Panel extends StatelessWidget {
 }
 
 class _RecentActivity extends StatelessWidget {
-  const _RecentActivity({required this.isEs, required this.data});
+  const _RecentActivity(
+      {required this.isEs, required this.data, this.onOpenSection});
   final bool isEs;
   final _DashData? data;
+  final ValueChanged<String>? onOpenSection;
 
   @override
   Widget build(BuildContext context) {
@@ -1115,6 +1257,9 @@ class _RecentActivity extends StatelessWidget {
     return _Panel(
       title: isEs ? 'Actividad reciente' : 'Recent activity',
       action: isEs ? 'Ver todo' : 'See all',
+      onAction: onOpenSection == null
+          ? null
+          : () => onOpenSection!(Sections.invoices),
       child: Column(
         children: [
           for (var i = 0; i < items.length; i++) ...[
@@ -1126,8 +1271,7 @@ class _RecentActivity extends StatelessWidget {
                   decoration: BoxDecoration(
                       color: items[i].color.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10)),
-                  child: Icon(items[i].icon,
-                      color: items[i].color, size: 19),
+                  child: Icon(items[i].icon, color: items[i].color, size: 19),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1164,9 +1308,11 @@ class _RecentActivity extends StatelessWidget {
 }
 
 class _UpcomingTasks extends StatelessWidget {
-  const _UpcomingTasks({required this.isEs, required this.data});
+  const _UpcomingTasks(
+      {required this.isEs, required this.data, this.onOpenSection});
   final bool isEs;
   final _DashData? data;
+  final ValueChanged<String>? onOpenSection;
 
   @override
   Widget build(BuildContext context) {
@@ -1174,6 +1320,9 @@ class _UpcomingTasks extends StatelessWidget {
     return _Panel(
       title: isEs ? 'Próximas tareas' : 'Upcoming tasks',
       action: isEs ? 'Ver calendario' : 'See calendar',
+      onAction: onOpenSection == null
+          ? null
+          : () => onOpenSection!(Sections.calendar),
       child: Column(
         children: [
           for (var i = 0; i < items.length; i++) ...[
@@ -1399,7 +1548,9 @@ const _enMonths = [
 String _formatLongDate(DateTime d, bool isEs) {
   final wd = (isEs ? _esWeekdays : _enWeekdays)[d.weekday - 1];
   final m = (isEs ? _esMonths : _enMonths)[d.month - 1];
-  return isEs ? '$wd, ${d.day} de $m de ${d.year}' : '$wd, $m ${d.day}, ${d.year}';
+  return isEs
+      ? '$wd, ${d.day} de $m de ${d.year}'
+      : '$wd, $m ${d.day}, ${d.year}';
 }
 
 String _shortDate(DateTime d, bool isEs) {

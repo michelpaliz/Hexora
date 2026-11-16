@@ -13,6 +13,7 @@ class Sections {
   static const profile = 'profile';
   static const editGroup = 'editGroup';
   static const invoices = 'invoices';
+  static const invoiceClients = 'invoiceClients';
   static const budgets = 'budgets';
   static const expenses = 'expenses';
   static const emails = 'emails';

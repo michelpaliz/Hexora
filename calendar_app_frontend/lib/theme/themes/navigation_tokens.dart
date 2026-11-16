@@ -95,6 +95,11 @@ class NavigationColors {
   Color get pressed => scheme.primary.withValues(alpha: 0.20);
   Color get disabled => scheme.onSurface.withValues(alpha: 0.38);
 
+  Color get compactControlSurface => scheme.surfaceContainerHigh;
+  Color get compactControlBorder =>
+      scheme.outlineVariant.withValues(alpha: 0.9);
+  Color get compactControlHover => scheme.onSurface.withValues(alpha: 0.06);
+
   Color overlay(Set<WidgetState> states) {
     if (states.contains(WidgetState.disabled)) return Colors.transparent;
     if (states.contains(WidgetState.pressed)) return pressed;

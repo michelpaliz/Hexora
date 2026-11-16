@@ -246,6 +246,18 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
           ),
           if (_hasSeasons) _buildMaintenanceSeasons(),
           _buildTagFields(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTemplateContentCard() {
+    return _card(
+      title: 'Contenido del PDF',
+      subtitle: 'Texto reutilizable y formato del documento.',
+      icon: Icons.text_snippet_outlined,
+      child: Column(
+        children: [
           _field(
             _title,
             'Titulo del PDF',
@@ -264,7 +276,7 @@ extension _TemplateVariableFields on _PresupuestoTemplateEditorScreenState {
             _intro,
             'Texto inicial',
             maxLines: 6,
-            minLines: 5,
+            minLines: 4,
             hint: 'Explica brevemente el servicio y el precio propuesto.',
             textCapitalization: TextCapitalization.sentences,
             markdown: true,

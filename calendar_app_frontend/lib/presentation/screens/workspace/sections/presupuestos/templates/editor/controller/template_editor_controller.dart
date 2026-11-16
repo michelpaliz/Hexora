@@ -1588,17 +1588,16 @@ class _PresupuestoTemplateEditorScreenState
       if (canChooseTemplate) _buildDefaultTemplatesCard(),
       if (widget.templateOnly && _templates.isNotEmpty)
         _buildTemplateSelectorCard(),
+      _buildTemplateContentCard(),
     ];
-    if (baseChildren.isNotEmpty) {
-      steps.add(
-        _EditorStep(
-          title: 'Plantilla base',
-          subtitle: 'Elige una plantilla guardada o empieza desde cero.',
-          icon: Icons.account_tree_outlined,
-          children: baseChildren,
-        ),
-      );
-    }
+    steps.add(
+      _EditorStep(
+        title: 'Plantilla base',
+        subtitle: 'Texto y formato reutilizable del documento.',
+        icon: Icons.account_tree_outlined,
+        children: baseChildren,
+      ),
+    );
     steps.addAll([
       _EditorStep(
         title: 'Datos',
@@ -1628,6 +1627,9 @@ class _PresupuestoTemplateEditorScreenState
 
   Widget _buildTemplateSelectorCard() =>
       _TemplateSelection(this)._buildTemplateSelectorCard();
+
+  Widget _buildTemplateContentCard() =>
+      _TemplateVariableFields(this)._buildTemplateContentCard();
 
   Widget _buildMainCopyCard() =>
       _TemplateVariableFields(this)._buildMainCopyCard();

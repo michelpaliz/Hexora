@@ -88,7 +88,11 @@ class BusinessChatMember {
         isOnline: json['isOnline'] == true,
         role: (json['role'] ?? 'member').toString(),
         presenceVisible: json['presenceVisible'] != false,
-        photoUrl: json['photoUrl']?.toString(),
+        photoUrl: (json['photoUrl'] ??
+                json['avatarUrl'] ??
+                json['profilePhotoUrl'] ??
+                json['photo'])
+            ?.toString(),
         lastActiveAt:
             DateTime.tryParse((json['lastActiveAt'] ?? '').toString()),
       );

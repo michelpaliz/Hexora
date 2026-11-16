@@ -110,6 +110,7 @@ class GroupDashboardState extends ChangeNotifier {
   static const _adminOnlySections = {
     Sections.services,
     Sections.invoices,
+    Sections.invoiceClients,
     Sections.budgets,
     Sections.expenses,
     Sections.emails,
@@ -131,6 +132,7 @@ class GroupDashboardState extends ChangeNotifier {
     Sections.maps,
     Sections.workers,
     Sections.invoices,
+    Sections.invoiceClients,
     Sections.budgets,
     Sections.expenses,
     Sections.emails,
@@ -395,6 +397,10 @@ class GroupDashboardState extends ChangeNotifier {
       Sections.invoices => (
           Icons.receipt_long_outlined,
           es ? 'Ingresos' : 'Income'
+        ),
+      Sections.invoiceClients => (
+          Icons.people_alt_outlined,
+          es ? 'Facturas por cliente' : 'Invoices by client'
         ),
       Sections.expenses => (
           Icons.trending_down_rounded,

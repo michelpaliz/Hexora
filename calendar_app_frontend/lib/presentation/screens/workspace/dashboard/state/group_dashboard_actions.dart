@@ -8,6 +8,7 @@ import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram
 import 'package:hexora/services/telegram/domain/telegram_domain.dart';
 import 'package:provider/provider.dart';
 import 'package:hexora/presentation/screens/workspace/sections/undone_events/group_undone_events/group_undone_events_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
 import 'package:hexora/presentation/screens/profile/view/profile_view_screen.dart';
 import 'package:hexora/presentation/screens/home/dashboard_preview/dashboard_preview_screen.dart';
 
@@ -102,6 +103,17 @@ class DashboardActions {
           context,
           AppRoutes.groupIncome,
           arguments: state.group,
+        );
+        break;
+      case Sections.invoiceClients:
+        if (!state.canSeeAdmin) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => GroupInvoicesScreen(
+              group: state.group,
+              initialMenu: 'clients_flow',
+            ),
+          ),
         );
         break;
       case Sections.budgets:

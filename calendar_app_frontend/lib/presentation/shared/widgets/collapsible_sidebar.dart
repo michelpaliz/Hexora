@@ -88,8 +88,7 @@ class CollapsibleSidebarShell extends StatelessWidget {
                   return SidebarEdgeShell(
                     collapsed: layoutCollapsed,
                     onToggle: drawer ? null : onToggleCollapsed,
-                    showHandle:
-                        !drawer && !(collapsedToggleInRail && layoutCollapsed),
+                    showHandle: !drawer && !collapsedToggleInRail,
                     expandTooltip: expandTooltip,
                     collapseTooltip: collapseTooltip,
                     toggleKey: const ValueKey('collapsible-sidebar-toggle'),
@@ -122,6 +121,7 @@ class CollapsibleSidebar extends StatelessWidget {
     this.primaryAction,
     this.secondaryItems = const [],
     this.groups = const [],
+    this.topContent,
     this.drawer = false,
     this.expandTooltip = 'Expand menu',
     this.collapseTooltip = 'Collapse menu',
@@ -147,6 +147,7 @@ class CollapsibleSidebar extends StatelessWidget {
   final List<CollapsibleSidebarItem> items;
   final List<CollapsibleSidebarItem> secondaryItems;
   final List<CollapsibleSidebarGroup> groups;
+  final Widget? topContent;
   final bool drawer;
   final String expandTooltip;
   final String collapseTooltip;
@@ -201,6 +202,10 @@ class CollapsibleSidebar extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
                 children: [
+                  if (!layoutCollapsed && topContent != null) ...[
+                    topContent!,
+                    const SizedBox(height: 6),
+                  ],
                   if (primaryAction != null) ...[
                     _primaryEntry(
                       context,

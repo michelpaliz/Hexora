@@ -105,7 +105,8 @@ class WideLayout extends StatelessWidget {
     final section = tab.section;
     const showMainBody = !kIsWeb;
     final showCalendarInline = kIsWeb && section == Sections.calendar;
-    final showInvoicesInline = kIsWeb && section == Sections.invoices;
+    final showInvoicesInline = kIsWeb &&
+        (section == Sections.invoices || section == Sections.invoiceClients);
     final showBudgetsInline = kIsWeb && section == Sections.budgets;
     final showExpensesInline = kIsWeb && section == Sections.expenses;
     final showMapInline = section == Sections.maps;
@@ -114,7 +115,10 @@ class WideLayout extends StatelessWidget {
     final showTelegramInline = section == Sections.telegram;
 
     if (section == Sections.home) {
-      return const DashboardPreviewScreen(embedded: true);
+      return DashboardPreviewScreen(
+        embedded: true,
+        onOpenSection: state.openSection,
+      );
     }
 
     if (section == Sections.agenda) {
@@ -159,8 +163,10 @@ class WideLayout extends StatelessWidget {
                       ),
                       group: state.group,
                       embedded: true,
-                      initialMenu:
-                          tab.arguments['initialMenu'] ?? 'invoices_issued',
+                      initialMenu: tab.arguments['initialMenu'] ??
+                          (section == Sections.invoiceClients
+                              ? 'clients_flow'
+                              : 'invoices_issued'),
                       initialInvoiceId: tab.arguments['initialInvoiceId'],
                       initialReceiptId: tab.arguments['initialReceiptId'],
                       initialBudgetId: tab.arguments['initialBudgetId'],
@@ -249,6 +255,13 @@ List<HexoraNavDestination> _dashboardDestinations(
         icon: Icons.receipt_long_outlined,
         label: es ? 'Ingresos' : 'Income',
       ),
+      HexoraNavDestination(
+        id: Sections.invoiceClients,
+        icon: Icons.people_alt_outlined,
+        label: es ? 'Facturas por cliente' : 'Invoices by client',
+      ),
+    ],
+    if (canSeeAdmin) ...[
       HexoraNavDestination(
         id: Sections.expenses,
         icon: Icons.trending_down,
@@ -350,6 +363,13 @@ class _DashboardModuleSidebar extends StatefulWidget {
 
 class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
   bool _collapsed = false;
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   CollapsibleSidebarItem _item(HexoraNavDestination destination) =>
       CollapsibleSidebarItem(
@@ -362,10 +382,14 @@ class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
   @override
   Widget build(BuildContext context) {
     final es = Localizations.localeOf(context).languageCode == 'es';
+    final query = _searchController.text.trim().toLowerCase();
+    bool matches(HexoraNavDestination destination) =>
+        query.isEmpty || destination.label.toLowerCase().contains(query);
     List<CollapsibleSidebarItem> entries(List<String> ids) => [
           for (final id in ids)
             for (final destination in widget.destinations)
-              if (destination.id == id) _item(destination),
+              if (destination.id == id && matches(destination))
+                _item(destination),
         ];
 
     return CollapsibleSidebar(
@@ -375,12 +399,50 @@ class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
       collapsedToggleInRail: true,
       collapsed: _collapsed,
       onToggleCollapsed: () => setState(() => _collapsed = !_collapsed),
+      topContent: Row(
+        children: [
+          Expanded(
+            child: _MenuSearchField(
+              controller: _searchController,
+              isSpanish: es,
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Tooltip(
+            message: es ? 'Contraer módulos' : 'Collapse modules',
+            child: IconButton(
+              onPressed: () => setState(() => _collapsed = true),
+              icon: const Icon(Icons.keyboard_double_arrow_left_rounded),
+              iconSize: 16,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 34, height: 36),
+              style: IconButton.styleFrom(
+                backgroundColor: NavigationColors(Theme.of(context).colorScheme)
+                    .compactControlSurface,
+                foregroundColor:
+                    NavigationColors(Theme.of(context).colorScheme).foreground,
+                side: BorderSide(
+                  color: NavigationColors(Theme.of(context).colorScheme)
+                      .compactControlBorder,
+                ),
+                overlayColor: NavigationColors(Theme.of(context).colorScheme)
+                    .compactControlHover,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
       items: entries([Sections.home]),
       groups: [
         CollapsibleSidebarGroup(
           label: es ? 'OPERACIONES' : 'OPERATIONS',
           items: entries([
             Sections.invoices,
+            Sections.invoiceClients,
             Sections.expenses,
             Sections.enableBanking,
             Sections.budgets
@@ -406,9 +468,77 @@ class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
         ),
         CollapsibleSidebarGroup(label: '', items: entries([Sections.settings])),
       ],
-      secondaryHeader: true,
+      secondaryHeader: false,
       expandTooltip: es ? 'Expandir módulos' : 'Expand modules',
       collapseTooltip: es ? 'Contraer módulos' : 'Collapse modules',
+    );
+  }
+}
+
+class _MenuSearchField extends StatelessWidget {
+  const _MenuSearchField({
+    required this.controller,
+    required this.isSpanish,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final bool isSpanish;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 36,
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        textInputAction: TextInputAction.search,
+        style: NavigationTokens.label(context).copyWith(fontSize: 12),
+        decoration: InputDecoration(
+          hintText: isSpanish ? 'Buscar...' : 'Search...',
+          hintStyle: NavigationTokens.label(context).copyWith(
+            fontSize: 12,
+            color: colors.onSurfaceVariant.withValues(alpha: 0.72),
+          ),
+          prefixIcon: Icon(Icons.search_rounded,
+              size: 16, color: colors.onSurfaceVariant),
+          suffixIcon: controller.text.isEmpty
+              ? Icon(Icons.tune_rounded,
+                  size: 16, color: colors.onSurfaceVariant)
+              : IconButton(
+                  tooltip: isSpanish ? 'Limpiar búsqueda' : 'Clear search',
+                  onPressed: () {
+                    controller.clear();
+                    onChanged('');
+                  },
+                  icon: const Icon(Icons.close_rounded, size: 16),
+                ),
+          prefixIconConstraints:
+              const BoxConstraints.tightFor(width: 34, height: 36),
+          suffixIconConstraints:
+              const BoxConstraints.tightFor(width: 32, height: 36),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          filled: true,
+          fillColor: NavigationColors(colors).compactControlSurface,
+          isDense: true,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(
+                color: NavigationColors(colors).compactControlBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(
+                color: NavigationColors(colors).compactControlBorder),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: colors.primary, width: 1.2),
+          ),
+        ),
+      ),
     );
   }
 }
