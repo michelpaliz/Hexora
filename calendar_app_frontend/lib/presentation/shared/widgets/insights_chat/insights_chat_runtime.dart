@@ -1388,16 +1388,36 @@ class InsightsChatRuntime extends ChangeNotifier {
           (response['message']?.toString().trim().isNotEmpty ?? false)
               ? response['message'].toString().trim()
               : l.insightsChatNoResponse;
-      _messages.add(
-        ChatMessage(
-          isUser: false,
-          text: textOut,
-          timestamp: DateTime.now(),
-          conversationId: activeConversationId,
-          sourceUserMessage: trimmed,
-          eventAssistant: extractEventAssistantMap(response),
-        ),
-      );
+      final assistant = extractEventAssistantMap(response);
+      final rawItems = assistant?['items'];
+      final items = rawItems is List
+          ? rawItems.map(safeMap).whereType<Map<String, dynamic>>().toList()
+          : const <Map<String, dynamic>>[];
+      if (items.length > 1) {
+        for (var index = 0; index < items.length; index += 1) {
+          _messages.add(
+            ChatMessage(
+              isUser: false,
+              text: index == 0 ? textOut : '',
+              timestamp: DateTime.now(),
+              conversationId: activeConversationId,
+              sourceUserMessage: trimmed,
+              eventAssistant: items[index],
+            ),
+          );
+        }
+      } else {
+        _messages.add(
+          ChatMessage(
+            isUser: false,
+            text: textOut,
+            timestamp: DateTime.now(),
+            conversationId: activeConversationId,
+            sourceUserMessage: trimmed,
+            eventAssistant: assistant,
+          ),
+        );
+      }
       addedAssistant = true;
       notifyListeners();
     } on InsightsApiException catch (e) {
