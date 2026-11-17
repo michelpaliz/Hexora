@@ -11,8 +11,14 @@ import '../insights_date_range.dart';
 import '../insights_markdown.dart';
 import '../widgets/insights_chat_bubble.dart';
 import 'insights_chat_sheet_base.dart';
+import 'insights_visit_planner_guide.dart';
 
 mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
+  Future<void> showVisitPlannerGuide() => showDialog<void>(
+        context: context,
+        builder: (_) => const InsightsVisitPlannerGuide(),
+      );
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -1284,6 +1290,13 @@ mixin InsightsChatSheetShell on InsightsChatSheetStateBase {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
+                  ActionChip(
+                    avatar: const Icon(Icons.help_outline_rounded, size: 14),
+                    label: Text(isEs ? 'Guía de visitas' : 'Visit guide'),
+                    onPressed: showVisitPlannerGuide,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const SizedBox(width: 6),
                   buildContextInfoButton(),
                   const SizedBox(width: 6),
                   buildStartOverButton(),
