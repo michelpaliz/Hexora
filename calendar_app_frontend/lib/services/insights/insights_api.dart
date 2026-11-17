@@ -753,12 +753,16 @@ class InsightsApi {
   Future<Map<String, dynamic>> previewChatEvent({
     required String groupId,
     required String message,
+    List<String> requestHistory = const [],
+    List<String> proposedClientIds = const [],
   }) async {
     final uri = _resolveActionUri('/api/insights/chat/events/preview');
     final headers = await _authJsonHeaders();
     final body = jsonEncode(<String, dynamic>{
       'groupId': groupId.trim(),
       'message': message.trim(),
+      if (requestHistory.isNotEmpty) 'requestHistory': requestHistory,
+      if (proposedClientIds.isNotEmpty) 'proposedClientIds': proposedClientIds,
     });
     await _logRequest(
       tag: 'events:preview',

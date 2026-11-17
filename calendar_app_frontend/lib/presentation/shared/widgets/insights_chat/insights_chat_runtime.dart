@@ -1362,6 +1362,23 @@ class InsightsChatRuntime extends ChangeNotifier {
       _conversationId = activeConversationId;
     }
 
+    final previousEventMessage = _messages.reversed
+        .where((item) => item.conversationId == activeConversationId && !item.isUser)
+        .firstOrNull;
+    final previousAssistant = previousEventMessage?.eventAssistant;
+    final requestHistory = previousAssistant?['status'] == 'needs_clarification'
+        ? ((previousAssistant?['requestHistory'] as List?) ?? const [])
+            .whereType<String>()
+            .take(6)
+            .toList()
+        : <String>[];
+    final proposedClientIds = previousAssistant?['status'] == 'needs_clarification'
+        ? ((previousAssistant?['proposedClientIds'] as List?) ?? const [])
+            .whereType<String>()
+            .take(20)
+            .toList()
+        : <String>[];
+
     _sending = true;
     _error = null;
     _lastUserMessage = trimmed;
@@ -1383,6 +1400,8 @@ class InsightsChatRuntime extends ChangeNotifier {
       final response = await _api.previewChatEvent(
         groupId: resolvedGroupId,
         message: trimmed,
+        requestHistory: requestHistory,
+        proposedClientIds: proposedClientIds,
       );
       final textOut =
           (response['message']?.toString().trim().isNotEmpty ?? false)

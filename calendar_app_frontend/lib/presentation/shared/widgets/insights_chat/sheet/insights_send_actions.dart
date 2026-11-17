@@ -202,12 +202,6 @@ mixin InsightsSendActions on InsightsChatSheetStateBase {
         text: text,
         groupId: widget.groupId,
       );
-      if (!mounted) return;
-      final latestAssistant = latestAssistantMessageFrom(runtime.messages);
-      if (latestAssistant != null &&
-          eventShouldPromptForClientAndService(latestAssistant)) {
-        await editEventDraft(latestAssistant);
-      }
       return;
     }
     await sendMessageAction(
