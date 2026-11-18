@@ -42,6 +42,7 @@ class _User extends ChangeNotifier implements UserDomain {
 
 class _Repository implements ITimeTrackingRepository {
   String? createdWorkerId;
+  Worker? createdWorker;
 
   @override
   dynamic noSuchMethod(Invocation invocation) {
@@ -49,6 +50,11 @@ class _Repository implements ITimeTrackingRepository {
       final entry = invocation.positionalArguments[1] as TimeEntry;
       createdWorkerId = entry.workerId;
       return Future.value(entry.copyWith(id: 'entry'));
+    }
+    if (invocation.memberName == #addWorker) {
+      final worker = invocation.positionalArguments[1] as Worker;
+      createdWorker = worker;
+      return Future.value(worker.copyWith(id: 'created-worker'));
     }
     if (invocation.memberName == #getWorkers) {
       final status = invocation.namedArguments[#status] as WorkerStatus?;
@@ -93,9 +99,58 @@ class _Repository implements ITimeTrackingRepository {
 }
 
 void main() {
+  testWidgets('workers panel uses compact navigation on mobile',
+      (tester) async {
+    tester.view.physicalSize = const Size(475, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(MultiProvider(
+      providers: [
+        ChangeNotifierProvider<UserDomain>(create: (_) => _User()),
+        Provider<ITimeTrackingRepository>(create: (_) => _Repository()),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.fromBrightness(Brightness.light),
+        locale: const Locale('es'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: WorkersInlinePanel(
+            group: Group(
+              id: 'group',
+              name: 'Team',
+              ownerId: 'owner',
+              userRoles: const {'owner': 'owner'},
+              userIds: const ['owner'],
+              createdTime: DateTime(2026),
+              description: '',
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final selector = find.byKey(
+      const ValueKey('workers-mobile-section-selector'),
+    );
+    expect(selector, findsOneWidget);
+    expect(tester.getSize(selector).width, lessThanOrEqualTo(459));
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+    expect(find.text('Resumen del mes'), findsOneWidget);
+    expect(find.text('Importar Telegram'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
       'dashboard directory separates partners and preserves status filter',
       (tester) async {
+    final repository = _Repository();
     tester.view.physicalSize = const Size(1600, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -103,7 +158,7 @@ void main() {
     await tester.pumpWidget(MultiProvider(
       providers: [
         ChangeNotifierProvider<UserDomain>(create: (_) => _User()),
-        Provider<ITimeTrackingRepository>(create: (_) => _Repository()),
+        Provider<ITimeTrackingRepository>.value(value: repository),
       ],
       child: MaterialApp(
         theme: AppTheme.fromBrightness(Brightness.light),
@@ -286,6 +341,27 @@ void main() {
     expect(form.tabController.index, 1);
     expect(find.byType(WorkerDirectoryView), findsOneWidget);
     expect(find.text('Volver al equipo'), findsNothing);
+
+    final createForm = find.descendant(
+      of: find.byType(WorkersFormPanel),
+      matching: find.byKey(const ValueKey('create-worker')),
+    );
+    final nameField = find
+        .descendant(
+          of: createForm,
+          matching: find.byType(TextFormField),
+        )
+        .first;
+    await tester.enterText(nameField, 'Nuevo trabajador');
+    final saveButton = find.descendant(
+      of: createForm,
+      matching: find.byType(HexoraButton),
+    );
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+    expect(repository.createdWorker?.displayName, 'Nuevo trabajador');
+    expect(form.tabController.index, 0);
     expect(tester.takeException(), isNull);
   });
 

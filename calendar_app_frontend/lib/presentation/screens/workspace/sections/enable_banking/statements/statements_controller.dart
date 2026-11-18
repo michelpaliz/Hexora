@@ -226,18 +226,35 @@ class StatementsController extends ChangeNotifier {
     _notify();
     try {
       imports = await _api.listImports();
-      for (final b in imports) {
-        final id = (b['batchId'] ?? b['_id'] ?? b['id'])?.toString() ?? '';
-        if (id.isEmpty) continue;
-        await fetchBatchStatus(id);
-        await fetchReminderSettings(id);
-      }
     } catch (e) {
       importsError = e.toString();
-    } finally {
       loadingImports = false;
       _notify();
+      return;
     }
+    // Show the list as soon as it arrives. Previously the spinner stayed up
+    // until a per-batch freshness status (and reminder settings) had been
+    // fetched sequentially for every import — a 1 + 2N request waterfall that
+    // blocked the whole list. Freshness now hydrates in the background and
+    // each row updates as its status arrives; reminder settings load lazily
+    // from the freshness banner when a batch is opened.
+    loadingImports = false;
+    _notify();
+    unawaited(_hydrateImportStatuses());
+  }
+
+  /// Fetches the freshness status for every loaded import in parallel.
+  /// Each [fetchBatchStatus] call guards its own errors, so one failure does
+  /// not abort the rest.
+  Future<void> _hydrateImportStatuses({int? threshold}) async {
+    final ids = <String>[
+      for (final b in imports)
+        (b['batchId'] ?? b['_id'] ?? b['id'])?.toString() ?? '',
+    ].where((id) => id.isNotEmpty).toList();
+    if (ids.isEmpty) return;
+    await Future.wait(
+      ids.map((id) => fetchBatchStatus(id, threshold: threshold)),
+    );
   }
 
   Future<void> fetchBatchEntries(
@@ -381,11 +398,8 @@ class StatementsController extends ChangeNotifier {
   Future<void> setStatusThreshold(int value) async {
     statusThreshold = value;
     _notify();
-    for (final b in imports) {
-      final id = (b['batchId'] ?? b['_id'] ?? b['id'])?.toString() ?? '';
-      if (id.isEmpty) continue;
-      await fetchBatchStatus(id, threshold: value);
-    }
+    // Re-fetch every batch's freshness in parallel rather than sequentially.
+    await _hydrateImportStatuses(threshold: value);
   }
 
   Future<void> fetchSummary({

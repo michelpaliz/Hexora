@@ -124,6 +124,7 @@ class Invoice {
   final num? discountAmount;
   final num? discountPercent;
   final String? notes;
+  final String? internalNotes;
   final String? recurringSeriesId;
   final DateTime? occurrenceDate;
   final bool? isLinked;
@@ -139,10 +140,6 @@ class Invoice {
   final ClientBilling? clientSnapshot;
   final List<InvoiceLine> lines;
   final List<InvoiceBlock> blocks;
-
-  /// Concept text returned by summary/legacy invoice endpoints when the
-  /// expanded lines or blocks are not included in the response.
-  final List<String> conceptSummaries;
   final String? deliveryStatus;
   final DateTime? sentAt;
   final String? sentBy;
@@ -186,6 +183,7 @@ class Invoice {
     this.discountAmount,
     this.discountPercent,
     this.notes,
+    this.internalNotes,
     this.recurringSeriesId,
     this.occurrenceDate,
     this.isLinked,
@@ -201,7 +199,6 @@ class Invoice {
     this.clientSnapshot,
     this.lines = const [],
     this.blocks = const [],
-    this.conceptSummaries = const [],
     this.deliveryStatus,
     this.sentAt,
     this.sentBy,
@@ -246,6 +243,7 @@ class Invoice {
     num? discountAmount,
     num? discountPercent,
     String? notes,
+    String? internalNotes,
     String? recurringSeriesId,
     DateTime? occurrenceDate,
     bool? isLinked,
@@ -261,7 +259,6 @@ class Invoice {
     ClientBilling? clientSnapshot,
     List<InvoiceLine>? lines,
     List<InvoiceBlock>? blocks,
-    List<String>? conceptSummaries,
     String? deliveryStatus,
     DateTime? sentAt,
     String? sentBy,
@@ -305,6 +302,7 @@ class Invoice {
       discountAmount: discountAmount ?? this.discountAmount,
       discountPercent: discountPercent ?? this.discountPercent,
       notes: notes ?? this.notes,
+      internalNotes: internalNotes ?? this.internalNotes,
       recurringSeriesId: recurringSeriesId ?? this.recurringSeriesId,
       occurrenceDate: occurrenceDate ?? this.occurrenceDate,
       isLinked: isLinked ?? this.isLinked,
@@ -320,7 +318,6 @@ class Invoice {
       clientSnapshot: clientSnapshot ?? this.clientSnapshot,
       lines: lines ?? this.lines,
       blocks: blocks ?? this.blocks,
-      conceptSummaries: conceptSummaries ?? this.conceptSummaries,
       deliveryStatus: deliveryStatus ?? this.deliveryStatus,
       sentAt: sentAt ?? this.sentAt,
       sentBy: sentBy ?? this.sentBy,
@@ -460,53 +457,6 @@ class Invoice {
 
     final linesJson = json['lines'] as List?;
     final blocksJson = json['blocks'] as List?;
-    final conceptSummaries = <String>[];
-
-    void addConcept(dynamic value) {
-      final text = value?.toString().trim() ?? '';
-      if (text.isNotEmpty && !conceptSummaries.contains(text)) {
-        conceptSummaries.add(text);
-      }
-    }
-
-    void readConceptCollection(dynamic value) {
-      if (value is List) {
-        for (final item in value) {
-          if (item is Map) {
-            addConcept(item['conceptTitle']);
-            addConcept(item['description']);
-            addConcept(item['concept']);
-            addConcept(item['title']);
-            addConcept(item['text']);
-            final items = item['conceptItems'];
-            if (items is List) {
-              for (final nested in items) {
-                addConcept(nested);
-              }
-            }
-          } else {
-            addConcept(item);
-          }
-        }
-      }
-    }
-
-    // Group/summary endpoints have used several names over time. Preserve
-    // the actual values instead of making a per-invoice line request.
-    for (final key in const [
-      'concepts',
-      'conceptSummaries',
-      'lineDescriptions',
-      'descriptions',
-      'items',
-      'lineItems',
-      'invoiceLines',
-    ]) {
-      readConceptCollection(json[key]);
-    }
-    for (final key in const ['description', 'concept', 'subject']) {
-      addConcept(json[key]);
-    }
     final parsedBlocks = blocksJson == null
         ? const <InvoiceBlock>[]
         : blocksJson
@@ -523,46 +473,31 @@ class Invoice {
         parsedBlocks.where(isBillableBlock).toList(growable: false);
     final effectiveLines = parsedLines.isNotEmpty
         ? parsedLines
-        : billableBlocks.isNotEmpty
-            ? List<InvoiceLine>.generate(
-                billableBlocks.length,
-                (index) {
-                  final block = billableBlocks[index];
-                  final qty = block.qty ?? 1;
-                  final unitPrice = block.unitPrice ?? 0;
-                  final taxRate = block.taxRate ?? 0;
-                  final lineSubtotal = block.lineSubtotal ?? (qty * unitPrice);
-                  final lineTax =
-                      block.lineTax ?? (lineSubtotal * (taxRate / 100));
-                  final lineTotal = block.lineTotal ?? (lineSubtotal + lineTax);
-                  return InvoiceLine(
-                    id: null,
-                    invoiceId: readId(json['_id'] ?? json['id']),
-                    position: index + 1,
-                    description: blockDescription(block),
-                    quantity: qty,
-                    unitPrice: unitPrice,
-                    taxRate: taxRate,
-                    lineSubtotal: lineSubtotal,
-                    lineTax: lineTax,
-                    lineTotal: lineTotal,
-                  );
-                },
-                growable: false,
-              )
-            : List<InvoiceLine>.generate(
-                conceptSummaries.length,
-                (index) => InvoiceLine(
-                  id: null,
-                  invoiceId: readId(json['_id'] ?? json['id']),
-                  position: index + 1,
-                  description: conceptSummaries[index],
-                  quantity: 1,
-                  unitPrice: 0,
-                  taxRate: 0,
-                ),
-                growable: false,
+        : List<InvoiceLine>.generate(
+            billableBlocks.length,
+            (index) {
+              final block = billableBlocks[index];
+              final qty = block.qty ?? 1;
+              final unitPrice = block.unitPrice ?? 0;
+              final taxRate = block.taxRate ?? 0;
+              final lineSubtotal = block.lineSubtotal ?? (qty * unitPrice);
+              final lineTax = block.lineTax ?? (lineSubtotal * (taxRate / 100));
+              final lineTotal = block.lineTotal ?? (lineSubtotal + lineTax);
+              return InvoiceLine(
+                id: null,
+                invoiceId: readId(json['_id'] ?? json['id']),
+                position: index + 1,
+                description: blockDescription(block),
+                quantity: qty,
+                unitPrice: unitPrice,
+                taxRate: taxRate,
+                lineSubtotal: lineSubtotal,
+                lineTax: lineTax,
+                lineTotal: lineTotal,
               );
+            },
+            growable: false,
+          );
     final historyJson = json['updateHistory'];
     final rawYear = json['yearYY'] ?? json['year'] ?? json['yearShort'];
     int? parsedYear;
@@ -657,6 +592,7 @@ class Invoice {
       discountAmount: parsedDiscountAmount,
       discountPercent: parsedDiscountPercent,
       notes: json['notes']?.toString(),
+      internalNotes: json['internalNotes']?.toString(),
       recurringSeriesId: readIdOrNull(json['recurringSeriesId'] ??
           json['seriesId'] ??
           json['recurrenceSeriesId']),
@@ -692,7 +628,6 @@ class Invoice {
           : null,
       lines: effectiveLines,
       blocks: parsedBlocks,
-      conceptSummaries: conceptSummaries,
       deliveryStatus: json['deliveryStatus']?.toString(),
       sentAt: parseDate(json['sentAt']),
       sentBy: json['sentBy']?.toString(),
@@ -742,6 +677,7 @@ class Invoice {
         if (discountAmount != null) 'discountAmount': discountAmount,
         if (discountPercent != null) 'discountPercent': discountPercent,
         if (notes != null) 'notes': notes,
+        if (internalNotes != null) 'internalNotes': internalNotes,
         if (recurringSeriesId != null) 'recurringSeriesId': recurringSeriesId,
         if (occurrenceDate != null)
           'occurrenceDate': occurrenceDate!.toIso8601String(),
@@ -767,7 +703,6 @@ class Invoice {
         if (clientSnapshot != null) 'clientSnapshot': clientSnapshot!.toJson(),
         if (lines.isNotEmpty) 'lines': lines.map((l) => l.toJson()).toList(),
         if (blocks.isNotEmpty) 'blocks': blocks.map((b) => b.toJson()).toList(),
-        if (conceptSummaries.isNotEmpty) 'conceptSummaries': conceptSummaries,
         if (deliveryStatus != null) 'deliveryStatus': deliveryStatus,
         if (sentAt != null) 'sentAt': sentAt!.toIso8601String(),
         if (sentBy != null) 'sentBy': sentBy,

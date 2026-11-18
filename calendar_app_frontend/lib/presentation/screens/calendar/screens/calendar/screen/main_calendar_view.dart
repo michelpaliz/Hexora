@@ -441,8 +441,10 @@ class _MainCalendarViewState extends State<MainCalendarView> {
           final locale = Localizations.localeOf(context).toLanguageTag();
           final selectedDate =
               _c.calendarUI?.selectedDateNotifier.value ?? DateTime.now();
-          final dateLabel =
+          final formattedDate =
               DateFormat('MMMM yyyy', locale).format(selectedDate);
+          final dateLabel =
+              '${formattedDate[0].toUpperCase()}${formattedDate.substring(1)}';
           final yearStart = DateTime(selectedDate.year, 1, 1);
           final weekNumber = ((selectedDate.difference(yearStart).inDays +
                       yearStart.weekday -
@@ -463,38 +465,52 @@ class _MainCalendarViewState extends State<MainCalendarView> {
             children: [
               IconButton(
                 tooltip: 'Previous period',
+                constraints:
+                    const BoxConstraints.tightFor(width: 30, height: 30),
+                padding: EdgeInsets.zero,
                 visualDensity: VisualDensity.compact,
                 onPressed: () => movePeriod(-1),
-                icon: const Icon(Icons.chevron_left_rounded, size: 20),
+                icon: const Icon(Icons.chevron_left_rounded, size: 18),
               ),
               IconButton(
                 tooltip: 'Next period',
+                constraints:
+                    const BoxConstraints.tightFor(width: 30, height: 30),
+                padding: EdgeInsets.zero,
                 visualDensity: VisualDensity.compact,
                 onPressed: () => movePeriod(1),
-                icon: const Icon(Icons.chevron_right_rounded, size: 20),
+                icon: const Icon(Icons.chevron_right_rounded, size: 18),
               ),
               const SizedBox(width: 4),
               Text(
                 dateLabel,
-                style: typo.bodyMedium.copyWith(fontWeight: FontWeight.w800),
+                style: typo.bodyMedium.copyWith(
+                    fontSize: 16,
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w600),
               ),
               const SizedBox(width: 8),
               Chip(
                 label: Text('Semana $weekNumber'),
                 visualDensity: VisualDensity.compact,
                 labelStyle: typo.bodySmall.copyWith(
+                  fontSize: 12,
                   color: cs.onSurfaceVariant,
                   fontWeight: FontWeight.w700,
                 ),
                 side: BorderSide.none,
                 backgroundColor: cs.surfaceContainerHighest,
-                padding: EdgeInsets.zero,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
               ),
               const SizedBox(width: 6),
               OutlinedButton(
                 onPressed: _c.jumpToToday,
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(0, 32),
+                  foregroundColor: cs.primary,
+                  side: BorderSide(color: cs.primary.withValues(alpha: 0.55)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   visualDensity: VisualDensity.compact,
                 ),
@@ -502,44 +518,68 @@ class _MainCalendarViewState extends State<MainCalendarView> {
               ),
             ],
           );
-          final viewSelector = SegmentedButton<String>(
-            showSelectedIcon: false,
-            segments: [
-              ButtonSegment(
-                value: 'day',
-                label: Text(loc.tabDay),
-                icon: const Icon(Icons.calendar_view_day_outlined, size: 15),
-              ),
-              ButtonSegment(
-                value: 'week',
-                label: Text(loc.tabWeek),
-                icon: const Icon(Icons.calendar_view_week_outlined, size: 15),
-              ),
-              ButtonSegment(
-                value: 'month',
-                label: Text(loc.tabMonth),
-                icon: const Icon(Icons.calendar_today_outlined, size: 15),
-              ),
-              ButtonSegment(
-                value: 'agenda',
-                label: Text(loc.tabAgenda),
-                icon: const Icon(Icons.view_agenda_outlined, size: 15),
-              ),
-            ],
-            selected: {viewMode},
-            onSelectionChanged: (selection) =>
-                _onSideMenuChanged(selection.first),
-            style: const ButtonStyle(
-              visualDensity: VisualDensity.compact,
-              minimumSize: WidgetStatePropertyAll(Size(0, 34)),
-              padding: WidgetStatePropertyAll(
-                EdgeInsets.symmetric(horizontal: 8),
+          final viewSelector = Container(
+            height: 34,
+            decoration: BoxDecoration(
+              color: cs.surface,
+              border:
+                  Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: SegmentedButton<String>(
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment(
+                  value: 'day',
+                  label: Text(loc.tabDay),
+                  icon: const Icon(Icons.calendar_view_day_outlined, size: 15),
+                ),
+                ButtonSegment(
+                  value: 'week',
+                  label: Text(loc.tabWeek),
+                  icon: const Icon(Icons.calendar_view_week_outlined, size: 15),
+                ),
+                ButtonSegment(
+                  value: 'month',
+                  label: Text(loc.tabMonth),
+                  icon: const Icon(Icons.calendar_today_outlined, size: 15),
+                ),
+                ButtonSegment(
+                  value: 'agenda',
+                  label: Text(loc.tabAgenda),
+                  icon: const Icon(Icons.view_agenda_outlined, size: 15),
+                ),
+              ],
+              selected: {viewMode},
+              onSelectionChanged: (selection) =>
+                  _onSideMenuChanged(selection.first),
+              style: ButtonStyle(
+                side: const WidgetStatePropertyAll(BorderSide.none),
+                shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8))),
+                foregroundColor: WidgetStateProperty.resolveWith((states) =>
+                    states.contains(WidgetState.selected)
+                        ? cs.primary
+                        : cs.onSurface),
+                backgroundColor: WidgetStateProperty.resolveWith((states) =>
+                    states.contains(WidgetState.selected)
+                        ? cs.primary.withValues(alpha: 0.10)
+                        : cs.surface),
+                minimumSize: const WidgetStatePropertyAll(Size(0, 34)),
+                textStyle: WidgetStatePropertyAll(typo.bodySmall.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                )),
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 8),
+                ),
               ),
             ),
           );
           final actions = <Widget>[
             viewSelector,
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             periodToolbar,
             const SizedBox(width: 10),
             IconButton(
@@ -594,28 +634,27 @@ class _MainCalendarViewState extends State<MainCalendarView> {
                   borderRadius: BorderRadius.circular(999),
                   onTap: () => _onUserFilterChanged(user.userId),
                   child: Container(
-                    width: 30,
-                    height: 30,
-                    padding: const EdgeInsets.all(1.6),
+                    width: 28,
+                    height: 28,
+                    padding: const EdgeInsets.all(1.5),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: isSelected
                             ? cs.primary
-                            : cs.outlineVariant.withValues(alpha: 0.55),
-                        width: 1.8,
+                            : cs.outlineVariant.withValues(alpha: 0.65),
+                        width: isSelected ? 2 : 1,
                       ),
                     ),
                     child: PulsingRingAvatar(
-                      radius: 12,
+                      radius: 11,
                       image: AvatarUtils.profileImageProvider(
                         user.photoUrl,
                         assetFallback: 'assets/images/default_profile.png',
                       ),
                       isOnline: user.isOnline,
-                      onlineColor: isSelected ? cs.primary : cs.secondary,
-                      offlineBorderColor:
-                          cs.outlineVariant.withValues(alpha: 0.55),
+                      onlineColor: cs.primary,
+                      offlineBorderColor: cs.outlineVariant,
                       backgroundColor: cs.surfaceContainerHighest,
                     ),
                   ),

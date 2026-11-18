@@ -734,10 +734,13 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
     );
   }
 
-  String _sectionTitle(BuildContext context) {
+  String _sectionTitle(BuildContext context) =>
+      _sectionTitleFor(context, _section);
+
+  String _sectionTitleFor(BuildContext context, _InlineSection section) {
     final l = AppLocalizations.of(context)!;
     final isEs = _isSpanish(context);
-    return switch (_section) {
+    return switch (section) {
       _InlineSection.workers => l.workersLabel,
       _InlineSection.graphs => isEs ? 'Graficas' : 'Charts',
       _InlineSection.historial =>
@@ -749,6 +752,119 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
       _InlineSection.accountSetup =>
         isEs ? 'Cuentas de acceso' : 'Worker accounts',
     };
+  }
+
+  IconData _sectionIcon(_InlineSection section) => switch (section) {
+        _InlineSection.workers => Icons.group_outlined,
+        _InlineSection.graphs => Icons.bar_chart_rounded,
+        _InlineSection.historial => Icons.history_outlined,
+        _InlineSection.telegramImport => Icons.telegram,
+        _InlineSection.registerHours => Icons.schedule_outlined,
+        _InlineSection.accountSetup => Icons.manage_accounts_outlined,
+      };
+
+  Widget _buildMobileSectionSelector(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final sections = <_InlineSection>[
+      _InlineSection.workers,
+      if (_canManageAccounts) _InlineSection.accountSetup,
+      _InlineSection.registerHours,
+      _InlineSection.telegramImport,
+      _InlineSection.historial,
+      _InlineSection.graphs,
+    ];
+
+    return Container(
+      key: const ValueKey('workers-mobile-section-selector'),
+      height: 42,
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: .55),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: PopupMenuButton<_InlineSection>(
+              tooltip: l.workersLabel,
+              position: PopupMenuPosition.under,
+              initialValue: _section,
+              onSelected: (section) => setState(() {
+                _section = section;
+                _overviewWorker = null;
+                _showWorkerForm = false;
+                _showInlineTimeEntry = false;
+              }),
+              itemBuilder: (context) => [
+                for (final section in sections)
+                  PopupMenuItem(
+                    value: section,
+                    child: Row(
+                      children: [
+                        Icon(
+                          _sectionIcon(section),
+                          size: 18,
+                          color: section == _section
+                              ? cs.primary
+                              : cs.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(_sectionTitleFor(context, section)),
+                        ),
+                        if (section == _section)
+                          Icon(Icons.check_rounded,
+                              size: 18, color: cs.primary),
+                      ],
+                    ),
+                  ),
+              ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    Icon(_sectionIcon(_section), size: 19, color: cs.primary),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        _sectionTitle(context),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: cs.onSurface,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.expand_more_rounded,
+                      size: 19,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 24,
+            color: cs.outlineVariant.withValues(alpha: .55),
+          ),
+          IconButton(
+            tooltip: l.createWorkerCta,
+            onPressed: _openCreateWorkerForm,
+            icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
+            color: cs.primary,
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildWorkersSection(BuildContext context) {
@@ -987,61 +1103,54 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
       );
     }
 
-    return Padding(
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final mobile = constraints.maxWidth < 760;
+        final mainContent = WorkspaceMainContent(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(mobile ? 8 : 0, 8, mobile ? 8 : 12, 8),
+            child: Column(
               children: [
-                _buildSideMenu(context),
+                if (mobile) _buildMobileSectionSelector(context),
                 Expanded(
-                  child: WorkspaceMainContent(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(0, 12, 12, 12),
-                      child: FolderPanel(
-                        title: _sectionTitle(context),
-                        showTab: _section != _InlineSection.workers,
-                        showBorder: false,
-                        showToolbarDivider: false,
-                        contentTopPadding:
-                            _section == _InlineSection.workers ? 12 : 30,
-                        child: HexoraMenuContentTransition.tab(
-                          transitionKey: _section,
-                          child: IndexedStack(
-                            index: _section.index,
+                  child: FolderPanel(
+                    title: _sectionTitle(context),
+                    showTab: _section != _InlineSection.workers,
+                    showBorder: false,
+                    showToolbarDivider: false,
+                    contentTopPadding:
+                        _section == _InlineSection.workers ? 12 : 30,
+                    child: HexoraMenuContentTransition.tab(
+                      transitionKey: _section,
+                      child: IndexedStack(
+                        index: _section.index,
+                        children: [
+                          IndexedStack(
+                            index: _overviewWorker == null ? 0 : 1,
                             children: [
-                              IndexedStack(
-                                index: _overviewWorker == null ? 0 : 1,
-                                children: [
-                                  _buildWorkersSection(context),
-                                  if (_overviewWorker != null)
-                                    WorkerMonthlyOverviewInline(
-                                      group: widget.group,
-                                      worker: _overviewWorker!,
-                                      repo: _repo,
-                                      getToken: _token,
-                                      onBack: () => setState(
-                                          () => _overviewWorker = null),
-                                      onDataChanged: _reloadActiveTotals,
-                                    ),
-                                ],
-                              ),
-                              WorkerTimeHistoryGraphView(
-                                key: ValueKey(
-                                    'inline-worker-graphs-${widget.group.id}'),
-                                group: widget.group,
-                              ),
-                              _buildHistorialSection(context),
-                              TelegramWorkerHoursImportView(
-                                  group: widget.group),
-                              _buildRegisterHoursImportSection(context),
-                              WorkerAccountSetupScreen(group: widget.group),
+                              _buildWorkersSection(context),
+                              if (_overviewWorker != null)
+                                WorkerMonthlyOverviewInline(
+                                  group: widget.group,
+                                  worker: _overviewWorker!,
+                                  repo: _repo,
+                                  getToken: _token,
+                                  onBack: () =>
+                                      setState(() => _overviewWorker = null),
+                                  onDataChanged: _reloadActiveTotals,
+                                ),
                             ],
                           ),
-                        ),
+                          WorkerTimeHistoryGraphView(
+                            key: ValueKey(
+                                'inline-worker-graphs-${widget.group.id}'),
+                            group: widget.group,
+                          ),
+                          _buildHistorialSection(context),
+                          TelegramWorkerHoursImportView(group: widget.group),
+                          _buildRegisterHoursImportSection(context),
+                          WorkerAccountSetupScreen(group: widget.group),
+                        ],
                       ),
                     ),
                   ),
@@ -1049,8 +1158,17 @@ class _WorkersInlinePanelState extends State<WorkersInlinePanel>
               ],
             ),
           ),
-        ],
-      ),
+        );
+
+        if (mobile) return mainContent;
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSideMenu(context),
+            Expanded(child: mainContent),
+          ],
+        );
+      },
     );
   }
 

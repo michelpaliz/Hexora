@@ -7,6 +7,7 @@ import 'package:hexora/presentation/screens/workspace/sections/enable_banking/en
 import 'package:hexora/presentation/screens/workspace/sections/expenses/gastos_module_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/presupuestos_module_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/quick_notes/quick_notes_board_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/mail/mail_console_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
@@ -72,6 +73,9 @@ class NarrowLayout extends StatelessWidget {
           embedded: true,
           canEdit: state.canSeeAdmin,
         );
+        break;
+      case Sections.quickNotes:
+        child = QuickNotesBoardScreen(group: state.group, embedded: true);
         break;
       case Sections.chat:
       case Sections.businessChat:

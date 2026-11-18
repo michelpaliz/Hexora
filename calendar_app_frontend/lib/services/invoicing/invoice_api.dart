@@ -736,6 +736,18 @@ class InvoicesApi {
     });
   }
 
+  Future<String?> updateInternalNotes(String invoiceId, String? notes) async {
+    final r = await AuthenticatedHttpClient.patch(
+      _u('/$invoiceId/internal-notes'),
+      headers: _headers(),
+      body: jsonEncode({'internalNotes': notes}),
+    );
+    return _decode<String?>(r, (j) {
+      if (j is Map) return j['internalNotes']?.toString();
+      throw Exception('Unexpected invoice internal notes payload');
+    });
+  }
+
   Future<Map<String, dynamic>> previewAccountantCompare({
     required List<int> bytes,
     required String fileName,
@@ -789,25 +801,27 @@ class InvoicesApi {
   }
 
   Future<Map<String, dynamic>> getPublicLink(String id) async {
-    final r = await AuthenticatedHttpClient.get(_u('/$id/public-link'),
-        headers: _headers());
-    return _decode<Map<String, dynamic>>(
-        r, (j) => Map<String, dynamic>.from(j));
+    final r = await AuthenticatedHttpClient.get(
+      _u('/$id/public-link'), headers: _headers());
+    return _decode<Map<String, dynamic>>(r, (j) => Map<String, dynamic>.from(j));
+  }
+
+  Future<Map<String, dynamic>> activatePublicLink(String id) async {
+    final r = await AuthenticatedHttpClient.post(
+      _u('/$id/public-link/activate'), headers: _headers());
+    return _decode<Map<String, dynamic>>(r, (j) => Map<String, dynamic>.from(j));
   }
 
   Future<Map<String, dynamic>> revokePublicLink(String id) async {
-    final r = await AuthenticatedHttpClient.post(_u('/$id/public-link/revoke'),
-        headers: _headers());
-    return _decode<Map<String, dynamic>>(
-        r, (j) => Map<String, dynamic>.from(j));
+    final r = await AuthenticatedHttpClient.post(
+      _u('/$id/public-link/revoke'), headers: _headers());
+    return _decode<Map<String, dynamic>>(r, (j) => Map<String, dynamic>.from(j));
   }
 
   Future<Map<String, dynamic>> regeneratePublicLink(String id) async {
     final r = await AuthenticatedHttpClient.post(
-        _u('/$id/public-link/regenerate'),
-        headers: _headers());
-    return _decode<Map<String, dynamic>>(
-        r, (j) => Map<String, dynamic>.from(j));
+      _u('/$id/public-link/regenerate'), headers: _headers());
+    return _decode<Map<String, dynamic>>(r, (j) => Map<String, dynamic>.from(j));
   }
 
   /// POST /invoices/:id/issue  -> locks invoice, assigns number/issueDate/status

@@ -590,143 +590,133 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
             role == 'co-admin');
     final canEditDraft = invoice.isDraft && widget.onEditInvoice != null;
 
-    final headerMenu = PopupMenuButton<String>(
-      tooltip: isEs ? 'Más acciones' : 'More actions',
-      position: PopupMenuPosition.under,
-      onOpened: () => setState(() => _previewMenuOpen = true),
-      onCanceled: () => setState(() => _previewMenuOpen = false),
-      onSelected: (value) {
-        setState(() => _previewMenuOpen = false);
-        switch (value) {
-          case 'issue':
-            _issueSelectedInvoice();
-          case 'edit':
-            widget.onEditInvoice?.call();
-          case 'details':
-            _openDetailsDialog(context);
-          case 'send':
-            _openSendInvoice(canSend: canSend);
-          case 'download':
-            _downloadPdf();
-          case 'preview':
-            _previewPdf();
-          case 'copy':
-            _copyPdfLink();
-          case 'recurrence':
-            widget.onOpenRecurringSeries?.call(invoice.recurringSeriesId!);
-        }
-      },
-      itemBuilder: (_) => [
-        if (widget.actionsInHeader && canIssue)
-          NavigationPopupMenuItem(
-            value: 'issue',
-            enabled: !_issuingInvoice,
-            child: ListTile(
-              leading: const Icon(Icons.publish_outlined),
-              title: Text(isEs ? 'Emitir' : 'Issue'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-        if (widget.actionsInHeader && canEditDraft)
-          NavigationPopupMenuItem(
-            value: 'edit',
-            child: ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: Text(isEs ? 'Editar' : 'Edit'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-        if (widget.actionsInHeader)
-          NavigationPopupMenuItem(
-            value: 'details',
-            child: ListTile(
-              leading: const Icon(Icons.receipt_long_outlined),
-              title: Text(isEs ? 'Ver detalles' : 'Details'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-        if (widget.actionsInHeader)
-          NavigationPopupMenuItem(
-            value: 'send',
-            enabled: canSend,
-            child: ListTile(
-              leading: const Icon(Icons.mail_outline_rounded),
-              title: Text(isEs ? 'Enviar' : 'Send'),
-              subtitle: canSend
-                  ? null
-                  : Text(isEs
-                      ? 'Solo propietarios y coadministradores'
-                      : 'Owners and co-admins only'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-        NavigationPopupMenuItem(
-          value: 'download',
-          enabled: !_downloadingPdf,
-          child: ListTile(
-            leading: const Icon(Icons.download_outlined),
-            title: Text('${l.download} PDF'),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        NavigationPopupMenuItem(
-          value: 'preview',
-          enabled: !_previewing,
-          child: ListTile(
-            leading: const Icon(Icons.open_in_full_rounded),
-            title: Text(l.invoicePreviewCta),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        NavigationPopupMenuItem(
-          value: 'copy',
-          child: ListTile(
-            leading: const Icon(Icons.copy_outlined),
-            title: Text(isEs ? 'Copiar enlace PDF' : 'Copy PDF link'),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        if (hasRecurrence)
-          NavigationPopupMenuItem(
-            value: 'recurrence',
-            enabled: widget.onOpenRecurringSeries != null,
-            child: ListTile(
-              leading: const Icon(Icons.repeat_rounded),
-              title: Text(recurrenceLabel),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-        if (widget.actionsInHeader && status == 'issued')
-          NavigationPopupMenuItem(
-            enabled: false,
-            child: ListTile(
-              leading: const Icon(Icons.qr_code_2_rounded),
-              title: Text(isEs ? 'Factura digital' : 'Digital invoice'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-        if (widget.actionsInHeader)
-          NavigationPopupMenuItem<String>(
-            enabled: false,
-            child: ListTile(
-              leading:
-                  Icon(isLinked ? Icons.link_rounded : Icons.link_off_rounded),
-              title: Text(isLinked
-                  ? '${l.statementsInvoiceAlreadyLinkedBadge} ($linkedEntriesCount)'
-                  : l.statementsUnlinked),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-      ],
-      style: IconButton.styleFrom(
-        fixedSize: const Size(28, 28),
-        minimumSize: const Size(28, 28),
-        padding: EdgeInsets.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        foregroundColor: cs.onSurfaceVariant,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    final headerMenu = ListTileTheme(
+      data: const ListTileThemeData(
+        dense: true,
+        visualDensity: VisualDensity(horizontal: -2, vertical: -2),
+        minVerticalPadding: 0,
+        contentPadding: EdgeInsets.zero,
       ),
-      icon: const Icon(Icons.more_horiz_rounded, size: 19),
+      child: PopupMenuButton<String>(
+        menuPadding: const EdgeInsets.symmetric(vertical: 4),
+        constraints: const BoxConstraints(minWidth: 250, maxWidth: 270),
+        tooltip: isEs ? 'Más acciones' : 'More actions',
+        position: PopupMenuPosition.under,
+        onOpened: () => setState(() => _previewMenuOpen = true),
+        onCanceled: () => setState(() => _previewMenuOpen = false),
+        onSelected: (value) {
+          setState(() => _previewMenuOpen = false);
+          switch (value) {
+            case 'issue':
+              _issueSelectedInvoice();
+            case 'edit':
+              widget.onEditInvoice?.call();
+            case 'details':
+              _openDetailsDialog(context);
+            case 'send':
+              _openSendInvoice(canSend: canSend);
+            case 'download':
+              _downloadPdf();
+            case 'preview':
+              _previewPdf();
+            case 'copy':
+              _copyPdfLink();
+            case 'recurrence':
+              widget.onOpenRecurringSeries?.call(invoice.recurringSeriesId!);
+          }
+        },
+        itemBuilder: (_) => [
+          if (widget.actionsInHeader && canIssue)
+            NavigationPopupMenuItem(
+              value: 'issue',
+              enabled: !_issuingInvoice,
+              child: ListTile(
+                leading: const Icon(Icons.publish_outlined),
+                title: Text(isEs ? 'Emitir' : 'Issue'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          if (widget.actionsInHeader && canEditDraft)
+            NavigationPopupMenuItem(
+              value: 'edit',
+              child: ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: Text(isEs ? 'Editar' : 'Edit'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          if (widget.actionsInHeader)
+            NavigationPopupMenuItem(
+              value: 'details',
+              child: ListTile(
+                leading: const Icon(Icons.receipt_long_outlined),
+                title: Text(isEs ? 'Ver detalles' : 'Details'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          if (widget.actionsInHeader)
+            NavigationPopupMenuItem(
+              value: 'send',
+              enabled: canSend,
+              child: ListTile(
+                leading: const Icon(Icons.mail_outline_rounded),
+                title: Text(isEs ? 'Enviar' : 'Send'),
+                subtitle: canSend
+                    ? null
+                    : Text(isEs
+                        ? 'Solo propietarios y coadministradores'
+                        : 'Owners and co-admins only'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          if (widget.actionsInHeader) const PopupMenuDivider(height: 1),
+          NavigationPopupMenuItem(
+            value: 'download',
+            enabled: !_downloadingPdf,
+            child: ListTile(
+              leading: const Icon(Icons.download_outlined),
+              title: Text('${l.download} PDF'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          NavigationPopupMenuItem(
+            value: 'preview',
+            enabled: !_previewing,
+            child: ListTile(
+              leading: const Icon(Icons.open_in_full_rounded),
+              title: Text(l.invoicePreviewCta),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          NavigationPopupMenuItem(
+            value: 'copy',
+            child: ListTile(
+              leading: const Icon(Icons.copy_outlined),
+              title: Text(isEs ? 'Copiar enlace PDF' : 'Copy PDF link'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          if (hasRecurrence)
+            NavigationPopupMenuItem(
+              value: 'recurrence',
+              enabled: widget.onOpenRecurringSeries != null,
+              child: ListTile(
+                leading: const Icon(Icons.repeat_rounded),
+                title: Text(recurrenceLabel),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+        ],
+        style: IconButton.styleFrom(
+          fixedSize: const Size(28, 28),
+          minimumSize: const Size(28, 28),
+          padding: EdgeInsets.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          foregroundColor: cs.onSurfaceVariant,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        icon: const Icon(Icons.more_horiz_rounded, size: 19),
+      ),
     );
 
     return ColoredBox(
@@ -1269,8 +1259,6 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
     final role =
         currentUserId == null ? null : widget.group.userRoles[currentUserId];
     final canSend = role == 'owner' || role == 'co-admin';
-    final status = (_invoice.status ?? '').toLowerCase();
-    final showPublicLink = status == 'issued';
     final canIssue = _invoice.isDraft &&
         widget.onIssueInvoice != null &&
         (currentUserId == widget.group.ownerId ||
@@ -1303,94 +1291,84 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
       label: isEs ? 'Editar' : 'Edit',
       variant: HexoraButtonVariant.secondary,
     );
-    final overflow = PopupMenuButton<String>(
-      tooltip: isEs ? 'Más acciones' : 'More actions',
-      onOpened: () => setState(() => _previewMenuOpen = true),
-      onCanceled: () => setState(() => _previewMenuOpen = false),
-      icon: const Icon(Icons.more_horiz_rounded, size: 18),
-      style: IconButton.styleFrom(
-        fixedSize: const Size(
-            HexoraDimensions.buttonStandard, HexoraDimensions.buttonStandard),
-        minimumSize: const Size(
-            HexoraDimensions.buttonStandard, HexoraDimensions.buttonStandard),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        padding: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        side: BorderSide(color: cs.outlineVariant),
+    final overflow = ListTileTheme(
+      data: const ListTileThemeData(
+        dense: true,
+        visualDensity: VisualDensity(horizontal: -2, vertical: -2),
+        minVerticalPadding: 0,
+        contentPadding: EdgeInsets.zero,
       ),
-      onSelected: (value) {
-        setState(() => _previewMenuOpen = false);
-        switch (value) {
-          case 'download':
-            _downloadPdf();
-          case 'preview':
-            _previewPdf();
-          case 'copy':
-            _copyPdfLink();
-          case 'recurrence':
-            widget.onOpenRecurringSeries?.call(_invoice.recurringSeriesId!);
-        }
-      },
-      itemBuilder: (_) => [
-        NavigationPopupMenuItem(
-          value: 'download',
-          enabled: !_downloadingPdf,
-          child: ListTile(
-            leading: const Icon(Icons.download_outlined),
-            title: Text('${l.download} PDF'),
-            contentPadding: EdgeInsets.zero,
-          ),
+      child: PopupMenuButton<String>(
+        menuPadding: const EdgeInsets.symmetric(vertical: 4),
+        constraints: const BoxConstraints(minWidth: 250, maxWidth: 270),
+        tooltip: isEs ? 'Más acciones' : 'More actions',
+        onOpened: () => setState(() => _previewMenuOpen = true),
+        onCanceled: () => setState(() => _previewMenuOpen = false),
+        icon: const Icon(Icons.more_horiz_rounded, size: 18),
+        style: IconButton.styleFrom(
+          fixedSize: const Size(
+              HexoraDimensions.buttonStandard, HexoraDimensions.buttonStandard),
+          minimumSize: const Size(
+              HexoraDimensions.buttonStandard, HexoraDimensions.buttonStandard),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          side: BorderSide(color: cs.outlineVariant),
         ),
-        NavigationPopupMenuItem(
-          value: 'preview',
-          enabled: !_previewing,
-          child: ListTile(
-            leading: const Icon(Icons.open_in_full_rounded),
-            title: Text(l.invoicePreviewCta),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        NavigationPopupMenuItem(
-          value: 'copy',
-          child: ListTile(
-            leading: const Icon(Icons.copy_outlined),
-            title: Text(isEs ? 'Copiar enlace PDF' : 'Copy PDF link'),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        if (hasRecurrence)
+        onSelected: (value) {
+          setState(() => _previewMenuOpen = false);
+          switch (value) {
+            case 'download':
+              _downloadPdf();
+            case 'preview':
+              _previewPdf();
+            case 'copy':
+              _copyPdfLink();
+            case 'recurrence':
+              widget.onOpenRecurringSeries?.call(_invoice.recurringSeriesId!);
+          }
+        },
+        itemBuilder: (_) => [
           NavigationPopupMenuItem(
-            value: 'recurrence',
-            enabled: widget.onOpenRecurringSeries != null,
+            value: 'download',
+            enabled: !_downloadingPdf,
             child: ListTile(
-              leading: const Icon(Icons.repeat_rounded),
-              title: Text(recurrenceLabel),
-              subtitle: occurrenceLabel == null ? null : Text(occurrenceLabel),
+              leading: const Icon(Icons.download_outlined),
+              title: Text('${l.download} PDF'),
               contentPadding: EdgeInsets.zero,
             ),
           ),
-        if (showPublicLink)
           NavigationPopupMenuItem(
-            value: 'public_link',
-            enabled: false,
+            value: 'preview',
+            enabled: !_previewing,
             child: ListTile(
-              leading: const Icon(Icons.qr_code_2_rounded),
-              title: Text(isEs ? 'Factura digital' : 'Digital invoice'),
+              leading: const Icon(Icons.open_in_full_rounded),
+              title: Text(l.invoicePreviewCta),
               contentPadding: EdgeInsets.zero,
             ),
           ),
-        NavigationPopupMenuItem<String>(
-          enabled: false,
-          child: ListTile(
-            leading:
-                Icon(isLinked ? Icons.link_rounded : Icons.link_off_rounded),
-            title: Text(isLinked
-                ? '${l.statementsInvoiceAlreadyLinkedBadge} ($linkedEntriesCount)'
-                : l.statementsUnlinked),
-            contentPadding: EdgeInsets.zero,
+          NavigationPopupMenuItem(
+            value: 'copy',
+            child: ListTile(
+              leading: const Icon(Icons.copy_outlined),
+              title: Text(isEs ? 'Copiar enlace PDF' : 'Copy PDF link'),
+              contentPadding: EdgeInsets.zero,
+            ),
           ),
-        ),
-      ],
+          if (hasRecurrence)
+            NavigationPopupMenuItem(
+              value: 'recurrence',
+              enabled: widget.onOpenRecurringSeries != null,
+              child: ListTile(
+                leading: const Icon(Icons.repeat_rounded),
+                title: Text(recurrenceLabel),
+                subtitle:
+                    occurrenceLabel == null ? null : Text(occurrenceLabel),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+        ],
+      ),
     );
 
     if (_invoice.isDraft) {
@@ -1944,7 +1922,7 @@ class _InvoiceDetailTabs extends StatelessWidget {
           ];
 
     return SizedBox(
-      height: 32,
+      height: 36,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         scrollDirection: Axis.horizontal,
@@ -1966,7 +1944,7 @@ class _InvoiceDetailTabs extends StatelessWidget {
                 ),
                 curve: HexoraMotion.navigationCurve,
                 alignment: Alignment.center,
-                padding: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
@@ -1979,7 +1957,7 @@ class _InvoiceDetailTabs extends StatelessWidget {
                   labels[index],
                   style: t.bodySmall.copyWith(
                     color: selected ? cs.primary : cs.onSurfaceVariant,
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                   ),
                 ),

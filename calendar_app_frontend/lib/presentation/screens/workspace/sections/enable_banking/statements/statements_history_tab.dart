@@ -21,7 +21,6 @@ class _StatementsHistoryTabState extends State<StatementsHistoryTab>
   final TextEditingController _fromController = TextEditingController();
   final TextEditingController _toController = TextEditingController();
   final List<int> _sizeOptions = const [50, 100, 200];
-  final Set<String> _expandedTech = <String>{};
   bool _showEntriesScreen = false;
 
   @override
@@ -117,18 +116,7 @@ class _StatementsHistoryTabState extends State<StatementsHistoryTab>
             children: [
               StatementsHistoryList(
                 controller: s,
-                expandedTech: _expandedTech,
-                onToggleTech: (id) {
-                  setState(() {
-                    if (_expandedTech.contains(id)) {
-                      _expandedTech.remove(id);
-                    } else {
-                      _expandedTech.add(id);
-                    }
-                  });
-                },
                 onCopy: (value) => _copy(context, value),
-                showHeader: false,
                 onOpenEntries: _openEntriesScreen,
               ),
               const SizedBox(height: 80),

@@ -233,39 +233,18 @@ class _GroupedNavContentState extends State<_GroupedNavContent> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _NavSection(
-                    title: 'Source Datos',
+                    title: isSpanish ? 'Banco' : 'Banking',
                     icon: Icons.dataset_outlined,
                     expanded: _sourceExpanded,
                     onToggle: () =>
                         setState(() => _sourceExpanded = !_sourceExpanded),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _NavSubItem(
-                          icon: Icons.account_balance_outlined,
-                          label: 'Bancos',
-                          selected:
-                              widget.selected == EnableBankingMenu.banking,
-                          onTap: () =>
-                              widget.onSelect(EnableBankingMenu.banking),
-                        ),
-                        _NavSubItem(
-                          icon: Icons.file_upload_outlined,
-                          label: 'Importar Excel',
-                          selected:
-                              widget.selected == EnableBankingMenu.imports,
-                          onTap: () =>
-                              widget.onSelect(EnableBankingMenu.imports),
-                        ),
-                        _NavSubItem(
-                          icon: Icons.history_outlined,
-                          label: l.statementsHistoryTabTitle,
-                          selected:
-                              widget.selected == EnableBankingMenu.history,
-                          onTap: () =>
-                              widget.onSelect(EnableBankingMenu.history),
-                        ),
-                      ],
+                    child: _NavSubItem(
+                      icon: Icons.file_upload_outlined,
+                      label: isSpanish ? 'Importar bancos' : 'Bank import',
+                      selected: widget.selected == EnableBankingMenu.banking ||
+                          widget.selected == EnableBankingMenu.imports ||
+                          widget.selected == EnableBankingMenu.history,
+                      onTap: () => widget.onSelect(EnableBankingMenu.banking),
                     ),
                   ),
                   const SizedBox(height: 8),

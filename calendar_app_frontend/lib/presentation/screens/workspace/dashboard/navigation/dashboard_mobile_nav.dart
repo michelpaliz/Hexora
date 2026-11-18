@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
-import 'package:hexora/navigation/horizontal_nav/components/avatar_icon.dart';
 import 'package:hexora/theme/themes/navigation_tokens.dart';
 
 import '../state/group_dashboard_state.dart';
@@ -24,6 +23,16 @@ class DashboardMobileNav extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final es = l.localeName.startsWith('es');
     final cs = Theme.of(context).colorScheme;
+    final activeSection = state.activeSection;
+    final primarySections = <String>{
+      Sections.emails,
+      Sections.workers,
+      Sections.chat,
+      Sections.businessChat,
+      Sections.profile,
+    };
+
+    void select(String section) => state.selectSection(section);
 
     return Material(
       color: cs.surface,
@@ -46,40 +55,42 @@ class DashboardMobileNav extends StatelessWidget {
                 child: _DashboardNavItem(
                   icon: Icons.home_rounded,
                   label: l.home,
-                  selected: true,
+                  selected: !primarySections.contains(activeSection),
+                  onTap: () => select(Sections.home),
                 ),
               ),
               Expanded(
                 child: _DashboardNavItem(
                   icon: Icons.mail_outline_rounded,
                   label: es ? 'Correo' : 'Email',
-                  onTap: () => state.openSection(Sections.emails),
+                  selected: activeSection == Sections.emails,
+                  onTap: () => select(Sections.emails),
                 ),
               ),
               Expanded(
                 child: _DashboardNavItem(
                   icon: Icons.access_time_rounded,
                   label: es ? 'Trabajadores' : 'Workers',
-                  onTap: () => state.openSection(Sections.workers),
+                  selected: activeSection == Sections.workers,
+                  onTap: () => select(Sections.workers),
                 ),
               ),
+              if (state.canSeeAdmin)
+                Expanded(
+                  child: _DashboardNavItem(
+                    icon: Icons.auto_awesome_rounded,
+                    label: es ? 'IA' : 'AI',
+                    tooltip: l.insightsChatFabTooltip,
+                    selected: activeSection == Sections.chat,
+                    onTap: () => select(Sections.chat),
+                  ),
+                ),
               Expanded(
                 child: _DashboardNavItem(
                   icon: Icons.forum_rounded,
                   label: es ? 'Chat' : 'Chat',
-                  onTap: () => state.openSection(Sections.businessChat),
-                ),
-              ),
-              Expanded(
-                child: _DashboardNavItem(
-                  label: l.profile,
-                  customIcon: AvatarIcon(
-                    photoUrl: state.user?.photoUrl,
-                    isSelected: false,
-                    activeColor: cs.primary,
-                    inactiveColor: cs.onSurfaceVariant,
-                  ),
-                  onTap: () => state.openSection(Sections.profile),
+                  selected: activeSection == Sections.businessChat,
+                  onTap: () => select(Sections.businessChat),
                 ),
               ),
             ],
@@ -93,15 +104,15 @@ class DashboardMobileNav extends StatelessWidget {
 class _DashboardNavItem extends StatelessWidget {
   const _DashboardNavItem({
     required this.label,
-    this.icon,
-    this.customIcon,
+    required this.icon,
+    this.tooltip,
     this.selected = false,
     this.onTap,
-  }) : assert(icon != null || customIcon != null);
+  });
 
   final String label;
-  final IconData? icon;
-  final Widget? customIcon;
+  final IconData icon;
+  final String? tooltip;
   final bool selected;
   final VoidCallback? onTap;
 
@@ -115,7 +126,7 @@ class _DashboardNavItem extends StatelessWidget {
       selected: selected,
       label: label,
       child: Tooltip(
-        message: label,
+        message: tooltip ?? label,
         child: InkWell(
           onTap: onTap,
           child: Padding(
@@ -123,8 +134,7 @@ class _DashboardNavItem extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                customIcon ??
-                    Icon(icon, size: NavigationTokens.iconSize, color: color),
+                Icon(icon, size: NavigationTokens.iconSize, color: color),
                 const SizedBox(height: 3),
                 Text(
                   label,

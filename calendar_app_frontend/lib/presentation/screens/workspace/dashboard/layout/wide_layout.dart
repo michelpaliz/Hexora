@@ -23,6 +23,7 @@ import 'package:hexora/presentation/screens/workspace/sections/enable_banking/en
 import 'package:hexora/presentation/screens/workspace/sections/expenses/gastos_module_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/group_invoices_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/presupuestos_module_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/quick_notes/quick_notes_board_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/mail/mail_console_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
@@ -113,6 +114,7 @@ class WideLayout extends StatelessWidget {
     final showEmailsInline = section == Sections.emails;
     final showEnableBankingInline = kIsWeb && section == Sections.enableBanking;
     final showTelegramInline = section == Sections.telegram;
+    final showQuickNotesInline = section == Sections.quickNotes;
 
     if (section == Sections.home) {
       return DashboardPreviewScreen(
@@ -133,6 +135,10 @@ class WideLayout extends StatelessWidget {
 
     if (showTelegramInline) {
       return const TelegramSectionScreen();
+    }
+
+    if (showQuickNotesInline) {
+      return QuickNotesBoardScreen(group: state.group, embedded: true);
     }
 
     return Row(
@@ -277,6 +283,11 @@ List<HexoraNavDestination> _dashboardDestinations(
       id: Sections.calendar,
       icon: Icons.calendar_today_outlined,
       label: l.calendar,
+    ),
+    HexoraNavDestination(
+      id: Sections.quickNotes,
+      icon: Icons.view_kanban_outlined,
+      label: es ? 'Notas rápidas' : 'Quick notes',
     ),
     if (canSeeAdmin) ...[
       HexoraNavDestination(
@@ -454,6 +465,7 @@ class _DashboardModuleSidebarState extends State<_DashboardModuleSidebar> {
             Sections.services,
             Sections.workers,
             Sections.calendar,
+            Sections.quickNotes,
             Sections.maps
           ]),
         ),

@@ -2,6 +2,7 @@ class Sections {
   static const home = 'home';
   static const agenda = 'agenda';
   static const calendar = 'calendar';
+  static const quickNotes = 'quickNotes';
   static const notifications = 'notifications';
   static const settings = 'settings';
   static const members = 'members';

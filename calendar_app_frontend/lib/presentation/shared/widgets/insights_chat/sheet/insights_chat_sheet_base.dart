@@ -34,6 +34,10 @@ abstract class InsightsChatSheetStateBase extends State<InsightsChatSheet> {
   final Map<String, Map<String, dynamic>> invoiceDisplayCache = {};
   final Map<String, InsightsDateRange> tableDateFilters = {};
   final Map<String, InsightsRemoteTableState> remoteTableStates = {};
+
+  /// Conversation cards keep their own expansion state so long previews can
+  /// be read without changing the selected assistant response.
+  final Set<String> expandedConversationPreviews = <String>{};
   bool loadingInvoiceDisplayCache = false;
   bool bulkLinkingInvoices = false;
   final Map<String, String> bulkLinkErrors = {};

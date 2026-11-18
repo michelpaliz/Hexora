@@ -265,12 +265,21 @@ class _WorkerEditorFormState extends State<_WorkerEditorForm> {
                     first: TextFormField(
                       controller: _nameCtrl,
                       style: text.bodyLarge,
+                      textInputAction: TextInputAction.next,
                       decoration: buildInputDecoration(
                         context,
                         label: l.workerNameLabel,
                         prefixIcon: const Icon(Icons.person_outline),
                         isFilled: _nameCtrl.text.trim().isNotEmpty,
+                        isRequired: widget.isCreate,
                       ),
+                      validator: (value) {
+                        if (widget.isCreate &&
+                            (value == null || value.trim().isEmpty)) {
+                          return l.displayNameRequired;
+                        }
+                        return null;
+                      },
                     ),
                     second: TextFormField(
                       controller: _roleTagCtrl,

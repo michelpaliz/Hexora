@@ -26,7 +26,7 @@ class EventCompactView extends StatelessWidget {
 
   String _formatTimeRange(BuildContext context) {
     final locale = Localizations.localeOf(context).toString();
-    final fmt = DateFormat.jm(locale);
+    final fmt = DateFormat('HH:mm', locale);
     return '${fmt.format(event.startDate)} – ${fmt.format(event.endDate)}';
   }
 
@@ -42,15 +42,14 @@ class EventCompactView extends StatelessWidget {
     final isCompact = h < 46;
 
     // Text colors: title uses the event color for pop, meta slightly muted
-    final titleColor = isDark
-        ? Color.lerp(Colors.white, cardColor, 0.35)!
-        : Color.lerp(Colors.black87, cardColor, 0.55)!;
-    final metaColor = isDark
-        ? Colors.white.withValues(alpha: 0.52)
-        : cardColor.withValues(alpha: 0.65);
+    final titleColor = Theme.of(context).colorScheme.onSurface;
+    final metaColor = Theme.of(context).colorScheme.onSurfaceVariant;
 
     // Background: tinted with the event color
-    final bgColor = cardColor.withValues(alpha: isDark ? 0.18 : 0.10);
+    final bgColor = Color.alphaBlend(
+      cardColor.withValues(alpha: isDark ? 0.24 : 0.15),
+      Theme.of(context).colorScheme.surface,
+    );
 
     Widget content;
 
@@ -103,7 +102,7 @@ class EventCompactView extends StatelessWidget {
           Text(
             event.title,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
               color: titleColor,
               height: 1.25,
@@ -124,7 +123,7 @@ class EventCompactView extends StatelessWidget {
                 child: Text(
                   _formatTimeRange(context),
                   style: TextStyle(
-                    fontSize: 9.5,
+                    fontSize: 11,
                     fontWeight: FontWeight.w500,
                     color: metaColor,
                   ),
@@ -143,15 +142,15 @@ class EventCompactView extends StatelessWidget {
         if (canEditEvent) actionManager?.editEvent(event, context);
       },
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(10),
         child: Container(
           width: details.bounds.width,
           height: h,
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(10),
             border: Border(
-              left: BorderSide(color: cardColor, width: 3),
+              left: BorderSide(color: cardColor, width: 4),
             ),
           ),
           padding: EdgeInsets.only(

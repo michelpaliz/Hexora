@@ -54,9 +54,16 @@ class QuickNotesApi {
         body: jsonEncode({'columnLimits': limits}),
       ));
 
-  Future<void> delete(String groupId, String noteId) async {
-    final response =
-        await AuthenticatedHttpClient.delete(_uri(groupId, '/$noteId'));
+  Future<void> delete(
+    String groupId,
+    String noteId, {
+    required String reason,
+  }) async {
+    final response = await AuthenticatedHttpClient.delete(
+      _uri(groupId, '/$noteId'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({'reason': reason}),
+    );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       _decode(response);
     }

@@ -1,6 +1,7 @@
 import 'package:hexora/theme/typography/typography_extension.dart';
 // calendar_surface.dart
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:hexora/presentation/shared/widgets/dialogs/hexora_dialog_route.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:hexora/models/calendar/events/event.dart';
@@ -67,6 +68,81 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
   bool _syncScheduled = false;
   bool _isDraggingEvent = false;
   bool _isSelectingTimeRange = false;
+  List<DateTime> _visibleDates = const [];
+
+  Widget _buildDayHeaders(BuildContext context, double height) {
+    final cs = Theme.of(context).colorScheme;
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    return Container(
+      height: height,
+      color: getBackgroundColor(context),
+      padding: const EdgeInsets.only(left: 64),
+      child: Row(
+        children: _visibleDates.map((date) {
+          final selected =
+              DateUtils.isSameDay(date, _selectedDate ?? DateTime.now());
+          final today = DateUtils.isSameDay(date, DateTime.now());
+          final day =
+              DateFormat('EEE', locale).format(date).replaceAll('.', '');
+          return Expanded(
+            child: Center(
+              child: Semantics(
+                selected: selected,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => widget.state.jumpTo(date),
+                  child: SizedBox(
+                    width: 78,
+                    height: height,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '${day[0].toUpperCase()}${day.substring(1, day.length.clamp(1, 3))}',
+                          style:
+                              Theme.of(context).textTheme.labelMedium?.copyWith(
+                                    color: selected || today
+                                        ? cs.primary
+                                        : cs.onSurface,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                        ),
+                        const SizedBox(height: 2),
+                        Container(
+                          width: 30,
+                          height: 30,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: selected ? cs.primary : Colors.transparent,
+                            border: !selected && today
+                                ? Border.all(color: cs.primary, width: 1.2)
+                                : null,
+                          ),
+                          child: Text(
+                            '${date.day}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color: selected ? cs.onPrimary : cs.onSurface,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -79,20 +155,32 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
   List<sf.TimeRegion> _buildSelectedSlotRegion() {
     final start = _selectionStart;
     final end = _selectionEnd;
-    if (start == null || end == null) return const [];
+    final day = DateUtils.dateOnly(_selectedDate ?? DateTime.now());
     return [
       sf.TimeRegion(
-        startTime: start,
-        endTime: end,
-        enablePointerInteraction: false,
-        color: Colors.transparent,
-        text: '__selected__',
+        startTime: day,
+        endTime: DateTime(day.year, day.month, day.day + 1),
+        enablePointerInteraction: true,
+        text: '__day__',
       ),
+      if (start != null && end != null)
+        sf.TimeRegion(
+          startTime: start,
+          endTime: end,
+          enablePointerInteraction: false,
+          color: Colors.transparent,
+          text: '__selected__',
+        ),
     ];
   }
 
   Widget _buildTimeRegionWidget(
       BuildContext ctx, sf.TimeRegionDetails details) {
+    if (details.region.text == '__day__') {
+      return ColoredBox(
+        color: Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.045),
+      );
+    }
     if (details.region.text != '__selected__') return const SizedBox.shrink();
     final cs = Theme.of(ctx).colorScheme;
     return Container(
@@ -505,9 +593,8 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                             // keep the Syncfusion header hidden to avoid a
                             // second month/date navigation row.
                             const calendarHeaderHeight = 0.0;
-                            final calendarViewHeaderHeight = isTimeGridView
-                                ? HexoraDimensions.calendarDayHeader
-                                : 32.0;
+                            final calendarViewHeaderHeight =
+                                isTimeGridView ? 52.0 : 32.0;
 
                             return Container(
                               decoration:
@@ -536,8 +623,23 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                         showDatePickerButton: false,
                                         viewHeaderHeight:
                                             calendarViewHeaderHeight,
-                                        onViewChanged: (_) =>
-                                            _selectedView = _controller.view!,
+                                        onViewChanged: (details) {
+                                          _selectedView = _controller.view!;
+                                          final dates = details.visibleDates;
+                                          if (_visibleDates.length !=
+                                                  dates.length ||
+                                              _visibleDates.isEmpty ||
+                                              _visibleDates.first !=
+                                                  dates.first) {
+                                            WidgetsBinding.instance
+                                                .addPostFrameCallback((_) {
+                                              if (mounted) {
+                                                setState(() => _visibleDates =
+                                                    List.of(dates));
+                                              }
+                                            });
+                                          }
+                                        },
                                         onSelectionChanged: (d) {
                                           if (d.date == null) return;
                                           _selectedDate = d.date!;
@@ -626,6 +728,9 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                             .withValues(alpha: .35),
                                         timeSlotViewSettings:
                                             sf.TimeSlotViewSettings(
+                                                timeFormat: 'HH:mm',
+                                                timeRulerSize: 64,
+                                                timeIntervalHeight: 60,
                                                 timeTextStyle: Theme.of(context)
                                                     .textTheme
                                                     .labelSmall
@@ -659,6 +764,15 @@ class _CalendarSurfaceState extends State<CalendarSurface> {
                                       ),
                                     ),
                                   ),
+                                  if (isTimeGridView &&
+                                      _visibleDates.isNotEmpty)
+                                    Positioned(
+                                      top: 0,
+                                      left: 0,
+                                      right: 0,
+                                      child: _buildDayHeaders(
+                                          context, calendarViewHeaderHeight),
+                                    ),
                                   if (_selectionStart != null &&
                                       _selectionEnd != null)
                                     Positioned(

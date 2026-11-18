@@ -19,6 +19,7 @@ import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/theme/components/themed_buttons.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/navigation/horizontal_nav/components/avatar_icon.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -125,6 +126,7 @@ class GroupDashboardState extends ChangeNotifier {
     Sections.home,
     Sections.agenda,
     Sections.calendar,
+    Sections.quickNotes,
     Sections.notifications,
     Sections.settings,
     Sections.members,
@@ -411,6 +413,10 @@ class GroupDashboardState extends ChangeNotifier {
           es ? 'Banco' : 'Bank'
         ),
       Sections.calendar => (Icons.calendar_month_rounded, l.calendar),
+      Sections.quickNotes => (
+          Icons.view_kanban_outlined,
+          es ? 'Notas rápidas' : 'Quick notes'
+        ),
       Sections.budgets => (
           Icons.description_outlined,
           es ? 'Propuestas' : 'Proposals'
@@ -748,6 +754,19 @@ class GroupDashboardState extends ChangeNotifier {
             tooltip: l.groupSettingsTitle,
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => openSection(Sections.settings),
+          ),
+        if (!isWide)
+          IconButton(
+            key: const ValueKey('dashboard-mobile-profile-action'),
+            style: iconButtonStyle,
+            tooltip: l.profile,
+            onPressed: () => selectSection(Sections.profile),
+            icon: AvatarIcon(
+              photoUrl: user?.photoUrl,
+              isSelected: activeSection == Sections.profile,
+              activeColor: theme.colorScheme.primary,
+              inactiveColor: onTopBar,
+            ),
           ),
       ],
       bottom: null,
