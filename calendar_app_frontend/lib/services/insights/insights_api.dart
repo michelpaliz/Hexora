@@ -598,11 +598,6 @@ class InsightsApi {
       if (timeoutMs != null) 'timeoutMs': timeoutMs,
     };
 
-    final safeGroupId = groupId?.trim() ?? '';
-    if (safeGroupId.isNotEmpty) {
-      payload['groupId'] = safeGroupId;
-    }
-
     final hasExplicitDateRange =
         extra?['dateFrom']?.toString().trim().isNotEmpty == true &&
             extra?['dateTo']?.toString().trim().isNotEmpty == true;
@@ -613,6 +608,12 @@ class InsightsApi {
 
     if (extra != null && extra.isNotEmpty) {
       payload.addAll(extra);
+    }
+    final safeGroupId = groupId?.trim() ?? '';
+    if (safeGroupId.isNotEmpty) {
+      // The selected business is authoritative for every chat request.
+      // Do not allow action metadata or follow-up payloads to replace it.
+      payload['groupId'] = safeGroupId;
     }
     return payload;
   }
