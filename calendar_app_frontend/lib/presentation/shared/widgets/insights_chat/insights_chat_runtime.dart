@@ -32,8 +32,7 @@ class InsightsChatRuntime extends ChangeNotifier {
   List<ChatMessage> _messages = <ChatMessage>[];
   final _messagesByInteractionMode =
       <InsightsInteractionMode, List<ChatMessage>>{};
-  final _conversationIdsByInteractionMode =
-      <InsightsInteractionMode, String>{};
+  final _conversationIdsByInteractionMode = <InsightsInteractionMode, String>{};
   final _resetByInteractionMode = <InsightsInteractionMode, bool>{};
   int _generation = 0;
   String _conversationId = _newConversationId();
@@ -118,9 +117,8 @@ class InsightsChatRuntime extends ChangeNotifier {
         (mode == _interactionMode ? _conversationId : _newConversationId());
     return <String, dynamic>{
       'conversationId': id,
-      'resetConversationOnNextSend':
-          _resetByInteractionMode[mode] ??
-              (mode == _interactionMode && _resetConversationOnNextSend),
+      'resetConversationOnNextSend': _resetByInteractionMode[mode] ??
+          (mode == _interactionMode && _resetConversationOnNextSend),
       'messages': messages.map((message) => message.toJson()).toList(),
     };
   }
@@ -262,7 +260,8 @@ class InsightsChatRuntime extends ChangeNotifier {
               if (modeItems is List) {
                 for (final item in modeItems) {
                   final message = ChatMessage.fromJson(item);
-                  if (message != null && message.text != l.insightsChatWelcome) {
+                  if (message != null &&
+                      message.text != l.insightsChatWelcome) {
                     parsedMessages.add(message);
                   }
                 }
@@ -279,7 +278,8 @@ class InsightsChatRuntime extends ChangeNotifier {
         }
       } catch (_) {}
     }
-    if (!_messagesByInteractionMode.containsKey(InsightsInteractionMode.guided)) {
+    if (!_messagesByInteractionMode
+        .containsKey(InsightsInteractionMode.guided)) {
       _messagesByInteractionMode[InsightsInteractionMode.guided] = next;
     }
     _messages = _messagesByInteractionMode[_interactionMode] ?? next;
@@ -311,7 +311,8 @@ class InsightsChatRuntime extends ChangeNotifier {
                 .whereType<ChatMessage>()
                 .toList();
             _messagesByInteractionMode[_interactionMode] = _messages;
-            _conversationIdsByInteractionMode[_interactionMode] = _conversationId;
+            _conversationIdsByInteractionMode[_interactionMode] =
+                _conversationId;
             _resetConversationOnNextSend = false;
             _resetByInteractionMode[_interactionMode] = false;
             notifyListeners();
@@ -362,7 +363,7 @@ class InsightsChatRuntime extends ChangeNotifier {
         _remoteSave = _remoteSave.then((_) async {
           if (sessionVersion != InsightsHistoryStore.sessionVersion) return;
           try {
-              await _api.saveConversation(
+            await _api.saveConversation(
               groupId: groupId,
               scopeKey: _remoteScopeKey,
               conversationId: payload['conversationId'] as String,
@@ -1429,6 +1430,38 @@ class InsightsChatRuntime extends ChangeNotifier {
       _conversationId = activeConversationId;
     }
 
+    final previousEventMessage = _messages.reversed
+        .where((item) =>
+            item.conversationId == activeConversationId && !item.isUser)
+        .firstOrNull;
+    final previousAssistant = previousEventMessage?.eventAssistant;
+    final isTeamCorrection = RegExp(
+      r'\b(assign|replace|remove|asigna|asignar|cambia|cambiar|quita|quitar|equipo|team|foto|fotos|photo|photos)\b',
+      caseSensitive: false,
+    ).hasMatch(trimmed);
+    final isEventEditFollowUp = RegExp(
+      r'\b(edit|change|modify|update|move|reschedule|editar|edita|cambiar|cambia|modificar|modifica|actualizar|actualiza|mover|mueve|reprogramar|reprograma|monday|tuesday|wednesday|thursday|friday|saturday|sunday|lunes|martes|miercoles|miércoles|jueves|viernes|sabado|sábado|domingo|tomorrow|mañana|at\s+\d|a las)\b',
+      caseSensitive: false,
+    ).hasMatch(trimmed);
+    final isEventFollowUp =
+        previousAssistant?['status'] == 'needs_clarification' ||
+            (previousAssistant?['status'] == 'ready_to_create' &&
+                isTeamCorrection) ||
+            (previousAssistant?['status'] == 'ready_to_update' &&
+                isEventEditFollowUp);
+    final requestHistory = isEventFollowUp
+        ? ((previousAssistant?['requestHistory'] as List?) ?? const [])
+            .whereType<String>()
+            .take(6)
+            .toList()
+        : <String>[];
+    final proposedClientIds = isEventFollowUp
+        ? ((previousAssistant?['proposedClientIds'] as List?) ?? const [])
+            .whereType<String>()
+            .take(20)
+            .toList()
+        : <String>[];
+
     _sending = true;
     _error = null;
     _lastUserMessage = trimmed;
@@ -1450,21 +1483,43 @@ class InsightsChatRuntime extends ChangeNotifier {
       final response = await _api.previewChatEvent(
         groupId: resolvedGroupId,
         message: trimmed,
+        requestHistory: requestHistory,
+        proposedClientIds: proposedClientIds,
       );
       final textOut =
           (response['message']?.toString().trim().isNotEmpty ?? false)
               ? response['message'].toString().trim()
               : l.insightsChatNoResponse;
-      _messages.add(
-        ChatMessage(
-          isUser: false,
-          text: textOut,
-          timestamp: DateTime.now(),
-          conversationId: activeConversationId,
-          sourceUserMessage: trimmed,
-          eventAssistant: extractEventAssistantMap(response),
-        ),
-      );
+      final assistant = extractEventAssistantMap(response);
+      final rawItems = assistant?['items'];
+      final items = rawItems is List
+          ? rawItems.map(safeMap).whereType<Map<String, dynamic>>().toList()
+          : const <Map<String, dynamic>>[];
+      if (items.length > 1) {
+        for (var index = 0; index < items.length; index += 1) {
+          _messages.add(
+            ChatMessage(
+              isUser: false,
+              text: index == 0 ? textOut : '',
+              timestamp: DateTime.now(),
+              conversationId: activeConversationId,
+              sourceUserMessage: trimmed,
+              eventAssistant: items[index],
+            ),
+          );
+        }
+      } else {
+        _messages.add(
+          ChatMessage(
+            isUser: false,
+            text: textOut,
+            timestamp: DateTime.now(),
+            conversationId: activeConversationId,
+            sourceUserMessage: trimmed,
+            eventAssistant: assistant,
+          ),
+        );
+      }
       addedAssistant = true;
       notifyListeners();
     } on InsightsApiException catch (e) {
@@ -1483,6 +1538,103 @@ class InsightsChatRuntime extends ChangeNotifier {
       unawaited(_persistHistory());
     }
 
+    return InsightsSendOutcome(timedOut: false, originalText: trimmed);
+  }
+
+  Future<InsightsSendOutcome> previewQuickNoteRequest({
+    required BuildContext context,
+    required String text,
+    required String groupId,
+    InsightsSendSource source = InsightsSendSource.typedInput,
+    String? conversationIdOverride,
+    String? displayTextOverride,
+  }) async {
+    final trimmed = text.trim();
+    final resolvedGroupId = groupId.trim();
+    if (trimmed.isEmpty || _sending || resolvedGroupId.isEmpty) {
+      return InsightsSendOutcome(timedOut: false, originalText: trimmed);
+    }
+    final l = AppLocalizations.of(context)!;
+    final activeConversationId =
+        (conversationIdOverride?.trim().isNotEmpty ?? false)
+            ? conversationIdOverride!.trim()
+            : _conversationId;
+    if (activeConversationId != _conversationId) {
+      _conversationId = activeConversationId;
+    }
+    final previous = _messages.reversed
+        .where((item) =>
+            item.conversationId == activeConversationId &&
+            !item.isUser &&
+            item.eventAssistant?['kind'] == 'quick_note')
+        .firstOrNull;
+    final requestHistory = previous?.eventAssistant?['status'] ==
+            'needs_clarification'
+        ? ((previous?.eventAssistant?['requestHistory'] as List?) ?? const [])
+            .whereType<String>()
+            .take(6)
+            .toList()
+        : <String>[];
+    _sending = true;
+    _error = null;
+    _lastUserMessage = trimmed;
+    _messages.add(ChatMessage(
+      isUser: true,
+      text: trimmed,
+      displayText: displayTextOverride,
+      timestamp: DateTime.now(),
+      conversationId: activeConversationId,
+    ));
+    notifyListeners();
+    unawaited(_persistHistory());
+    try {
+      final response = await _api.previewQuickNotes(
+        groupId: resolvedGroupId,
+        message: trimmed,
+        requestHistory: requestHistory,
+      );
+      final textOut =
+          (response['message']?.toString().trim().isNotEmpty ?? false)
+              ? response['message'].toString().trim()
+              : l.insightsChatNoResponse;
+      final assistant = extractEventAssistantMap(response);
+      final rawItems = assistant?['items'];
+      final items = rawItems is List
+          ? rawItems.map(safeMap).whereType<Map<String, dynamic>>().toList()
+          : const <Map<String, dynamic>>[];
+      if (items.length > 1) {
+        for (var index = 0; index < items.length; index++) {
+          _messages.add(ChatMessage(
+            isUser: false,
+            text: index == 0 ? textOut : '',
+            timestamp: DateTime.now(),
+            conversationId: activeConversationId,
+            sourceUserMessage: trimmed,
+            eventAssistant: items[index],
+          ));
+        }
+      } else {
+        _messages.add(ChatMessage(
+          isUser: false,
+          text: textOut,
+          timestamp: DateTime.now(),
+          conversationId: activeConversationId,
+          sourceUserMessage: trimmed,
+          eventAssistant: assistant,
+        ));
+      }
+      notifyListeners();
+      await _persistHistory();
+    } on InsightsApiException catch (error) {
+      _error = error.message;
+      notifyListeners();
+    } catch (error) {
+      _error = error.toString();
+      notifyListeners();
+    } finally {
+      _sending = false;
+      notifyListeners();
+    }
     return InsightsSendOutcome(timedOut: false, originalText: trimmed);
   }
 }

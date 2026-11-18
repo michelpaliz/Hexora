@@ -55,6 +55,7 @@ class AppRoutes {
   static const dashboardPreview = '/dashboard-preview';
 
   static const groupInsights = '/group-insights';
+  static const groupQuickNotes = '/group-quick-notes';
 
   // Mail
   static const mailInbox = '/mail';

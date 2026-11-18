@@ -18,6 +18,9 @@ mixin InsightsEventPreviewUi on InsightsChatSheetStateBase {
         .languageCode
         .toLowerCase()
         .startsWith('es');
+    if (eventAssistantForMessage(message)?['kind'] == 'quick_note') {
+      return _buildQuickNotePreview(context, message, isEs);
+    }
     final preview = eventPreviewForMessage(message);
     final status = eventStatus(message);
     final statusColor = eventStatusColor(cs, status);
@@ -27,7 +30,23 @@ mixin InsightsEventPreviewUi on InsightsChatSheetStateBase {
     final untilDate =
         eventDate(safeMap(preview?['recurrenceRule'])?['untilDate']);
     final missing = stringList(preview?['missing']);
+    final missingLabels = missing.map((item) {
+      if (item == 'scheduleConflict') {
+        return isEs ? 'Conflicto de horario o traslado' : 'Schedule or travel conflict';
+      }
+      if (item == 'businessHours') {
+        return isEs ? 'Fuera del horario del negocio' : 'Outside business hours';
+      }
+      return item;
+    }).toList();
     final assumptions = stringList(preview?['assumptions']);
+    final teamNames = stringList(preview?['teamNames']);
+    final photoRequirements = safeMap(preview?['completionRequirements']);
+    final requirePhotos = photoRequirements?['requirePhotos'] == true;
+    final beforeAfterPhotos =
+        photoRequirements?['requireBeforeAfterPhotos'] == true;
+    final minPhotos =
+        int.tryParse(photoRequirements?['minPhotos']?.toString() ?? '') ?? 1;
     final needsClientAndService =
         eventShouldPromptForClientAndService(message);
 
@@ -182,6 +201,26 @@ mixin InsightsEventPreviewUi on InsightsChatSheetStateBase {
                   isEs ? 'Duracion' : 'Duration',
                   eventDurationLabel(message, isEs),
                 ),
+                if (teamNames.isNotEmpty)
+                  infoRow(isEs ? 'Equipo' : 'Team', teamNames.join(', ')),
+                if (preview['estimatedTravelMinutes'] != null)
+                  infoRow(
+                    isEs ? 'Traslado est.' : 'Est. travel',
+                    isEs
+                        ? '${preview['estimatedTravelMinutes']} min desde la visita anterior'
+                        : '${preview['estimatedTravelMinutes']} min from the previous visit',
+                  ),
+                if (requirePhotos)
+                  infoRow(
+                    isEs ? 'Fotos' : 'Photos',
+                    beforeAfterPhotos
+                        ? (isEs
+                            ? 'Antes y después (mínimo $minPhotos)'
+                            : 'Before and after (minimum $minPhotos)')
+                        : (isEs
+                            ? 'Mínimo $minPhotos al completar'
+                            : 'At least $minPhotos on completion'),
+                  ),
                 if (needsClientAndService)
                   Padding(
                     padding: const EdgeInsets.only(top: 12),
@@ -233,7 +272,7 @@ mixin InsightsEventPreviewUi on InsightsChatSheetStateBase {
                   ),
                 stringSection(
                   isEs ? 'Falta por confirmar' : 'Missing information',
-                  missing,
+                  missingLabels,
                   cs.tertiary,
                 ),
                 stringSection(
@@ -242,7 +281,8 @@ mixin InsightsEventPreviewUi on InsightsChatSheetStateBase {
                   cs.primary,
                 ),
               ],
-              if (!eventIsCancelled(message) && status == 'ready_to_create')
+              if (!eventIsCancelled(message) &&
+                  (status == 'ready_to_create' || status == 'ready_to_update'))
                 Padding(
                   padding: const EdgeInsets.only(top: 14),
                   child: Wrap(
@@ -263,7 +303,9 @@ mixin InsightsEventPreviewUi on InsightsChatSheetStateBase {
                                 ),
                               )
                             : const Icon(Icons.check_circle_rounded, size: 16),
-                        label: Text(isEs ? 'Crear evento' : 'Create event'),
+                        label: Text(status == 'ready_to_update'
+                            ? (isEs ? 'Actualizar evento' : 'Update event')
+                            : (isEs ? 'Crear evento' : 'Create event')),
                       ),
                       OutlinedButton.icon(
                         onPressed: busy ? null : () => editEventDraft(message),
@@ -278,7 +320,7 @@ mixin InsightsEventPreviewUi on InsightsChatSheetStateBase {
                     ],
                   ),
                 ),
-              if (status == 'created')
+              if (status == 'created' || status == 'updated')
                 Padding(
                   padding: const EdgeInsets.only(top: 14),
                   child: FilledButton.tonalIcon(
@@ -294,4 +336,151 @@ mixin InsightsEventPreviewUi on InsightsChatSheetStateBase {
       ],
     );
   }
+
+  Widget _buildQuickNotePreview(
+    BuildContext context,
+    ChatMessage message,
+    bool isEs,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final assistant = eventAssistantForMessage(message) ?? const {};
+    final preview = safeMap(assistant['preview']) ?? const {};
+    final status = assistant['status']?.toString() ?? '';
+    final busy = eventActionMessageKey == messageKeyFor(message);
+    final assignees = stringList(preview['assigneeNames']);
+    final missing = stringList(preview['missing']);
+    final dueDate = eventDate(preview['dueDate']);
+    final boardStatus = preview['boardStatus']?.toString() ?? 'todo';
+    final statusLabel = {
+          'todo': isEs ? 'Por hacer' : 'To Do',
+          'in_progress': isEs ? 'En progreso' : 'In Progress',
+          'done': isEs ? 'Hecho' : 'Done',
+        }[boardStatus] ??
+        boardStatus;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (message.text.trim().isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(message.text),
+          ),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: cs.primary.withValues(alpha: .28)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Icon(Icons.sticky_note_2_outlined, color: cs.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    preview['title']?.toString() ??
+                        (isEs ? 'Nota rápida' : 'Quick note'),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                Chip(
+                  label: Text(status == 'created'
+                      ? (isEs ? 'Creada' : 'Created')
+                      : statusLabel),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ]),
+              if ((preview['details']?.toString().trim() ?? '').isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(preview['details'].toString()),
+                ),
+              if ((preview['clientName']?.toString().trim() ?? '').isNotEmpty)
+                _quickNoteMeta(
+                  Icons.business_outlined,
+                  isEs ? 'Cliente' : 'Client',
+                  preview['clientName'].toString(),
+                ),
+              if (assignees.isNotEmpty)
+                _quickNoteMeta(
+                  Icons.group_outlined,
+                  isEs ? 'Asignado a' : 'Assigned to',
+                  assignees.join(', '),
+                ),
+              if (dueDate != null)
+                _quickNoteMeta(
+                  Icons.event_outlined,
+                  isEs ? 'Fecha límite' : 'Due date',
+                  MaterialLocalizations.of(context).formatMediumDate(dueDate),
+                ),
+              if (missing.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    '${isEs ? 'Falta' : 'Missing'}: ${missing.join(', ')}',
+                    style: TextStyle(color: cs.error),
+                  ),
+                ),
+              if (status == 'ready_to_create' &&
+                  assistant['cancelled'] != true)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Wrap(
+                    spacing: 8,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: busy
+                            ? null
+                            : () => confirmQuickNoteCreation(message),
+                        icon: busy
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.add_task_rounded, size: 17),
+                        label: Text(isEs ? 'Crear tarjeta' : 'Create card'),
+                      ),
+                      TextButton(
+                        onPressed:
+                            busy ? null : () => cancelEventDraft(message),
+                        child: Text(isEs ? 'Cancelar' : 'Cancel'),
+                      ),
+                    ],
+                  ),
+                ),
+              if (status == 'created')
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: FilledButton.tonalIcon(
+                    onPressed: openQuickNotesBoard,
+                    icon: const Icon(Icons.view_kanban_outlined),
+                    label: Text(isEs ? 'Abrir tablero' : 'Open board'),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _quickNoteMeta(IconData icon, String label, String value) => Padding(
+        padding: const EdgeInsets.only(top: 9),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 16),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text('$label: $value',
+                  style: const TextStyle(fontSize: 12.5)),
+            ),
+          ],
+        ),
+      );
 }

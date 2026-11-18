@@ -23,6 +23,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/group_in
 import 'package:hexora/presentation/screens/workspace/sections/expenses/ocr/expense_ocr_reprocess_results_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/recurring_invoices/recurring_invoices_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/workers_hub_screen.dart';
+import 'package:hexora/presentation/screens/workspace/sections/quick_notes/quick_notes_board_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/create_worker/form/create_worker_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/create_time_entry/create_time_entry_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/workers/worker/entry_screen/tracking/screens/worker_time_tracking/worker_time_tracking_screen.dart';
@@ -88,6 +89,13 @@ final Map<String, WidgetBuilder> routes = {
     if (group == null)
       return const GroupRouteRecovery(routeName: AppRoutes.groupInsights);
     return GroupInsightsScreen(group: group);
+  },
+  AppRoutes.groupQuickNotes: (context) {
+    final group = ModalRoute.of(context)?.settings.arguments as Group?;
+    if (group == null) {
+      return const GroupRouteRecovery(routeName: AppRoutes.groupQuickNotes);
+    }
+    return QuickNotesBoardScreen(group: group);
   },
 
   // AppRoutes.showGroups: (context) => GroupListSection(),

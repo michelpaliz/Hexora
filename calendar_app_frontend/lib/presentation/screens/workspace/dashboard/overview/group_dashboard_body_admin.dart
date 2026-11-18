@@ -368,6 +368,14 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
                   onTap: () => open(Sections.services),
                 ),
                 CompactNavigationTile(
+                  icon: Icons.view_kanban_outlined,
+                  label: es ? 'Notas rápidas' : 'Quick notes',
+                  onTap: () => Navigator.of(context).pushNamed(
+                    AppRoutes.groupQuickNotes,
+                    arguments: _group,
+                  ),
+                ),
+                CompactNavigationTile(
                   icon: Icons.map_outlined,
                   label: es ? 'Mapa y visitas' : 'Map and visits',
                   onTap: () => open(Sections.maps),

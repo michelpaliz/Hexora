@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_state.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/header/group_header_view.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/overview/widgets/home_calendar_preview.dart';
@@ -39,12 +40,18 @@ class GroupDashboardBodyMember extends StatelessWidget {
     final es = l.localeName.startsWith('es');
     final dashboard = context.read<GroupDashboardState>();
 
-    Widget action(IconData icon, String label, String section) => Material(
+    Widget action(
+      IconData icon,
+      String label,
+      String section, {
+      VoidCallback? onTap,
+    }) =>
+        Material(
           color: cs.surfaceContainerLow,
           borderRadius: BorderRadius.circular(14),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
-            onTap: () => dashboard.openSection(section),
+            onTap: onTap ?? () => dashboard.openSection(section),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -123,6 +130,15 @@ class GroupDashboardBodyMember extends StatelessWidget {
                 Icons.forum_outlined,
                 es ? 'Chat de la empresa' : 'Business chat',
                 Sections.businessChat),
+            action(
+              Icons.view_kanban_outlined,
+              es ? 'Notas rápidas' : 'Quick notes',
+              '',
+              onTap: () => Navigator.of(context).pushNamed(
+                AppRoutes.groupQuickNotes,
+                arguments: group,
+              ),
+            ),
             action(Icons.person_outline_rounded,
                 es ? 'Mi perfil' : 'My profile', Sections.profile),
           ],
@@ -215,6 +231,22 @@ class GroupDashboardBodyMember extends StatelessWidget {
                   onTap: () => context
                       .read<GroupDashboardState>()
                       .openSection(Sections.agenda),
+                ),
+              ),
+              Card(
+                color: tileBg,
+                child: ListTile(
+                  leading: const Icon(Icons.view_kanban_outlined),
+                  title: Text(
+                      l.localeName.startsWith('es')
+                          ? 'Notas rápidas'
+                          : 'Quick notes',
+                      style: tileTitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).pushNamed(
+                    AppRoutes.groupQuickNotes,
+                    arguments: group,
+                  ),
                 ),
               ),
               Card(
