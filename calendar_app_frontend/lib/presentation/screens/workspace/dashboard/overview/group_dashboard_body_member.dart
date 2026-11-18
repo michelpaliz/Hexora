@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/models/user/user.dart';
+import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/state/group_dashboard_state.dart';
 import 'package:hexora/presentation/screens/workspace/dashboard/header/group_header_view.dart';
 import 'package:hexora/presentation/screens/workspace/sections/business_hours/group_business_hours_card.dart';
@@ -101,6 +102,20 @@ class GroupDashboardBodyMember extends StatelessWidget {
                   onTap: () => context
                       .read<GroupDashboardState>()
                       .openSection(Sections.agenda),
+                ),
+              ),
+              Card(
+                color: tileBg,
+                child: ListTile(
+                  leading: const Icon(Icons.view_kanban_outlined),
+                  title: Text(l.localeName.startsWith('es')
+                      ? 'Notas rápidas'
+                      : 'Quick notes', style: tileTitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).pushNamed(
+                    AppRoutes.groupQuickNotes,
+                    arguments: group,
+                  ),
                 ),
               ),
               Card(

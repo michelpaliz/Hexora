@@ -196,6 +196,14 @@ mixin InsightsSendActions on InsightsChatSheetStateBase {
     final text = inputCtrl.text.trim();
     if (text.isEmpty) return;
     inputCtrl.clear();
+    if (shouldUseQuickNotePreview(text)) {
+      await runtime.previewQuickNoteRequest(
+        context: context,
+        text: text,
+        groupId: widget.groupId,
+      );
+      return;
+    }
     if (shouldUseEventPreview(text)) {
       await runtime.previewEventRequest(
         context: context,

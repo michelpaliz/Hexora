@@ -53,6 +53,7 @@ class AppRoutes {
   static const settings = '/settings';
 
   static const groupInsights = '/group-insights';
+  static const groupQuickNotes = '/group-quick-notes';
 
   // Mail
   static const mailInbox = '/mail';

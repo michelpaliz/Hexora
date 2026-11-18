@@ -137,6 +137,21 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
               Icon(Icons.chevron_right, size: 20, color: cs.onSurfaceVariant),
           onTap: () => open(section),
         );
+    Widget quickNotesDestination() => ListTile(
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+          leading: Icon(Icons.view_kanban_outlined, color: cs.primary, size: 22),
+          title: Text(es ? 'Notas rápidas' : 'Quick notes',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  )),
+          trailing:
+              Icon(Icons.chevron_right, size: 20, color: cs.onSurfaceVariant),
+          onTap: () => Navigator.of(context).pushNamed(
+            AppRoutes.groupQuickNotes,
+            arguments: _group,
+          ),
+        );
     Widget group(List<Widget> items) => Card(
           margin: EdgeInsets.zero,
           elevation: 0,
@@ -193,6 +208,7 @@ class _GroupDashboardBodyAdminState extends State<GroupDashboardBodyAdmin> {
           group([
             destination(Icons.design_services_outlined, l.servicesClientsTitle,
                 Sections.services),
+            quickNotesDestination(),
             destination(Icons.map_outlined,
                 es ? 'Mapa y visitas' : 'Map and visits', Sections.maps),
             destination(Icons.forum_outlined,

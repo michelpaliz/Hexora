@@ -840,6 +840,44 @@ class InsightsApi {
     return _decode<Map<String, dynamic>>(response, _toMap);
   }
 
+  Future<Map<String, dynamic>> previewQuickNotes({
+    required String groupId,
+    required String message,
+    List<String> requestHistory = const [],
+  }) async {
+    final uri = _resolveActionUri('/api/insights/chat/quick-notes/preview');
+    final response = await AuthenticatedHttpClient.post(
+      uri,
+      headers: await _authJsonHeaders(),
+      body: jsonEncode(<String, dynamic>{
+        'groupId': groupId.trim(),
+        'message': message.trim(),
+        if (requestHistory.isNotEmpty) 'requestHistory': requestHistory,
+      }),
+      client: _client,
+    );
+    return _decode<Map<String, dynamic>>(response, _toMap);
+  }
+
+  Future<Map<String, dynamic>> confirmQuickNote({
+    required String groupId,
+    required Map<String, dynamic> quickNotePayload,
+    bool confirm = true,
+  }) async {
+    final uri = _resolveActionUri('/api/insights/chat/quick-notes/confirm');
+    final response = await AuthenticatedHttpClient.post(
+      uri,
+      headers: await _authJsonHeaders(),
+      body: jsonEncode(<String, dynamic>{
+        'groupId': groupId.trim(),
+        'confirm': confirm,
+        'quickNotePayload': quickNotePayload,
+      }),
+      client: _client,
+    );
+    return _decode<Map<String, dynamic>>(response, _toMap);
+  }
+
   Future<InsightsExcelExport> downloadInsightsExcelFromAction(
     InsightsExcelExportAction action,
   ) async {

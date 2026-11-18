@@ -86,6 +86,7 @@ abstract class InsightsChatSheetStateBase extends State<InsightsChatSheet> {
   Future<void> openLinkedIncomeReview({ ChatMessage? sourceMessage, String? displayLabel, });
   Future<void> refreshLinkedIncomeReview(ChatMessage message);
   bool shouldUseEventPreview(String text);
+  bool shouldUseQuickNotePreview(String text);
   bool hasPendingEventClarification(ChatMessage? message);
   bool looksLikeEventCreationRequest(String text);
   Map<String, dynamic>? eventAssistantForMessage(ChatMessage message);
@@ -106,6 +107,8 @@ abstract class InsightsChatSheetStateBase extends State<InsightsChatSheet> {
   List<String> stringList(dynamic value);
   Future<void> cancelEventDraft(ChatMessage message);
   Future<void> confirmEventCreation(ChatMessage message);
+  Future<void> confirmQuickNoteCreation(ChatMessage message);
+  Future<void> openQuickNotesBoard();
   Future<void> refreshEventState();
   Future<void> openCalendarForCurrentGroup();
   Future<void> editEventDraft(ChatMessage message);

@@ -78,6 +78,14 @@ class InsightsVisitPlannerGuide extends StatelessWidget {
               example:
                   'Crea una visita cada dos semanas, los lunes, hasta finales de septiembre.',
             ),
+            _GuideSection(
+              icon: Icons.view_kanban_outlined,
+              title: 'Crear notas rápidas',
+              description:
+                  'Crea tareas sin reservar una hora en el calendario. Puedes indicar detalles, cliente, responsables y una fecha límite. Revisa la tarjeta antes de confirmarla y después muévela entre Por hacer, En progreso y Hecho.',
+              example:
+                  'Crea una nota para revisar el riego de Las Marinas y asígnala a Amir para el viernes.',
+            ),
           ]
         : const [
             _GuideSection(
@@ -144,6 +152,14 @@ class InsightsVisitPlannerGuide extends StatelessWidget {
               example:
                   'Create a visit every two weeks on Mondays until the end of September.',
             ),
+            _GuideSection(
+              icon: Icons.view_kanban_outlined,
+              title: 'Create quick notes',
+              description:
+                  'Create work tasks without reserving calendar time. Include details, a client, assignees, and an optional due date. Review the card before confirming it, then move it through To Do, In Progress, and Done.',
+              example:
+                  'Create a note to check the irrigation at Las Marinas, assign Amir, and make it due Friday.',
+            ),
           ];
 
     return AlertDialog(
@@ -155,7 +171,7 @@ class InsightsVisitPlannerGuide extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              isEs ? 'Cómo usar el planificador de visitas' : 'Visit planner guide',
+              isEs ? 'Cómo usar el asistente de trabajo' : 'Work assistant guide',
               style: t.bodySmall.copyWith(
                 color: cs.onSurface,
                 fontWeight: FontWeight.w800,
@@ -175,8 +191,8 @@ class InsightsVisitPlannerGuide extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
               child: Text(
                 isEs
-                    ? 'Describe el trabajo con tus propias palabras. El chat preparará una vista previa para que la revises antes de crear las visitas.'
-                    : 'Describe the work in your own words. The chat prepares a preview for you to review before creating visits.',
+                    ? 'Describe el trabajo con tus propias palabras. El chat preparará una vista previa antes de crear visitas o notas rápidas.'
+                    : 'Describe the work in your own words. The chat prepares a preview before creating visits or quick notes.',
                 style: t.bodySmall.copyWith(
                   color: cs.onSurfaceVariant,
                   fontSize: 13,
@@ -207,8 +223,8 @@ class InsightsVisitPlannerGuide extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     isEs
-                        ? '• Máximo 20 visitas por plan.\n• Confirma cada visita antes de crearla.\n• Los traslados son estimaciones basadas en coordenadas guardadas, no rutas de tráfico en tiempo real.\n• Se revisan eventos del calendario, pero no turnos ni ausencias.'
-                        : '• Up to 20 visits per plan.\n• Confirm each visit before it is created.\n• Travel times are estimates from saved coordinates, not live traffic routes.\n• Calendar events are checked; shifts and leave are not.',
+                        ? '• Máximo 20 visitas o notas por solicitud.\n• Confirma cada elemento antes de crearlo.\n• Los traslados son estimaciones basadas en coordenadas guardadas, no rutas de tráfico en tiempo real.\n• Se revisan eventos del calendario, pero no turnos ni ausencias.'
+                        : '• Up to 20 visits or notes per request.\n• Confirm each item before it is created.\n• Travel times are estimates from saved coordinates, not live traffic routes.\n• Calendar events are checked; shifts and leave are not.',
                     style: t.bodySmall.copyWith(
                       color: cs.onSurfaceVariant,
                       fontSize: 12.5,
