@@ -25,6 +25,7 @@ import 'package:hexora/presentation/screens/workspace/sections/invoices/group_in
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/presupuestos_module_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/quick_notes/quick_notes_board_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/mail/mail_console_screen.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
 import 'package:hexora/presentation/screens/calendar/screens/calendar/screen/main_calendar_view.dart';
@@ -130,7 +131,11 @@ class WideLayout extends StatelessWidget {
     }
 
     if (showEmailsInline) {
-      return const MailConsoleScreen(embedded: true);
+      return PremiumFeatureGate(
+        group: state.group,
+        feature: PremiumFeatureRequest.email,
+        child: const MailConsoleScreen(embedded: true),
+      );
     }
 
     if (showTelegramInline) {
