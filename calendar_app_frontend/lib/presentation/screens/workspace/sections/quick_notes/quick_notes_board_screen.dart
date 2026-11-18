@@ -414,8 +414,8 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
         DateTime.tryParse(note['updatedAt']?.toString() ?? '')?.toLocal();
     final createdBy = note['createdByUser'] as Map?;
     final updatedBy = note['updatedByUser'] as Map?;
-    final createdByName = createdBy?['name']?.toString().trim() ?? '';
-    final updatedByName = updatedBy?['name']?.toString().trim() ?? '';
+    final createdByName = _safeUserName(createdBy?['name']);
+    final updatedByName = _safeUserName(updatedBy?['name']);
     final history = note['changeHistory'] as List? ?? const [];
     final latestHistory =
         history.isNotEmpty && history.last is Map ? history.last as Map : null;
@@ -514,6 +514,14 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
         '${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(value))}';
   }
 
+  String _safeUserName(dynamic value) {
+    final name = value?.toString().trim() ?? '';
+    if (RegExp(r'^[0-9a-f]{24}$', caseSensitive: false).hasMatch(name)) {
+      return '';
+    }
+    return name;
+  }
+
   Future<void> _showHistory(Map<String, dynamic> note) async {
     final history = note['changeHistory'] as List? ?? const [];
     await showDialog<void>(
@@ -533,6 +541,7 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
                   itemBuilder: (context, index) {
                     final entry = history[history.length - 1 - index] as Map;
                     final user = entry['user'] as Map?;
+                    final userName = _safeUserName(user?['name']);
                     final changedAt = DateTime.tryParse(
                       entry['changedAt']?.toString() ?? '',
                     )?.toLocal();
@@ -547,8 +556,9 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.history_rounded),
                       title: Text(
-                        user?['name']?.toString() ??
-                            (_isEs ? 'Usuario' : 'User'),
+                        userName.isEmpty
+                            ? (_isEs ? 'Usuario' : 'User')
+                            : userName,
                       ),
                       subtitle: Text([
                         if (changedAt != null) _formatDateTime(changedAt),
