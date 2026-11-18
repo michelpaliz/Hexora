@@ -49,9 +49,9 @@ class EmailApi {
     );
   }
 
-  Future<Map<String, dynamic>> getStatus() async {
+  Future<Map<String, dynamic>> getStatus({required String groupId}) async {
     final r =
-        await AuthenticatedHttpClient.get(_u('/status'), headers: _headers());
+        await AuthenticatedHttpClient.get(_u('/status?groupId=${Uri.encodeQueryComponent(groupId)}'), headers: _headers());
     return _decode<Map<String, dynamic>>(r, (j) {
       if (j is Map<String, dynamic>) return j;
       return <String, dynamic>{};

@@ -736,6 +736,18 @@ class InvoicesApi {
     });
   }
 
+  Future<String?> updateInternalNotes(String invoiceId, String? notes) async {
+    final r = await AuthenticatedHttpClient.patch(
+      _u('/$invoiceId/internal-notes'),
+      headers: _headers(),
+      body: jsonEncode({'internalNotes': notes}),
+    );
+    return _decode<String?>(r, (j) {
+      if (j is Map) return j['internalNotes']?.toString();
+      throw Exception('Unexpected invoice internal notes payload');
+    });
+  }
+
   Future<Map<String, dynamic>> previewAccountantCompare({
     required List<int> bytes,
     required String fileName,

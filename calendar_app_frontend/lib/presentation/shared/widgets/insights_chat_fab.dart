@@ -2,6 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:provider/provider.dart';
 import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/shared/widgets/insights_chat/insights_chat_runtime.dart';
 import 'package:hexora/presentation/shared/widgets/insights_chat/insights_chat_sheet.dart';
@@ -10,11 +15,13 @@ class InsightsChatFab extends StatefulWidget {
   const InsightsChatFab({
     super.key,
     required this.groupId,
+    required this.group,
     this.heroTag = 'insights-chat-fab',
   });
 
   final String heroTag;
   final String groupId;
+  final Group group;
 
   @override
   State<InsightsChatFab> createState() => _InsightsChatFabState();
@@ -51,7 +58,10 @@ class _InsightsChatFabState extends State<InsightsChatFab> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    unawaited(_runtime.ensureLoaded(context));
+    final userId = context.read<UserDomain?>()?.user?.id;
+    if (canManagePremiumFeature(widget.group, userId, PremiumFeature.aiChat)) {
+      unawaited(_runtime.ensureLoaded(context));
+    }
   }
 
   void _onRuntimeChanged() {
@@ -134,15 +144,20 @@ class _InsightsChatFabState extends State<InsightsChatFab> {
   }
 
   Future<void> _openSheet(BuildContext context) {
+    final userId = context.read<UserDomain?>()?.user?.id;
+    final allowed = canManagePremiumFeature(widget.group, userId, PremiumFeature.aiChat);
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => InsightsChatSheet(
-        groupId: widget.groupId,
-        runtime: _runtime,
-      ),
+      builder: (_) => allowed
+          ? InsightsChatSheet(groupId: widget.groupId, runtime: _runtime)
+          : PremiumFeatureRequestScreen(
+              group: widget.group,
+              feature: PremiumFeatureRequest.aiChat,
+              embedded: true,
+            ),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/models/receipt/receipt.dart';
 import 'package:hexora/models/receipt/receipt_line.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
 import 'package:hexora/presentation/shared/widgets/documents/pdf_inline_preview.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
@@ -274,7 +275,8 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
             ],
           ),
 
-        if (isIssued) ...[
+        if (isIssued && canManagePremiumFeatureForGroupId(
+          context, widget.receipt.groupId, PremiumFeature.email)) ...[
           const SizedBox(height: 16),
           _SheetSection(
             icon: Icons.send_outlined,
@@ -621,6 +623,7 @@ class _ReceiptDetailCardState extends State<ReceiptDetailCard> {
                                 ),
                                 if (issued)
                                   DeliveryStatusBadge(
+                                    groupId: widget.receipt.groupId,
                                     status: widget.receipt.deliveryStatus,
                                     channel: widget.receipt.deliveryChannel,
                                     sentAt: widget.receipt.sentAt,
@@ -716,6 +719,7 @@ class _ReceiptDeliveryDetails extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         DeliveryStatusBadge(
+          groupId: receipt.groupId,
           status: receipt.deliveryStatus,
           channel: receipt.deliveryChannel,
           sentAt: receipt.sentAt,

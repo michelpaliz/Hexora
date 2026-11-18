@@ -8,6 +8,8 @@ import 'package:hexora/services/config/api_constants.dart';
 import 'package:hexora/services/emails/email_api.dart';
 import 'package:hexora/services/user/domain/user_domain.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/editor/widgets/invoice_email_widgets.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -39,9 +41,15 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
   List<Map<String, dynamic>> _logs = const [];
   String? _resendingLogId;
 
+  bool _canManageEmail() {
+    final userId = context.read<UserDomain?>()?.user?.id;
+    return canManagePremiumFeature(widget.group, userId, PremiumFeature.email);
+  }
+
   @override
   void initState() {
     super.initState();
+    if (!_canManageEmail()) return;
     _loadStatus();
     _loadLogs();
   }
@@ -49,18 +57,19 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
   @override
   void didUpdateWidget(covariant GroupInvoicesEmailsView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedInvoice?.id != widget.selectedInvoice?.id) {
+    if (_canManageEmail() && oldWidget.selectedInvoice?.id != widget.selectedInvoice?.id) {
       _loadLogs();
     }
   }
 
   Future<void> _loadStatus() async {
+    if (!_canManageEmail()) return;
     setState(() {
       _statusLoading = true;
       _statusError = null;
     });
     try {
-      final data = await _emailApi.getStatus();
+      final data = await _emailApi.getStatus(groupId: widget.group.id);
       final raw = data['configured'] ?? data['isConfigured'] ?? data['ready'];
       final configured = raw is bool
           ? raw
@@ -78,6 +87,7 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
   }
 
   Future<void> _loadLogs() async {
+    if (!_canManageEmail()) return;
     final invoice = widget.selectedInvoice;
     if (invoice == null) {
       setState(() {
@@ -205,9 +215,15 @@ class _GroupInvoicesEmailsViewState extends State<GroupInvoicesEmailsView> {
     final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
     final currentUserId = context.read<UserDomain?>()?.user?.id;
-    final role =
-        currentUserId == null ? null : widget.group.userRoles[currentUserId];
-    final canSend = role == 'owner' || role == 'co-admin';
+    final canSend = canManagePremiumFeature(
+      widget.group, currentUserId, PremiumFeature.email);
+    if (!canSend) {
+      return PremiumFeatureRequestScreen(
+        feature: PremiumFeatureRequest.email,
+        group: widget.group,
+        embedded: true,
+      );
+    }
     final invoice = widget.selectedInvoice;
 
     final bannerText = _statusLoading

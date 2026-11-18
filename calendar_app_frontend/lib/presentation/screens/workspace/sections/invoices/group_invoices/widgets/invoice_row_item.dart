@@ -2,7 +2,9 @@ import 'package:hexora/presentation/shared/widgets/documents/mobile_document_car
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/invoice/invoice.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
 import 'package:hexora/services/invoicing/invoice_lines_api.dart';
+import 'package:hexora/services/invoicing/invoice_api.dart';
 import 'package:hexora/presentation/screens/workspace/sections/invoices/shared/delivery_status_badge.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -56,6 +58,8 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   bool _loadingMeta = false;
   bool _hovered = false;
   bool _detailsExpanded = false;
+  String? _internalNotes;
+  bool _savingInternalNotes = false;
   int? _lineCount;
   num? _subtotal;
   num? _taxTotal;
@@ -66,6 +70,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   @override
   void initState() {
     super.initState();
+    _internalNotes = widget.invoice.internalNotes;
     _seedFromInvoice();
     _maybeFetchMeta();
   }
@@ -73,6 +78,10 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   @override
   void didUpdateWidget(covariant InvoiceListItem oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.invoice.id != widget.invoice.id ||
+        oldWidget.invoice.internalNotes != widget.invoice.internalNotes) {
+      _internalNotes = widget.invoice.internalNotes;
+    }
     if (oldWidget.invoice.id != widget.invoice.id ||
         oldWidget.invoice.lines.length != widget.invoice.lines.length ||
         oldWidget.invoice.subtotal != widget.invoice.subtotal ||
@@ -91,6 +100,53 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     _subtotal = inv.subtotal;
     _taxTotal = inv.taxTotal;
     _total = inv.total;
+  }
+
+  Future<void> _editInternalNotes() async {
+    if (_savingInternalNotes) return;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final controller = TextEditingController(text: _internalNotes ?? '');
+    final submitted = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isEs ? 'Nota interna' : 'Internal note'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 4,
+          maxLength: 1000,
+          decoration: InputDecoration(
+            hintText: isEs ? 'Información para el equipo' : 'Information for the team',
+            helperText: isEs ? 'No aparece en la factura ni en el PDF' : 'Not shown on the invoice or PDF',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(isEs ? 'Cancelar' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+            child: Text(isEs ? 'Guardar' : 'Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (submitted == null || !mounted) return;
+    setState(() => _savingInternalNotes = true);
+    try {
+      final saved = await InvoicesApi().updateInternalNotes(widget.invoice.id, submitted);
+      if (!mounted) return;
+      setState(() => _internalNotes = saved);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isEs ? 'No se pudo guardar la nota' : 'Could not save the note'),
+      ));
+    } finally {
+      if (mounted) setState(() => _savingInternalNotes = false);
+    }
   }
 
   Future<void> _maybeFetchMeta() async {
@@ -148,7 +204,9 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                 ? '€'
                 : (invoice.currency ?? '€'),
           ).format(invoice.paidAmount);
-    final source = hasPayment && invoice.paymentSource == 'bank_link'
+    final source = hasPayment &&
+            canManagePremiumFeatureForGroupId(context, invoice.groupId, PremiumFeature.banking) &&
+            invoice.paymentSource == 'bank_link'
         ? (isEs ? 'Transferencia bancaria' : 'Bank transfer')
         : null;
     final details = [
@@ -181,7 +239,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
   Widget _buildMobileCard(AppLocalizations l, AppTypography t, ColorScheme cs,
       String total, String date) {
     final inv = widget.invoice;
-    final notes = (inv.notes ?? '').trim();
+    final notes = (_internalNotes ?? '').trim();
     return MobileDocumentCard(
       title: widget.client.name,
       amount: total,
@@ -191,7 +249,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
         if (inv.isDuplicate)
           l.localeName.toLowerCase().startsWith('es') ? 'Duplicado' : 'Duplicate',
         if (notes.isNotEmpty)
-          '${l.localeName.toLowerCase().startsWith('es') ? 'Notas' : 'Notes'}: $notes',
+          '${l.localeName.toLowerCase().startsWith('es') ? 'Nota interna' : 'Internal note'}: $notes',
       ].where((v) => v.isNotEmpty).join(' · '),
       isDraft: inv.isDraft,
       statusLabel: inv.isDraft ? l.statusDraft : l.statusIssued,
@@ -199,6 +257,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
       badges: [
         _paymentBadge(context),
         DeliveryStatusBadge(
+          groupId: inv.groupId,
           status: inv.deliveryStatus,
           channel: inv.deliveryChannel,
           sentAt: inv.sentAt,
@@ -206,14 +265,20 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
           feminine: true,
         ),
       ],
-      trailing: widget.onEdit != null || widget.onDelete != null
-          ? PopupMenuButton<String>(
+      trailing: PopupMenuButton<String>(
               tooltip: l.edit,
               onSelected: (value) {
                 if (value == 'edit') widget.onEdit?.call();
                 if (value == 'delete') widget.onDelete?.call();
+                if (value == 'notes') _editInternalNotes();
               },
               itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'notes',
+                  child: Text(l.localeName.toLowerCase().startsWith('es')
+                      ? 'Nota interna'
+                      : 'Internal note'),
+                ),
                 if (widget.onEdit != null)
                   PopupMenuItem(value: 'edit', child: Text(l.edit)),
                 if (widget.onDelete != null)
@@ -221,8 +286,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                       value: 'delete',
                       child: Text(l.remove, style: TextStyle(color: cs.error))),
               ],
-            )
-          : null,
+              ),
     );
   }
 
@@ -266,7 +330,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
     final invoiceType = (widget.invoice.invoiceType ?? '').trim().toLowerCase();
     final showInvoiceType = invoiceType == 'advance' || invoiceType == 'final';
     final isEs = l.localeName.toLowerCase().startsWith('es');
-    final invoiceNotes = (widget.invoice.notes ?? '').trim();
+    final invoiceNotes = (_internalNotes ?? '').trim();
     final showsAdvanceDeduction =
         invoiceType == 'final' && settlementDeduction > 0;
     final effectiveDiscount = showsAdvanceDeduction
@@ -563,6 +627,8 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                           _StatusPill(
                             isIssued: isIssued,
                             isLinked: isLinked,
+                            showLink: canManagePremiumFeatureForGroupId(
+                              context, widget.invoice.groupId, PremiumFeature.banking),
                             statusIconColor: statusIconColor,
                             linkIconColor: linkIconColor,
                             statusTooltip: isIssued
@@ -570,6 +636,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                                 : l.statusDraft,
                             linkTooltip: linkTooltip,
                             deliveryBadge: DeliveryStatusBadge(
+                              groupId: widget.invoice.groupId,
                               status: widget.invoice.deliveryStatus,
                               channel: widget.invoice.deliveryChannel,
                               sentAt: widget.invoice.sentAt,
@@ -748,13 +815,18 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                 SizedBox(
                   width: 124,
                   child: Tooltip(
-                    message: invoiceNotes.isEmpty ? (isEs ? 'Sin notas' : 'No notes') : invoiceNotes,
-                    child: Column(
+                    message: invoiceNotes.isEmpty
+                        ? (isEs ? 'Añadir nota interna' : 'Add internal note')
+                        : invoiceNotes,
+                    child: InkWell(
+                      onTap: _savingInternalNotes ? null : _editInternalNotes,
+                      borderRadius: BorderRadius.circular(6),
+                      child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          isEs ? 'Notas' : 'Notes',
+                          isEs ? 'Nota interna' : 'Internal note',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: t.bodySmall.copyWith(
@@ -774,6 +846,7 @@ class _InvoiceListItemState extends State<InvoiceListItem> {
                           ),
                         ),
                       ],
+                    ),
                     ),
                   ),
                 ),
@@ -875,6 +948,7 @@ class _DetailChip extends StatelessWidget {
 class _StatusPill extends StatelessWidget {
   final bool isIssued;
   final bool isLinked;
+  final bool showLink;
   final Color statusIconColor;
   final Color linkIconColor;
   final String statusTooltip;
@@ -884,6 +958,7 @@ class _StatusPill extends StatelessWidget {
   const _StatusPill({
     required this.isIssued,
     required this.isLinked,
+    required this.showLink,
     required this.statusIconColor,
     required this.linkIconColor,
     required this.statusTooltip,
@@ -911,11 +986,12 @@ class _StatusPill extends StatelessWidget {
             color: statusIconColor,
             tooltip: statusTooltip,
           ),
-          _PillIcon(
-            icon: isLinked ? Icons.link_rounded : Icons.link_off_rounded,
-            color: linkIconColor,
-            tooltip: linkTooltip,
-          ),
+          if (showLink)
+            _PillIcon(
+              icon: isLinked ? Icons.link_rounded : Icons.link_off_rounded,
+              color: linkIconColor,
+              tooltip: linkTooltip,
+            ),
           deliveryBadge,
           Icon(
             Icons.keyboard_arrow_down_rounded,

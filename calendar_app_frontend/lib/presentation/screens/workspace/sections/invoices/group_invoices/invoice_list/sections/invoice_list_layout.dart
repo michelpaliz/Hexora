@@ -450,6 +450,20 @@ extension _InvoiceListLayout on _InvoicesTabListState {
                     }
                   },
                   onHeaderAction: (action) {
+                    if (action != _InvoiceHeaderAction.toggleUnpaid &&
+                        !canManagePremiumFeature(
+                          widget.group,
+                          context.read<UserDomain?>()?.user?.id,
+                          PremiumFeature.banking,
+                        )) {
+                      Navigator.of(context).push(MaterialPageRoute<void>(
+                        builder: (_) => PremiumFeatureRequestScreen(
+                          group: widget.group,
+                          feature: PremiumFeatureRequest.banking,
+                        ),
+                      ));
+                      return;
+                    }
                     switch (action) {
                       case _InvoiceHeaderAction.toggleUnpaid:
                         _toggleUnpaidOnly();

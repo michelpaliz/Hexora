@@ -691,7 +691,8 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     }
     setState(() => _downloadingAllPdfs = true);
     try {
-      final params = filter.toQueryParams(widget.group.id);
+      final params = filter.toQueryParams(widget.group.id)
+        ..['locale'] = Localizations.localeOf(context).languageCode;
       final job = await _invoicesApi.queueInvoiceZipExport(
         groupId: widget.group.id,
         params: params,
@@ -724,6 +725,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         params: <String, String>{
           'groupId': widget.group.id,
           'invoiceIds': ids.join(','),
+          'locale': Localizations.localeOf(context).languageCode,
         },
       );
       _rememberQueuedExport(job);
@@ -753,6 +755,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
         params: <String, String>{
           'groupId': widget.group.id,
           'invoiceIds': ids.join(','),
+          'locale': Localizations.localeOf(context).languageCode,
         },
       );
       _rememberQueuedExport(job);
@@ -940,7 +943,7 @@ class _GroupInvoicesScreenState extends State<GroupInvoicesScreen> {
     return downloadFileNameFromHeaders(
       headers,
       fallback:
-          'invoices-${DateTime.now().year.toString().padLeft(4, '0')}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}.zip',
+          '${Localizations.localeOf(context).languageCode == 'es' ? 'facturas' : 'invoices'}-${DateTime.now().year.toString().padLeft(4, '0')}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}.zip',
     );
   }
 

@@ -124,6 +124,7 @@ class Invoice {
   final num? discountAmount;
   final num? discountPercent;
   final String? notes;
+  final String? internalNotes;
   final String? recurringSeriesId;
   final DateTime? occurrenceDate;
   final bool? isLinked;
@@ -182,6 +183,7 @@ class Invoice {
     this.discountAmount,
     this.discountPercent,
     this.notes,
+    this.internalNotes,
     this.recurringSeriesId,
     this.occurrenceDate,
     this.isLinked,
@@ -241,6 +243,7 @@ class Invoice {
     num? discountAmount,
     num? discountPercent,
     String? notes,
+    String? internalNotes,
     String? recurringSeriesId,
     DateTime? occurrenceDate,
     bool? isLinked,
@@ -299,6 +302,7 @@ class Invoice {
       discountAmount: discountAmount ?? this.discountAmount,
       discountPercent: discountPercent ?? this.discountPercent,
       notes: notes ?? this.notes,
+      internalNotes: internalNotes ?? this.internalNotes,
       recurringSeriesId: recurringSeriesId ?? this.recurringSeriesId,
       occurrenceDate: occurrenceDate ?? this.occurrenceDate,
       isLinked: isLinked ?? this.isLinked,
@@ -588,6 +592,7 @@ class Invoice {
       discountAmount: parsedDiscountAmount,
       discountPercent: parsedDiscountPercent,
       notes: json['notes']?.toString(),
+      internalNotes: json['internalNotes']?.toString(),
       recurringSeriesId: readIdOrNull(json['recurringSeriesId'] ??
           json['seriesId'] ??
           json['recurrenceSeriesId']),
@@ -672,6 +677,7 @@ class Invoice {
         if (discountAmount != null) 'discountAmount': discountAmount,
         if (discountPercent != null) 'discountPercent': discountPercent,
         if (notes != null) 'notes': notes,
+        if (internalNotes != null) 'internalNotes': internalNotes,
         if (recurringSeriesId != null) 'recurringSeriesId': recurringSeriesId,
         if (occurrenceDate != null)
           'occurrenceDate': occurrenceDate!.toIso8601String(),

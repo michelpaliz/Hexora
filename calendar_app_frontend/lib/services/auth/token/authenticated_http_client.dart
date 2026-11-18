@@ -7,11 +7,16 @@ import 'package:http/http.dart' as http;
 
 class AuthenticatedHttpClient {
   static final AuthApiClientImpl _authApi = AuthApiClientImpl();
+  static String _preferredLanguage = 'es';
   static Future<_RefreshResult>? _refreshInFlight;
   static Future<void> Function()? _onSessionExpired;
 
   static void setSessionExpiredHandler(Future<void> Function() handler) {
     _onSessionExpired = handler;
+  }
+
+  static void setPreferredLanguage(String languageCode) {
+    _preferredLanguage = languageCode == 'en' ? 'en' : 'es';
   }
 
   static Future<Map<String, String>> authorizedHeaders({
@@ -20,6 +25,7 @@ class AuthenticatedHttpClient {
   }) async {
     final token = await TokenService.loadToken();
     return <String, String>{
+      'Accept-Language': _preferredLanguage,
       if (includeJsonContentType)
         'Content-Type': 'application/json; charset=UTF-8',
       if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',

@@ -86,12 +86,26 @@ class TimeTrackingSettings {
 @immutable
 class GroupFeatures {
   final TimeTrackingSettings timeTracking;
+  final bool premiumEmail;
+  final bool premiumBanking;
+  final bool premiumAiChat;
+  final bool premiumTeamChat;
 
-  const GroupFeatures({required this.timeTracking});
+  const GroupFeatures({
+    required this.timeTracking,
+    this.premiumEmail = false,
+    this.premiumBanking = false,
+    this.premiumAiChat = false,
+    this.premiumTeamChat = false,
+  });
 
   factory GroupFeatures.fromJson(Map<String, dynamic> json) {
     final tt = json['timeTracking'] as Map<String, dynamic>?;
     return GroupFeatures(
+      premiumEmail: json['premiumEmail'] == true,
+      premiumBanking: json['premiumBanking'] == true,
+      premiumAiChat: json['premiumAiChat'] == true,
+      premiumTeamChat: json['premiumTeamChat'] == true,
       timeTracking: tt != null
           ? TimeTrackingSettings.fromJson(tt)
           : const TimeTrackingSettings(
@@ -104,10 +118,17 @@ class GroupFeatures {
 
   Map<String, dynamic> toJson() => {
         'timeTracking': timeTracking.toJson(),
+        // Entitlements are assigned by the server, never by group settings.
       };
 
   GroupFeatures copyWith({TimeTrackingSettings? timeTracking}) =>
-      GroupFeatures(timeTracking: timeTracking ?? this.timeTracking);
+      GroupFeatures(
+        timeTracking: timeTracking ?? this.timeTracking,
+        premiumEmail: premiumEmail,
+        premiumBanking: premiumBanking,
+        premiumAiChat: premiumAiChat,
+        premiumTeamChat: premiumTeamChat,
+      );
 
   @override
   String toString() => 'GroupFeatures($timeTracking)';

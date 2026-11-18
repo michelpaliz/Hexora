@@ -37,6 +37,7 @@ class GroupDashboard extends StatelessWidget {
               ? null
               : InsightsChatFab(
                   groupId: group.id,
+                  group: group,
                   heroTag: 'group-dashboard-insights-chat-fab',
                 ),
           floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,

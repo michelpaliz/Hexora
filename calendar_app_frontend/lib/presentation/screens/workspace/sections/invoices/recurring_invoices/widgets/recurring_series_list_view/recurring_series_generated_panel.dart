@@ -105,6 +105,10 @@ class _RecurringSeriesGeneratedPanelState
 
   Future<void> _downloadInvoicePdf(Invoice invoice) async {
     if (invoice.id.trim().isEmpty) return;
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final prefix = widget.receiptsMode
+        ? (isEs ? 'recibo' : 'receipt')
+        : (isEs ? 'factura' : 'invoice');
     try {
       final response = widget.receiptsMode
           ? await _receiptsApi.downloadPdf(invoice.id)
@@ -116,7 +120,7 @@ class _RecurringSeriesGeneratedPanelState
         response.bodyBytes,
         fileName: fallback.endsWith('.pdf')
             ? fallback
-            : '${widget.receiptsMode ? 'receipt' : 'invoice'}-$fallback.pdf',
+            : '$prefix-$fallback.pdf',
         mimeType: 'application/pdf',
       );
     } catch (e) {

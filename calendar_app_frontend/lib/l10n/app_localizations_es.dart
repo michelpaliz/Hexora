@@ -5297,7 +5297,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get statementsInvoiceNotFoundToast => 'Factura no encontrada.';
 
   @override
-  String get statementsRepetitiveInvoiceBadge => 'Factura repetida';
+  String get statementsRepetitiveInvoiceBadge => 'Pago fraccionado';
 
   @override
   String statementsRepetitiveInvoiceTooltip(Object count) {
@@ -5306,7 +5306,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String statementsRepetitiveInvoiceLinkedToast(Object count) {
-    return 'Factura vinculada, pero ya estaba usada en otros movimientos ($count).';
+    return 'Pago añadido. La factura tiene ahora $count movimientos vinculados.';
   }
 
   @override

@@ -1,5 +1,6 @@
 import 'package:hexora/presentation/shared/widgets/feedback/snack_helper.dart';
 import 'package:flutter/material.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/l10n/app_localizations.dart';
@@ -246,6 +247,7 @@ class _InvoicePaymentEditorState extends State<InvoicePaymentEditor> {
                   '${_amountCtrl.text} ${widget.invoice.currency ?? 'EUR'}',
                 if (_status != 'unpaid' && _paidAt != null) dateLabel,
                 if (_status != 'unpaid' &&
+                    canManagePremiumFeatureForGroupId(context, widget.invoice.groupId, PremiumFeature.banking) &&
                     widget.invoice.paymentSource == 'bank_link')
                   isEs ? 'Transferencia bancaria' : 'Bank transfer',
               ].join(' · '),

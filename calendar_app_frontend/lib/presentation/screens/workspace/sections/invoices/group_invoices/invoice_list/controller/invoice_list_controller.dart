@@ -18,6 +18,7 @@ class _InvoicesTabList extends StatefulWidget {
   final String? selectedInvoiceId;
   final bool showSummaryTotals;
   final String groupId;
+  final Group group;
   final ValueChanged<String>? onOpenRecurringSeries;
   final ValueChanged<InvoiceDateFilterState>? onDateFilterChanged;
   final Future<void> Function(List<Invoice>)? onDownloadFiltered;
@@ -41,6 +42,7 @@ class _InvoicesTabList extends StatefulWidget {
     required this.selectedInvoiceId,
     required this.showSummaryTotals,
     required this.groupId,
+    required this.group,
     this.onOpenRecurringSeries,
     this.onDateFilterChanged,
     this.onDownloadFiltered,

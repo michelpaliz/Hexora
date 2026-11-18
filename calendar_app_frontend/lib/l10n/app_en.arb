@@ -2574,14 +2574,14 @@
   "statementsInvoiceAlreadyLinkedToast": "This invoice was already linked to another bank transaction.",
   "statementsInvalidInvoiceToast": "Invalid invoice.",
   "statementsInvoiceNotFoundToast": "Invoice not found.",
-  "statementsRepetitiveInvoiceBadge": "Repeated invoice",
+  "statementsRepetitiveInvoiceBadge": "Split payment",
   "statementsRepetitiveInvoiceTooltip": "This invoice is linked to {count} bank movements.",
   "@statementsRepetitiveInvoiceTooltip": {
     "placeholders": {
       "count": {}
     }
   },
-  "statementsRepetitiveInvoiceLinkedToast": "Invoice linked, but it was already used in other movements ({count}).",
+  "statementsRepetitiveInvoiceLinkedToast": "Payment added. The invoice now has {count} linked transactions.",
   "@statementsRepetitiveInvoiceLinkedToast": {
     "placeholders": {
       "count": {}

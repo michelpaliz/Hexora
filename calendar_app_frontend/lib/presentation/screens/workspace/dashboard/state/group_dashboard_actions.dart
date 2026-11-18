@@ -4,6 +4,7 @@ import 'package:hexora/presentation/routes/app_routes.dart';
 import 'package:hexora/presentation/screens/workspace/sections/presupuestos/presupuestos_module_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/maps/client_map_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/business_chat/business_chat_screen.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
 import 'package:hexora/presentation/screens/workspace/sections/telegram/telegram_section_screen.dart';
 import 'package:hexora/services/telegram/domain/telegram_domain.dart';
 import 'package:provider/provider.dart';
@@ -70,9 +71,14 @@ class DashboardActions {
         Navigator.of(context).push(MaterialPageRoute<void>(
           builder: (_) => Scaffold(
             appBar: AppBar(title: const Text('Chat de la empresa')),
-            body: BusinessChatScreen(
-              groupId: state.group.id,
-              currentUserId: state.user?.id,
+            body: PremiumFeatureGate(
+              group: state.group,
+              feature: PremiumFeatureRequest.teamChat,
+              managerOnly: false,
+              child: BusinessChatScreen(
+                groupId: state.group.id,
+                currentUserId: state.user?.id,
+              ),
             ),
           ),
         ));
@@ -114,7 +120,12 @@ class DashboardActions {
       case Sections.emails:
         if (!state.canSeeAdmin) return;
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const MailConsoleScreen()),
+          MaterialPageRoute(builder: (_) => PremiumFeatureGate(
+            group: state.group,
+            feature: PremiumFeatureRequest.email,
+            embedded: false,
+            child: const MailConsoleScreen(),
+          )),
         );
         break;
       case Sections.telegram:

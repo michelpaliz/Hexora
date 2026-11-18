@@ -320,7 +320,10 @@ class _RecurringDetailViewState extends State<RecurringDetailView> {
     final fallback = invoice.invoiceNumber.trim().isNotEmpty
         ? invoice.invoiceNumber.trim()
         : invoice.id.trim();
-    final prefix = widget.api is RecurringReceiptsApi ? 'receipt' : 'invoice';
+    final isEs = Localizations.localeOf(context).languageCode == 'es';
+    final prefix = widget.api is RecurringReceiptsApi
+        ? (isEs ? 'recibo' : 'receipt')
+        : (isEs ? 'factura' : 'invoice');
     return fallback.endsWith('.pdf') ? fallback : '$prefix-$fallback.pdf';
   }
 

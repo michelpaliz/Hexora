@@ -1,7 +1,7 @@
 name: hexora
 description: A modern calendar and scheduling app with groups, events, and insights.
 publish_to: "none"
-version: 1.0.1+2
+version: 1.0.2+3
 
 
 environment:

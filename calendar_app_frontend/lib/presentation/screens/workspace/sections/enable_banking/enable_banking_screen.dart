@@ -4,6 +4,10 @@ import 'package:hexora/models/groups/group.dart';
 import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:hexora/services/groups/domain/group_domain.dart';
 import 'package:provider/provider.dart';
 
 import 'banking_tab.dart';
@@ -38,7 +42,8 @@ class EnableBankingScreen extends StatelessWidget {
   final bool initialReviewLink;
 
   static EnableBankingScreen fromRoute(BuildContext context) {
-    final group = ModalRoute.of(context)?.settings.arguments as Group?;
+    final group = ModalRoute.of(context)?.settings.arguments as Group? ??
+        context.read<GroupDomain?>()?.currentGroup;
     return EnableBankingScreen(group: group);
   }
 
@@ -319,6 +324,16 @@ class _EnableBankingViewState extends State<_EnableBankingView>
 
   @override
   Widget build(BuildContext context) {
+    final currentUserId = context.read<UserDomain?>()?.user?.id;
+    final canUseBanking = canManagePremiumFeature(
+      widget.group, currentUserId, PremiumFeature.banking);
+    if (!canUseBanking) {
+      return PremiumFeatureRequestScreen(
+        feature: PremiumFeatureRequest.banking,
+        group: widget.group,
+        embedded: widget.embedded,
+      );
+    }
     final l = AppLocalizations.of(context)!;
     final isSpanish = Localizations.localeOf(context).languageCode == 'es';
     final group = widget.group;

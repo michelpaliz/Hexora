@@ -5237,7 +5237,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statementsInvoiceNotFoundToast => 'Invoice not found.';
 
   @override
-  String get statementsRepetitiveInvoiceBadge => 'Repeated invoice';
+  String get statementsRepetitiveInvoiceBadge => 'Split payment';
 
   @override
   String statementsRepetitiveInvoiceTooltip(Object count) {
@@ -5246,7 +5246,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String statementsRepetitiveInvoiceLinkedToast(Object count) {
-    return 'Invoice linked, but it was already used in other movements ($count).';
+    return 'Payment added. The invoice now has $count linked transactions.';
   }
 
   @override

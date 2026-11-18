@@ -2543,14 +2543,14 @@
   "statementsInvoiceAlreadyLinkedToast": "Esta factura ya estaba vinculada a otra transacción bancaria.",
   "statementsInvalidInvoiceToast": "Factura inválida.",
   "statementsInvoiceNotFoundToast": "Factura no encontrada.",
-  "statementsRepetitiveInvoiceBadge": "Factura repetida",
+  "statementsRepetitiveInvoiceBadge": "Pago fraccionado",
   "statementsRepetitiveInvoiceTooltip": "Esta factura está vinculada a {count} movimientos bancarios.",
   "@statementsRepetitiveInvoiceTooltip": {
     "placeholders": {
       "count": {}
     }
   },
-  "statementsRepetitiveInvoiceLinkedToast": "Factura vinculada, pero ya estaba usada en otros movimientos ({count}).",
+  "statementsRepetitiveInvoiceLinkedToast": "Pago añadido. La factura tiene ahora {count} movimientos vinculados.",
   "@statementsRepetitiveInvoiceLinkedToast": {
     "placeholders": {
       "count": {}

@@ -541,7 +541,7 @@ class _InvoiceAiChatDialogState extends State<InvoiceAiChatDialog> {
       final response = await InvoicesApi().previewPdf(reference.invoiceId);
       final bytes = InvoiceEditorPdf.validatePdf(response);
       await pdf_launcher.launchPdfPreview(bytes,
-          fileName: 'invoice-${reference.invoiceNumber ?? reference.invoiceId}.pdf');
+          fileName: '${_isSpanish ? 'factura' : 'invoice'}-${reference.invoiceNumber ?? reference.invoiceId}.pdf');
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(

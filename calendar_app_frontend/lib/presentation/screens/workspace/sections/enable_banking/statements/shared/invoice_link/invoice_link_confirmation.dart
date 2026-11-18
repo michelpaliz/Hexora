@@ -16,6 +16,7 @@ class InvoiceLinkConfirmation {
 
   static Widget build(
     BuildContext context,
+    Map<String, dynamic> entry,
     InvoiceLinkDialogState state,
     bool expenseOnly,
     AppLocalizations l,
@@ -116,6 +117,27 @@ class InvoiceLinkConfirmation {
             return '$number · $total';
           }).toList(growable: false)
         : const <String>[];
+    final transactionAmount =
+        (StatementsFormatters.parseAmount(entry['amount']?.toString() ?? '') ?? 0)
+            .abs()
+            .toDouble();
+    final singleInvoice =
+        !expenseOnly && selectedInvoices.length == 1 ? selectedInvoices.first : null;
+    final singleInvoiceTotal = (singleInvoice?.total ?? 0).toDouble();
+    final paidBefore = (singleInvoice?.paidAmount ?? 0)
+        .toDouble()
+        .clamp(0, singleInvoiceTotal)
+        .toDouble();
+    final remainingBefore =
+        (singleInvoiceTotal - paidBefore).clamp(0, singleInvoiceTotal).toDouble();
+    final appliedPayment = transactionAmount.clamp(0, remainingBefore).toDouble();
+    final paidAfter =
+        (paidBefore + appliedPayment).clamp(0, singleInvoiceTotal).toDouble();
+    final paidPercent = singleInvoiceTotal > 0
+        ? (paidAfter / singleInvoiceTotal * 100).clamp(0, 100).toDouble()
+        : 0.0;
+    final remainingAfter =
+        (singleInvoiceTotal - paidAfter).clamp(0, singleInvoiceTotal).toDouble();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -234,6 +256,20 @@ class InvoiceLinkConfirmation {
                         : 'Total facturas',
                 totalLabel,
               ),
+              if (singleInvoice != null && singleInvoiceTotal > 0) ...[
+                const SizedBox(height: 14),
+                _sectionDivider(cs, 'Aplicación del pago'),
+                const SizedBox(height: 10),
+                _paymentProgress(
+                  context,
+                  cs,
+                  transactionAmount: transactionAmount,
+                  paidBefore: paidBefore,
+                  paidAfter: paidAfter,
+                  paidPercent: paidPercent,
+                  remainingAfter: remainingAfter,
+                ),
+              ],
               if (!expenseOnly) ...[
                 const SizedBox(height: 14),
                 _sectionDivider(cs, 'Cliente'),
@@ -336,6 +372,54 @@ class InvoiceLinkConfirmation {
           ),
         ),
       ],
+    );
+  }
+
+  static Widget _paymentProgress(
+    BuildContext context,
+    ColorScheme cs, {
+    required double transactionAmount,
+    required double paidBefore,
+    required double paidAfter,
+    required double paidPercent,
+    required double remainingAfter,
+  }) {
+    String money(double value) =>
+        StatementsFormatters.formatCurrency(context, value.toStringAsFixed(2));
+    final completed = remainingAfter <= 0.009;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.primaryContainer.withValues(alpha: 0.34),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          LinearProgressIndicator(
+            value: paidPercent / 100,
+            minHeight: 7,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          const SizedBox(height: 9),
+          Text(
+            '${paidPercent.toStringAsFixed(paidPercent % 1 == 0 ? 0 : 1)}% pagado · '
+            '${completed ? 'Factura pagada' : 'Pago parcial'}',
+            style: TextStyle(
+              color: cs.onSurface,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            'Pagado antes: ${money(paidBefore)} · Movimiento: ${money(transactionAmount)} · '
+            'Pagado después: ${money(paidAfter)} · Pendiente: ${money(remainingAfter)}',
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 11.5),
+          ),
+        ],
+      ),
     );
   }
 

@@ -484,6 +484,13 @@ class InvoiceLinkDialogSteps {
         : (inv.clientSnapshot?.legalName?.trim() ?? '');
     final amount = _invoiceAmountLabel(inv);
     final issueDate = _invoiceDateLabel(inv.issueDate);
+    final totalValue = (inv.total ?? 0).toDouble();
+    final paidValue =
+        (inv.paidAmount ?? 0).toDouble().clamp(0, totalValue).toDouble();
+    final paidPercent = totalValue > 0
+        ? (paidValue / totalValue * 100).clamp(0, 100).toDouble()
+        : 0.0;
+    final hasPaymentProgress = paidValue > 0;
 
     return InkWell(
       onTap: () => state.toggleInvoiceSelection(inv.id, onStateChanged),
@@ -575,6 +582,14 @@ class InvoiceLinkDialogSteps {
                         selected: selected,
                         color: linked ? Colors.green : Colors.orange,
                       ),
+                      if (hasPaymentProgress)
+                        _invoiceMetaChip(
+                          icon: Icons.percent_rounded,
+                          label:
+                              '${paidPercent.toStringAsFixed(paidPercent % 1 == 0 ? 0 : 1)}% pagado',
+                          selected: selected,
+                          color: paidPercent >= 100 ? Colors.green : Colors.blue,
+                        ),
                       if (issueDate.isNotEmpty)
                         _invoiceMetaChip(
                           icon: Icons.event_outlined,

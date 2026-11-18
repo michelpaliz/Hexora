@@ -246,6 +246,7 @@ class InvoiceLinkDialog {
           ),
           _buildStepContent(
             currentStep,
+            entry,
             stepsBuilder,
             expenseOnly,
             () => setState(() {}),
@@ -303,6 +304,7 @@ class InvoiceLinkDialog {
                   padding: const EdgeInsets.only(top: 8),
                   child: _buildStepContent(
                     currentStep,
+                    entry,
                     stepsBuilder,
                     expenseOnly,
                     () => setState(() {}),
@@ -319,6 +321,7 @@ class InvoiceLinkDialog {
 
   static Widget _buildStepContent(
     int currentStep,
+    Map<String, dynamic> entry,
     InvoiceLinkDialogSteps stepsBuilder,
     bool expenseOnly,
     VoidCallback onStateChanged, {
@@ -335,6 +338,7 @@ class InvoiceLinkDialog {
     } else {
       final confirmation = InvoiceLinkConfirmation.build(
         stepsBuilder.context,
+        entry,
         stepsBuilder.state,
         expenseOnly,
         stepsBuilder.l,
@@ -517,7 +521,8 @@ class InvoiceLinkDialog {
                   }
                   return;
                 }
-                if (outcome.alreadyLinked) {
+                if (outcome.alreadyLinked &&
+                    !outcome.hasRepetitiveInvoiceLink) {
                   ScaffoldMessenger.of(dialogContext).showSnackBar(
                     SnackBar(
                         content: Text(l.statementsInvoiceAlreadyLinkedToast)),

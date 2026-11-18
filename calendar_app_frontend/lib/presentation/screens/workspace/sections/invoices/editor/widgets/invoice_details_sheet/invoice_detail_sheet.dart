@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:provider/provider.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/models/invoice/client_billing.dart';
 import 'package:hexora/models/invoice/invoice.dart';
@@ -384,17 +387,20 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
         ],
 
         // Delivery status
-        const SizedBox(height: 12),
-        _DeliverySection(
-          invoice: invoice,
-          deliveryStatus: deliveryStatus,
-          sentAtLabel: sentAtLabel,
-          channelLabel: channelLabel,
-          canChangeDelivery: canChangeDelivery,
-          updatingDelivery: _updatingDelivery,
-          onMarkSent: _markInvoiceSent,
-          onMarkUnsent: _markInvoiceUnsent,
-        ),
+        if (canManagePremiumFeature(widget.group,
+            context.read<UserDomain?>()?.user?.id, PremiumFeature.email)) ...[
+          const SizedBox(height: 12),
+          _DeliverySection(
+            invoice: invoice,
+            deliveryStatus: deliveryStatus,
+            sentAtLabel: sentAtLabel,
+            channelLabel: channelLabel,
+            canChangeDelivery: canChangeDelivery,
+            updatingDelivery: _updatingDelivery,
+            onMarkSent: _markInvoiceSent,
+            onMarkUnsent: _markInvoiceUnsent,
+          ),
+        ],
 
         // History
         const SizedBox(height: 12),
@@ -736,7 +742,8 @@ class _InvoiceDetailSheetState extends State<InvoiceDetailSheet>
           ],
 
           // Link status
-          _FooterIconBtn(
+          if (canManagePremiumFeature(widget.group,
+              context.read<UserDomain?>()?.user?.id, PremiumFeature.banking)) _FooterIconBtn(
             icon: isLinked ? Icons.link_rounded : Icons.link_off_rounded,
             color: isLinked ? cs.primary : cs.onSurfaceVariant,
             tooltip: isLinked
@@ -955,6 +962,7 @@ class _DeliverySection extends StatelessWidget {
                 ),
                 const Spacer(),
                 DeliveryStatusBadge(
+                  groupId: invoice.groupId,
                   status: invoice.deliveryStatus,
                   channel: invoice.deliveryChannel,
                   sentAt: invoice.sentAt,

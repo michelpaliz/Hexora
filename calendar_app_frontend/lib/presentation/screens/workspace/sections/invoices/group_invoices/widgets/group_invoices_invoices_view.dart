@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/models/groups/group.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_access.dart';
+import 'package:hexora/presentation/screens/workspace/premium/premium_feature_request_screen.dart';
+import 'package:hexora/services/user/domain/user_domain.dart';
+import 'package:provider/provider.dart';
 import 'package:hexora/models/invoice/billing_profile.dart';
 import 'package:hexora/models/invoice/invoice.dart';
 import 'package:hexora/services/invoicing/invoice_api.dart';
@@ -173,6 +177,7 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                             selectedInvoiceId: widget.selectedInvoice?.id,
                             showSummaryTotals: false,
                             groupId: widget.group.id,
+                            group: widget.group,
                             onOpenRecurringSeries: widget.onOpenRecurringSeries,
                             onDateFilterChanged: null,
                             allowClientNameSort: true,
@@ -197,6 +202,7 @@ class _GroupInvoicesInvoicesViewState extends State<GroupInvoicesInvoicesView> {
                             selectedInvoiceId: widget.selectedInvoice?.id,
                             showSummaryTotals: true,
                             groupId: widget.group.id,
+                            group: widget.group,
                             onOpenRecurringSeries: widget.onOpenRecurringSeries,
                             onDateFilterChanged:
                                 widget.onIssuedDateFilterChanged,
