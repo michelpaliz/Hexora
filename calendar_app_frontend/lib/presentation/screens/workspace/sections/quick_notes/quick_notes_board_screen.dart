@@ -58,10 +58,36 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
   Future<void> _move(Map<String, dynamic> note, String status) async {
     if (note['status'] == status) return;
     final oldStatus = note['status'];
+    String? reason;
+    if (status == 'done' || oldStatus == 'done') {
+      reason = await _requestReason(
+        status == 'done'
+            ? (_isEs
+                ? '¿Por qué se completa esta nota?'
+                : 'Why is this note being completed?')
+            : (_isEs
+                ? '¿Por qué se vuelve a abrir esta nota?'
+                : 'Why is this note being reopened?'),
+      );
+      if (reason == null) return;
+    }
     setState(() => note['status'] = status);
     try {
-      final response =
-          await _api.update(widget.group.id, note['id'].toString(), {'status': status});
+      final response = await _api.update(
+        widget.group.id,
+        note['id'].toString(),
+        {
+          'status': status,
+          if (reason != null) 'reason': reason,
+        },
+      );
+      final saved = response['note'];
+      if (saved is Map && mounted) {
+        final index = _notes.indexWhere((item) => item['id'] == note['id']);
+        if (index >= 0) {
+          setState(() => _notes[index] = Map<String, dynamic>.from(saved));
+        }
+      }
       final warning = response['warning'] as Map?;
       if (warning != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -75,6 +101,44 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
       setState(() => note['status'] = oldStatus);
       _showError(error);
     }
+  }
+
+  Future<String?> _requestReason(String title) async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 500,
+          minLines: 2,
+          maxLines: 4,
+          decoration: InputDecoration(
+            labelText: _isEs ? 'Motivo' : 'Reason',
+            hintText: _isEs
+                ? 'Explica brevemente el cambio'
+                : 'Briefly explain the change',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(_isEs ? 'Cancelar' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              if (value.isNotEmpty) Navigator.pop(context, value);
+            },
+            child: Text(_isEs ? 'Continuar' : 'Continue'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return result;
   }
 
   void _showError(Object error) {
@@ -344,45 +408,165 @@ class _QuickNotesBoardScreenState extends State<QuickNotesBoardScreen> {
     final client = note['client'] as Map?;
     final assignees = note['assignees'] as List? ?? const [];
     final due = DateTime.tryParse(note['dueDate']?.toString() ?? '')?.toLocal();
+    final createdAt =
+        DateTime.tryParse(note['createdAt']?.toString() ?? '')?.toLocal();
+    final updatedAt =
+        DateTime.tryParse(note['updatedAt']?.toString() ?? '')?.toLocal();
+    final createdBy = note['createdByUser'] as Map?;
+    final updatedBy = note['updatedByUser'] as Map?;
+    final createdByName = createdBy?['name']?.toString().trim() ?? '';
+    final updatedByName = updatedBy?['name']?.toString().trim() ?? '';
+    final history = note['changeHistory'] as List? ?? const [];
+    final latestHistory =
+        history.isNotEmpty && history.last is Map ? history.last as Map : null;
     return Card(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: Text(note['title']?.toString() ?? '',
-                    style: const TextStyle(fontWeight: FontWeight.w800))),
-                PopupMenuButton<String>(
-                  onSelected: (status) => _move(note, status),
-                  itemBuilder: (_) => [
-                    PopupMenuItem(value: 'todo', child: Text(_isEs ? 'Por hacer' : 'To Do')),
-                    PopupMenuItem(value: 'in_progress', child: Text(_isEs ? 'En progreso' : 'In Progress')),
-                    PopupMenuItem(value: 'done', child: Text(_isEs ? 'Hecho' : 'Done')),
-                  ],
-                ),
-              ],
-            ),
-            if ((note['details']?.toString().trim() ?? '').isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(note['details'].toString(), maxLines: 4,
-                    overflow: TextOverflow.ellipsis),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _showHistory(note),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      note['title']?.toString() ?? '',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    onSelected: (status) => _move(note, status),
+                    itemBuilder: (_) => [
+                      PopupMenuItem(
+                        value: 'todo',
+                        child: Text(_isEs ? 'Por hacer' : 'To Do'),
+                      ),
+                      PopupMenuItem(
+                        value: 'in_progress',
+                        child: Text(_isEs ? 'En progreso' : 'In Progress'),
+                      ),
+                      PopupMenuItem(
+                        value: 'done',
+                        child: Text(_isEs ? 'Hecho' : 'Done'),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            if (client != null)
-              _meta(Icons.business_outlined, client['name']?.toString() ?? ''),
-            if (assignees.isNotEmpty)
-              _meta(Icons.group_outlined, assignees
-                  .map((item) => item is Map ? item['name']?.toString() : null)
-                  .whereType<String>().join(', ')),
-            if (due != null)
-              _meta(Icons.event_outlined,
-                  MaterialLocalizations.of(context).formatMediumDate(due)),
-          ],
+              if ((note['details']?.toString().trim() ?? '').isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    note['details'].toString(),
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              if (client != null)
+                _meta(Icons.business_outlined, client['name']?.toString() ?? ''),
+              if (assignees.isNotEmpty)
+                _meta(
+                  Icons.group_outlined,
+                  assignees
+                      .map((item) =>
+                          item is Map ? item['name']?.toString() : null)
+                      .whereType<String>()
+                      .join(', '),
+                ),
+              if (due != null)
+                _meta(
+                  Icons.event_outlined,
+                  MaterialLocalizations.of(context).formatMediumDate(due),
+                ),
+              if (createdAt != null)
+                _meta(
+                  Icons.person_add_alt_1_outlined,
+                  '${_isEs ? 'Creada' : 'Created'} ${_formatDateTime(createdAt)}'
+                  '${createdByName.isEmpty ? '' : ' · $createdByName'}',
+                ),
+              if (updatedAt != null &&
+                  createdAt != null &&
+                  updatedAt.difference(createdAt).inSeconds.abs() > 1)
+                _meta(
+                  Icons.edit_outlined,
+                  '${_isEs ? 'Modificada' : 'Modified'} ${_formatDateTime(updatedAt)}'
+                  '${updatedByName.isEmpty ? '' : ' · $updatedByName'}',
+                ),
+              if ((latestHistory?['reason']?.toString().trim() ?? '').isNotEmpty)
+                _meta(
+                  Icons.comment_outlined,
+                  latestHistory!['reason'].toString(),
+                ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  String _formatDateTime(DateTime value) {
+    final localizations = MaterialLocalizations.of(context);
+    return '${localizations.formatMediumDate(value)} · '
+        '${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(value))}';
+  }
+
+  Future<void> _showHistory(Map<String, dynamic> note) async {
+    final history = note['changeHistory'] as List? ?? const [];
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(_isEs ? 'Historial de la nota' : 'Note history'),
+        content: SizedBox(
+          width: 520,
+          child: history.isEmpty
+              ? Text(_isEs
+                  ? 'Esta nota todavía no tiene modificaciones.'
+                  : 'This note has not been modified yet.')
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: history.length,
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemBuilder: (context, index) {
+                    final entry = history[history.length - 1 - index] as Map;
+                    final user = entry['user'] as Map?;
+                    final changedAt = DateTime.tryParse(
+                      entry['changedAt']?.toString() ?? '',
+                    )?.toLocal();
+                    final changes = entry['changes'] as List? ?? const [];
+                    final fields = changes
+                        .whereType<Map>()
+                        .map((change) => change['field']?.toString() ?? '')
+                        .where((field) => field.isNotEmpty)
+                        .join(', ');
+                    final reason = entry['reason']?.toString().trim() ?? '';
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.history_rounded),
+                      title: Text(
+                        user?['name']?.toString() ??
+                            (_isEs ? 'Usuario' : 'User'),
+                      ),
+                      subtitle: Text([
+                        if (changedAt != null) _formatDateTime(changedAt),
+                        if (fields.isNotEmpty)
+                          '${_isEs ? 'Cambios' : 'Changes'}: $fields',
+                        if (reason.isNotEmpty)
+                          '${_isEs ? 'Motivo' : 'Reason'}: $reason',
+                      ].join('\n')),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(_isEs ? 'Cerrar' : 'Close'),
+          ),
+        ],
       ),
     );
   }
