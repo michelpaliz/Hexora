@@ -38,6 +38,7 @@ class GroupInvoicesClientsView extends StatefulWidget {
   final Future<void> Function(List<Invoice> invoices) onDownloadVisibleInvoices;
   final int initialDetailTabIndex;
   final VoidCallback? onAddClient;
+  final ValueChanged<GroupClient>? onEditClient;
   final VoidCallback? onRefresh;
   final bool refreshing;
 
@@ -70,6 +71,7 @@ class GroupInvoicesClientsView extends StatefulWidget {
     this.initialDetailTabIndex = 0,
     this.detailOverride,
     this.onAddClient,
+    this.onEditClient,
     this.onRefresh,
     this.refreshing = false,
     required this.onUpdateClientClassification,
@@ -86,6 +88,7 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
   bool _assignBusy = false;
   bool _hideInactive = true;
   bool _missingCurrentMonthInvoiceOnly = false;
+  bool _clientsPanelCollapsed = false;
   final TextEditingController _search = TextEditingController();
 
   List<String> _savedEntityTypes = const [];
@@ -225,82 +228,105 @@ class _GroupInvoicesClientsViewState extends State<GroupInvoicesClientsView> {
         widget.clients.any((c) => c.id == widget.selectedClient!.id) &&
         !filteredClients.any((c) => c.id == widget.selectedClient!.id);
 
+    final detail = widget.detailOverride ??
+        ClientDetailPanel(
+          groupId: widget.groupId,
+          clients: widget.clients,
+          selectedClient: widget.selectedClient,
+          issuedInvoices: widget.issuedInvoices,
+          draftInvoices: widget.draftInvoices,
+          entityOptions: entityOptions,
+          propertyOptions: propertyOptions,
+          assignBusy: _assignBusy,
+          initialTabIndex: widget.initialDetailTabIndex,
+          onEditSelectedClient: widget.onEditSelectedClient,
+          onCreateInvoice: widget.onCreateInvoice,
+          onCreateReceipt: widget.onCreateReceipt,
+          onOpenInvoiceDetail: widget.onOpenInvoiceDetail,
+          onEditInvoice: widget.onEditInvoice,
+          onEditReceipt: widget.onEditReceipt,
+          invoicePreviewBuilder: widget.invoicePreviewBuilder,
+          receiptPreviewBuilder: widget.receiptPreviewBuilder,
+          onDeleteInvoice: widget.onDeleteInvoice,
+          onDownloadVisibleInvoices: widget.onDownloadVisibleInvoices,
+          onAddClient: widget.onAddClient,
+          onApplyClassification: ({String? entityType, String? propertyKind}) =>
+              _applyToSelected(
+            entityType: entityType,
+            propertyKind: propertyKind,
+          ),
+        );
+
     return Column(
       children: [
         const SizedBox(height: 6),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: HexoraResizableSplit(
-              preferenceKey: 'invoices_clients_split_fraction_v2',
-              initialFraction: 0.30,
-              minStartWidth: 280,
-              minEndWidth: 520,
-              start: ClientsListPanel(
-                allClients: widget.clients,
-                filteredClients: filteredClients,
-                selectedClient: widget.selectedClient,
-                selectedHiddenByFilters: selectedHiddenByFilters,
-                hideInactive: _hideInactive,
-                onToggleHideInactive: () =>
-                    setState(() => _hideInactive = !_hideInactive),
-                missingCurrentMonthInvoiceOnly: _missingCurrentMonthInvoiceOnly,
-                onToggleMissingCurrentMonthInvoiceOnly: (value) => setState(() {
-                  _missingCurrentMonthInvoiceOnly = value;
-                }),
-                searchController: _search,
-                onSearchChanged: () => setState(() {}),
-                entityFilter: _entityFilter,
-                propertyFilter: _propertyFilter,
-                entityOptions: customerTypeOptions,
-                propertyOptions: propertyTypeOptions,
-                onClearFilters: _clearFilters,
-                onToggleEntityFilter: (v) => setState(() {
-                  _entityFilter = _entityFilter == v ? null : v;
-                }),
-                onTogglePropertyFilter: (v) => setState(() {
-                  _propertyFilter = _propertyFilter == v ? null : v;
-                }),
-                onClearEntityFilter: () => setState(() => _entityFilter = null),
-                onClearPropertyFilter: () =>
-                    setState(() => _propertyFilter = null),
-                onSelectClient: widget.onSelectClient,
-                onAddClient: widget.onAddClient,
-                onRefresh: widget.onRefresh,
-                refreshing: widget.refreshing,
-              ),
-              end: widget.detailOverride ??
-                  ClientDetailPanel(
-                    groupId: widget.groupId,
-                    clients: widget.clients,
-                    selectedClient: widget.selectedClient,
-                    issuedInvoices: widget.issuedInvoices,
-                    draftInvoices: widget.draftInvoices,
-                    entityOptions: entityOptions,
-                    propertyOptions: propertyOptions,
-                    assignBusy: _assignBusy,
-                    initialTabIndex: widget.initialDetailTabIndex,
-                    onEditSelectedClient: widget.onEditSelectedClient,
-                    onCreateInvoice: widget.onCreateInvoice,
-                    onCreateReceipt: widget.onCreateReceipt,
-                    onOpenInvoiceDetail: widget.onOpenInvoiceDetail,
-                    onEditInvoice: widget.onEditInvoice,
-                    onEditReceipt: widget.onEditReceipt,
-                    invoicePreviewBuilder: widget.invoicePreviewBuilder,
-                    receiptPreviewBuilder: widget.receiptPreviewBuilder,
-                    onDeleteInvoice: widget.onDeleteInvoice,
-                    onDownloadVisibleInvoices: widget.onDownloadVisibleInvoices,
-                    onAddClient: widget.onAddClient,
-                    onApplyClassification: ({
-                      String? entityType,
-                      String? propertyKind,
-                    }) =>
-                        _applyToSelected(
-                      entityType: entityType,
-                      propertyKind: propertyKind,
+            child: _clientsPanelCollapsed
+                ? Row(children: [
+                    Tooltip(
+                      message:
+                          Localizations.localeOf(context).languageCode == 'es'
+                              ? 'Mostrar clientes'
+                              : 'Show clients',
+                      child: IconButton(
+                        onPressed: () =>
+                            setState(() => _clientsPanelCollapsed = false),
+                        icon: const Icon(
+                            Icons.keyboard_double_arrow_right_rounded),
+                      ),
                     ),
+                    Expanded(child: detail),
+                  ])
+                : HexoraResizableSplit(
+                    preferenceKey: 'invoices_clients_split_fraction_v3',
+                    initialFraction: 0.34,
+                    minStartWidth: 320,
+                    maxStartWidth: 500,
+                    minEndWidth: 420,
+                    start: ClientsListPanel(
+                      allClients: widget.clients,
+                      filteredClients: filteredClients,
+                      selectedClient: widget.selectedClient,
+                      selectedHiddenByFilters: selectedHiddenByFilters,
+                      hideInactive: _hideInactive,
+                      onToggleHideInactive: () =>
+                          setState(() => _hideInactive = !_hideInactive),
+                      missingCurrentMonthInvoiceOnly:
+                          _missingCurrentMonthInvoiceOnly,
+                      onToggleMissingCurrentMonthInvoiceOnly: (value) =>
+                          setState(() {
+                        _missingCurrentMonthInvoiceOnly = value;
+                      }),
+                      searchController: _search,
+                      onSearchChanged: () => setState(() {}),
+                      entityFilter: _entityFilter,
+                      propertyFilter: _propertyFilter,
+                      entityOptions: customerTypeOptions,
+                      propertyOptions: propertyTypeOptions,
+                      onClearFilters: _clearFilters,
+                      onToggleEntityFilter: (v) => setState(() {
+                        _entityFilter = _entityFilter == v ? null : v;
+                      }),
+                      onTogglePropertyFilter: (v) => setState(() {
+                        _propertyFilter = _propertyFilter == v ? null : v;
+                      }),
+                      onClearEntityFilter: () =>
+                          setState(() => _entityFilter = null),
+                      onClearPropertyFilter: () =>
+                          setState(() => _propertyFilter = null),
+                      onSelectClient: widget.onSelectClient,
+                      onAddClient: widget.onAddClient,
+                      onRefresh: widget.onRefresh,
+                      refreshing: widget.refreshing,
+                      onEditClient: widget.onEditClient,
+                      onCollapse: () => setState(
+                        () => _clientsPanelCollapsed = true,
+                      ),
+                    ),
+                    end: detail,
                   ),
-            ),
           ),
         ),
       ],

@@ -14,6 +14,7 @@ class HexoraResizableSplit extends StatefulWidget {
     required this.preferenceKey,
     this.initialFraction = 0.38,
     this.minStartWidth = 300,
+    this.maxStartWidth,
     this.minEndWidth = 420,
     this.handleWidth = 12,
   });
@@ -23,6 +24,7 @@ class HexoraResizableSplit extends StatefulWidget {
   final String preferenceKey;
   final double initialFraction;
   final double minStartWidth;
+  final double? maxStartWidth;
   final double minEndWidth;
   final double handleWidth;
 
@@ -62,7 +64,10 @@ class _HexoraResizableSplitState extends State<HexoraResizableSplit> {
 
   double _clampFraction(double value, double available) {
     final min = widget.minStartWidth / available;
-    final max = 1 - widget.minEndWidth / available;
+    final max = [
+      1 - widget.minEndWidth / available,
+      if (widget.maxStartWidth != null) widget.maxStartWidth! / available,
+    ].reduce((a, b) => a < b ? a : b);
     return value.clamp(min, max).toDouble();
   }
 
@@ -73,10 +78,10 @@ class _HexoraResizableSplitState extends State<HexoraResizableSplit> {
 
     return LayoutBuilder(builder: (context, constraints) {
       final available = constraints.maxWidth - widget.handleWidth;
-      final canResize =
-          available >= widget.minStartWidth + widget.minEndWidth;
-      final fraction =
-          canResize ? _clampFraction(_fraction, available) : widget.initialFraction;
+      final canResize = available >= widget.minStartWidth + widget.minEndWidth;
+      final fraction = canResize
+          ? _clampFraction(_fraction, available)
+          : widget.initialFraction;
       final startWidth = available * fraction;
 
       void resizeBy(double dx) {

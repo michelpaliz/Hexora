@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:hexora/models/clients/client.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/clients_search_filters.dart';
 import 'package:hexora/presentation/screens/workspace/sections/services_clients/widgets/common_views.dart';
-import 'package:hexora/theme/colors/theme_colors.dart';
 import 'package:hexora/theme/typography/typography_extension.dart';
 import 'package:hexora/l10n/app_localizations.dart';
 
@@ -32,6 +31,8 @@ class ClientsListPanel extends StatefulWidget {
   final VoidCallback? onAddClient;
   final VoidCallback? onRefresh;
   final bool refreshing;
+  final ValueChanged<GroupClient>? onEditClient;
+  final VoidCallback? onCollapse;
 
   const ClientsListPanel({
     super.key,
@@ -58,6 +59,8 @@ class ClientsListPanel extends StatefulWidget {
     this.onAddClient,
     this.onRefresh,
     this.refreshing = false,
+    this.onEditClient,
+    this.onCollapse,
   });
 
   @override
@@ -66,6 +69,16 @@ class ClientsListPanel extends StatefulWidget {
 
 class _ClientsListPanelState extends State<ClientsListPanel> {
   String _status = 'all';
+  bool _sortByType = false;
+  bool _ascending = true;
+
+  static String _clientType(GroupClient client) {
+    final value =
+        (client.effectiveCustomerType ?? client.effectivePropertyType ?? '')
+            .trim();
+    return value.isEmpty ? '—' : clientClassificationLabel(value);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -117,8 +130,10 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                 : client.isActive == false))
         .toList();
     visibleClients.sort((a, b) {
-      final cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
-      return cmp;
+      final left = _sortByType ? _clientType(a) : a.name;
+      final right = _sortByType ? _clientType(b) : b.name;
+      final cmp = left.toLowerCase().compareTo(right.toLowerCase());
+      return _ascending ? cmp : -cmp;
     });
     final hasSearch = widget.searchController.text.trim().isNotEmpty;
     final hasStructuredFilters =
@@ -225,6 +240,29 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                   onToggleProperty: widget.onTogglePropertyFilter,
                   onClearProperty: widget.onClearPropertyFilter,
                   trailingActions: [
+                    if (widget.onAddClient != null)
+                      IconButton(
+                        tooltip: l.addClient,
+                        onPressed: widget.onAddClient,
+                        icon: const Icon(Icons.person_add_alt_1_rounded),
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 32,
+                          height: 32,
+                        ),
+                      ),
+                    if (widget.onCollapse != null)
+                      IconButton(
+                        tooltip: isEs ? 'Contraer panel' : 'Collapse panel',
+                        onPressed: widget.onCollapse,
+                        icon: const Icon(
+                            Icons.keyboard_double_arrow_left_rounded),
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 32,
+                          height: 32,
+                        ),
+                      ),
                     _CompactListInfo(
                       key: const ValueKey('client-sidebar-list-summary'),
                       visibleCount: visibleCount,
@@ -248,31 +286,138 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                     onPressed: widget.onAddClient,
                   )
                 : visibleClients.isEmpty
-                    ? EmptyView(
-                        icon: widget.missingCurrentMonthInvoiceOnly &&
-                                !hasSearch &&
-                                !hasStructuredFilters
-                            ? (hasInvoiceFlagData
-                                ? Icons.verified_outlined
-                                : Icons.hourglass_empty_rounded)
-                            : Icons.search_off_rounded,
-                        title: widget.missingCurrentMonthInvoiceOnly &&
-                                !hasSearch &&
-                                !hasStructuredFilters
-                            ? (hasInvoiceFlagData
-                                ? l.clientAllHaveInvoiceTitle
-                                : l.clientInvoiceStatusUnavailableTitle)
-                            : l.clientNoMatchFiltersTitle,
-                        subtitle: widget.missingCurrentMonthInvoiceOnly &&
-                                !hasSearch &&
-                                !hasStructuredFilters
-                            ? (hasInvoiceFlagData
-                                ? l.clientAllHaveInvoiceDesc
-                                : l.clientInvoiceStatusUnavailableDesc)
-                            : l.clientNoMatchFiltersDesc,
-                      )
+                    ? Column(children: [
+                        if (widget.selectedClient != null &&
+                            widget.allClients.any((client) =>
+                                client.id == widget.selectedClient!.id))
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 6, 8, 2),
+                            child: Row(children: [
+                              Expanded(
+                                child: LayoutBuilder(
+                                  builder: (context, constraints) => _ClientRow(
+                                    client: widget.selectedClient!,
+                                    selected: true,
+                                    showType: constraints.maxWidth >= 390,
+                                    onTap: () => widget
+                                        .onSelectClient(widget.selectedClient!),
+                                    onEdit: widget.onEditClient == null
+                                        ? null
+                                        : () => widget.onEditClient!(
+                                              widget.selectedClient!,
+                                            ),
+                                  ),
+                                ),
+                              ),
+                              Tooltip(
+                                message: widget.selectedHiddenByFilters
+                                    ? (isEs
+                                        ? 'Cliente seleccionado fuera de los filtros'
+                                        : 'Selected client is outside the filters')
+                                    : (isEs
+                                        ? 'Cliente seleccionado'
+                                        : 'Selected client'),
+                                child: Icon(Icons.push_pin_outlined,
+                                    size: 15, color: cs.primary),
+                              ),
+                            ]),
+                          ),
+                        Expanded(
+                          child: EmptyView(
+                            icon: widget.missingCurrentMonthInvoiceOnly &&
+                                    !hasSearch &&
+                                    !hasStructuredFilters
+                                ? (hasInvoiceFlagData
+                                    ? Icons.verified_outlined
+                                    : Icons.hourglass_empty_rounded)
+                                : Icons.search_off_rounded,
+                            title: widget.missingCurrentMonthInvoiceOnly &&
+                                    !hasSearch &&
+                                    !hasStructuredFilters
+                                ? (hasInvoiceFlagData
+                                    ? l.clientAllHaveInvoiceTitle
+                                    : l.clientInvoiceStatusUnavailableTitle)
+                                : l.clientNoMatchFiltersTitle,
+                            subtitle: widget.missingCurrentMonthInvoiceOnly &&
+                                    !hasSearch &&
+                                    !hasStructuredFilters
+                                ? (hasInvoiceFlagData
+                                    ? l.clientAllHaveInvoiceDesc
+                                    : l.clientInvoiceStatusUnavailableDesc)
+                                : l.clientNoMatchFiltersDesc,
+                          ),
+                        ),
+                      ])
                     : Column(
                         children: [
+                          Container(
+                            height: 30,
+                            padding: const EdgeInsetsDirectional.fromSTEB(
+                                12, 0, 8, 0),
+                            decoration: BoxDecoration(
+                              color:
+                                  cs.surfaceContainerLow.withValues(alpha: .7),
+                              border: Border(
+                                bottom: BorderSide(
+                                  color:
+                                      cs.outlineVariant.withValues(alpha: .25),
+                                ),
+                              ),
+                            ),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final showType = constraints.maxWidth >= 390;
+                                return Row(children: [
+                                  const SizedBox(width: 36),
+                                  Expanded(
+                                    flex: showType ? 5 : 1,
+                                    child: _SortHeader(
+                                      label: isEs ? 'Cliente' : 'Client',
+                                      active: !_sortByType,
+                                      ascending: _ascending,
+                                      onTap: () => setState(() {
+                                        if (_sortByType) {
+                                          _sortByType = false;
+                                          _ascending = true;
+                                        } else {
+                                          _ascending = !_ascending;
+                                        }
+                                      }),
+                                    ),
+                                  ),
+                                  if (showType)
+                                    Expanded(
+                                      flex: 3,
+                                      child: _SortHeader(
+                                        label: isEs ? 'Tipo' : 'Type',
+                                        active: _sortByType,
+                                        ascending: _ascending,
+                                        onTap: () => setState(() {
+                                          if (!_sortByType) {
+                                            _sortByType = true;
+                                            _ascending = true;
+                                          } else {
+                                            _ascending = !_ascending;
+                                          }
+                                        }),
+                                      ),
+                                    ),
+                                  SizedBox(
+                                    width: 36,
+                                    child: Text(
+                                      isEs ? 'Acc.' : 'Actions',
+                                      textAlign: TextAlign.center,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                              color: cs.onSurfaceVariant),
+                                    ),
+                                  ),
+                                ]);
+                              },
+                            ),
+                          ),
                           if (widget.selectedHiddenByFilters ||
                               (widget.selectedClient != null &&
                                   !visibleClients.any((client) =>
@@ -322,10 +467,16 @@ class _ClientsListPanelState extends State<ClientsListPanel> {
                               itemCount: visibleClients.length,
                               itemBuilder: (_, i) {
                                 final c = visibleClients[i];
-                                return _ClientRow(
-                                  client: c,
-                                  selected: widget.selectedClient?.id == c.id,
-                                  onTap: () => widget.onSelectClient(c),
+                                return LayoutBuilder(
+                                  builder: (context, constraints) => _ClientRow(
+                                    client: c,
+                                    selected: widget.selectedClient?.id == c.id,
+                                    showType: constraints.maxWidth >= 390,
+                                    onTap: () => widget.onSelectClient(c),
+                                    onEdit: widget.onEditClient == null
+                                        ? null
+                                        : () => widget.onEditClient!(c),
+                                  ),
                                 );
                               },
                             ),
@@ -562,219 +713,172 @@ class _SidebarMissingInvoiceFilter extends StatelessWidget {
 }
 
 class _ClientRow extends StatelessWidget {
-  final GroupClient client;
-  final bool selected;
-  final VoidCallback onTap;
-
   const _ClientRow({
     required this.client,
     required this.selected,
+    required this.showType,
     required this.onTap,
+    this.onEdit,
   });
 
-  static String _clean(String? v) => (v ?? '').trim();
-
-  /// One concise secondary line: the client's category, falling back to the
-  /// legal name only when it adds information, then the email.
-  String? _secondary() {
-    final property = _clean(client.effectivePropertyType);
-    if (property.isNotEmpty) return clientClassificationLabel(property);
-    final entity = _clean(client.effectiveCustomerType);
-    if (entity.isNotEmpty) return clientClassificationLabel(entity);
-    final legal = _clean(client.billing?.legalName);
-    final name = client.name.trim().toLowerCase();
-    if (legal.isNotEmpty && !legal.toLowerCase().contains(name)) return legal;
-    final email = _clean(client.email);
-    return email.isEmpty ? null : email;
-  }
-
-  /// Full metadata, still available on hover.
-  String _details() {
-    final seen = <String>{};
-    return [
-      _clean(client.billing?.legalName),
-      clientClassificationLabel(_clean(client.effectiveCustomerType)),
-      clientClassificationLabel(_clean(client.effectivePropertyType)),
-      _clean(client.email),
-    ].where((v) => v.isNotEmpty && seen.add(v.toLowerCase())).join('\n');
-  }
-
-  IconData _typeIcon() {
-    final property = _clean(client.effectivePropertyType).toLowerCase();
-    final entity = _clean(client.effectiveCustomerType).toLowerCase();
-    final value = '$property $entity';
-    if (value.contains('chalet') ||
-        value.contains('casa') ||
-        value.contains('vivienda')) {
-      return Icons.home_outlined;
-    }
-    if (value.contains('comunidad') ||
-        value.contains('propietar') ||
-        value.contains('residencial')) {
-      return Icons.apartment_outlined;
-    }
-    if (value.contains('empresa') ||
-        value.contains('sociedad') ||
-        value.contains('negocio')) {
-      return Icons.business_center_outlined;
-    }
-    return Icons.person_outline_rounded;
-  }
+  final GroupClient client;
+  final bool selected;
+  final bool showType;
+  final VoidCallback onTap;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final t = AppTypography.of(context);
     final cs = Theme.of(context).colorScheme;
-
-    final title = client.name.trim();
-    final secondary = _secondary();
-    final details = _details();
-    final initial = title.isEmpty ? '?' : title[0].toUpperCase();
-
-    Widget summary = Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: t.bodyMedium.copyWith(
-            fontSize: HexoraTypography.body,
-            fontWeight: FontWeight.w600,
-            color: ThemeColors.textPrimary(context),
-          ),
-        ),
-        if (secondary != null) ...[
-          const SizedBox(height: 2),
-          Text(
-            secondary,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: t.bodySmall.copyWith(
-              fontSize: HexoraTypography.caption,
-              fontWeight: FontWeight.w400,
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ],
-    );
-    if (details.isNotEmpty && details != secondary) {
-      summary = Tooltip(
-        message: details,
-        waitDuration: const Duration(milliseconds: 600),
-        child: summary,
-      );
-    }
+    final textTheme = Theme.of(context).textTheme;
+    final name = client.name.trim();
+    final type = _ClientsListPanelState._clientType(client);
+    final initial = name.isEmpty ? '?' : name.characters.first.toUpperCase();
 
     return HexoraListRow(
       key: ValueKey('client-sidebar-row-${client.id}'),
       selected: selected,
       onTap: onTap,
-      minHeight: 44,
-      verticalPadding: 3,
+      minHeight: 42,
+      verticalPadding: 2,
+      separatorWidth: 0,
       child: Row(children: [
-        // Neutral avatars: identity comes from the name, not a loud color.
         CircleAvatar(
-          radius: 16,
+          radius: 14,
           backgroundColor:
               selected ? cs.primaryContainer : cs.surfaceContainerHighest,
           child: Text(
             initial,
-            style: t.bodySmall.copyWith(
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
+            style: textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w700,
               color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
             ),
           ),
         ),
         const SizedBox(width: 8),
-        Expanded(child: summary),
-        if (_buildTrailing(l, cs) case final trailing?) ...[
-          const SizedBox(width: 8),
-          trailing,
-        ],
-        const SizedBox(width: 4),
-        PopupMenuButton<_ClientRowAction>(
-          tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
-          position: PopupMenuPosition.under,
-          icon: const Icon(Icons.more_vert_rounded),
-          iconSize: 18,
-          padding: EdgeInsets.zero,
-          style: IconButton.styleFrom(
-            minimumSize: const Size(30, 30),
-            fixedSize: const Size(30, 30),
-            padding: EdgeInsets.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: VisualDensity.compact,
-            foregroundColor: cs.onSurfaceVariant,
-          ),
-          onSelected: (_) => onTap(),
-          itemBuilder: (_) => [
-            PopupMenuItem(
-              value: _ClientRowAction.viewDetails,
-              child: Row(
-                children: [
-                  const Icon(Icons.open_in_new_rounded, size: 18),
-                  const SizedBox(width: 8),
-                  Text(l.viewDetails),
-                ],
+        Expanded(
+          flex: showType ? 5 : 1,
+          child: Tooltip(
+            message: name,
+            waitDuration: const Duration(milliseconds: 500),
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface,
               ),
             ),
-          ],
+          ),
+        ),
+        if (showType)
+          Expanded(
+            flex: 3,
+            child: Row(children: [
+              Expanded(
+                child: Tooltip(
+                  message: type,
+                  child: Text(
+                    type,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+              if (client.missingCurrentMonthInvoice == true)
+                Tooltip(
+                  message: l.clientMissingInvoiceThisMonth,
+                  child: Icon(Icons.receipt_long_outlined,
+                      size: 14, color: cs.error),
+                ),
+              if (!client.isActive)
+                Tooltip(
+                  message: l.statusInactive,
+                  child: Icon(Icons.pause_circle_outline,
+                      size: 14, color: cs.onSurfaceVariant),
+                ),
+            ]),
+          ),
+        SizedBox(
+          width: 36,
+          child: PopupMenuButton<_ClientRowAction>(
+            tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+            position: PopupMenuPosition.under,
+            icon: const Icon(Icons.more_horiz_rounded),
+            iconSize: 18,
+            padding: EdgeInsets.zero,
+            style: IconButton.styleFrom(
+              minimumSize: const Size(30, 30),
+              fixedSize: const Size(30, 30),
+              padding: EdgeInsets.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+              foregroundColor: cs.onSurfaceVariant,
+            ),
+            onSelected: (_) => onEdit?.call(),
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: _ClientRowAction.edit,
+                enabled: onEdit != null,
+                child: Row(children: [
+                  const Icon(Icons.edit_outlined, size: 17),
+                  const SizedBox(width: 8),
+                  Text(l.editClient),
+                ]),
+              ),
+            ],
+          ),
         ),
       ]),
     );
   }
+}
 
-  Widget? _buildTrailing(AppLocalizations l, ColorScheme cs) {
-    final parts = <Widget>[
-      Tooltip(
-        message: _secondary() ?? l.details,
-        child: Container(
-          width: 22,
-          height: 22,
-          decoration: BoxDecoration(
-            color: cs.primary.withValues(alpha: .08),
-            borderRadius: BorderRadius.circular(7),
-          ),
-          child: Icon(_typeIcon(), size: 13, color: cs.primary),
-        ),
-      ),
-    ];
+class _SortHeader extends StatelessWidget {
+  const _SortHeader({
+    required this.label,
+    required this.active,
+    required this.ascending,
+    required this.onTap,
+  });
 
-    if (client.missingCurrentMonthInvoice == true) {
-      parts.add(const SizedBox(width: 5));
-      parts.add(
-        Tooltip(
-          message: l.clientMissingInvoiceThisMonth,
-          child: Icon(
-            Icons.receipt_long_outlined,
-            size: 14,
-            color: cs.error.withValues(alpha: .86),
-          ),
-        ),
-      );
-    }
+  final String label;
+  final bool active;
+  final bool ascending;
+  final VoidCallback onTap;
 
-    if (!client.isActive) {
-      if (parts.isNotEmpty) parts.add(const SizedBox(width: 6));
-      parts.add(
-        Tooltip(
-          message: l.statusInactive,
-          child: Icon(
-            Icons.pause_circle_outline,
-            size: 16,
-            color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      child: Row(children: [
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
           ),
         ),
-      );
-    }
-
-    return Row(mainAxisSize: MainAxisSize.min, children: parts);
+        if (active)
+          Icon(
+              ascending
+                  ? Icons.arrow_upward_rounded
+                  : Icons.arrow_downward_rounded,
+              size: 12,
+              color: cs.primary),
+      ]),
+    );
   }
 }
 
-enum _ClientRowAction { viewDetails }
+enum _ClientRowAction { edit }
